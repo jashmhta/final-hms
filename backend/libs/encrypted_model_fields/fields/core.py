@@ -1,9 +1,10 @@
-
 import os
 from typing import Any
+
 from cryptography.fernet import Fernet, InvalidToken
 from django.db import models
 from django.utils.encoding import force_str
+
 
 def _get_fernet():
     key = os.environ.get("FERNET_KEY")
@@ -15,7 +16,9 @@ def _get_fernet():
         key = key.encode()
     return Fernet(key)
 
+
 _fernet = _get_fernet()
+
 
 class _EncryptedMixin:
     def _encrypt(self, value: Any) -> str:
@@ -54,14 +57,18 @@ class _EncryptedMixin:
             return value
         return self._decrypt(value)
 
+
 class EncryptedCharField(_EncryptedMixin, models.CharField):
     pass
+
 
 class EncryptedTextField(_EncryptedMixin, models.TextField):
     pass
 
+
 class EncryptedEmailField(_EncryptedMixin, models.EmailField):
     pass
+
 
 # Optional: fallback aliases some apps expect
 EncryptedField = EncryptedCharField

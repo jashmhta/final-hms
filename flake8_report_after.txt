@@ -1,0 +1,166 @@
+backend/accounting/admin.py:12:89: E501 line too long (116 > 88 characters)
+backend/accounting/admin.py:598:89: E501 line too long (102 > 88 characters)
+backend/accounting/apps.py:10:9: F401 'accounting.signals' imported but unused
+backend/accounting/management/commands/init_chart_of_accounts.py:17:89: E501 line too long (108 > 88 characters)
+backend/accounting/management/commands/monthly_accounting_tasks.py:26:89: E501 line too long (94 > 88 characters)
+backend/accounting/management/commands/monthly_accounting_tasks.py:84:89: E501 line too long (96 > 88 characters)
+backend/accounting/management/commands/monthly_accounting_tasks.py:124:89: E501 line too long (111 > 88 characters)
+backend/accounting/management/commands/monthly_accounting_tasks.py:124:101: E226 missing whitespace around arithmetic operator
+backend/accounting/management/commands/monthly_accounting_tasks.py:158:89: E501 line too long (110 > 88 characters)
+backend/accounting/models.py:7:1: F401 'datetime.date' imported but unused
+backend/accounting/models.py:7:1: F401 'datetime.datetime' imported but unused
+backend/accounting/models.py:10:1: F401 'core.models.TimeStampedModel' imported but unused
+backend/accounting/models.py:14:1: F401 'django.db.models.Q' imported but unused
+backend/accounting/serializers.py:5:1: F401 'decimal.Decimal' imported but unused
+backend/accounting/serializers.py:10:1: F401 '.models.AccountingPeriod' imported but unused
+backend/accounting/serializers.py:10:1: F401 '.models.ExportLog' imported but unused
+backend/accounting/serializers.py:10:1: F401 '.models.ImportBatch' imported but unused
+backend/accounting/serializers.py:10:1: F401 '.models.ProviderCommissionStructure' imported but unused
+backend/accounting/signals.py:35:89: E501 line too long (95 > 88 characters)
+backend/accounting/signals.py:54:89: E501 line too long (95 > 88 characters)
+backend/accounting/signals.py:73:89: E501 line too long (95 > 88 characters)
+backend/accounting/tests.py:184:9: F841 local variable 'item1' is assigned to but never used
+backend/accounting/tests.py:194:9: F841 local variable 'item2' is assigned to but never used
+backend/accounting/tests.py:241:9: F841 local variable 'payment' is assigned to but never used
+backend/accounting/utils.py:5:1: F401 'csv' imported but unused
+backend/accounting/utils.py:7:1: F401 'json' imported but unused
+backend/accounting/utils.py:9:1: F401 'datetime.datetime' imported but unused
+backend/accounting/utils.py:10:1: F401 'decimal.Decimal' imported but unused
+backend/accounting/utils.py:17:1: F401 '.models.FinancialYear' imported but unused
+backend/accounting/utils.py:17:1: F401 '.models.PayrollEntry' imported but unused
+backend/accounting/utils.py:17:1: F401 '.models.TaxLiability' imported but unused
+backend/accounting/utils.py:229:89: E501 line too long (99 > 88 characters)
+backend/accounting/utils.py:244:89: E501 line too long (100 > 88 characters)
+backend/accounting/utils.py:352:13: F841 local variable 'depreciation_entry' is assigned to but never used
+backend/accounting/utils.py:379:89: E501 line too long (94 > 88 characters)
+backend/accounting/utils.py:717:17: F841 local variable 'e' is assigned to but never used
+backend/accounting/utils.py:743:13: F402 import 'transaction' from line 13 shadowed by loop variable
+backend/accounting/utils.py:787:89: E501 line too long (92 > 88 characters)
+backend/accounting/views.py:6:1: F401 'datetime.datetime' imported but unused
+backend/accounting/views.py:8:1: F401 'django.db.transaction' imported but unused
+backend/accounting/views.py:9:1: F401 'django.db.models.Count' imported but unused
+backend/accounting/views.py:12:1: F401 'django_filters.rest_framework.DjangoFilterBackend' imported but unused
+backend/accounting/views.py:15:1: F401 'rest_framework.filters.OrderingFilter' imported but unused
+backend/accounting/views.py:15:1: F401 'rest_framework.filters.SearchFilter' imported but unused
+backend/accounting/views.py:20:1: F401 '.models.AccountingPeriod' imported but unused
+backend/accounting/views.py:20:1: F401 '.models.DepreciationSchedule' imported but unused
+backend/accounting/views.py:20:1: F401 '.models.InvoiceLineItem' imported but unused
+backend/accounting/views.py:20:1: F401 '.models.TaxLiability' imported but unused
+backend/accounting/views.py:51:1: F401 '.serializers.AgeingReportSerializer' imported but unused
+backend/accounting/views.py:51:1: F401 '.serializers.BalanceSheetSerializer' imported but unused
+backend/accounting/views.py:51:1: F401 '.serializers.ProfitLossSerializer' imported but unused
+backend/accounting/views.py:51:1: F401 '.serializers.TrialBalanceSerializer' imported but unused
+backend/accounting/views.py:85:1: F401 '.utils.ComplianceReporter' imported but unused
+backend/accounting/views.py:184:89: E501 line too long (97 > 88 characters)
+backend/accounting/views.py:867:89: E501 line too long (101 > 88 characters)
+backend/accounting_advanced/models.py:1:1: F401 'uuid' imported but unused
+backend/accounting_advanced/models.py:2:1: F401 'datetime.datetime' imported but unused
+backend/accounting_advanced/models.py:2:1: F401 'datetime.timedelta' imported but unused
+backend/accounting_advanced/models.py:3:1: F401 'decimal.Decimal' imported but unused
+backend/accounting_advanced/models.py:197:89: E501 line too long (96 > 88 characters)
+backend/accounting_advanced/models.py:517:89: E501 line too long (110 > 88 characters)
+backend/analytics/admin.py:1:1: F401 'django.contrib.admin' imported but unused
+backend/analytics/models.py:1:1: F401 'django.db.models' imported but unused
+backend/analytics/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/appointments/models.py:1:1: F401 'json' imported but unused
+backend/appointments/models.py:3:1: F401 'datetime.datetime' imported but unused
+backend/appointments/models.py:7:1: F401 'django.core.validators.MaxValueValidator' imported but unused
+backend/appointments/models.py:7:1: F401 'django.core.validators.MinValueValidator' imported but unused
+backend/appointments/models.py:355:89: E501 line too long (100 > 88 characters)
+backend/appointments/serializers.py:4:1: F401 '.models.AppointmentStatus' imported but unused
+backend/appointments/tests.py:50:89: E501 line too long (109 > 88 characters)
+backend/appointments/views.py:6:1: F401 'django.shortcuts.get_object_or_404' imported but unused
+backend/appointments/views.py:6:1: F401 'django.shortcuts.render' imported but unused
+backend/appointments/views.py:9:1: F401 'rest_framework.permissions' imported but unused
+backend/billing/models.py:1:1: F401 'core.models.TimeStampedModel' imported but unused
+backend/billing/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/billing/views.py:8:1: F401 'django.shortcuts.render' imported but unused
+backend/billing/views.py:221:89: E501 line too long (92 > 88 characters)
+backend/billing/views.py:233:9: F841 local variable 'reqdesc' is assigned to but never used
+backend/billing/views.py:325:13: F401 'django.db.models.F' imported but unused
+backend/billing/views.py:326:13: F401 'django.db.models.functions.TruncMonth' imported but unused
+backend/check_users.py:4:1: F401 'sys' imported but unused
+backend/check_users.py:12:1: E402 module level import not at top of file
+backend/check_users.py:13:1: E402 module level import not at top of file
+backend/check_users.py:14:1: E402 module level import not at top of file
+backend/check_users.py:29:89: E501 line too long (102 > 88 characters)
+backend/core/management/commands/schedule_periodic_tasks.py:1:1: F401 'json' imported but unused
+backend/core/management/commands/seed_demo.py:84:89: E501 line too long (93 > 88 characters)
+backend/core/middleware.py:30:89: E501 line too long (103 > 88 characters)
+backend/core/permissions.py:5:89: E501 line too long (90 > 88 characters)
+backend/core/permissions.py:24:89: E501 line too long (119 > 88 characters)
+backend/core/signals.py:6:1: F401 'django.contrib.contenttypes.models.ContentType' imported but unused
+backend/core/tasks.py:5:1: F401 'pharmacy.models.Medication' imported but unused
+backend/core/tasks.py:26:5: F811 redefinition of unused 'Medication' from line 5
+backend/core/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/core/views.py:3:1: F401 'django.shortcuts.render' imported but unused
+backend/ehr/models.py:158:89: E501 line too long (124 > 88 characters)
+backend/ehr/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/ehr/views.py:4:1: F401 'django.shortcuts.render' imported but unused
+backend/facilities/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/facilities/views.py:2:1: F401 'django.shortcuts.render' imported but unused
+backend/feedback/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/feedback/views.py:1:1: F401 'django.shortcuts.render' imported but unused
+backend/hms/settings.py:138:89: E501 line too long (90 > 88 characters)
+backend/hms/settings/production.py:4:1: F403 'from .base import *' used; unable to detect undefined names
+backend/hms/settings/production.py:172:89: E501 line too long (96 > 88 characters)
+backend/hms/settings/production.py:275:1: F405 'REST_FRAMEWORK' may be undefined, or defined from star imports: .base
+backend/hms/settings/production.py:280:1: F405 'REST_FRAMEWORK' may be undefined, or defined from star imports: .base
+backend/hms/settings/production.py:297:1: F405 'INSTALLED_APPS' may be undefined, or defined from star imports: .base
+backend/hms/settings/production.py:330:89: E501 line too long (91 > 88 characters)
+backend/hospitals/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/hospitals/views.py:1:1: F401 'django.shortcuts.render' imported but unused
+backend/hr/models.py:1:1: F401 'core.models.TimeStampedModel' imported but unused
+backend/hr/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/hr/views.py:2:1: F401 'django.shortcuts.render' imported but unused
+backend/lab/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/lab/views.py:2:1: F401 'django.shortcuts.render' imported but unused
+backend/lab/views.py:3:1: F401 'rest_framework.response' imported but unused
+backend/libs/encrypted_model_fields/__init__.py:1:1: F403 'from .fields import *' used; unable to detect undefined names
+backend/libs/encrypted_model_fields/__init__.py:1:1: F401 '.fields.*' imported but unused
+backend/libs/encrypted_model_fields/fields/__init__.py:1:1: F403 'from .core import *' used; unable to detect undefined names
+backend/libs/encrypted_model_fields/fields/__init__.py:1:1: F401 '.core.*' imported but unused
+backend/patients/models.py:2:1: F401 'datetime.timedelta' imported but unused
+backend/patients/models.py:5:1: F401 'django.core.validators.RegexValidator' imported but unused
+backend/patients/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/pharmacy/models.py:1:1: F401 'core.models.TimeStampedModel' imported but unused
+backend/pharmacy/views.py:4:1: F401 'django.shortcuts.render' imported but unused
+backend/pharmacy/views.py:5:1: F401 'django.utils.timezone' imported but unused
+backend/pharmacy/views.py:107:9: F841 local variable 'prescription' is assigned to but never used
+backend/superadmin/admin.py:2:1: F401 'django.urls.reverse' imported but unused
+backend/superadmin/admin.py:141:89: E501 line too long (199 > 88 characters)
+backend/superadmin/admin.py:142:89: E501 line too long (196 > 88 characters)
+backend/superadmin/admin.py:143:89: E501 line too long (210 > 88 characters)
+backend/superadmin/admin.py:144:89: E501 line too long (220 > 88 characters)
+backend/superadmin/models.py:1:1: F401 'uuid' imported but unused
+backend/superadmin/models.py:2:1: F401 'decimal.Decimal' imported but unused
+backend/superadmin/views.py:1:1: F401 'datetime.datetime' imported but unused
+backend/superadmin/views.py:5:1: F401 'django.db.models.Count' imported but unused
+backend/superadmin/views.py:14:1: F401 '.models.ModulePermission' imported but unused
+backend/superadmin/views.py:24:1: F401 '.serializers.ModulePermissionSerializer' imported but unused
+backend/superadmin/views.py:24:1: F401 '.serializers.SuperadminUserSerializer' imported but unused
+backend/users/migrations/0001_initial.py:43:89: E501 line too long (117 > 88 characters)
+backend/users/migrations/0001_initial.py:53:89: E501 line too long (107 > 88 characters)
+backend/users/migrations/0001_initial.py:84:89: E501 line too long (94 > 88 characters)
+backend/users/migrations/0001_initial.py:92:89: E501 line too long (138 > 88 characters)
+backend/users/migrations/0001_initial.py:123:89: E501 line too long (134 > 88 characters)
+backend/users/models.py:1:1: F401 'uuid' imported but unused
+backend/users/models.py:4:1: F401 'django.contrib.auth.models.Group' imported but unused
+backend/users/models.py:5:1: F401 'django.core.validators.RegexValidator' imported but unused
+backend/users/serializers.py:1:1: F401 'django.contrib.auth.authenticate' imported but unused
+backend/users/serializers.py:3:1: F401 'django.core.exceptions.ValidationError' imported but unused
+backend/users/serializers.py:17:1: F811 redefinition of unused 'User' from line 8
+backend/users/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/users/urls.py:1:1: F401 'django.urls.include' imported but unused
+backend/users/views.py:2:1: F401 'django.shortcuts.render' imported but unused
+backend/users/views.py:4:1: F401 'rest_framework.status' imported but unused
+1     E226 missing whitespace around arithmetic operator
+3     E402 module level import not at top of file
+39    E501 line too long (116 > 88 characters)
+97    F401 'accounting.signals' imported but unused
+1     F402 import 'transaction' from line 13 shadowed by loop variable
+3     F403 'from .base import *' used; unable to detect undefined names
+3     F405 'REST_FRAMEWORK' may be undefined, or defined from star imports: .base
+2     F811 redefinition of unused 'Medication' from line 5
+7     F841 local variable 'item1' is assigned to but never used
+156

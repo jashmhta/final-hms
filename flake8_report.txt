@@ -1,0 +1,528 @@
+backend/accounting/admin.py:6:1: F401 'django.db.models.Sum' imported but unused
+backend/accounting/admin.py:7:1: F401 'django.urls.reverse' imported but unused
+backend/accounting/admin.py:10:1: F401 'django.utils.safestring.mark_safe' imported but unused
+backend/accounting/admin.py:12:1: F401 '.models.AccountingPeriod' imported but unused
+backend/accounting/admin.py:12:1: F401 '.models.ProviderCommissionStructure' imported but unused
+backend/accounting/admin.py:597:89: E501 line too long (102 > 88 characters)
+backend/accounting/apps.py:10:9: F401 'accounting.signals' imported but unused
+backend/accounting/management/commands/init_chart_of_accounts.py:17:89: E501 line too long (108 > 88 characters)
+backend/accounting/management/commands/monthly_accounting_tasks.py:26:89: E501 line too long (94 > 88 characters)
+backend/accounting/management/commands/monthly_accounting_tasks.py:84:89: E501 line too long (96 > 88 characters)
+backend/accounting/management/commands/monthly_accounting_tasks.py:124:89: E501 line too long (111 > 88 characters)
+backend/accounting/management/commands/monthly_accounting_tasks.py:124:101: E226 missing whitespace around arithmetic operator
+backend/accounting/management/commands/monthly_accounting_tasks.py:135:31: F541 f-string is missing placeholders
+backend/accounting/management/commands/monthly_accounting_tasks.py:158:89: E501 line too long (110 > 88 characters)
+backend/accounting/models.py:7:1: F401 'datetime.date' imported but unused
+backend/accounting/models.py:7:1: F401 'datetime.datetime' imported but unused
+backend/accounting/models.py:10:1: F401 'core.models.TimeStampedModel' imported but unused
+backend/accounting/models.py:14:1: F401 'django.db.models.Q' imported but unused
+backend/accounting/serializers.py:5:1: F401 'decimal.Decimal' imported but unused
+backend/accounting/serializers.py:10:1: F401 '.models.AccountingPeriod' imported but unused
+backend/accounting/serializers.py:10:1: F401 '.models.ExportLog' imported but unused
+backend/accounting/serializers.py:10:1: F401 '.models.ImportBatch' imported but unused
+backend/accounting/serializers.py:10:1: F401 '.models.ProviderCommissionStructure' imported but unused
+backend/accounting/signals.py:35:89: E501 line too long (95 > 88 characters)
+backend/accounting/signals.py:54:89: E501 line too long (95 > 88 characters)
+backend/accounting/signals.py:73:89: E501 line too long (95 > 88 characters)
+backend/accounting/tests.py:184:9: F841 local variable 'item1' is assigned to but never used
+backend/accounting/tests.py:194:9: F841 local variable 'item2' is assigned to but never used
+backend/accounting/tests.py:241:9: F841 local variable 'payment' is assigned to but never used
+backend/accounting/utils.py:5:1: F401 'csv' imported but unused
+backend/accounting/utils.py:7:1: F401 'json' imported but unused
+backend/accounting/utils.py:9:1: F401 'datetime.datetime' imported but unused
+backend/accounting/utils.py:10:1: F401 'decimal.Decimal' imported but unused
+backend/accounting/utils.py:17:1: F401 '.models.FinancialYear' imported but unused
+backend/accounting/utils.py:17:1: F401 '.models.PayrollEntry' imported but unused
+backend/accounting/utils.py:17:1: F401 '.models.TaxLiability' imported but unused
+backend/accounting/utils.py:229:89: E501 line too long (99 > 88 characters)
+backend/accounting/utils.py:244:89: E501 line too long (100 > 88 characters)
+backend/accounting/utils.py:352:13: F841 local variable 'depreciation_entry' is assigned to but never used
+backend/accounting/utils.py:379:89: E501 line too long (94 > 88 characters)
+backend/accounting/utils.py:717:17: E722 do not use bare 'except'
+backend/accounting/utils.py:743:13: F402 import 'transaction' from line 13 shadowed by loop variable
+backend/accounting/utils.py:787:89: E501 line too long (92 > 88 characters)
+backend/accounting/views.py:6:1: F401 'datetime.datetime' imported but unused
+backend/accounting/views.py:8:1: F401 'django.db.transaction' imported but unused
+backend/accounting/views.py:9:1: F401 'django.db.models.Count' imported but unused
+backend/accounting/views.py:12:1: F401 'django_filters.rest_framework.DjangoFilterBackend' imported but unused
+backend/accounting/views.py:15:1: F401 'rest_framework.filters.OrderingFilter' imported but unused
+backend/accounting/views.py:15:1: F401 'rest_framework.filters.SearchFilter' imported but unused
+backend/accounting/views.py:20:1: F401 '.models.AccountingPeriod' imported but unused
+backend/accounting/views.py:20:1: F401 '.models.DepreciationSchedule' imported but unused
+backend/accounting/views.py:20:1: F401 '.models.InvoiceLineItem' imported but unused
+backend/accounting/views.py:20:1: F401 '.models.TaxLiability' imported but unused
+backend/accounting/views.py:51:1: F401 '.serializers.AgeingReportSerializer' imported but unused
+backend/accounting/views.py:51:1: F401 '.serializers.BalanceSheetSerializer' imported but unused
+backend/accounting/views.py:51:1: F401 '.serializers.ProfitLossSerializer' imported but unused
+backend/accounting/views.py:51:1: F401 '.serializers.TrialBalanceSerializer' imported but unused
+backend/accounting/views.py:85:1: F401 '.utils.ComplianceReporter' imported but unused
+backend/accounting/views.py:184:89: E501 line too long (97 > 88 characters)
+backend/accounting/views.py:867:89: E501 line too long (101 > 88 characters)
+backend/accounting_advanced/models.py:4:1: F401 'decimal.Decimal' imported but unused
+backend/accounting_advanced/models.py:5:1: F401 'datetime.datetime' imported but unused
+backend/accounting_advanced/models.py:5:1: F401 'datetime.timedelta' imported but unused
+backend/accounting_advanced/models.py:7:1: F401 'uuid' imported but unused
+backend/accounting_advanced/models.py:11:1: E302 expected 2 blank lines, found 1
+backend/accounting_advanced/models.py:13:89: E501 line too long (112 > 88 characters)
+backend/accounting_advanced/models.py:14:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:19:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:32:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:37:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:43:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:45:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:49:1: E302 expected 2 blank lines, found 1
+backend/accounting_advanced/models.py:53:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:66:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:72:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:80:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:92:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:93:89: E501 line too long (91 > 88 characters)
+backend/accounting_advanced/models.py:95:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:102:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:105:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:108:89: E501 line too long (100 > 88 characters)
+backend/accounting_advanced/models.py:110:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:113:89: E501 line too long (100 > 88 characters)
+backend/accounting_advanced/models.py:117:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:122:1: E302 expected 2 blank lines, found 1
+backend/accounting_advanced/models.py:125:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:137:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:141:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:145:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:150:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:162:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:165:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:170:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:174:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:180:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:182:89: E501 line too long (96 > 88 characters)
+backend/accounting_advanced/models.py:184:1: E302 expected 2 blank lines, found 1
+backend/accounting_advanced/models.py:187:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:202:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:207:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:211:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:222:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:225:89: E501 line too long (90 > 88 characters)
+backend/accounting_advanced/models.py:226:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:238:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:242:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:248:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:252:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:258:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:261:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:265:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:273:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:275:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:277:89: E501 line too long (97 > 88 characters)
+backend/accounting_advanced/models.py:278:89: E501 line too long (111 > 88 characters)
+backend/accounting_advanced/models.py:286:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:288:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:293:1: E302 expected 2 blank lines, found 1
+backend/accounting_advanced/models.py:297:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:309:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:315:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:319:89: E501 line too long (92 > 88 characters)
+backend/accounting_advanced/models.py:320:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:324:89: E501 line too long (90 > 88 characters)
+backend/accounting_advanced/models.py:325:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:330:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:335:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:338:89: E501 line too long (92 > 88 characters)
+backend/accounting_advanced/models.py:340:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:347:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:350:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:353:63: W504 line break after binary operator
+backend/accounting_advanced/models.py:353:64: W291 trailing whitespace
+backend/accounting_advanced/models.py:355:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:358:58: W504 line break after binary operator
+backend/accounting_advanced/models.py:358:59: W291 trailing whitespace
+backend/accounting_advanced/models.py:360:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:363:51: W504 line break after binary operator
+backend/accounting_advanced/models.py:363:52: W291 trailing whitespace
+backend/accounting_advanced/models.py:365:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:368:59: W504 line break after binary operator
+backend/accounting_advanced/models.py:368:60: W291 trailing whitespace
+backend/accounting_advanced/models.py:370:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:378:1: E302 expected 2 blank lines, found 1
+backend/accounting_advanced/models.py:382:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:386:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:391:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:395:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:399:89: E501 line too long (96 > 88 characters)
+backend/accounting_advanced/models.py:400:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:403:89: E501 line too long (93 > 88 characters)
+backend/accounting_advanced/models.py:404:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:410:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:413:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:416:89: E501 line too long (89 > 88 characters)
+backend/accounting_advanced/models.py:417:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:421:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:424:89: E501 line too long (100 > 88 characters)
+backend/accounting_advanced/models.py:425:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:428:1: E302 expected 2 blank lines, found 1
+backend/accounting_advanced/models.py:431:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:437:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:443:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:455:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:459:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:463:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:470:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:472:89: E501 line too long (110 > 88 characters)
+backend/accounting_advanced/models.py:474:1: E302 expected 2 blank lines, found 1
+backend/accounting_advanced/models.py:477:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:491:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:493:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:499:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:503:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:507:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:511:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:515:1: W293 blank line contains whitespace
+backend/accounting_advanced/models.py:521:1: W293 blank line contains whitespace
+backend/analytics/admin.py:1:1: F401 'django.contrib.admin' imported but unused
+backend/analytics/models.py:1:1: F401 'django.db.models' imported but unused
+backend/analytics/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/appointments/models.py:1:1: F401 'json' imported but unused
+backend/appointments/models.py:3:1: F401 'datetime.datetime' imported but unused
+backend/appointments/models.py:7:1: F401 'django.core.validators.MaxValueValidator' imported but unused
+backend/appointments/models.py:7:1: F401 'django.core.validators.MinValueValidator' imported but unused
+backend/appointments/models.py:355:89: E501 line too long (100 > 88 characters)
+backend/appointments/serializers.py:4:1: F401 '.models.AppointmentStatus' imported but unused
+backend/appointments/tests.py:50:89: E501 line too long (109 > 88 characters)
+backend/appointments/views.py:6:1: F401 'django.shortcuts.get_object_or_404' imported but unused
+backend/appointments/views.py:6:1: F401 'django.shortcuts.render' imported but unused
+backend/appointments/views.py:9:1: F401 'rest_framework.permissions' imported but unused
+backend/authentication/apps.py:3:1: E302 expected 2 blank lines, found 1
+backend/authentication/models.py:12:1: E302 expected 2 blank lines, found 1
+backend/authentication/models.py:20:1: W293 blank line contains whitespace
+backend/authentication/models.py:28:1: W293 blank line contains whitespace
+backend/authentication/models.py:32:1: W293 blank line contains whitespace
+backend/authentication/models.py:36:1: W293 blank line contains whitespace
+backend/authentication/models.py:40:1: W293 blank line contains whitespace
+backend/authentication/models.py:43:1: W293 blank line contains whitespace
+backend/authentication/models.py:46:1: W293 blank line contains whitespace
+backend/authentication/models.py:51:1: W293 blank line contains whitespace
+backend/authentication/models.py:56:1: W293 blank line contains whitespace
+backend/authentication/models.py:62:1: W293 blank line contains whitespace
+backend/authentication/models.py:67:1: W293 blank line contains whitespace
+backend/authentication/models.py:80:1: W293 blank line contains whitespace
+backend/authentication/models.py:92:1: W293 blank line contains whitespace
+backend/authentication/models.py:95:1: W293 blank line contains whitespace
+backend/authentication/models.py:99:1: W293 blank line contains whitespace
+backend/authentication/models.py:107:1: E302 expected 2 blank lines, found 1
+backend/authentication/models.py:109:89: E501 line too long (91 > 88 characters)
+backend/authentication/models.py:114:1: W293 blank line contains whitespace
+backend/authentication/models.py:118:89: E501 line too long (100 > 88 characters)
+backend/authentication/models.py:119:1: W293 blank line contains whitespace
+backend/authentication/models.py:125:1: W293 blank line contains whitespace
+backend/authentication/models.py:129:1: W293 blank line contains whitespace
+backend/authentication/models.py:132:1: W293 blank line contains whitespace
+backend/authentication/models.py:135:1: W293 blank line contains whitespace
+backend/authentication/models.py:138:1: W293 blank line contains whitespace
+backend/authentication/models.py:145:1: E302 expected 2 blank lines, found 1
+backend/authentication/models.py:162:1: W293 blank line contains whitespace
+backend/authentication/models.py:169:1: W293 blank line contains whitespace
+backend/authentication/models.py:173:1: W293 blank line contains whitespace
+backend/authentication/models.py:179:1: W293 blank line contains whitespace
+backend/authentication/models.py:183:1: W293 blank line contains whitespace
+backend/authentication/models.py:192:1: W293 blank line contains whitespace
+backend/authentication/models.py:200:1: W293 blank line contains whitespace
+backend/authentication/models.py:204:1: E302 expected 2 blank lines, found 1
+backend/authentication/models.py:208:1: W293 blank line contains whitespace
+backend/authentication/models.py:216:89: E501 line too long (89 > 88 characters)
+backend/authentication/models.py:217:1: W293 blank line contains whitespace
+backend/authentication/models.py:222:1: W293 blank line contains whitespace
+backend/authentication/models.py:226:1: W293 blank line contains whitespace
+backend/authentication/models.py:230:1: W293 blank line contains whitespace
+backend/authentication/models.py:233:1: W293 blank line contains whitespace
+backend/authentication/models.py:236:1: W293 blank line contains whitespace
+backend/authentication/models.py:239:1: W293 blank line contains whitespace
+backend/authentication/models.py:246:1: E302 expected 2 blank lines, found 1
+backend/authentication/models.py:248:89: E501 line too long (93 > 88 characters)
+backend/authentication/models.py:251:1: W293 blank line contains whitespace
+backend/authentication/models.py:254:1: W293 blank line contains whitespace
+backend/authentication/models.py:258:1: E302 expected 2 blank lines, found 1
+backend/authentication/models.py:260:89: E501 line too long (92 > 88 characters)
+backend/authentication/models.py:264:1: W293 blank line contains whitespace
+backend/authentication/models.py:269:1: W293 blank line contains whitespace
+backend/authentication/models.py:274:1: W293 blank line contains whitespace
+backend/authentication/models.py:277:1: W293 blank line contains whitespace
+backend/authentication/models.py:280:1: W293 blank line contains whitespace
+backend/billing/models.py:1:1: F401 'core.models.TimeStampedModel' imported but unused
+backend/billing/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/billing/views.py:8:1: F401 'django.shortcuts.render' imported but unused
+backend/billing/views.py:221:89: E501 line too long (92 > 88 characters)
+backend/billing/views.py:233:9: F841 local variable 'reqdesc' is assigned to but never used
+backend/billing/views.py:325:13: F401 'django.db.models.F' imported but unused
+backend/billing/views.py:326:13: F401 'django.db.models.functions.TruncMonth' imported but unused
+backend/check_users.py:5:1: F401 'sys' imported but unused
+backend/check_users.py:11:1: E402 module level import not at top of file
+backend/check_users.py:12:1: E402 module level import not at top of file
+backend/check_users.py:13:1: E402 module level import not at top of file
+backend/check_users.py:17:1: E302 expected 2 blank lines, found 1
+backend/check_users.py:19:1: W293 blank line contains whitespace
+backend/check_users.py:26:89: E501 line too long (105 > 88 characters)
+backend/check_users.py:29:1: W293 blank line contains whitespace
+backend/check_users.py:38:1: W293 blank line contains whitespace
+backend/check_users.py:54:89: E501 line too long (90 > 88 characters)
+backend/check_users.py:55:1: W293 blank line contains whitespace
+backend/check_users.py:68:1: W293 blank line contains whitespace
+backend/check_users.py:72:54: W291 trailing whitespace
+backend/check_users.py:80:1: W293 blank line contains whitespace
+backend/check_users.py:85:42: W291 trailing whitespace
+backend/check_users.py:92:1: W293 blank line contains whitespace
+backend/check_users.py:100:34: W291 trailing whitespace
+backend/check_users.py:104:1: W293 blank line contains whitespace
+backend/check_users.py:111:64: W291 trailing whitespace
+backend/check_users.py:114:1: W293 blank line contains whitespace
+backend/check_users.py:124:1: E305 expected 2 blank lines after class or function definition, found 1
+backend/core/management/commands/schedule_periodic_tasks.py:1:1: F401 'json' imported but unused
+backend/core/management/commands/seed_demo.py:84:89: E501 line too long (93 > 88 characters)
+backend/core/middleware.py:30:89: E501 line too long (103 > 88 characters)
+backend/core/permissions.py:5:89: E501 line too long (90 > 88 characters)
+backend/core/permissions.py:24:89: E501 line too long (119 > 88 characters)
+backend/core/signals.py:6:1: F401 'django.contrib.contenttypes.models.ContentType' imported but unused
+backend/core/tasks.py:16:19: F541 f-string is missing placeholders
+backend/core/tasks.py:24:56: F821 undefined name 'models'
+backend/core/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/core/views.py:3:1: F401 'django.shortcuts.render' imported but unused
+backend/ehr/models.py:158:89: E501 line too long (124 > 88 characters)
+backend/ehr/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/ehr/views.py:4:1: F401 'django.shortcuts.render' imported but unused
+backend/facilities/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/facilities/views.py:2:1: F401 'django.shortcuts.render' imported but unused
+backend/feedback/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/feedback/views.py:1:1: F401 'django.shortcuts.render' imported but unused
+backend/hms/__init__.py:3:26: W292 no newline at end of file
+backend/hms/celery.py:8:25: W292 no newline at end of file
+backend/hms/settings.py:136:6: E201 whitespace after '{'
+backend/hms/settings.py:136:89: E501 line too long (91 > 88 characters)
+backend/hms/settings.py:136:89: E202 whitespace before '}'
+backend/hms/settings.py:137:6: E201 whitespace after '{'
+backend/hms/settings.py:137:89: E501 line too long (111 > 88 characters)
+backend/hms/settings.py:138:6: E201 whitespace after '{'
+backend/hms/settings.py:138:80: E202 whitespace before '}'
+backend/hms/settings.py:139:6: E201 whitespace after '{'
+backend/hms/settings.py:139:81: E202 whitespace before '}'
+backend/hms/settings.py:234:89: E501 line too long (93 > 88 characters)
+backend/hms/settings.py:235:89: E501 line too long (116 > 88 characters)
+backend/hms/settings.py:238:89: E501 line too long (91 > 88 characters)
+backend/hms/settings.py:246:89: E501 line too long (117 > 88 characters)
+backend/hms/settings.py:247:89: E501 line too long (95 > 88 characters)
+backend/hms/settings.py:248:89: E501 line too long (94 > 88 characters)
+backend/hms/settings.py:301:89: E501 line too long (102 > 88 characters)
+backend/hms/settings.py:303:89: E501 line too long (91 > 88 characters)
+backend/hms/settings.py:317:89: E501 line too long (92 > 88 characters)
+backend/hms/settings/production.py:1:1: F403 'from .base import *' used; unable to detect undefined names
+backend/hms/settings/production.py:135:89: E501 line too long (95 > 88 characters)
+backend/hms/settings/production.py:136:89: E501 line too long (105 > 88 characters)
+backend/hms/settings/production.py:139:89: E501 line too long (94 > 88 characters)
+backend/hms/settings/production.py:157:89: E501 line too long (95 > 88 characters)
+backend/hms/settings/production.py:170:29: E226 missing whitespace around arithmetic operator
+backend/hms/settings/production.py:170:34: E226 missing whitespace around arithmetic operator
+backend/hms/settings/production.py:178:29: E226 missing whitespace around arithmetic operator
+backend/hms/settings/production.py:178:34: E226 missing whitespace around arithmetic operator
+backend/hms/settings/production.py:246:1: W293 blank line contains whitespace
+backend/hms/settings/production.py:250:1: W293 blank line contains whitespace
+backend/hms/settings/production.py:260:1: F405 'REST_FRAMEWORK' may be undefined, or defined from star imports: .base
+backend/hms/settings/production.py:265:1: F405 'REST_FRAMEWORK' may be undefined, or defined from star imports: .base
+backend/hms/settings/production.py:282:1: F405 'INSTALLED_APPS' may be undefined, or defined from star imports: .base
+backend/hms/settings/production.py:315:89: E501 line too long (91 > 88 characters)
+backend/hms/settings/production.py:391:1: W293 blank line contains whitespace
+backend/hms/urls.py:28:89: E501 line too long (92 > 88 characters)
+backend/hms/urls.py:44:89: E501 line too long (93 > 88 characters)
+backend/hospitals/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/hospitals/views.py:1:1: F401 'django.shortcuts.render' imported but unused
+backend/hr/models.py:1:1: F401 'core.models.TimeStampedModel' imported but unused
+backend/hr/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/hr/views.py:2:1: F401 'django.shortcuts.render' imported but unused
+backend/lab/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/lab/views.py:2:1: F401 'django.shortcuts.render' imported but unused
+backend/lab/views.py:3:1: F401 'rest_framework.response' imported but unused
+backend/libs/encrypted_model_fields/__init__.py:1:1: F403 'from .fields import *' used; unable to detect undefined names
+backend/libs/encrypted_model_fields/__init__.py:1:1: F401 '.fields.*' imported but unused
+backend/libs/encrypted_model_fields/fields.py:8:1: E302 expected 2 blank lines, found 1
+backend/libs/encrypted_model_fields/fields.py:19:1: E302 expected 2 blank lines, found 1
+backend/libs/encrypted_model_fields/fields/__init__.py:1:1: F403 'from .core import *' used; unable to detect undefined names
+backend/libs/encrypted_model_fields/fields/__init__.py:1:1: F401 '.core.*' imported but unused
+backend/libs/encrypted_model_fields/fields/core.py:8:1: E302 expected 2 blank lines, found 1
+backend/libs/encrypted_model_fields/fields/core.py:18:1: E305 expected 2 blank lines after class or function definition, found 1
+backend/libs/encrypted_model_fields/fields/core.py:20:1: E302 expected 2 blank lines, found 1
+backend/libs/encrypted_model_fields/fields/core.py:57:1: E302 expected 2 blank lines, found 1
+backend/libs/encrypted_model_fields/fields/core.py:60:1: E302 expected 2 blank lines, found 1
+backend/libs/encrypted_model_fields/fields/core.py:63:1: E302 expected 2 blank lines, found 1
+backend/libs/encrypted_model_fields/fields/core.py:67:1: E305 expected 2 blank lines after class or function definition, found 1
+backend/patients/models.py:2:1: F401 'datetime.timedelta' imported but unused
+backend/patients/models.py:5:1: F401 'django.core.validators.RegexValidator' imported but unused
+backend/patients/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/pharmacy/models.py:1:1: F401 'core.models.TimeStampedModel' imported but unused
+backend/pharmacy/views.py:4:1: F401 'django.shortcuts.render' imported but unused
+backend/pharmacy/views.py:5:1: F401 'django.utils.timezone' imported but unused
+backend/pharmacy/views.py:107:9: F841 local variable 'prescription' is assigned to but never used
+backend/superadmin/admin.py:3:1: F401 'django.urls.reverse' imported but unused
+backend/superadmin/admin.py:11:1: E302 expected 2 blank lines, found 1
+backend/superadmin/admin.py:13:89: E501 line too long (111 > 88 characters)
+backend/superadmin/admin.py:17:1: W293 blank line contains whitespace
+backend/superadmin/admin.py:33:1: E302 expected 2 blank lines, found 1
+backend/superadmin/admin.py:38:1: E302 expected 2 blank lines, found 1
+backend/superadmin/admin.py:40:89: E501 line too long (89 > 88 characters)
+backend/superadmin/admin.py:45:1: E302 expected 2 blank lines, found 1
+backend/superadmin/admin.py:47:89: E501 line too long (110 > 88 characters)
+backend/superadmin/admin.py:51:1: W293 blank line contains whitespace
+backend/superadmin/admin.py:57:89: E501 line too long (108 > 88 characters)
+backend/superadmin/admin.py:60:89: E501 line too long (115 > 88 characters)
+backend/superadmin/admin.py:63:89: E501 line too long (153 > 88 characters)
+backend/superadmin/admin.py:69:1: W293 blank line contains whitespace
+backend/superadmin/admin.py:83:1: W293 blank line contains whitespace
+backend/superadmin/admin.py:88:89: E501 line too long (199 > 88 characters)
+backend/superadmin/admin.py:89:89: E501 line too long (196 > 88 characters)
+backend/superadmin/admin.py:90:89: E501 line too long (210 > 88 characters)
+backend/superadmin/admin.py:91:89: E501 line too long (220 > 88 characters)
+backend/superadmin/admin.py:97:1: E302 expected 2 blank lines, found 1
+backend/superadmin/admin.py:101:89: E501 line too long (92 > 88 characters)
+backend/superadmin/admin.py:102:1: W293 blank line contains whitespace
+backend/superadmin/admin.py:108:89: E501 line too long (136 > 88 characters)
+backend/superadmin/admin.py:117:1: W293 blank line contains whitespace
+backend/superadmin/admin.py:120:40: E701 multiple statements on one line (colon)
+backend/superadmin/admin.py:121:32: E701 multiple statements on one line (colon)
+backend/superadmin/admin.py:122:34: E701 multiple statements on one line (colon)
+backend/superadmin/admin.py:123:34: E701 multiple statements on one line (colon)
+backend/superadmin/admin.py:127:1: E302 expected 2 blank lines, found 1
+backend/superadmin/admin.py:129:89: E501 line too long (106 > 88 characters)
+backend/superadmin/admin.py:133:1: W293 blank line contains whitespace
+backend/superadmin/admin.py:137:1: W293 blank line contains whitespace
+backend/superadmin/admin.py:142:1: E302 expected 2 blank lines, found 1
+backend/superadmin/admin.py:144:89: E501 line too long (108 > 88 characters)
+backend/superadmin/admin.py:148:1: W293 blank line contains whitespace
+backend/superadmin/admin.py:164:1: E302 expected 2 blank lines, found 1
+backend/superadmin/admin.py:166:89: E501 line too long (107 > 88 characters)
+backend/superadmin/admin.py:171:1: W293 blank line contains whitespace
+backend/superadmin/apps.py:3:1: E302 expected 2 blank lines, found 1
+backend/superadmin/models.py:5:1: F401 'uuid' imported but unused
+backend/superadmin/models.py:6:1: F401 'decimal.Decimal' imported but unused
+backend/superadmin/models.py:10:1: E302 expected 2 blank lines, found 1
+backend/superadmin/models.py:18:1: W293 blank line contains whitespace
+backend/superadmin/models.py:31:1: W293 blank line contains whitespace
+backend/superadmin/models.py:34:1: W293 blank line contains whitespace
+backend/superadmin/models.py:38:1: E302 expected 2 blank lines, found 1
+backend/superadmin/models.py:70:1: W293 blank line contains whitespace
+backend/superadmin/models.py:75:89: E501 line too long (111 > 88 characters)
+backend/superadmin/models.py:76:1: W293 blank line contains whitespace
+backend/superadmin/models.py:80:1: E302 expected 2 blank lines, found 1
+backend/superadmin/models.py:82:89: E501 line too long (102 > 88 characters)
+backend/superadmin/models.py:86:1: W293 blank line contains whitespace
+backend/superadmin/models.py:89:1: W293 blank line contains whitespace
+backend/superadmin/models.py:93:1: E302 expected 2 blank lines, found 1
+backend/superadmin/models.py:99:1: W293 blank line contains whitespace
+backend/superadmin/models.py:107:1: W293 blank line contains whitespace
+backend/superadmin/models.py:108:89: E501 line too long (112 > 88 characters)
+backend/superadmin/models.py:111:89: E501 line too long (101 > 88 characters)
+backend/superadmin/models.py:112:1: W293 blank line contains whitespace
+backend/superadmin/models.py:117:1: W293 blank line contains whitespace
+backend/superadmin/models.py:123:1: W293 blank line contains whitespace
+backend/superadmin/models.py:129:1: W293 blank line contains whitespace
+backend/superadmin/models.py:135:1: W293 blank line contains whitespace
+backend/superadmin/models.py:139:1: W293 blank line contains whitespace
+backend/superadmin/models.py:142:1: W293 blank line contains whitespace
+backend/superadmin/models.py:146:1: W293 blank line contains whitespace
+backend/superadmin/models.py:150:1: W293 blank line contains whitespace
+backend/superadmin/models.py:158:1: W293 blank line contains whitespace
+backend/superadmin/models.py:163:1: W293 blank line contains whitespace
+backend/superadmin/models.py:171:1: E302 expected 2 blank lines, found 1
+backend/superadmin/models.py:180:1: W293 blank line contains whitespace
+backend/superadmin/models.py:181:89: E501 line too long (98 > 88 characters)
+backend/superadmin/models.py:188:1: W293 blank line contains whitespace
+backend/superadmin/models.py:192:1: W293 blank line contains whitespace
+backend/superadmin/models.py:195:1: W293 blank line contains whitespace
+backend/superadmin/models.py:199:1: E302 expected 2 blank lines, found 1
+backend/superadmin/models.py:208:1: W293 blank line contains whitespace
+backend/superadmin/models.py:211:1: W293 blank line contains whitespace
+backend/superadmin/models.py:215:1: E302 expected 2 blank lines, found 1
+backend/superadmin/models.py:224:1: W293 blank line contains whitespace
+backend/superadmin/models.py:231:1: W293 blank line contains whitespace
+backend/superadmin/models.py:236:1: W293 blank line contains whitespace
+backend/superadmin/models.py:241:1: W293 blank line contains whitespace
+backend/superadmin/models.py:246:1: W293 blank line contains whitespace
+backend/superadmin/models.py:251:1: W293 blank line contains whitespace
+backend/superadmin/models.py:253:1: W293 blank line contains whitespace
+backend/superadmin/models.py:256:1: W293 blank line contains whitespace
+backend/superadmin/models.py:260:1: E302 expected 2 blank lines, found 1
+backend/superadmin/models.py:264:1: W293 blank line contains whitespace
+backend/superadmin/models.py:269:1: W293 blank line contains whitespace
+backend/superadmin/models.py:275:1: W293 blank line contains whitespace
+backend/superadmin/models.py:279:1: W293 blank line contains whitespace
+backend/superadmin/models.py:283:1: W293 blank line contains whitespace
+backend/superadmin/models.py:287:1: W293 blank line contains whitespace
+backend/superadmin/serializers.py:12:1: E302 expected 2 blank lines, found 1
+backend/superadmin/serializers.py:17:1: E302 expected 2 blank lines, found 1
+backend/superadmin/serializers.py:22:1: E302 expected 2 blank lines, found 1
+backend/superadmin/serializers.py:24:1: W293 blank line contains whitespace
+backend/superadmin/serializers.py:29:1: E302 expected 2 blank lines, found 1
+backend/superadmin/serializers.py:35:1: W293 blank line contains whitespace
+backend/superadmin/serializers.py:40:1: E302 expected 2 blank lines, found 1
+backend/superadmin/serializers.py:44:1: W293 blank line contains whitespace
+backend/superadmin/serializers.py:47:79: W291 trailing whitespace
+backend/superadmin/serializers.py:48:18: E128 continuation line under-indented for visual indent
+backend/superadmin/serializers.py:49:1: W293 blank line contains whitespace
+backend/superadmin/serializers.py:52:1: W293 blank line contains whitespace
+backend/superadmin/serializers.py:56:1: E302 expected 2 blank lines, found 1
+backend/superadmin/serializers.py:59:1: W293 blank line contains whitespace
+backend/superadmin/serializers.py:63:1: W293 blank line contains whitespace
+backend/superadmin/serializers.py:75:1: W293 blank line contains whitespace
+backend/superadmin/serializers.py:80:1: E302 expected 2 blank lines, found 1
+backend/superadmin/serializers.py:81:89: E501 line too long (106 > 88 characters)
+backend/superadmin/serializers.py:82:1: W293 blank line contains whitespace
+backend/superadmin/serializers.py:90:1: E302 expected 2 blank lines, found 1
+backend/superadmin/serializers.py:91:89: E501 line too long (94 > 88 characters)
+backend/superadmin/serializers.py:94:1: W293 blank line contains whitespace
+backend/superadmin/serializers.py:101:1: W293 blank line contains whitespace
+backend/superadmin/serializers.py:107:1: W293 blank line contains whitespace
+backend/superadmin/serializers.py:112:1: E302 expected 2 blank lines, found 1
+backend/superadmin/serializers.py:114:1: W293 blank line contains whitespace
+backend/superadmin/serializers.py:119:1: E302 expected 2 blank lines, found 1
+backend/superadmin/serializers.py:130:1: W293 blank line contains whitespace
+backend/superadmin/serializers.py:131:1: E302 expected 2 blank lines, found 1
+backend/superadmin/serializers.py:139:89: E501 line too long (98 > 88 characters)
+backend/superadmin/serializers.py:140:89: E501 line too long (106 > 88 characters)
+backend/superadmin/serializers.py:143:1: E302 expected 2 blank lines, found 1
+backend/superadmin/urls.py:13:89: E501 line too long (93 > 88 characters)
+backend/superadmin/urls.py:14:89: E501 line too long (105 > 88 characters)
+backend/superadmin/views.py:354:10: E999 SyntaxError: positional argument follows keyword argument
+backend/users/migrations/0001_initial.py:43:89: E501 line too long (117 > 88 characters)
+backend/users/migrations/0001_initial.py:53:89: E501 line too long (107 > 88 characters)
+backend/users/migrations/0001_initial.py:84:89: E501 line too long (94 > 88 characters)
+backend/users/migrations/0001_initial.py:92:89: E501 line too long (138 > 88 characters)
+backend/users/migrations/0001_initial.py:123:89: E501 line too long (134 > 88 characters)
+backend/users/models.py:1:1: F401 'uuid' imported but unused
+backend/users/models.py:4:1: F401 'django.contrib.auth.models.Group' imported but unused
+backend/users/models.py:5:1: F401 'django.core.validators.RegexValidator' imported but unused
+backend/users/serializers.py:1:1: F401 'django.contrib.auth.authenticate' imported but unused
+backend/users/serializers.py:3:1: F401 'django.core.exceptions.ValidationError' imported but unused
+backend/users/serializers.py:17:1: F811 redefinition of unused 'User' from line 8
+backend/users/tests.py:1:1: F401 'django.test.TestCase' imported but unused
+backend/users/urls.py:1:1: F401 'django.urls.include' imported but unused
+backend/users/views.py:2:1: F401 'django.shortcuts.render' imported but unused
+backend/users/views.py:4:1: F401 'rest_framework.status' imported but unused
+1     E128 continuation line under-indented for visual indent
+4     E201 whitespace after '{'
+3     E202 whitespace before '}'
+5     E226 missing whitespace around arithmetic operator
+52    E302 expected 2 blank lines, found 1
+3     E305 expected 2 blank lines after class or function definition, found 1
+3     E402 module level import not at top of file
+95    E501 line too long (102 > 88 characters)
+4     E701 multiple statements on one line (colon)
+1     E722 do not use bare 'except'
+1     E999 SyntaxError: positional argument follows keyword argument
+96    F401 'django.db.models.Sum' imported but unused
+1     F402 import 'transaction' from line 13 shadowed by loop variable
+3     F403 'from .base import *' used; unable to detect undefined names
+3     F405 'REST_FRAMEWORK' may be undefined, or defined from star imports: .base
+2     F541 f-string is missing placeholders
+1     F811 redefinition of unused 'User' from line 8
+1     F821 undefined name 'models'
+6     F841 local variable 'item1' is assigned to but never used
+9     W291 trailing whitespace
+2     W292 no newline at end of file
+204   W293 blank line contains whitespace
+4     W504 line break after binary operator
+504

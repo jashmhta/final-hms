@@ -132,7 +132,7 @@ class Command(BaseCommand):
             total_processed += processed_assets
 
             # Generate monthly reports (placeholder for future implementation)
-            self.stdout.write(f"  Monthly reports generation would be triggered here")
+            self.stdout.write("  Monthly reports generation would be triggered here")
 
             # Check for expiring compliance documents
             from datetime import timedelta
