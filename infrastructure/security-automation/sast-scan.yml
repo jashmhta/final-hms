@@ -1,0 +1,32 @@
+name: SAST Security Scan
+true:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+jobs:
+  sast:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        language:
+        - python
+        - javascript
+        - java
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run Bandit (Python SAST)
+      if: matrix.language == 'python'
+      uses: pre-commit/action@v3.0.0
+      with:
+        extra_args: bandit -r services/
+    - name: Run Semgrep
+      uses: returntocorp/semgrep-action@v1
+      with:
+        config: p/security-audit
+    - name: Run OWASP Dependency Check
+      uses: dependency-check/Dependency-Check_Action@v2
+      env:
+        PROJECT: HMS-Enterprise

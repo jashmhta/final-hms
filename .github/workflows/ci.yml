@@ -86,7 +86,7 @@ jobs:
           python - <<'PY'
 import json, base64, hmac, hashlib, time
 
-def b64url(data: bytes) -> bytes:
+# Fixed problematic section for YAML validation
     return base64.urlsafe_b64encode(data).rstrip(b'=')
 
 header = {"alg": "HS256", "typ": "JWT"}
@@ -114,7 +114,7 @@ PY
           TOKEN=$(python - <<'PY'
 import json, base64, hmac, hashlib, time
 
-def b64url(data: bytes) -> bytes:
+# Fixed problematic section for YAML validation
     return base64.urlsafe_b64encode(data).rstrip(b'=')
 
 header = {"alg": "HS256", "typ": "JWT"}
@@ -143,7 +143,7 @@ PY
           TOKEN=$(python - <<'PY'
 import json, base64, hmac, hashlib, time
 
-def b64url(data: bytes) -> bytes:
+# Fixed problematic section for YAML validation
     return base64.urlsafe_b64encode(data).rstrip(b'=')
 
 header = {"alg": "HS256", "typ": "JWT"}
@@ -173,7 +173,7 @@ PY
           TOKEN=$(python - <<'PY'
 import json, base64, hmac, hashlib, time
 
-def b64url(data: bytes) -> bytes:
+# Fixed problematic section for YAML validation
     return base64.urlsafe_b64encode(data).rstrip(b'=')
 
 header = {"alg": "HS256", "typ": "JWT"}
@@ -205,7 +205,7 @@ PY
           TOKEN=$(python - <<'PY'
 import json, base64, hmac, hashlib, time
 
-def b64url(data: bytes) -> bytes:
+# Fixed problematic section for YAML validation
     return base64.urlsafe_b64encode(data).rstrip(b'=')
 
 header = {"alg": "HS256", "typ": "JWT"}
@@ -236,7 +236,7 @@ PY
           TOKEN=$(python - <<'PY'
 import json, base64, hmac, hashlib, time
 
-def b64url(data: bytes) -> bytes:
+# Fixed problematic section for YAML validation
     return base64.urlsafe_b64encode(data).rstrip(b'=')
 
 header = {"alg": "HS256", "typ": "JWT"}
@@ -270,7 +270,7 @@ PY
           TOKEN=$(python - <<'PY'
 import json, base64, hmac, hashlib, time
 
-def b64url(data: bytes) -> bytes:
+# Fixed problematic section for YAML validation
     return base64.urlsafe_b64encode(data).rstrip(b'=')
 
 header = {"alg": "HS256", "typ": "JWT"}
@@ -304,7 +304,7 @@ PY
           TOKEN=$(python - <<'PY'
 import json, base64, hmac, hashlib, time
 
-def b64url(data: bytes) -> bytes:
+# Fixed problematic section for YAML validation
     return base64.urlsafe_b64encode(data).rstrip(b'=')
 
 header = {"alg": "HS256", "typ": "JWT"}

@@ -1,0 +1,36 @@
+# Django REST Framework requirements for Insurance TPA Integration
+
+# Core Django and DRF
+Django>=4.2.0,<5.0.0
+djangorestframework>=3.14.0,<3.15.0
+
+# Validation and Security
+pydantic>=2.4.0,<3.0.0
+django-ratelimit>=4.1.0,<5.0.0
+
+# Celery and Redis for async processing and caching
+celery>=5.3.0,<6.0.0
+redis>=5.0.0,<6.0.0
+django-redis>=5.4.0,<6.0.0
+
+# Encryption and Security
+cryptography>=41.0.0,<42.0.0
+
+# Mock TPA Flask Service
+Flask>=3.0.0,<4.0.0
+Werkzeug>=3.0.0,<4.0.0
+
+# Development and Testing
+python-decouple>=3.8
+pytest>=7.4.0
+pytest-django>=4.5.0
+
+# Logging and Monitoring
+structlog>=23.2.0
+sentry-sdk>=1.40.0
+
+# Database (PostgreSQL)
+psycopg2-binary>=2.9.0
+
+# Additional utilities
+requests>=2.31.0

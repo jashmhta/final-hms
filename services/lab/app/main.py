@@ -1,12 +1,15 @@
-from fastapi import FastAPI, HTTPException, Depends
-from pydantic import BaseModel
-from typing import List, Optional
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime
-from sqlalchemy.orm import sessionmaker, declarative_base, Session, relationship
-from datetime import datetime
 import os
+from datetime import datetime
+from typing import List, Optional
 
-DATABASE_URL = os.getenv("LAB_DATABASE_URL", "postgresql+psycopg2://hms:hms@db:5432/hms")
+from fastapi import Depends, FastAPI, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, create_engine
+from sqlalchemy.orm import Session, declarative_base, relationship, sessionmaker
+
+DATABASE_URL = os.getenv(
+    "LAB_DATABASE_URL", "postgresql+psycopg2://hms:hms@db:5432/hms"
+)
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -52,6 +55,7 @@ class LabTestIn(BaseModel):
 
 class LabTestOut(LabTestIn):
     id: int
+
     class Config:
         from_attributes = True
 
@@ -69,6 +73,7 @@ class LabOrderOut(BaseModel):
     test_id: int
     ordered_at: datetime
     status: str
+
     class Config:
         from_attributes = True
 
@@ -82,6 +87,7 @@ class LabResultIn(BaseModel):
 class LabResultOut(LabResultIn):
     id: int
     reported_at: datetime
+
     class Config:
         from_attributes = True
 

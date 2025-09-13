@@ -7,50 +7,65 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('billing', '0002_servicecatalog'),
-        ('hospitals', '0002_plan_hospitalplan'),
+        ("billing", "0002_servicecatalog"),
+        ("hospitals", "0002_plan_hospitalplan"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='bill',
-            name='discount_cents',
+            model_name="bill",
+            name="discount_cents",
             field=models.IntegerField(default=0),
         ),
         migrations.AddField(
-            model_name='bill',
-            name='net_cents',
+            model_name="bill",
+            name="net_cents",
             field=models.IntegerField(default=0),
         ),
         migrations.AddField(
-            model_name='bill',
-            name='referral_source',
+            model_name="bill",
+            name="referral_source",
             field=models.CharField(blank=True, max_length=255),
         ),
         migrations.AddField(
-            model_name='billlineitem',
-            name='department',
-            field=models.CharField(default='GENERAL', max_length=64),
+            model_name="billlineitem",
+            name="department",
+            field=models.CharField(default="GENERAL", max_length=64),
         ),
         migrations.AddField(
-            model_name='billlineitem',
-            name='is_outsourced',
+            model_name="billlineitem",
+            name="is_outsourced",
             field=models.BooleanField(default=False),
         ),
         migrations.CreateModel(
-            name='Asset',
+            name="Asset",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('name', models.CharField(max_length=255)),
-                ('purchase_date', models.DateField()),
-                ('cost_cents', models.IntegerField(default=0)),
-                ('depreciation_years', models.IntegerField(default=5)),
-                ('hospital', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(app_label)s_%(class)ss', to='hospitals.hospital')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("name", models.CharField(max_length=255)),
+                ("purchase_date", models.DateField()),
+                ("cost_cents", models.IntegerField(default=0)),
+                ("depreciation_years", models.IntegerField(default=5)),
+                (
+                    "hospital",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="%(app_label)s_%(class)ss",
+                        to="hospitals.hospital",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
     ]

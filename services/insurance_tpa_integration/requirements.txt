@@ -1,12 +1,329 @@
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-sqlalchemy==2.0.23
+# Core Django dependencies
+Django==5.1.2
+djangorestframework==3.15.2
+django-cors-headers==4.4.0
+djangorestframework-simplejwt==5.3.1
+drf-yasg==1.21.7
+celery==5.4.0
+redis==5.1.1
 psycopg2-binary==2.9.9
-alembic==1.12.1
-pydantic==2.5.0
-python-multipart==0.0.6
-python-dotenv==1.0.0
-pytest==7.4.3
-requests==2.31.0
-xmltodict==0.13.0
-python-dateutil==2.8.2
+
+# Testing dependencies
+pytest==8.4.2
+pytest-django==4.11.1
+factory-boy==3.3.3
+pytest-mock==3.15.0
+pytest-cov==5.0.0
+coverage==7.6.1
+pytest-xdist==3.6.1
+requests-mock==1.12.1
+freezegun==1.5.1
+pytest-timeout==2.3.1
+pytest-html==4.1.1
+allure-pytest==2.13.4
+pytest-rerunfailures==12.1.0
+pytest-benchmark==4.0.1
+pytest-dependency==0.5.1
+pytest-subtests==0.11.0
+pytest-ordering==0.6
+pytest-randomly==3.15.0
+django-test-plus==1.1.0
+model-bakery==1.19.0
+pytest-django-queries==2.0.0
+pytest-sugar==0.9.7
+pytest-datadir==1.5.0
+pytest-env==1.0.1
+httpretty==1.1.4
+responses==0.25.3
+vcrpy==4.3.1
+pytest-httpserver==1.0.10
+fakeredis==2.20.0
+pytest-catchlog==2.1.1
+pytest-snapshot==0.13.0
+pytest-files==0.5
+pytest-flake8==1.1.1
+pytest-black==0.3.12
+pytest-mypy==0.10.0
+pytest-bdd==7.1.0
+pytest-selenium==4.0.2
+selenium==4.25.0
+
+# Development and linting
+black==24.8.0
+isort==5.13.2
+flake8==7.1.0
+mypy==1.11.0
+pre-commit==3.8.0
+
+# Documentation
+sphinx==7.4.7
+sphinx-rtd-theme==2.0.0
+
+# Additional utilities
+python-decouple==3.8
+gunicorn==22.0.0
+whitenoise==6.7.0
+django-storages==1.14.2
+boto3==1.35.25
+Pillow==10.4.0
+
+# Security
+django-encrypted-fields==0.6.4
+django-crypto-fields==0.6.4
+
+# Monitoring
+sentry-sdk==2.13.0
+django-silk==5.1.0
+
+# Performance
+django-redis==5.4.0
+django-cache-url==3.4.4
+
+# API documentation
+drf-spectacular==0.27.2
+swagger-ui-py==23.10.0
+
+# Email
+django-anymail==9.3.0
+
+# Internationalization
+django-modeltranslation==0.18.11
+
+# File handling
+django-storages[azure]==1.14.2
+django-storages[s3]==1.14.2
+django-storages[dropbox]==1.14.2
+
+# Database
+django-extensions==3.2.3
+django-debug-toolbar==4.4.5
+
+# Task queue
+celery[redis]==5.4.0
+flower==2.0.1
+
+# Background jobs
+django-celery-beat==2.6.0
+django-celery-results==2.5.1
+
+# Authentication
+django-allauth==0.63.3
+django-rest-auth==0.9.5
+
+# Permissions
+django-guardian==2.4.0
+django-rules==3.4.0
+
+# Caching
+django-redis==5.4.0
+cachetools==5.5.0
+
+# Logging
+structlog==24.4.0
+python-json-logger==3.1.0
+
+# Metrics
+prometheus-client==0.20.0
+django-prometheus==2.3.1
+
+# Health checks
+django-health-check==3.2.1
+
+# Rate limiting
+django-ratelimit==4.1.0
+django-ratelimit==4.1.0
+
+# CSRF protection
+django-cors-headers==4.4.0
+
+# Session management
+django-session-security==2.6.1
+
+# Content types
+django-extensions==3.2.3
+
+# Admin enhancements
+django-admin-sortable2==2.1.28
+django-import-export==3.3
+
+# File uploads
+django-private-storage==3.9.1
+django-downloadview==2.4.0
+
+# Background tasks
+django-background-tasks==1.2.6
+
+# WebSocket support
+channels==4.1.0
+channels-redis==4.2.0
+
+# GraphQL support
+graphene-django==3.2.4
+graphene==3.3.0
+
+# OpenAPI/Swagger
+drf-spectacular==0.27.2
+drf-spectacular-sidecar==2024.6.1
+
+# Database migrations
+django-migration-linter==24.5.0
+
+# Performance monitoring
+django-silk==5.1.0
+newrelic==8.11.0
+
+# Security scanning
+safety==2.3.5
+bandit==1.7.8
+
+# Container support
+docker==7.1.0
+docker-compose==1.29.2
+
+# CI/CD integration
+tox==4.16.0
+pre-commit==3.8.0
+black==24.8.0
+isort==5.13.2
+flake8==7.1.0
+mypy==1.11.0
+pytest==8.4.2
+pytest-django==4.11.1
+factory-boy==3.3.3
+pytest-mock==3.15.0
+pytest-cov==5.0.0
+coverage==7.6.1
+pytest-xdist==3.6.1
+
+# Additional testing tools
+pytest-randomly==3.15.0
+pytest-benchmark==4.0.1
+pytest-dependency==0.5.1
+pytest-subtests==0.11.0
+pytest-ordering==0.6
+pytest-sugar==0.9.7
+pytest-datadir==1.5.0
+pytest-env==1.0.1
+httpretty==1.1.4
+responses==0.25.3
+vcrpy==4.3.1
+pytest-httpserver==1.0.10
+fakeredis==2.20.0
+pytest-catchlog==2.1.1
+pytest-snapshot==0.13.0
+pytest-files==0.5
+pytest-flake8==1.1.1
+pytest-black==0.3.12
+pytest-mypy==0.10.0
+pytest-bdd==7.1.0
+pytest-selenium==4.0.2
+selenium==4.25.0
+pytest-html==4.1.1
+allure-pytest==2.13.4
+pytest-rerunfailures==12.1.0
+requests-mock==1.12.1
+freezegun==1.5.1
+pytest-timeout==2.3.1
+django-test-plus==1.1.0
+model-bakery==1.19.0
+pytest-django-queries==2.0.0
+
+# Production dependencies
+gunicorn==22.0.0
+whitenoise==6.7.0
+django-storages==1.14.2
+boto3==1.35.25
+Pillow==10.4.0
+python-decouple==3.8
+django-encrypted-fields==0.6.4
+sentry-sdk==2.13.0
+django-silk==5.1.0
+prometheus-client==0.20.0
+django-prometheus==2.3.1
+django-health-check==3.2.1
+django-ratelimit==4.1.0
+django-cors-headers==4.4.0
+django-session-security==2.6.1
+
+# Database
+psycopg2-binary==2.9.9
+django-redis==5.4.0
+cachetools==5.5.0
+
+# Message queue
+celery[redis]==5.4.0
+flower==2.0.1
+django-celery-beat==2.6.0
+django-celery-results==2.5.1
+
+# Authentication & Authorization
+django-allauth==0.63.3
+django-rest-auth==0.9.5
+django-guardian==2.4.0
+django-rules==3.4.0
+
+# API & Documentation
+drf-spectacular==0.27.2
+drf-yasg==1.21.7
+swagger-ui-py==23.10.0
+
+# Email
+django-anymail==9.3.0
+
+# Internationalization
+django-modeltranslation==0.18.11
+
+# Admin & Development
+django-admin-sortable2==2.1.28
+django-import-export==3.3
+django-private-storage==3.9.1
+django-downloadview==2.4.0
+django-extensions==3.2.3
+django-debug-toolbar==4.4.5
+
+# Real-time
+channels==4.1.0
+channels-redis==4.2.0
+
+# GraphQL
+graphene-django==3.2.4
+graphene==3.3.0
+
+# File storage
+django-storages[azure]==1.14.2
+django-storages[s3]==1.14.2
+django-storages[dropbox]==1.14.2
+
+# Security & Monitoring
+django-migration-linter==24.5.0
+safety==2.3.5
+bandit==1.7.8
+newrelic==8.11.0
+
+# Container & Deployment
+docker==7.1.0
+docker-compose==1.29.2
+
+# Documentation
+sphinx==7.4.7
+sphinx-rtd-theme==2.0.0
+
+# Logging
+structlog==24.4.0
+python-json-logger==3.1.0
+
+# Background tasks
+django-background-tasks==1.2.6
+
+# Content types
+django-extensions==3.2.3
+
+# CI/CD
+tox==4.16.0
+pre-commit==3.8.0
+
+# Code quality
+black==24.8.0
+isort==5.13.2
+flake8==7.1.0
+mypy==1.11.0

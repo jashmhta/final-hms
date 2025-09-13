@@ -1,11 +1,14 @@
-from fastapi import FastAPI, HTTPException, Depends
-from pydantic import BaseModel
-from typing import List, Optional
-from sqlalchemy import create_engine, Column, Integer, String, Date, Boolean
-from sqlalchemy.orm import sessionmaker, declarative_base, Session
 import os
+from typing import List, Optional
 
-DATABASE_URL = os.getenv("PATIENTS_DATABASE_URL", "postgresql+psycopg2://hms:hms@db:5432/hms")
+from fastapi import Depends, FastAPI, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import Boolean, Column, Date, Integer, String, create_engine
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
+
+DATABASE_URL = os.getenv(
+    "PATIENTS_DATABASE_URL", "postgresql+psycopg2://hms:hms@db:5432/hms"
+)
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

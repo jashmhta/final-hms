@@ -1,42 +1,74 @@
-import sys, os
+import os
+import sys
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-import sys, os
+import os
+import sys
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-import sys, os
+import os
+import sys
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-import sys, os
+import os
+import sys
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
-import sys, os
+import os
+import sys
+
 sys.path.append("/root/hms_app/hmsupdt/services/housekeeping_maintenance")
-import sys, os
+import os
+import sys
+
 sys.path.append("/root/hms_app/hmsupdt")
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-import sys, os
+import os
+import sys
+
 sys.path.append("/root/hms_app/hmsupdt")
-import sys, os
+import os
+import sys
+
 sys.path.append("/root/hms_app/hmsupdt/backend")
-import sys, os
+import os
+import sys
+
 sys.path.append("/root/hms_app/hmsupdt/backend")
 sys.path.append("/root/hms_app/hmsupdt/services")
-import sys, os
+import os
+import sys
+
 sys.path.append("/root/hms_app/hmsupdt/backend")
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../backend")))
+import os
+import sys
+
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../backend"))
+)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../backend")))
+import os
+import sys
+
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../backend"))
+)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../backend")))
-import sys, os
+import os
+import sys
+
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../backend"))
+)
+import os
+import sys
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
 from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -51,7 +83,9 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from models import models as m; target_metadata = m.Base.metadata
+from models import models as m
+
+target_metadata = m.Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -97,9 +131,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

@@ -1,8 +1,8 @@
 frontend:
-  - frontend/**
+- frontend/**
 backend:
-  - backend/**
+- backend/**
 services:
-  - services/**
+- services/**
 ci:
-  - .github/**
+- .github/**

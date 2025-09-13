@@ -10,65 +10,144 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('hospitals', '0001_initial'),
-        ('patients', '0001_initial'),
+        ("hospitals", "0001_initial"),
+        ("patients", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='LabOrder',
+            name="LabOrder",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('ordered_at', models.DateTimeField(auto_now_add=True)),
-                ('status', models.CharField(choices=[('PENDING', 'Pending'), ('IN_PROGRESS', 'In Progress'), ('COMPLETED', 'Completed')], default='PENDING', max_length=32)),
-                ('doctor', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL)),
-                ('hospital', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(app_label)s_%(class)ss', to='hospitals.hospital')),
-                ('patient', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='lab_orders', to='patients.patient')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("ordered_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("PENDING", "Pending"),
+                            ("IN_PROGRESS", "In Progress"),
+                            ("COMPLETED", "Completed"),
+                        ],
+                        default="PENDING",
+                        max_length=32,
+                    ),
+                ),
+                (
+                    "doctor",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "hospital",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="%(app_label)s_%(class)ss",
+                        to="hospitals.hospital",
+                    ),
+                ),
+                (
+                    "patient",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="lab_orders",
+                        to="patients.patient",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='LabResult',
+            name="LabResult",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('value', models.CharField(max_length=255)),
-                ('unit', models.CharField(blank=True, max_length=64)),
-                ('observations', models.TextField(blank=True)),
-                ('reported_at', models.DateTimeField(auto_now_add=True)),
-                ('hospital', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(app_label)s_%(class)ss', to='hospitals.hospital')),
-                ('order', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='result', to='lab.laborder')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("value", models.CharField(max_length=255)),
+                ("unit", models.CharField(blank=True, max_length=64)),
+                ("observations", models.TextField(blank=True)),
+                ("reported_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "hospital",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="%(app_label)s_%(class)ss",
+                        to="hospitals.hospital",
+                    ),
+                ),
+                (
+                    "order",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="result",
+                        to="lab.laborder",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='LabTest',
+            name="LabTest",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('name', models.CharField(max_length=255)),
-                ('description', models.TextField(blank=True)),
-                ('normal_range', models.CharField(blank=True, max_length=255)),
-                ('price_cents', models.IntegerField(default=0)),
-                ('hospital', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(app_label)s_%(class)ss', to='hospitals.hospital')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("name", models.CharField(max_length=255)),
+                ("description", models.TextField(blank=True)),
+                ("normal_range", models.CharField(blank=True, max_length=255)),
+                ("price_cents", models.IntegerField(default=0)),
+                (
+                    "hospital",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="%(app_label)s_%(class)ss",
+                        to="hospitals.hospital",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['name'],
-                'unique_together': {('hospital', 'name')},
+                "ordering": ["name"],
+                "unique_together": {("hospital", "name")},
             },
         ),
         migrations.AddField(
-            model_name='laborder',
-            name='test',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='lab.labtest'),
+            model_name="laborder",
+            name="test",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT, to="lab.labtest"
+            ),
         ),
     ]

@@ -7,13 +7,13 @@ class Hospital(models.Model):
     address = models.TextField(blank=True)
     phone = models.CharField(max_length=50, blank=True)
     email = models.EmailField(blank=True)
-    timezone = models.CharField(max_length=64, default='UTC')
+    timezone = models.CharField(max_length=64, default="UTC")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['name']
+        ordering = ["name"]
 
     def __str__(self) -> str:
         return f"{self.name} ({self.code})"
@@ -33,7 +33,9 @@ class Plan(models.Model):
 
 
 class HospitalPlan(models.Model):
-    hospital = models.OneToOneField(Hospital, on_delete=models.CASCADE, related_name='subscription')
+    hospital = models.OneToOneField(
+        Hospital, on_delete=models.CASCADE, related_name="subscription"
+    )
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT)
     # Overrides per hospital
     enable_opd = models.BooleanField(null=True, blank=True)

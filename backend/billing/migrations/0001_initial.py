@@ -9,62 +9,158 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('appointments', '0001_initial'),
-        ('hospitals', '0001_initial'),
-        ('patients', '0001_initial'),
+        ("appointments", "0001_initial"),
+        ("hospitals", "0001_initial"),
+        ("patients", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Bill',
+            name="Bill",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('total_cents', models.IntegerField(default=0)),
-                ('paid_cents', models.IntegerField(default=0)),
-                ('status', models.CharField(choices=[('DUE', 'Due'), ('PARTIAL', 'Partial'), ('PAID', 'Paid')], default='DUE', max_length=16)),
-                ('insurance_claim_status', models.CharField(choices=[('NOT_SUBMITTED', 'Not Submitted'), ('SUBMITTED', 'Submitted'), ('RECEIVED', 'Received')], default='NOT_SUBMITTED', max_length=32)),
-                ('appointment', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='appointments.appointment')),
-                ('hospital', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(app_label)s_%(class)ss', to='hospitals.hospital')),
-                ('patient', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='bills', to='patients.patient')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("total_cents", models.IntegerField(default=0)),
+                ("paid_cents", models.IntegerField(default=0)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("DUE", "Due"),
+                            ("PARTIAL", "Partial"),
+                            ("PAID", "Paid"),
+                        ],
+                        default="DUE",
+                        max_length=16,
+                    ),
+                ),
+                (
+                    "insurance_claim_status",
+                    models.CharField(
+                        choices=[
+                            ("NOT_SUBMITTED", "Not Submitted"),
+                            ("SUBMITTED", "Submitted"),
+                            ("RECEIVED", "Received"),
+                        ],
+                        default="NOT_SUBMITTED",
+                        max_length=32,
+                    ),
+                ),
+                (
+                    "appointment",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to="appointments.appointment",
+                    ),
+                ),
+                (
+                    "hospital",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="%(app_label)s_%(class)ss",
+                        to="hospitals.hospital",
+                    ),
+                ),
+                (
+                    "patient",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="bills",
+                        to="patients.patient",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='BillLineItem',
+            name="BillLineItem",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('description', models.CharField(max_length=255)),
-                ('quantity', models.IntegerField(default=1)),
-                ('unit_price_cents', models.IntegerField(default=0)),
-                ('amount_cents', models.IntegerField(default=0)),
-                ('bill', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', to='billing.bill')),
-                ('hospital', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(app_label)s_%(class)ss', to='hospitals.hospital')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("description", models.CharField(max_length=255)),
+                ("quantity", models.IntegerField(default=1)),
+                ("unit_price_cents", models.IntegerField(default=0)),
+                ("amount_cents", models.IntegerField(default=0)),
+                (
+                    "bill",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="items",
+                        to="billing.bill",
+                    ),
+                ),
+                (
+                    "hospital",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="%(app_label)s_%(class)ss",
+                        to="hospitals.hospital",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='Payment',
+            name="Payment",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('amount_cents', models.IntegerField()),
-                ('method', models.CharField(default='CASH', max_length=32)),
-                ('reference', models.CharField(blank=True, max_length=255)),
-                ('received_at', models.DateTimeField(auto_now_add=True)),
-                ('bill', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='payments', to='billing.bill')),
-                ('hospital', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(app_label)s_%(class)ss', to='hospitals.hospital')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("amount_cents", models.IntegerField()),
+                ("method", models.CharField(default="CASH", max_length=32)),
+                ("reference", models.CharField(blank=True, max_length=255)),
+                ("received_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "bill",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="payments",
+                        to="billing.bill",
+                    ),
+                ),
+                (
+                    "hospital",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="%(app_label)s_%(class)ss",
+                        to="hospitals.hospital",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
     ]

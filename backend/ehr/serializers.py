@@ -1,19 +1,28 @@
 from rest_framework import serializers
-from .models import Encounter, EncounterNote, EncounterAttachment
+
+from .models import Encounter, EncounterAttachment, EncounterNote
 
 
 class EncounterNoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = EncounterNote
-        fields = ['id', 'encounter', 'author', 'content', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        fields = ["id", "encounter", "author", "content", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
 
 
 class EncounterAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = EncounterAttachment
-        fields = ['id', 'encounter', 'uploaded_by', 'file', 'description', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        fields = [
+            "id",
+            "encounter",
+            "uploaded_by",
+            "file",
+            "description",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
 
 
 class EncounterSerializer(serializers.ModelSerializer):
@@ -22,5 +31,19 @@ class EncounterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Encounter
-        fields = ['id', 'hospital', 'patient', 'doctor', 'appointment', 'diagnosis', 'treatment', 'prescription_text', 'is_finalized', 'notes', 'attachments', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at', 'notes', 'attachments']
+        fields = [
+            "id",
+            "hospital",
+            "patient",
+            "primary_physician",
+            "appointment",
+            "diagnosis",
+            "treatment",
+            "prescription_text",
+            "is_finalized",
+            "notes",
+            "attachments",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at", "notes", "attachments"]

@@ -30,6 +30,7 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -40,7 +41,9 @@ spec:
   ports:
     - port: 9007
       targetPort: 9007
+
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -72,7 +75,9 @@ spec:
               port: 9008
             initialDelaySeconds: 5
             periodSeconds: 10
+
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -83,7 +88,9 @@ spec:
   ports:
     - port: 9008
       targetPort: 9008
+
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -115,7 +122,9 @@ spec:
               port: 9009
             initialDelaySeconds: 5
             periodSeconds: 10
+
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -126,7 +135,9 @@ spec:
   ports:
     - port: 9009
       targetPort: 9009
+
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -158,7 +169,9 @@ spec:
               port: 9010
             initialDelaySeconds: 5
             periodSeconds: 10
+
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -169,7 +182,9 @@ spec:
   ports:
     - port: 9010
       targetPort: 9010
+
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -239,7 +254,9 @@ spec:
               port: 9011
             initialDelaySeconds: 5
             periodSeconds: 10
+
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -250,7 +267,9 @@ spec:
   ports:
     - port: 9011
       targetPort: 9011
+
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -282,7 +301,9 @@ spec:
               port: 9012
             initialDelaySeconds: 5
             periodSeconds: 10
+
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -293,7 +314,9 @@ spec:
   ports:
     - port: 9012
       targetPort: 9012
+
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -325,7 +348,9 @@ spec:
               port: 9013
             initialDelaySeconds: 5
             periodSeconds: 10
+
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -336,7 +361,9 @@ spec:
   ports:
     - port: 9013
       targetPort: 9013
+
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -368,7 +395,9 @@ spec:
               port: 9014
             initialDelaySeconds: 5
             periodSeconds: 10
+
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -379,7 +408,9 @@ spec:
   ports:
     - port: 9014
       targetPort: 9014
+
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -411,7 +442,9 @@ spec:
               port: 9016
             initialDelaySeconds: 5
             periodSeconds: 10
+
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -422,7 +455,9 @@ spec:
   ports:
     - port: 9016
       targetPort: 9016
+
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -454,7 +489,9 @@ spec:
               port: 9017
             initialDelaySeconds: 5
             periodSeconds: 10
+
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -465,7 +502,9 @@ spec:
   ports:
     - port: 9017
       targetPort: 9017
+
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -494,7 +533,9 @@ spec:
               value: http://radiology:9012
             - name: BED_URL
               value: http://bed-management:9008
+
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -505,7 +546,9 @@ spec:
   ports:
     - port: 9020
       targetPort: 9020
+
 ---
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -593,7 +636,9 @@ spec:
                 name: graphql-gateway
                 port:
                   number: 9020
+
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -622,7 +667,9 @@ spec:
         - name: prom-config
           configMap:
             name: prometheus-config
+
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -633,7 +680,9 @@ spec:
   ports:
     - port: 9090
       targetPort: 9090
+
 ---
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -673,7 +722,9 @@ data:
       - job_name: 'ot_scheduling'
         static_configs:
           - targets: ['ot-scheduling:9017']
+
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -698,7 +749,9 @@ spec:
               value: Viewer
           ports:
             - containerPort: 3000
+
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -708,12 +761,48 @@ spec:
     app: grafana
   ports:
     - port: 3000
-      targetPort: 3000---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: housekeeping_maintenance\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: housekeeping_maintenance\n  template:\n    metadata:\n      labels:\n        app: housekeeping_maintenance\n    spec:\n      containers:\n      - name: housekeeping_maintenance\n        image: hms/housekeeping_maintenance:latest\n        ports:\n        - containerPort: 8000\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: housekeeping_maintenance\nspec:\n  selector:\n    app: housekeeping_maintenance\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000
----\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: biomedical_equipment\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: biomedical_equipment\n  template:\n    metadata:\n      labels:\n        app: biomedical_equipment\n    spec:\n      containers:\n      - name: biomedical_equipment\n        image: hms/biomedical_equipment:latest\n        ports:\n        - containerPort: 8000\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: biomedical_equipment\nspec:\n  selector:\n    app: biomedical_equipment\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000
----\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: dietary\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: dietary\n  template:\n    metadata:\n      labels:\n        app: dietary\n    spec:\n      containers:\n      - name: dietary\n        image: hms/dietary:latest\n        ports:\n        - containerPort: 8000\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: dietary\nspec:\n  selector:\n    app: dietary\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000
----\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: ambulance\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: ambulance\n  template:\n    metadata:\n      labels:\n        app: ambulance\n    spec:\n      containers:\n      - name: ambulance\n        image: hms/ambulance:latest\n        ports:\n        - containerPort: 8000\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: ambulance\nspec:\n  selector:\n    app: ambulance\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000
----\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: patient_portal\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: patient_portal\n  template:\n    metadata:\n      labels:\n        app: patient_portal\n    spec:\n      containers:\n      - name: patient_portal\n        image: hms/patient_portal:latest\n        ports:\n        - containerPort: 8000\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: patient_portal\nspec:\n  selector:\n    app: patient_portal\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000
----\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: doctor_portal\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: doctor_portal\n  template:\n    metadata:\n      labels:\n        app: doctor_portal\n    spec:\n      containers:\n      - name: doctor_portal\n        image: hms/doctor_portal:latest\n        ports:\n        - containerPort: 8000\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: doctor_portal\nspec:\n  selector:\n    app: doctor_portal\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000
----\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: marketing_crm\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: marketing_crm\n  template:\n    metadata:\n      labels:\n        app: marketing_crm\n    spec:\n      containers:\n      - name: marketing_crm\n        image: hms/marketing_crm:latest\n        ports:\n        - containerPort: 8000\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: marketing_crm\nspec:\n  selector:\n    app: marketing_crm\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000
----\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: mrd\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: mrd\n  template:\n    metadata:\n      labels:\n        app: mrd\n    spec:\n      containers:\n      - name: mrd\n        image: hms/mrd:latest\n        ports:\n        - containerPort: 8000\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: mrd\nspec:\n  selector:\n    app: mrd\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000
----\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: compliance_checklists\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: compliance_checklists\n  template:\n    metadata:\n      labels:\n        app: compliance_checklists\n    spec:\n      containers:\n      - name: compliance_checklists\n        image: hms/compliance_checklists:latest\n        ports:\n        - containerPort: 8000\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: compliance_checklists\nspec:\n  selector:\n    app: compliance_checklists\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000
+      targetPort: 3000
+---
+\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: housekeeping_maintenance\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: housekeeping_maintenance\n  template:\n    metadata:\n      labels:\n        app: housekeeping_maintenance\n    spec:\n      containers:\n      - name: housekeeping_maintenance\n        image: hms/housekeeping_maintenance:latest\n        ports:\n        - containerPort: 8000\n
+---
+\napiVersion: v1\nkind: Service\nmetadata:\n  name: housekeeping_maintenance\nspec:\n  selector:\n    app: housekeeping_maintenance\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000
+
+---
+\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: biomedical_equipment\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: biomedical_equipment\n  template:\n    metadata:\n      labels:\n        app: biomedical_equipment\n    spec:\n      containers:\n      - name: biomedical_equipment\n        image: hms/biomedical_equipment:latest\n        ports:\n        - containerPort: 8000\n
+---
+\napiVersion: v1\nkind: Service\nmetadata:\n  name: biomedical_equipment\nspec:\n  selector:\n    app: biomedical_equipment\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000
+
+---
+\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: dietary\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: dietary\n  template:\n    metadata:\n      labels:\n        app: dietary\n    spec:\n      containers:\n      - name: dietary\n        image: hms/dietary:latest\n        ports:\n        - containerPort: 8000\n
+---
+\napiVersion: v1\nkind: Service\nmetadata:\n  name: dietary\nspec:\n  selector:\n    app: dietary\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000
+
+---
+\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: ambulance\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: ambulance\n  template:\n    metadata:\n      labels:\n        app: ambulance\n    spec:\n      containers:\n      - name: ambulance\n        image: hms/ambulance:latest\n        ports:\n        - containerPort: 8000\n
+---
+\napiVersion: v1\nkind: Service\nmetadata:\n  name: ambulance\nspec:\n  selector:\n    app: ambulance\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000
+
+---
+\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: patient_portal\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: patient_portal\n  template:\n    metadata:\n      labels:\n        app: patient_portal\n    spec:\n      containers:\n      - name: patient_portal\n        image: hms/patient_portal:latest\n        ports:\n        - containerPort: 8000\n
+---
+\napiVersion: v1\nkind: Service\nmetadata:\n  name: patient_portal\nspec:\n  selector:\n    app: patient_portal\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000
+
+---
+\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: doctor_portal\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: doctor_portal\n  template:\n    metadata:\n      labels:\n        app: doctor_portal\n    spec:\n      containers:\n      - name: doctor_portal\n        image: hms/doctor_portal:latest\n        ports:\n        - containerPort: 8000\n
+---
+\napiVersion: v1\nkind: Service\nmetadata:\n  name: doctor_portal\nspec:\n  selector:\n    app: doctor_portal\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000
+
+---
+\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: marketing_crm\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: marketing_crm\n  template:\n    metadata:\n      labels:\n        app: marketing_crm\n    spec:\n      containers:\n      - name: marketing_crm\n        image: hms/marketing_crm:latest\n        ports:\n        - containerPort: 8000\n
+---
+\napiVersion: v1\nkind: Service\nmetadata:\n  name: marketing_crm\nspec:\n  selector:\n    app: marketing_crm\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000
+
+---
+\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: mrd\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: mrd\n  template:\n    metadata:\n      labels:\n        app: mrd\n    spec:\n      containers:\n      - name: mrd\n        image: hms/mrd:latest\n        ports:\n        - containerPort: 8000\n
+---
+\napiVersion: v1\nkind: Service\nmetadata:\n  name: mrd\nspec:\n  selector:\n    app: mrd\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000
+
+---
+\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: compliance_checklists\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: compliance_checklists\n  template:\n    metadata:\n      labels:\n        app: compliance_checklists\n    spec:\n      containers:\n      - name: compliance_checklists\n        image: hms/compliance_checklists:latest\n        ports:\n        - containerPort: 8000\n
+---
+\napiVersion: v1\nkind: Service\nmetadata:\n  name: compliance_checklists\nspec:\n  selector:\n    app: compliance_checklists\n  ports:\n  - protocol: TCP\n    port: 80\n    targetPort: 8000

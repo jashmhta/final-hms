@@ -6,28 +6,9 @@ spec:
   selector:
     istio: ingressgateway
   servers:
-    - port:
-        number: 80
-        name: http
-        protocol: HTTP
-      hosts:
-        - "*"
----
-apiVersion: networking.istio.io/v1beta1
-kind: VirtualService
-metadata:
-  name: hms-vs
-spec:
-  hosts:
-    - "*"
-  gateways:
-    - hms-gateway
-  http:
-    - match:
-        - uri:
-            prefix: /api/
-      route:
-        - destination:
-            host: hms-backend
-            port:
-              number: 80
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - '*'

@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Shift, DutyRoster, LeaveRequest
+
+from .models import DutyRoster, LeaveRequest, Shift
 
 
 @admin.register(Shift)

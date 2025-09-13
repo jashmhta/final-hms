@@ -1,14 +1,15 @@
 from rest_framework import serializers
-from .models import Ward, Bed
+
+from .models import Bed, Ward
 
 
 class WardSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ward
-        fields = ['id', 'hospital', 'name', 'floor']
+        fields = ["id", "hospital", "name", "floor"]
 
 
 class BedSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bed
-        fields = ['id', 'hospital', 'ward', 'number', 'is_occupied', 'occupant']
+        fields = ["id", "hospital", "ward", "number", "is_occupied", "occupant"]

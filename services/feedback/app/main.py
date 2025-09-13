@@ -2,14 +2,16 @@ import os
 from datetime import datetime
 from typing import List
 
-from fastapi import Depends, FastAPI, HTTPException, Header
-from jose import jwt, JWTError
-from pydantic import BaseModel, Field
+from fastapi import Depends, FastAPI, Header, HTTPException
+from jose import JWTError, jwt
 from prometheus_fastapi_instrumentator import Instrumentator
+from pydantic import BaseModel, Field
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
-DATABASE_URL = os.getenv("FEEDBACK_DATABASE_URL", os.getenv("DATABASE_URL", "sqlite:///./feedback.db"))
+DATABASE_URL = os.getenv(
+    "FEEDBACK_DATABASE_URL", os.getenv("DATABASE_URL", "sqlite:///./feedback.db")
+)
 JWT_SECRET = os.getenv("JWT_SECRET", "change-me")
 JWT_ALG = os.getenv("JWT_ALG", "HS256")
 
@@ -60,7 +62,7 @@ def require_auth(authorization: str | None = Header(None)):
 
 
 def ensure_role(claims: dict, allowed: set[str]):
-    role = claims.get('role')
+    role = claims.get("role")
     if role not in allowed:
         raise HTTPException(status_code=403, detail="Forbidden")
 
@@ -91,14 +93,20 @@ def health():
 
 @app.get("/api/feedback/", response_model=List[Feedback])
 def list_feedback(claims: dict = Depends(require_auth), db: Session = Depends(get_db)):
-    ensure_role(claims, { 'SUPER_ADMIN', 'HOSPITAL_ADMIN' })
+    ensure_role(claims, {"SUPER_ADMIN", "HOSPITAL_ADMIN"})
     rows = db.query(FeedbackModel).order_by(FeedbackModel.id.desc()).all()
     return rows
 
 
 @app.post("/api/feedback/", response_model=Feedback)
-def submit_feedback(payload: FeedbackIn, claims: dict = Depends(require_auth), db: Session = Depends(get_db)):
-    ensure_role(claims, { 'SUPER_ADMIN', 'HOSPITAL_ADMIN', 'RECEPTIONIST', 'NURSE', 'DOCTOR' })
+def submit_feedback(
+    payload: FeedbackIn,
+    claims: dict = Depends(require_auth),
+    db: Session = Depends(get_db),
+):
+    ensure_role(
+        claims, {"SUPER_ADMIN", "HOSPITAL_ADMIN", "RECEPTIONIST", "NURSE", "DOCTOR"}
+    )
     row = FeedbackModel(
         hospital_id=payload.hospital_id,
         patient_id=payload.patient_id,

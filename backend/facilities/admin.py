@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Ward, Bed
+
+from .models import Bed, Ward
 
 
 @admin.register(Ward)

@@ -1,0 +1,14 @@
+FROM python:3.9-alpine AS builder
+WORKDIR /app
+COPY requirements.txt .
+RUN apk add --no-cache python3-dev build-base && pip install --user -r requirements.txt
+
+FROM python:3.9-alpine
+WORKDIR /app
+COPY --from=builder /root/.local /root/.local
+COPY . .
+RUN addgroup -g 1000 -S appgroup && adduser -S appuser -u 1000 -G appgroup && chown -R appuser:appgroup /app && chmod -R 755 /app
+USER appuser
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD wget --no-verbose --tries=1 --spider http://localhost:8000/health || exit 1
+CMD ["python", "app.py"]
