@@ -1,11 +1,14 @@
-from fastapi import FastAPI, HTTPException, Depends
-from pydantic import BaseModel
-from typing import List, Optional
-from sqlalchemy import create_engine, Column, Integer, String, Boolean
-from sqlalchemy.orm import sessionmaker, declarative_base, Session
 import os
+from typing import List, Optional
 
-DATABASE_URL = os.getenv("PHARMACY_DATABASE_URL", "postgresql+psycopg2://hms:hms@db:5432/hms")
+from fastapi import Depends, FastAPI, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import Boolean, Column, Integer, String, create_engine
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
+
+DATABASE_URL = os.getenv(
+    "PHARMACY_DATABASE_URL", "postgresql+psycopg2://hms:hms@db:5432/hms"
+)
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -71,4 +74,8 @@ def create_medication(payload: MedicationIn, db: Session = Depends(get_db)):
 
 @app.get("/api/pharmacy/medications/low_stock", response_model=List[MedicationOut])
 def low_stock(db: Session = Depends(get_db)):
-    return db.query(MedicationModel).filter(MedicationModel.stock_quantity < MedicationModel.min_stock_level).all()
+    return (
+        db.query(MedicationModel)
+        .filter(MedicationModel.stock_quantity < MedicationModel.min_stock_level)
+        .all()
+    )

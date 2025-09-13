@@ -1,0 +1,65 @@
+name: CI - Test
+true:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+        - patient-service
+        - auth-service
+        - billing-service
+        - appointment-service
+        - prescription-service
+        - lab-service
+        - imaging-service
+        - pharmacy-service
+        - nurse-service
+        - doctor-service
+        - admin-service
+        - reporting-service
+        - analytics-service
+        - notification-service
+        - scheduling-service
+        - emr-service
+        - ehr-service
+        - telehealth-service
+        - payment-service
+        - insurance-service
+        - claims-service
+        - inventory-service
+        - hr-service
+        - finance-service
+        - compliance-service
+        - audit-service
+        - security-service
+        - integration-service
+        - api-gateway
+        - frontend-service
+        - database-service
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    - name: Install dependencies
+      run: 'cd services/${{ matrix.service }}
+
+        pip install -r requirements.txt
+
+        '
+    - name: Run tests
+      run: 'cd services/${{ matrix.service }}
+
+        pytest --cov --cov-report=xml
+
+        '
+    - name: Upload coverage
+      uses: codecov/codecov-action@v3

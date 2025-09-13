@@ -6,7 +6,6 @@ image:
   frontend:
     repository: newhms-frontend
     tag: latest
-
 ingress:
   enabled: true
   className: nginx
@@ -14,10 +13,9 @@ ingress:
   tls:
     enabled: true
     secretName: hms-tls
-
 env:
-  DJANGO_DEBUG: "false"
-  ALLOWED_HOSTS: "*"
-  SECURE_SSL_REDIRECT: "true"
-  SECURE_HSTS_SECONDS: "31536000"
+  DJANGO_DEBUG: 'false'
+  ALLOWED_HOSTS: '*'
+  SECURE_SSL_REDIRECT: 'true'
+  SECURE_HSTS_SECONDS: '31536000'
   REDIS_URL: redis://redis:6379/0

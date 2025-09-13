@@ -1,11 +1,14 @@
-from fastapi import FastAPI, HTTPException, Depends
-from pydantic import BaseModel
-from typing import List, Optional
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import sessionmaker, declarative_base, Session, relationship
 import os
+from typing import List, Optional
 
-DATABASE_URL = os.getenv("BILLING_DATABASE_URL", "postgresql+psycopg2://hms:hms@db:5432/hms")
+from fastapi import Depends, FastAPI, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import Column, ForeignKey, Integer, String, create_engine
+from sqlalchemy.orm import Session, declarative_base, relationship, sessionmaker
+
+DATABASE_URL = os.getenv(
+    "BILLING_DATABASE_URL", "postgresql+psycopg2://hms:hms@db:5432/hms"
+)
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -19,8 +22,12 @@ class BillModel(Base):
     total_cents = Column(Integer, default=0)
     paid_cents = Column(Integer, default=0)
     status = Column(String(16), default="DUE")
-    items = relationship("BillItemModel", back_populates="bill", cascade="all, delete-orphan")
-    payments = relationship("PaymentModel", back_populates="bill", cascade="all, delete-orphan")
+    items = relationship(
+        "BillItemModel", back_populates="bill", cascade="all, delete-orphan"
+    )
+    payments = relationship(
+        "PaymentModel", back_populates="bill", cascade="all, delete-orphan"
+    )
 
 
 class BillItemModel(Base):
@@ -125,7 +132,15 @@ def create_bill(payload: BillIn, db: Session = Depends(get_db)):
     db.add(bill)
     db.flush()
     for item in payload.items or []:
-        db.add(BillItemModel(bill=bill, description=item.description, quantity=item.quantity, unit_price_cents=item.unit_price_cents, amount_cents=item.quantity*item.unit_price_cents))
+        db.add(
+            BillItemModel(
+                bill=bill,
+                description=item.description,
+                quantity=item.quantity,
+                unit_price_cents=item.unit_price_cents,
+                amount_cents=item.quantity * item.unit_price_cents,
+            )
+        )
     recalc(bill)
     db.commit()
     db.refresh(bill)
@@ -137,7 +152,11 @@ def add_payment(bill_id: int, payload: PaymentIn, db: Session = Depends(get_db))
     bill = db.query(BillModel).get(bill_id)
     if not bill:
         raise HTTPException(status_code=404, detail="Bill not found")
-    db.add(PaymentModel(bill=bill, amount_cents=payload.amount_cents, method=payload.method))
+    db.add(
+        PaymentModel(
+            bill=bill, amount_cents=payload.amount_cents, method=payload.method
+        )
+    )
     recalc(bill)
     db.commit()
     db.refresh(bill)

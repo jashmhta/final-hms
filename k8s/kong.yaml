@@ -3,24 +3,5 @@ kind: KongPlugin
 metadata:
   name: jwt-auth
 config:
-  key_claim_name: "kid"
+  key_claim_name: kid
 plugin: jwt
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: hms-kong-ingress
-  annotations:
-    konghq.com/plugins: jwt-auth
-spec:
-  ingressClassName: kong
-  rules:
-    - http:
-        paths:
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: hms-backend
-                port:
-                  number: 80

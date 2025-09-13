@@ -1,0 +1,27 @@
+name: DAST Security Testing
+true:
+  push:
+    branches:
+    - main
+jobs:
+  dast:
+    runs-on: ubuntu-latest
+    services:
+      selenium:
+        image: selenium/standalone-chrome:latest
+        options: --shm-size=1g
+    steps:
+    - uses: actions/checkout@v3
+    - name: Start application
+      run: 'docker-compose -f docker/docker-compose.prod.yml up -d
+
+        '
+    - name: Run OWASP ZAP DAST
+      uses: zaproxy/action-baseline@v0.7.0
+      with:
+        target: http://localhost:8001
+    - name: Upload ZAP report
+      uses: actions/upload-artifact@v3
+      with:
+        name: zap-report
+        path: zap-report.html

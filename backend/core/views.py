@@ -1,9 +1,10 @@
-from django.shortcuts import render
 from django.db import connection
 from django.http import JsonResponse
-from rest_framework.views import APIView
+from django.shortcuts import render
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiResponse
+from rest_framework.views import APIView
+
 from .serializers import HealthSerializer
 
 # Create your views here.
@@ -11,19 +12,21 @@ from .serializers import HealthSerializer
 
 def root_api_view(request):
     """Root API endpoint with basic information"""
-    return JsonResponse({
-        "message": "HMS Backend API",
-        "version": "1.0.0",
-        "endpoints": {
-            "admin": "/admin/",
-            "api_docs": "/api/docs/",
-            "health": "/health/",
-            "auth": "/api/auth/",
-            "patients": "/api/patients/",
-            "hospitals": "/api/hospitals/",
-            "appointments": "/api/appointments/"
+    return JsonResponse(
+        {
+            "message": "HMS Backend API",
+            "version": "1.0.0",
+            "endpoints": {
+                "admin": "/admin/",
+                "api_docs": "/api/docs/",
+                "health": "/health/",
+                "auth": "/api/auth/",
+                "patients": "/api/patients/",
+                "hospitals": "/api/hospitals/",
+                "appointments": "/api/appointments/",
+            },
         }
-    })
+    )
 
 
 class HealthCheckView(APIView):

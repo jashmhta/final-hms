@@ -7,25 +7,40 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('billing', '0003_bill_discount_cents_bill_net_cents_and_more'),
-        ('hospitals', '0002_plan_hospitalplan'),
+        ("billing", "0003_bill_discount_cents_bill_net_cents_and_more"),
+        ("hospitals", "0002_plan_hospitalplan"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='DepartmentBudget',
+            name="DepartmentBudget",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('department', models.CharField(max_length=64)),
-                ('period', models.CharField(help_text='YYYY-MM', max_length=16)),
-                ('budget_cents', models.IntegerField(default=0)),
-                ('alerts_threshold_pct', models.IntegerField(default=80)),
-                ('hospital', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(app_label)s_%(class)ss', to='hospitals.hospital')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("department", models.CharField(max_length=64)),
+                ("period", models.CharField(help_text="YYYY-MM", max_length=16)),
+                ("budget_cents", models.IntegerField(default=0)),
+                ("alerts_threshold_pct", models.IntegerField(default=80)),
+                (
+                    "hospital",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="%(app_label)s_%(class)ss",
+                        to="hospitals.hospital",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
     ]

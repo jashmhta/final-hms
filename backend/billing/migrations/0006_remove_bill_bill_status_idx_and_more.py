@@ -6,16 +6,16 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('billing', '0005_indexes'),
+        ("billing", "0005_indexes"),
     ]
 
     operations = [
         migrations.RemoveIndex(
-            model_name='bill',
-            name='bill_status_idx',
+            model_name="bill",
+            name="bill_status_idx",
         ),
         migrations.RemoveIndex(
-            model_name='billlineitem',
-            name='bli_dept_idx',
+            model_name="billlineitem",
+            name="bli_dept_idx",
         ),
     ]

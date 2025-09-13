@@ -1,10 +1,18 @@
 from django.contrib import admin
-from .models import Medication, Prescription, InventoryTransaction
+
+from .models import InventoryTransaction, Medication, Prescription
 
 
 @admin.register(Medication)
 class MedicationAdmin(admin.ModelAdmin):
-    list_display = ("name", "strength", "form", "hospital", "stock_quantity", "min_stock_level")
+    list_display = (
+        "name",
+        "strength",
+        "form",
+        "hospital",
+        "stock_quantity",
+        "min_stock_level",
+    )
     list_filter = ("hospital",)
     search_fields = ("name", "strength", "form")
     autocomplete_fields = ("hospital",)

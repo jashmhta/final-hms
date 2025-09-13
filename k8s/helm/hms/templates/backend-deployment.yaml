@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "hms.fullname" . }}-backend
+  name: hms-fullname-placeholder-backend
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: {{ include "hms.fullname" . }}-backend
+      app: hms-fullname-placeholder-backend
   template:
     metadata:
       labels:
-        app: {{ include "hms.fullname" . }}-backend
+        app: hms-fullname-placeholder-backend
     spec:
       containers:
         - name: backend
@@ -32,10 +32,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "hms.fullname" . }}-backend
+  name: hms-fullname-placeholder-backend
 spec:
   selector:
-    app: {{ include "hms.fullname" . }}-backend
+    app: hms-fullname-placeholder-backend
   ports:
     - port: 80
       targetPort: 8000

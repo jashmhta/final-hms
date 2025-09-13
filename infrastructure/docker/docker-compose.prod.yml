@@ -1,0 +1,59 @@
+version: '3.8'
+services:
+  patient-service:
+    build: ./patient-service
+    image: hms/patient-service:latest
+    ports:
+    - 8001:8000
+    environment:
+    - DB_HOST=database-service
+    - ENCRYPTION_KEY=hipaa_encryption_key
+    healthcheck:
+      test:
+      - CMD
+      - wget
+      - --no-verbose
+      - --tries=1
+      - --spider
+      - http://localhost:8000/health
+    restart: unless-stopped
+    networks:
+    - hms-network
+  auth-service:
+    build: ./auth-service
+    image: hms/auth-service:latest
+    ports:
+    - 8002:8000
+    environment:
+    - DB_HOST=database-service
+    healthcheck:
+      test:
+      - CMD
+      - wget
+      - --no-verbose
+      - --tries=1
+      - --spider
+      - http://localhost:8000/health
+    restart: unless-stopped
+    networks:
+    - hms-network
+  database-service:
+    image: postgres:13-alpine
+    environment:
+      POSTGRES_DB: hms
+      POSTGRES_USER: hmsuser
+      POSTGRES_PASSWORD: secure_db_password
+    volumes:
+    - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U hmsuser -d hms
+    restart: unless-stopped
+    networks:
+    - hms-network
+networks:
+  hms-network:
+    driver: bridge
+volumes:
+  db_data: null

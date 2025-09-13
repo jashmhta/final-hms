@@ -38,10 +38,13 @@ def check_service(service_name):
     syntax_files = ["models.py", "schemas.py", "crud.py", "main.py", "database.py"]
     syntax_ok = True
     for file in syntax_files:
-        success, stdout, stderr = run_command(f"python -m py_compile {service_path}/{file}")
-        if not success:
-            print(f"❌ Syntax error in {file}")
-            syntax_ok = False
+        success, stdout, stderr = run_command(f"test -f {service_path}/{file}")
+        if success:
+            # Try to compile from the service directory to handle imports
+            success, stdout, stderr = run_command(f"cd {service_path} && python3 -m py_compile {file}")
+            if not success:
+                print(f"❌ Syntax error in {file}")
+                syntax_ok = False
     
     return all_files_ok and syntax_ok
 

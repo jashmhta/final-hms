@@ -1,11 +1,12 @@
-from fastapi import FastAPI, HTTPException, Depends, Header
-from pydantic import BaseModel
-from typing import List, Optional
-from sqlalchemy import create_engine, Column, Integer, String, Time, Date, ForeignKey
-from sqlalchemy.orm import sessionmaker, declarative_base, Session, relationship
 import os
+from typing import List, Optional
+
+from fastapi import Depends, FastAPI, Header, HTTPException
+from jose import JWTError, jwt
 from prometheus_fastapi_instrumentator import Instrumentator
-from jose import jwt, JWTError
+from pydantic import BaseModel
+from sqlalchemy import Column, Date, ForeignKey, Integer, String, Time, create_engine
+from sqlalchemy.orm import Session, declarative_base, relationship, sessionmaker
 
 DATABASE_URL = os.getenv("HR_DATABASE_URL", "postgresql+psycopg2://hms:hms@db:5432/hms")
 JWT_SECRET = os.getenv("JWT_SECRET", "change-me")
@@ -51,6 +52,7 @@ class ShiftIn(BaseModel):
 
 class ShiftOut(ShiftIn):
     id: int
+
     class Config:
         from_attributes = True
 
@@ -66,6 +68,7 @@ class DutyRosterOut(BaseModel):
     user: int
     date: str
     shift_id: int
+
     class Config:
         from_attributes = True
 
@@ -84,6 +87,7 @@ class LeaveRequestOut(BaseModel):
     end_date: str
     reason: Optional[str]
     status: str
+
     class Config:
         from_attributes = True
 
@@ -103,6 +107,8 @@ Instrumentator().instrument(app).expose(app)
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
+
+
 def require_auth(authorization: str | None = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -111,6 +117,7 @@ def require_auth(authorization: str | None = Header(None)):
         return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
 
 @app.get("/health")
 def health():
@@ -123,7 +130,9 @@ def list_shifts(_: dict = Depends(require_auth), db: Session = Depends(get_db)):
 
 
 @app.post("/api/hr/shifts", response_model=ShiftOut, status_code=201)
-def create_shift(payload: ShiftIn, _: dict = Depends(require_auth), db: Session = Depends(get_db)):
+def create_shift(
+    payload: ShiftIn, _: dict = Depends(require_auth), db: Session = Depends(get_db)
+):
     obj = ShiftModel(**payload.dict())
     db.add(obj)
     db.commit()
@@ -137,8 +146,14 @@ def list_roster(_: dict = Depends(require_auth), db: Session = Depends(get_db)):
 
 
 @app.post("/api/hr/roster", response_model=DutyRosterOut, status_code=201)
-def create_roster(payload: DutyRosterIn, _: dict = Depends(require_auth), db: Session = Depends(get_db)):
-    obj = DutyRosterModel(user=payload.user, date=payload.date, shift_id=payload.shift_id)
+def create_roster(
+    payload: DutyRosterIn,
+    _: dict = Depends(require_auth),
+    db: Session = Depends(get_db),
+):
+    obj = DutyRosterModel(
+        user=payload.user, date=payload.date, shift_id=payload.shift_id
+    )
     db.add(obj)
     db.commit()
     db.refresh(obj)
@@ -151,7 +166,11 @@ def list_leaves(_: dict = Depends(require_auth), db: Session = Depends(get_db)):
 
 
 @app.post("/api/hr/leaves", response_model=LeaveRequestOut, status_code=201)
-def create_leave(payload: LeaveRequestIn, _: dict = Depends(require_auth), db: Session = Depends(get_db)):
+def create_leave(
+    payload: LeaveRequestIn,
+    _: dict = Depends(require_auth),
+    db: Session = Depends(get_db),
+):
     obj = LeaveRequestModel(**payload.dict())
     db.add(obj)
     db.commit()
@@ -167,8 +186,13 @@ class AutoRosterIn(BaseModel):
 
 
 @app.post("/api/hr/roster/auto-generate", response_model=List[DutyRosterOut])
-def auto_generate(payload: AutoRosterIn, _: dict = Depends(require_auth), db: Session = Depends(get_db)):
+def auto_generate(
+    payload: AutoRosterIn,
+    _: dict = Depends(require_auth),
+    db: Session = Depends(get_db),
+):
     from datetime import datetime, timedelta
+
     start = datetime.fromisoformat(payload.start_date).date()
     end = datetime.fromisoformat(payload.end_date).date()
     if end < start:
@@ -180,7 +204,8 @@ def auto_generate(payload: AutoRosterIn, _: dict = Depends(require_auth), db: Se
         uid = payload.users[user_idx % len(payload.users)]
         obj = DutyRosterModel(user=uid, date=day, shift_id=payload.shift_id)
         db.add(obj)
-        db.commit(); db.refresh(obj)
+        db.commit()
+        db.refresh(obj)
         created.append(obj)
         user_idx += 1
         day = day + timedelta(days=1)
