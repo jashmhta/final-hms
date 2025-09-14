@@ -77,6 +77,19 @@ downloads/
 *.sqlite3
 *.sql
 
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+# Docker
+.docker/
+
+# Kubernetes
+# (usually no need for .gitignore in k8s, but if secrets)
+secrets/
+
 # Other
 audit_venv/
 hms-enterprise-grade/
