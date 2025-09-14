@@ -119,3 +119,6 @@ gunicorn.conf.py
 *.zip
 *.mp4
 cookies.txt
+
+# Binaries
+bin/
