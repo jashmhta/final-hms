@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-from core.models import TenantModel, TimeStampedModel
-=======
 from core.models import TenantModel
->>>>>>> transform-refactor
 from django.db import models
 
 
@@ -11,14 +7,10 @@ class Bill(TenantModel):
         "patients.Patient", on_delete=models.CASCADE, related_name="bills"
     )
     appointment = models.ForeignKey(
-<<<<<<< HEAD
-        "appointments.Appointment", on_delete=models.SET_NULL, null=True, blank=True
-=======
         "appointments.Appointment",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
->>>>>>> transform-refactor
     )
     total_cents = models.IntegerField(default=0)
     paid_cents = models.IntegerField(default=0)
@@ -51,9 +43,6 @@ class Bill(TenantModel):
             if paid >= self.net_cents and self.net_cents > 0
             else ("PARTIAL" if 0 < paid < self.net_cents else "DUE")
         )
-<<<<<<< HEAD
-        self.save(update_fields=["total_cents", "paid_cents", "net_cents", "status"])
-=======
         self.save(
             update_fields=[
                 "total_cents",
@@ -62,7 +51,6 @@ class Bill(TenantModel):
                 "status",
             ]
         )
->>>>>>> transform-refactor
 
 
 class BillLineItem(TenantModel):

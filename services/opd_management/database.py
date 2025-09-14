@@ -5,7 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://user:password@localhost:5439/opd_db"
+    "DATABASE_URL", "postgresql://user:password@localhost:5437/blood_bank_db"
 )
 
 engine = create_engine(DATABASE_URL)

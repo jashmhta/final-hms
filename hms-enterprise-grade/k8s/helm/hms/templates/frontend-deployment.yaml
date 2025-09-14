@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hms.fullname" . }}-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: {{ include "hms.fullname" . }}-frontend
+  template:
+    metadata:
+      labels:
+        app: {{ include "hms.fullname" . }}-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: {{ .Values.image.registry }}/{{ .Values.image.frontend.repository }}:{{ .Values.image.frontend.tag }}
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "hms.fullname" . }}-frontend
+spec:
+  selector:
+    app: {{ include "hms.fullname" . }}-frontend
+  ports:
+    - port: 80
+      targetPort: 80
+---
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "hms.fullname" . }}
+  annotations:
+    kubernetes.io/ingress.class: {{ .Values.ingress.className }}
+{{- if .Values.ingress.tls.enabled }}
+    cert-manager.io/cluster-issuer: letsencrypt
+{{- end }}
+spec:
+{{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+{{- end }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "hms.fullname" . }}-frontend
+                port:
+                  number: 80
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "hms.fullname" . }}-backend
+                port:
+                  number: 80
+{{- end }}

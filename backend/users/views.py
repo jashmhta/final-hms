@@ -1,28 +1,14 @@
 from django.contrib.auth.hashers import make_password
-<<<<<<< HEAD
-from django.shortcuts import render
 from drf_spectacular.utils import OpenApiResponse, extend_schema
-from rest_framework import status, viewsets
-=======
-from drf_spectacular.utils import OpenApiResponse, extend_schema
->>>>>>> transform-refactor
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-<<<<<<< HEAD
-=======
 from rest_framework.viewsets import ViewSet
->>>>>>> transform-refactor
 
 from .models import User
 from .serializers import UserSerializer
 
-<<<<<<< HEAD
-# Create your views here.
-
-=======
->>>>>>> transform-refactor
 
 class MeView(APIView):
     permission_classes = [IsAuthenticated]

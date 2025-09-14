@@ -1,0 +1,52 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Requests per second",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+      "targets": [
+        {"expr": "sum(rate(http_requests_total{job=\"$job\"}[5m]))", "legendFormat": "rps"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Error rate (5xx %)",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8},
+      "targets": [
+        {"expr": "100 * sum(rate(http_requests_total{job=\"$job\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"$job\"}[5m]))", "legendFormat": "%"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Latency p95 (seconds)",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16},
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"$job\"}[5m])) by (le))", "legendFormat": "p95"}
+      ]
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["microservices"],
+  "templating": {
+    "list": [
+      {
+        "name": "job",
+        "type": "query",
+        "label": "Service",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "query": "label_values(job)",
+        "refresh": 2,
+        "hide": 0
+      }
+    ]
+  },
+  "time": {"from": "now-6h", "to": "now"},
+  "title": "Microservices Overview",
+  "uid": "ms-overview",
+  "version": 1
+}

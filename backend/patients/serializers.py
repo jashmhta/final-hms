@@ -1,8 +1,5 @@
 from rest_framework import serializers
 
-<<<<<<< HEAD
-from .models import Patient
-=======
 from .models import (
     Patient,
     EmergencyContact,
@@ -12,7 +9,6 @@ from .models import (
     InsuranceInformation,
     PatientStatus,
 )
->>>>>>> transform-refactor
 
 
 class PatientSerializer(serializers.ModelSerializer):
@@ -34,21 +30,6 @@ class PatientSerializer(serializers.ModelSerializer):
             "uuid",
             "hospital",
             "first_name",
-<<<<<<< HEAD
-            "last_name",
-            "date_of_birth",
-            "gender",
-            "phone",
-            "email",
-            "address",
-            "insurance_provider",
-            "insurance_number",
-            "active",
-            "created_at",
-            "updated_at",
-        ]
-        read_only_fields = ["id", "uuid", "created_at", "updated_at"]
-=======
             "middle_name",
             "last_name",
             "suffix",
@@ -99,4 +80,3 @@ class PatientSerializer(serializers.ModelSerializer):
             InsuranceInformation.objects.create(patient=patient, **ins_data)
 
         return patient
->>>>>>> transform-refactor

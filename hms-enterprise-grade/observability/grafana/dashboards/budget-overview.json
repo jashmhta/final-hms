@@ -1,0 +1,19 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "gnetId": null,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Budget Utilization (sample)",
+      "gridPos": {"h": 6, "w": 24, "x": 0, "y": 0},
+      "targets": [
+        {"expr": "sum(rate(django_http_requests_total_by_view_method_total[5m]))"}
+      ]
+    }
+  ],
+  "schemaVersion": 37,
+  "style": "dark",
+  "title": "Budget Overview",
+  "version": 1
+}

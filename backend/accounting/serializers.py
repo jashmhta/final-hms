@@ -2,13 +2,6 @@
 DRF Serializers for the accounting module.
 """
 
-<<<<<<< HEAD
-from decimal import Decimal
-=======
-from django.utils import timezone
-from rest_framework import serializers
->>>>>>> transform-refactor
-
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -16,10 +9,6 @@ from .models import (
     AccountingAuditLog,
     AccountingInvoice,
     AccountingPayment,
-<<<<<<< HEAD
-    AccountingPeriod,
-=======
->>>>>>> transform-refactor
     BankAccount,
     BankTransaction,
     BookLock,
@@ -31,24 +20,13 @@ from .models import (
     Customer,
     DepreciationSchedule,
     Expense,
-<<<<<<< HEAD
-    ExportLog,
     FinancialYear,
     FixedAsset,
-    ImportBatch,
-=======
-    FinancialYear,
-    FixedAsset,
->>>>>>> transform-refactor
     InsuranceClaim,
     InvoiceLineItem,
     LedgerEntry,
     PayrollEntry,
     PricingTier,
-<<<<<<< HEAD
-    ProviderCommissionStructure,
-=======
->>>>>>> transform-refactor
     RecurringInvoice,
     ReportSchedule,
     ServicePackage,
@@ -72,12 +50,8 @@ class CurrencySerializer(serializers.ModelSerializer):
         # Ensure only one base currency per hospital
         if data.get("is_base_currency") and self.instance is None:
             existing_base = Currency.objects.filter(
-<<<<<<< HEAD
-                hospital=self.context["request"].user.hospital, is_base_currency=True
-=======
                 hospital=self.context["request"].user.hospital,
                 is_base_currency=True,
->>>>>>> transform-refactor
             ).exists()
             if existing_base:
                 raise serializers.ValidationError(
@@ -112,11 +86,8 @@ class ChartOfAccountsSerializer(serializers.ModelSerializer):
 
 class CostCenterSerializer(serializers.ModelSerializer):
     manager_name = serializers.CharField(source="manager.get_full_name", read_only=True)
-<<<<<<< HEAD
-=======
     # noqa: E501
     # noqa: E501
->>>>>>> transform-refactor
 
     class Meta:
         model = CostCenter
@@ -185,13 +156,9 @@ class ServicePackageSerializer(serializers.ModelSerializer):
     def get_profit_margin(self, obj):
         if obj.cost_price_cents > 0:
             margin = (
-<<<<<<< HEAD
-                (obj.base_price_cents - obj.cost_price_cents) / obj.base_price_cents
-=======
                 (obj.base_price_cents - obj.cost_price_cents)
                 / obj.base_price_cents
                 # noqa: E501
->>>>>>> transform-refactor
             ) * 100
             return round(margin, 2)
         return 0.0
@@ -216,13 +183,9 @@ class InvoiceLineItemSerializer(serializers.ModelSerializer):
     def get_profit_margin(self, obj):
         if obj.cost_price_cents > 0 and obj.unit_price_cents > 0:
             margin = (
-<<<<<<< HEAD
-                (obj.unit_price_cents - obj.cost_price_cents) / obj.unit_price_cents
-=======
                 (obj.unit_price_cents - obj.cost_price_cents)
                 / obj.unit_price_cents
                 # noqa: E501
->>>>>>> transform-refactor
             ) * 100
             return round(margin, 2)
         return 0.0
@@ -231,12 +194,6 @@ class InvoiceLineItemSerializer(serializers.ModelSerializer):
 class AccountingInvoiceSerializer(serializers.ModelSerializer):
     items = InvoiceLineItemSerializer(many=True, read_only=True)
     patient_name = serializers.CharField(source="patient.get_full_name", read_only=True)
-<<<<<<< HEAD
-    customer_name = serializers.CharField(source="customer.name", read_only=True)
-    vendor_name = serializers.CharField(source="vendor.name", read_only=True)
-    cost_center_name = serializers.CharField(source="cost_center.name", read_only=True)
-    currency_symbol = serializers.CharField(source="currency.symbol", read_only=True)
-=======
     # noqa: E501
     # noqa: E501
     customer_name = serializers.CharField(source="customer.name", read_only=True)
@@ -249,7 +206,6 @@ class AccountingInvoiceSerializer(serializers.ModelSerializer):
     currency_symbol = serializers.CharField(source="currency.symbol", read_only=True)
     # noqa: E501
     # noqa: E501
->>>>>>> transform-refactor
     days_overdue = serializers.SerializerMethodField()
 
     class Meta:
@@ -296,35 +252,25 @@ class AccountingPaymentSerializer(serializers.ModelSerializer):
         source="bank_account.account_name", read_only=True
     )
     currency_symbol = serializers.CharField(source="currency.symbol", read_only=True)
-<<<<<<< HEAD
-=======
     # noqa: E501
     # noqa: E501
->>>>>>> transform-refactor
 
     class Meta:
         model = AccountingPayment
         fields = "__all__"
-<<<<<<< HEAD
-        read_only_fields = ("hospital", "created_at", "updated_at", "payment_number")
-=======
         read_only_fields = (
             "hospital",
             "created_at",
             "updated_at",
             "payment_number",
         )
->>>>>>> transform-refactor
 
 
 class ExpenseSerializer(serializers.ModelSerializer):
     vendor_name = serializers.CharField(source="vendor.name", read_only=True)
     cost_center_name = serializers.CharField(source="cost_center.name", read_only=True)
-<<<<<<< HEAD
-=======
     # noqa: E501
     # noqa: E501
->>>>>>> transform-refactor
     created_by_name = serializers.CharField(
         source="created_by.get_full_name", read_only=True
     )
@@ -332,11 +278,8 @@ class ExpenseSerializer(serializers.ModelSerializer):
         source="approved_by.get_full_name", read_only=True
     )
     currency_symbol = serializers.CharField(source="currency.symbol", read_only=True)
-<<<<<<< HEAD
-=======
     # noqa: E501
     # noqa: E501
->>>>>>> transform-refactor
 
     class Meta:
         model = Expense
@@ -352,11 +295,8 @@ class ExpenseSerializer(serializers.ModelSerializer):
 
 class BankAccountSerializer(serializers.ModelSerializer):
     currency_symbol = serializers.CharField(source="currency.symbol", read_only=True)
-<<<<<<< HEAD
-=======
     # noqa: E501
     # noqa: E501
->>>>>>> transform-refactor
     unreconciled_count = serializers.SerializerMethodField()
 
     class Meta:
@@ -392,11 +332,8 @@ class BankTransactionSerializer(serializers.ModelSerializer):
 
 class FixedAssetSerializer(serializers.ModelSerializer):
     cost_center_name = serializers.CharField(source="cost_center.name", read_only=True)
-<<<<<<< HEAD
-=======
     # noqa: E501
     # noqa: E501
->>>>>>> transform-refactor
     vendor_name = serializers.CharField(source="vendor.name", read_only=True)
     annual_depreciation = serializers.SerializerMethodField()
     remaining_life = serializers.SerializerMethodField()
@@ -425,11 +362,8 @@ class FixedAssetSerializer(serializers.ModelSerializer):
 class DepreciationScheduleSerializer(serializers.ModelSerializer):
     asset_name = serializers.CharField(source="asset.name", read_only=True)
     asset_code = serializers.CharField(source="asset.asset_code", read_only=True)
-<<<<<<< HEAD
-=======
     # noqa: E501
     # noqa: E501
->>>>>>> transform-refactor
 
     class Meta:
         model = DepreciationSchedule
@@ -442,11 +376,8 @@ class PayrollEntrySerializer(serializers.ModelSerializer):
         source="employee.get_full_name", read_only=True
     )
     cost_center_name = serializers.CharField(source="cost_center.name", read_only=True)
-<<<<<<< HEAD
-=======
     # noqa: E501
     # noqa: E501
->>>>>>> transform-refactor
     created_by_name = serializers.CharField(
         source="created_by.get_full_name", read_only=True
     )
@@ -483,16 +414,12 @@ class InsuranceClaimSerializer(serializers.ModelSerializer):
     class Meta:
         model = InsuranceClaim
         fields = "__all__"
-<<<<<<< HEAD
-        read_only_fields = ("hospital", "created_at", "updated_at", "claim_number")
-=======
         read_only_fields = (
             "hospital",
             "created_at",
             "updated_at",
             "claim_number",
         )
->>>>>>> transform-refactor
 
     def get_claim_age_days(self, obj):
         if obj.submission_date:
@@ -512,16 +439,12 @@ class TDSEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = TDSEntry
         fields = "__all__"
-<<<<<<< HEAD
-        read_only_fields = ("hospital", "created_at", "updated_at", "tds_entry_number")
-=======
         read_only_fields = (
             "hospital",
             "created_at",
             "updated_at",
             "tds_entry_number",
         )
->>>>>>> transform-refactor
 
 
 class BookLockSerializer(serializers.ModelSerializer):
@@ -560,11 +483,8 @@ class VendorPayoutSerializer(serializers.ModelSerializer):
 
 class VendorPayoutItemSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source="patient.get_full_name", read_only=True)
-<<<<<<< HEAD
-=======
     # noqa: E501
     # noqa: E501
->>>>>>> transform-refactor
     service_name = serializers.CharField(
         source="invoice_line_item.description", read_only=True
     )
@@ -612,15 +532,11 @@ class BudgetSerializer(serializers.ModelSerializer):
         source="financial_year.name", read_only=True
     )
     cost_center_name = serializers.CharField(source="cost_center.name", read_only=True)
-<<<<<<< HEAD
-    account_name = serializers.CharField(source="account.account_name", read_only=True)
-=======
     # noqa: E501
     # noqa: E501
     account_name = serializers.CharField(source="account.account_name", read_only=True)
     # noqa: E501
     # noqa: E501
->>>>>>> transform-refactor
 
     class Meta:
         model = Budget
@@ -778,11 +694,8 @@ class ExportRequestSerializer(serializers.Serializer):
         if data.get("start_date") and data.get("end_date"):
             if data["start_date"] > data["end_date"]:
                 raise serializers.ValidationError("Start date cannot be after end date")
-<<<<<<< HEAD
-=======
         # noqa: E501
         # noqa: E501
->>>>>>> transform-refactor
 
         # Some reports require date ranges
         period_required_reports = [
@@ -799,15 +712,11 @@ class ExportRequestSerializer(serializers.Serializer):
                 )
 
         # Some reports require as_of_date
-<<<<<<< HEAD
-        snapshot_required_reports = ["TRIAL_BALANCE", "BALANCE_SHEET", "AGING_REPORT"]
-=======
         snapshot_required_reports = [
             "TRIAL_BALANCE",
             "BALANCE_SHEET",
             "AGING_REPORT",
         ]
->>>>>>> transform-refactor
         if data["report_type"] in snapshot_required_reports:
             if not data.get("as_of_date"):
                 raise serializers.ValidationError(
@@ -905,11 +814,8 @@ class ReportScheduleSerializer(serializers.ModelSerializer):
 
 class AccountingAuditLogSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source="user.get_full_name", read_only=True)
-<<<<<<< HEAD
-=======
     # noqa: E501
     # noqa: E501
->>>>>>> transform-refactor
 
     class Meta:
         model = AccountingAuditLog

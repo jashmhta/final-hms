@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 # Database URL from environment variable or default
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://user:password@localhost:5434/insurance_db"
+    "DATABASE_URL", "postgresql://user:password@localhost:5435/prescription_db"
 )
 
 engine = create_engine(DATABASE_URL)

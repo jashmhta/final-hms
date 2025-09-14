@@ -1,0 +1,55 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+rule_files:
+- /etc/prometheus/alerts.yml
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - alertmanager:9093
+scrape_configs:
+- job_name: price_estimator
+  static_configs:
+  - targets:
+    - price_estimator_service:9007
+- job_name: bed_management
+  static_configs:
+  - targets:
+    - bed_management_service:9008
+- job_name: triage
+  static_configs:
+  - targets:
+    - triage_service:9009
+- job_name: analytics_service
+  static_configs:
+  - targets:
+    - analytics_service:9010
+- job_name: notifications
+  static_configs:
+  - targets:
+    - notifications_service:9011
+- job_name: radiology
+  static_configs:
+  - targets:
+    - radiology_service:9012
+- job_name: feedback
+  static_configs:
+  - targets:
+    - feedback_service:9013
+- job_name: consent
+  static_configs:
+  - targets:
+    - consent_service:9014
+- job_name: audit
+  static_configs:
+  - targets:
+    - audit_service:9015
+- job_name: er_alerts
+  static_configs:
+  - targets:
+    - er_alerts_service:9016
+- job_name: ot_scheduling
+  static_configs:
+  - targets:
+    - ot_scheduling_service:9017

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="0" skipped="0" tests="1" time="0.187" timestamp="2025-09-07T14:49:50.619107+00:00" hostname="9f0a7c6aba2c"><testcase classname="integration_tests.test_basic.IntegrationTest" name="test_integration_basic" time="0.000"><error message="failed on setup with &quot;django.core.exceptions.ImproperlyConfigured: Requested setting DATABASES, but settings are not configured. You must either define the environment variable DJANGO_SETTINGS_MODULE or call settings.configure() before accessing settings.&quot;">cls = &lt;class 'test_basic.IntegrationTest'&gt;
+
+    @classmethod
+    def setUpClass(cls):
+&gt;       super().setUpClass()
+
+/opt/venv/lib/python3.12/site-packages/django/test/testcases.py:1182:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/opt/venv/lib/python3.12/site-packages/django/test/testcases.py:183: in setUpClass
+    cls._add_databases_failures()
+/opt/venv/lib/python3.12/site-packages/django/test/testcases.py:204: in _add_databases_failures
+    cls.databases = cls._validate_databases()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/venv/lib/python3.12/site-packages/django/test/testcases.py:190: in _validate_databases
+    if alias not in connections:
+       ^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/venv/lib/python3.12/site-packages/django/utils/connection.py:73: in __iter__
+    return iter(self.settings)
+                ^^^^^^^^^^^^^
+/opt/venv/lib/python3.12/site-packages/django/utils/functional.py:48: in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ^^^^^^^^^^^^^^^^^^^
+/opt/venv/lib/python3.12/site-packages/django/utils/connection.py:45: in settings
+    self._settings = self.configure_settings(self._settings)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/venv/lib/python3.12/site-packages/django/db/utils.py:144: in configure_settings
+    databases = super().configure_settings(databases)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/venv/lib/python3.12/site-packages/django/utils/connection.py:50: in configure_settings
+    settings = getattr(django_settings, self.settings_name)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py:82: in __getattr__
+    self._setup(name)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;LazySettings [Unevaluated]&gt;, name = 'DATABASES'
+
+    def _setup(self, name=None):
+        """
+        Load the settings module pointed to by the environment variable. This
+        is used the first time settings are needed, if the user hasn't
+        configured settings manually.
+        """
+        settings_module = os.environ.get(ENVIRONMENT_VARIABLE)
+        if not settings_module:
+            desc = ("setting %s" % name) if name else "settings"
+&gt;           raise ImproperlyConfigured(
+                "Requested %s, but settings are not configured. "
+                "You must either define the environment variable %s "
+                "or call settings.configure() before accessing settings."
+                % (desc, ENVIRONMENT_VARIABLE))
+E           django.core.exceptions.ImproperlyConfigured: Requested setting DATABASES, but settings are not configured. You must either define the environment variable DJANGO_SETTINGS_MODULE or call settings.configure() before accessing settings.
+
+/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py:63: ImproperlyConfigured</error></testcase></testsuite></testsuites>

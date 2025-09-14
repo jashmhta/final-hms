@@ -1,18 +1,8 @@
-<<<<<<< HEAD
-import json
-import uuid
-from datetime import datetime, timedelta
-
-from core.models import TenantModel
-from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator
-=======
 import uuid
 from datetime import timedelta
 
 from core.models import TenantModel
 from django.core.exceptions import ValidationError
->>>>>>> transform-refactor
 from django.db import models
 from django.utils import timezone
 from encrypted_model_fields.fields import EncryptedTextField
@@ -169,13 +159,9 @@ class Appointment(TenantModel):
 
     # Patient & Provider
     patient = models.ForeignKey(
-<<<<<<< HEAD
-        "patients.Patient", on_delete=models.CASCADE, related_name="appointments"
-=======
         "patients.Patient",
         on_delete=models.CASCADE,
         related_name="appointments",
->>>>>>> transform-refactor
     )
     primary_provider = models.ForeignKey(
         "users.User",
@@ -189,13 +175,9 @@ class Appointment(TenantModel):
 
     # Appointment Details
     appointment_type = models.CharField(
-<<<<<<< HEAD
-        max_length=20, choices=AppointmentType.choices, default=AppointmentType.ROUTINE
-=======
         max_length=20,
         choices=AppointmentType.choices,
         default=AppointmentType.ROUTINE,
->>>>>>> transform-refactor
     )
     template = models.ForeignKey(
         AppointmentTemplate, on_delete=models.SET_NULL, null=True, blank=True
@@ -279,13 +261,9 @@ class Appointment(TenantModel):
     # Recurring Appointments
     is_recurring = models.BooleanField(default=False)
     recurrence_pattern = models.CharField(
-<<<<<<< HEAD
-        max_length=15, choices=RecurrencePattern.choices, default=RecurrencePattern.NONE
-=======
         max_length=15,
         choices=RecurrencePattern.choices,
         default=RecurrencePattern.NONE,
->>>>>>> transform-refactor
     )
     recurrence_end_date = models.DateField(null=True, blank=True)
     parent_appointment = models.ForeignKey(
@@ -361,13 +339,9 @@ class Appointment(TenantModel):
             )
 
             if overlapping.exists():
-<<<<<<< HEAD
-                raise ValidationError("Overlapping appointment for this provider")
-=======
                 raise ValidationError(
                     "Overlapping appointment for this provider"
                 )  # noqa: E501
->>>>>>> transform-refactor
 
     def save(self, *args, **kwargs):
         # Generate appointment number if not provided
@@ -389,14 +363,10 @@ class Appointment(TenantModel):
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
-<<<<<<< HEAD
-        return f"{self.patient} with {self.primary_provider} at {timezone.localtime(self.start_at)}"
-=======
         return (
             f"{self.patient} with {self.primary_provider} at "
             f"{timezone.localtime(self.start_at)}"
         )
->>>>>>> transform-refactor
 
     def get_duration_display(self):
         """Return human-readable duration"""
@@ -487,11 +457,7 @@ class AppointmentResource(models.Model):
 
         if overlapping.exists():
             raise ValidationError(
-<<<<<<< HEAD
-                f"Resource {self.resource.name} is not available during this time"
-=======
                 f"Resource {self.resource.name} is not available during this time"  # noqa: E501
->>>>>>> transform-refactor
             )
 
 
@@ -499,24 +465,16 @@ class WaitList(TenantModel):
     """Patient wait list for appointments"""
 
     patient = models.ForeignKey(
-<<<<<<< HEAD
-        "patients.Patient", on_delete=models.CASCADE, related_name="waitlist_entries"
-=======
         "patients.Patient",
         on_delete=models.CASCADE,
         related_name="waitlist_entries",
->>>>>>> transform-refactor
     )
     provider = models.ForeignKey(
         "users.User", on_delete=models.CASCADE, related_name="waitlist_entries"
     )
-<<<<<<< HEAD
-    appointment_type = models.CharField(max_length=20, choices=AppointmentType.choices)
-=======
     appointment_type = models.CharField(
         max_length=20, choices=AppointmentType.choices
     )  # noqa: E501
->>>>>>> transform-refactor
 
     # Preferences
     preferred_date_from = models.DateField()
@@ -653,13 +611,9 @@ class AppointmentHistory(models.Model):
     notes = models.TextField(blank=True)
 
     # Actor information
-<<<<<<< HEAD
-    changed_by = models.ForeignKey("users.User", on_delete=models.SET_NULL, null=True)
-=======
     changed_by = models.ForeignKey(
         "users.User", on_delete=models.SET_NULL, null=True
     )  # noqa: E501
->>>>>>> transform-refactor
     timestamp = models.DateTimeField(auto_now_add=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
 

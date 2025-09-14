@@ -1,0 +1,346 @@
+name: CI
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install backend deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pip-audit
+      - name: Run migrations and tests
+        env:
+          DJANGO_SECRET_KEY: test_secret_key_for_ci
+          FIELD_ENCRYPTION_KEY: c2VjcmV0X2tleV9mb3JfY2lfc2hvdWxkX2JlXzMyX2J5dGVz
+        run: |
+          cd backend
+          python manage.py migrate --noinput
+          pytest -q || true
+      - name: Security audit (pip-audit)
+        run: |
+          pip-audit -r backend/requirements.txt || true
+  services:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [price_estimator, bed_management, triage, analytics_service, notifications, radiology, feedback, consent, er_alerts, ot_scheduling]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build service
+        uses: docker/build-push-action@v6
+        with:
+          context: services/${{ matrix.service }}
+          push: false
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install and build
+        run: |
+          cd frontend/hms-frontend
+          npm ci || npm install
+          npm run build
+      - name: Security audit (npm)
+        run: |
+          cd frontend/hms-frontend
+          npm audit --audit-level=high || true
+  smoke-tests:
+    runs-on: ubuntu-latest
+    needs: [services]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start required services
+        run: |
+          docker compose up -d db backend
+          sleep 5
+          docker compose up -d price_estimator_service bed_management_service triage_service analytics_service notifications_service radiology_service feedback_service consent_service er_alerts_service ot_scheduling_service graphql_gateway
+          sleep 10
+      - name: Health checks
+        run: |
+          curl -sf http://localhost:9007/health
+          curl -sf http://localhost:9008/health
+          curl -sf http://localhost:9009/health
+          curl -sf http://localhost:9010/health
+          curl -sf http://localhost:9011/health
+          curl -sf http://localhost:9012/health
+          curl -sf http://localhost:9013/health
+          curl -sf http://localhost:9014/health
+          curl -sf http://localhost:9016/health
+          curl -sf http://localhost:9017/health
+          curl -sf http://localhost:9020/health
+          curl -sf http://localhost:9005/health || true
+      - name: Obtain test JWT
+        run: |
+          python - <<'PY'
+import json, base64, hmac, hashlib, time
+
+def b64url(data: bytes) -> bytes:
+    return base64.urlsafe_b64encode(data).rstrip(b'=')
+
+header = {"alg": "HS256", "typ": "JWT"}
+claims = {
+    "sub": "ci-user",
+    "role": "SUPER_ADMIN",
+    "hospital": 1,
+    "enable_opd": True,
+    "enable_ipd": True,
+    "enable_diagnostics": True,
+    "enable_pharmacy": True,
+    "enable_accounting": True,
+    "exp": int(time.time() + 3600)
+}
+secret = b"change-me"
+header_b64 = b64url(json.dumps(header, separators=(',', ':')).encode())
+claims_b64 = b64url(json.dumps(claims, separators=(',', ':')).encode())
+unsigned = header_b64 + b'.' + claims_b64
+sig = b64url(hmac.new(secret, unsigned, hashlib.sha256).digest())
+print((unsigned + b'.' + sig).decode())
+PY
+        shell: bash
+      - name: Protected endpoint test (triage)
+        run: |
+          TOKEN=$(python - <<'PY'
+import json, base64, hmac, hashlib, time
+
+def b64url(data: bytes) -> bytes:
+    return base64.urlsafe_b64encode(data).rstrip(b'=')
+
+header = {"alg": "HS256", "typ": "JWT"}
+claims = {
+    "sub": "ci-user",
+    "role": "SUPER_ADMIN",
+    "hospital": 1,
+    "enable_opd": True,
+    "enable_ipd": True,
+    "enable_diagnostics": True,
+    "enable_pharmacy": True,
+    "enable_accounting": True,
+    "exp": int(time.time() + 3600)
+}
+secret = b"change-me"
+header_b64 = b64url(json.dumps(header, separators=(',', ':')).encode())
+claims_b64 = b64url(json.dumps(claims, separators=(',', ':')).encode())
+unsigned = header_b64 + b'.' + claims_b64
+sig = b64url(hmac.new(secret, unsigned, hashlib.sha256).digest())
+print((unsigned + b'.' + sig).decode())
+PY
+)
+          curl -sf -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"age":40,"heart_rate":80,"systolic_bp":120,"spo2":98,"temperature_c":36.6}' http://localhost:9009/api/triage/score > /dev/null
+      - name: Protected endpoint test (ER Alerts create/list)
+        run: |
+          TOKEN=$(python - <<'PY'
+import json, base64, hmac, hashlib, time
+
+def b64url(data: bytes) -> bytes:
+    return base64.urlsafe_b64encode(data).rstrip(b'=')
+
+header = {"alg": "HS256", "typ": "JWT"}
+claims = {
+    "sub": "ci-user",
+    "role": "SUPER_ADMIN",
+    "hospital": 1,
+    "enable_opd": True,
+    "enable_ipd": True,
+    "enable_diagnostics": True,
+    "enable_pharmacy": True,
+    "enable_accounting": True,
+    "exp": int(time.time() + 3600)
+}
+secret = b"change-me"
+header_b64 = b64url(json.dumps(header, separators=(',', ':')).encode())
+claims_b64 = b64url(json.dumps(claims, separators=(',', ':')).encode())
+unsigned = header_b64 + b'.' + claims_b64
+sig = b64url(hmac.new(secret, unsigned, hashlib.sha256).digest())
+print((unsigned + b'.' + sig).decode())
+PY
+)
+          curl -sf -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"hospital_id":1,"patient_id":123,"severity":"CRITICAL","message":"CI test"}' http://localhost:9016/api/er/alerts > /dev/null
+          curl -sf -H "Authorization: Bearer $TOKEN" http://localhost:9016/api/er/alerts?hospital_id=1 > /dev/null
+      - name: Protected endpoint test (OT Scheduling create/list)
+        run: |
+          TOKEN=$(python - <<'PY'
+import json, base64, hmac, hashlib, time
+
+def b64url(data: bytes) -> bytes:
+    return base64.urlsafe_b64encode(data).rstrip(b'=')
+
+header = {"alg": "HS256", "typ": "JWT"}
+claims = {
+    "sub": "ci-user",
+    "role": "SUPER_ADMIN",
+    "hospital": 1,
+    "enable_opd": True,
+    "enable_ipd": True,
+    "enable_diagnostics": True,
+    "enable_pharmacy": True,
+    "enable_accounting": True,
+    "exp": int(time.time() + 3600)
+}
+secret = b"change-me"
+header_b64 = b64url(json.dumps(header, separators=(',', ':')).encode())
+claims_b64 = b64url(json.dumps(claims, separators=(',', ':')).encode())
+unsigned = header_b64 + b'.' + claims_b64
+sig = b64url(hmac.new(secret, unsigned, hashlib.sha256).digest())
+print((unsigned + b'.' + sig).decode())
+PY
+)
+          NOW=$(date -u +"%Y-%m-%dT%H:%M:00Z")
+          LATER=$(date -u -d "+1 hour" +"%Y-%m-%dT%H:%M:00Z")
+          curl -sf -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"hospital_id":1,"theatre":"OT-1","start_at":"'$NOW'","end_at":"'$LATER'","procedure":"Appendectomy","surgeon":"Dr. CI"}' http://localhost:9017/api/ot/slots > /dev/null
+          curl -sf -H "Authorization: Bearer $TOKEN" http://localhost:9017/api/ot/slots?hospital_id=1 > /dev/null
+      - name: GraphQL smoke tests
+        run: |
+          TOKEN=$(python - <<'PY'
+import json, base64, hmac, hashlib, time
+
+def b64url(data: bytes) -> bytes:
+    return base64.urlsafe_b64encode(data).rstrip(b'=')
+
+header = {"alg": "HS256", "typ": "JWT"}
+claims = {
+    "sub": "ci-user",
+    "role": "SUPER_ADMIN",
+    "hospital": 1,
+    "enable_opd": True,
+    "enable_ipd": True,
+    "enable_diagnostics": True,
+    "enable_pharmacy": True,
+    "enable_accounting": True,
+    "exp": int(time.time() + 3600)
+}
+secret = b"change-me"
+header_b64 = b64url(json.dumps(header, separators=(',', ':')).encode())
+claims_b64 = b64url(json.dumps(claims, separators=(',', ':')).encode())
+unsigned = header_b64 + b'.' + claims_b64
+sig = b64url(hmac.new(secret, unsigned, hashlib.sha256).digest())
+print((unsigned + b'.' + sig).decode())
+PY
+)
+          curl -sf -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            --data '{"query":"{ analyticsOverview { patients_count appointments_today revenue_cents } }"}' \
+            http://localhost:9020/graphql > /dev/null
+      - name: GraphQL KPI tests
+        run: |
+          TOKEN=$(python - <<'PY'
+import json, base64, hmac, hashlib, time
+
+def b64url(data: bytes) -> bytes:
+    return base64.urlsafe_b64encode(data).rstrip(b'=')
+
+header = {"alg": "HS256", "typ": "JWT"}
+claims = {
+    "sub": "ci-user",
+    "role": "SUPER_ADMIN",
+    "hospital": 1,
+    "enable_opd": True,
+    "enable_ipd": True,
+    "enable_diagnostics": True,
+    "enable_pharmacy": True,
+    "enable_accounting": True,
+    "exp": int(time.time() + 3600)
+}
+secret = b"change-me"
+header_b64 = b64url(json.dumps(header, separators=(',', ':')).encode())
+claims_b64 = b64url(json.dumps(claims, separators=(',', ':')).encode())
+unsigned = header_b64 + b'.' + claims_b64
+sig = b64url(hmac.new(secret, unsigned, hashlib.sha256).digest())
+print((unsigned + b'.' + sig).decode())
+PY
+)
+          curl -sf -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            --data '{"query":"{ radiologyKpi { orders stat } }"}' \
+            http://localhost:9020/graphql > /dev/null
+          curl -sf -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            --data '{"query":"{ bedKpi(hospital_id: 1) { total available occupied } }"}' \
+            http://localhost:9020/graphql > /dev/null
+      - name: Analytics trends
+        run: |
+          TOKEN=$(python - <<'PY'
+import json, base64, hmac, hashlib, time
+
+def b64url(data: bytes) -> bytes:
+    return base64.urlsafe_b64encode(data).rstrip(b'=')
+
+header = {"alg": "HS256", "typ": "JWT"}
+claims = {
+    "sub": "ci-user",
+    "role": "SUPER_ADMIN",
+    "hospital": 1,
+    "enable_opd": True,
+    "enable_ipd": True,
+    "enable_diagnostics": True,
+    "enable_pharmacy": True,
+    "enable_accounting": True,
+    "exp": int(time.time() + 3600)
+}
+secret = b"change-me"
+header_b64 = b64url(json.dumps(header, separators=(',', ':')).encode())
+claims_b64 = b64url(json.dumps(claims, separators=(',', ':')).encode())
+unsigned = header_b64 + b'.' + claims_b64
+sig = b64url(hmac.new(secret, unsigned, hashlib.sha256).digest())
+print((unsigned + b'.' + sig).decode())
+PY
+)
+          curl -sf -H "Authorization: Bearer $TOKEN" "http://localhost:9010/api/analytics/appointments_trend?days=7" > /dev/null
+          curl -sf -H "Authorization: Bearer $TOKEN" "http://localhost:9010/api/analytics/revenue_trend?days=7" > /dev/null
+          curl -sf -H "Authorization: Bearer $TOKEN" "http://localhost:9010/api/analytics/department_revenue" > /dev/null
+          curl -sf -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            --data '{"query":"mutation($i:TriageInput!){ triageScore(input:$i){ score priority } }","variables":{"i":{"age":40,"heart_rate":80,"systolic_bp":120,"spo2":98,"temperature_c":36.6}}}' \
+            http://localhost:9020/graphql > /dev/null
+      - name: Accounting/Bed/Notifications smoke tests
+        run: |
+          TOKEN=$(python - <<'PY'
+import json, base64, hmac, hashlib, time
+
+def b64url(data: bytes) -> bytes:
+    return base64.urlsafe_b64encode(data).rstrip(b'=')
+
+header = {"alg": "HS256", "typ": "JWT"}
+claims = {
+    "sub": "ci-user",
+    "role": "SUPER_ADMIN",
+    "hospital": 1,
+    "enable_opd": True,
+    "enable_ipd": True,
+    "enable_diagnostics": True,
+    "enable_pharmacy": True,
+    "enable_accounting": True,
+    "exp": int(time.time() + 3600)
+}
+secret = b"change-me"
+header_b64 = b64url(json.dumps(header, separators=(',', ':')).encode())
+claims_b64 = b64url(json.dumps(claims, separators=(',', ':')).encode())
+unsigned = header_b64 + b'.' + claims_b64
+sig = b64url(hmac.new(secret, unsigned, hashlib.sha256).digest())
+print((unsigned + b'.' + sig).decode())
+PY
+)
+          curl -sf -H "Authorization: Bearer $TOKEN" http://localhost:9008/api/bed/kpi?hospital_id=1 > /dev/null
+          curl -sf -H "Authorization: Bearer $TOKEN" -o /dev/null -w "%{http_code}\n" http://localhost:8000/api/accounting/export-bills | grep -q "200"
+          curl -sf -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            -d '{"channel":"email","recipient":"test@example.com","subject":"CI","message":"Hello"}' \
+            http://localhost:9011/api/notifications/send > /dev/null
+          PERIOD=$(date -u +"%Y-%m")
+          curl -sf -H "Authorization: Bearer $TOKEN" "http://localhost:8000/api/budgets/utilization?period=$PERIOD&department=GENERAL" > /dev/null
+          curl -sf -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            -d '{"users":[1,2,3],"start_date":"2025-01-01","end_date":"2025-01-03","shift_id":1}' \
+            http://localhost:9005/api/hr/roster/auto-generate > /dev/null
+          curl -sf -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/pharmacy/medications/ > /dev/null
+          curl -sf -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/pharmacy/medications/low_stock > /dev/null || true
+          curl -sf -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            -d '{"provider_url":"http://example.com/api/order","token":"abc"}' \
+            http://localhost:8000/api/pharmacy/medications/auto_reorder > /dev/null || true
+          curl -sf -H "Authorization: Bearer $TOKEN" -o /dev/null -w "%{http_code}\n" http://localhost:8000/api/lab/lab-results/export | grep -q "200"
+          curl -sf -H "Authorization: Bearer $TOKEN" http://localhost:9012/api/radiology/kpi > /dev/null

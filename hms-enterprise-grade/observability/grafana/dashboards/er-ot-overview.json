@@ -1,0 +1,51 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "type": "stat",
+      "title": "ER Alerts QPS",
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        {"expr": "sum(rate(http_requests_total{job=\"er_alerts\"}[5m]))"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "OT Slots QPS",
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 0},
+      "targets": [
+        {"expr": "sum(rate(http_requests_total{job=\"ot_scheduling\"}[5m]))"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "ER p95 Latency",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"er_alerts\"}[5m])) by (le))"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "OT p95 Latency",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"ot_scheduling\"}[5m])) by (le))"}
+      ]
+    }
+  ],
+  "schemaVersion": 37,
+  "style": "dark",
+  "tags": ["hms", "er", "ot"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timepicker": {},
+  "timezone": "",
+  "title": "ER and OT Overview",
+  "version": 1
+}

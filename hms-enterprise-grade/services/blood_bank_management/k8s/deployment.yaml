@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blood-bank-management
+  labels:
+    app: blood-bank-management
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: blood-bank-management
+  template:
+    metadata:
+      labels:
+        app: blood-bank-management
+    spec:
+      containers:
+      - name: blood-bank-management
+        image: blood-bank-management:latest
+        ports:
+        - containerPort: 8007
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: blood-bank-secrets
+              key: database-url
+        - name: DEBUG
+          value: 'false'
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 250m
+          limits:
+            memory: 512Mi
+            cpu: 500m
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8007
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8007
+          initialDelaySeconds: 5
+          periodSeconds: 5

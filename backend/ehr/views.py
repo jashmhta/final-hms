@@ -1,13 +1,4 @@
 import os
-<<<<<<< HEAD
-
-from core.permissions import ModuleEnabledPermission
-from django.shortcuts import render
-from rest_framework import viewsets
-from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAuthenticated
-
-=======
 
 from django.shortcuts import render
 from rest_framework import viewsets
@@ -16,7 +7,6 @@ from rest_framework.permissions import IsAuthenticated
 
 from core.permissions import ModuleEnabledPermission
 
->>>>>>> transform-refactor
 from .models import Encounter, EncounterAttachment, EncounterNote
 from .serializers import (
     EncounterAttachmentSerializer,

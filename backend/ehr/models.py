@@ -1,13 +1,11 @@
 import uuid
 
-<<<<<<< HEAD
-from core.models import TenantModel, TimeStampedModel
-=======
->>>>>>> transform-refactor
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 from encrypted_model_fields.fields import EncryptedTextField
+
+from core.models import TenantModel, TimeStampedModel
 
 <<<<<<< HEAD
 =======
@@ -78,26 +76,18 @@ class Encounter(TenantModel):
         "users.User", blank=True, related_name="consulting_encounters"
     )
     appointment = models.OneToOneField(
-<<<<<<< HEAD
-        "appointments.Appointment", on_delete=models.SET_NULL, null=True, blank=True
-=======
         "appointments.Appointment",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
->>>>>>> transform-refactor
     )
 
     # Encounter Details
     encounter_number = models.CharField(max_length=50, db_index=True, default="TEMP")
     encounter_type = models.CharField(
-<<<<<<< HEAD
-        max_length=20, choices=EncounterType.choices, default=EncounterType.OUTPATIENT
-=======
         max_length=20,
         choices=EncounterType.choices,
         default=EncounterType.OUTPATIENT,
->>>>>>> transform-refactor
     )
     encounter_status = models.CharField(
         max_length=15,
@@ -176,12 +166,8 @@ class Encounter(TenantModel):
         ]
 
     def __str__(self) -> str:
-<<<<<<< HEAD
-        return f"{self.patient} - {self.encounter_type} on {self.scheduled_start.date() if self.scheduled_start else 'TBD'}"
-=======
         date_str = self.scheduled_start.date() if self.scheduled_start else "TBD"
         return f"{self.patient} - {self.encounter_type} on {date_str}"
->>>>>>> transform-refactor
 
     def save(self, *args, **kwargs):
         if not self.encounter_number:

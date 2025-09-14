@@ -10,11 +10,8 @@ from .models import (
     AppointmentTemplate,
     Resource,
     WaitList,
-<<<<<<< HEAD
-=======
     OTSlot,
     OTBooking,
->>>>>>> transform-refactor
 )
 
 

@@ -1,11 +1,8 @@
 from core.models import TenantModel, TimeStampedModel
 from django.db import models
-<<<<<<< HEAD
-=======
 from django.utils import timezone
 from datetime import timedelta
 from django.core.exceptions import ValidationError
->>>>>>> transform-refactor
 
 
 class Medication(TenantModel):

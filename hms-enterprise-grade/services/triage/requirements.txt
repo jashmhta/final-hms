@@ -1,0 +1,10 @@
+fastapi==0.115.5
+uvicorn[standard]==0.32.0
+pydantic==2.9.2
+opentelemetry-distro
+opentelemetry-exporter-otlp
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-requests
+SQLAlchemy==2.0.36
+psycopg2-binary==2.9.10
+requests==2.32.3

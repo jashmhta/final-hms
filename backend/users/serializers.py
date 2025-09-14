@@ -1,24 +1,6 @@
-<<<<<<< HEAD
-from django.contrib.auth import authenticate, get_user_model
-from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import ValidationError
-from hospitals.models import HospitalPlan
-from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-
-from .models import (
-    Department,
-    User,
-    UserCredential,
-    UserLoginHistory,
-    UserPermissionGroup,
-    UserSession,
-)
-=======
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
->>>>>>> transform-refactor
 
 from hospitals.models import HospitalPlan
 

@@ -1,17 +1,5 @@
 import json
 import os
-<<<<<<< HEAD
-
-from appointments.models import Appointment
-from billing.models import Bill, Payment
-from django.contrib.contenttypes.models import ContentType
-from django.db.models.signals import post_delete, post_save
-from django.dispatch import receiver
-from django.forms.models import model_to_dict
-from patients.models import Patient
-from pharmacy.models import Prescription
-
-=======
 
 from appointments.models import Appointment
 from billing.models import Bill, Payment
@@ -23,7 +11,6 @@ from django.forms.models import model_to_dict
 from patients.models import Patient
 from pharmacy.models import Prescription
 
->>>>>>> transform-refactor
 from .audit import send_audit_event
 from .models import AuditLog
 

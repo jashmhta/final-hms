@@ -1,0 +1,6 @@
+************* Module total
+total:1:0: F0001: No module named total (fatal)
+************* Module total
+total:1:0: F0001: No module named total (fatal)
+************* Module total
+total:1:0: F0001: No module named total (fatal)
