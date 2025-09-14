@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
-import { 
+import {
   Building2,
   Users,
   DollarSign,
@@ -112,7 +112,7 @@ export function ERPModule() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -130,7 +130,7 @@ export function ERPModule() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -148,7 +148,7 @@ export function ERPModule() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -257,8 +257,8 @@ export function ERPModule() {
                   {expenseBreakdown.map((item, index) => (
                     <div key={item.name} className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
+                        <div
+                          className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: COLORS[index % COLORS.length] }}
                         ></div>
                         <span className="text-sm text-gray-700">{item.name}</span>
@@ -326,7 +326,7 @@ export function ERPModule() {
                   </div>
                 </DialogContent>
               </Dialog>
-              
+
               <Dialog open={isAddPOOpen} onOpenChange={setIsAddPOOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm">
@@ -420,8 +420,8 @@ export function ERPModule() {
                         <p className="text-xs text-gray-500">₹{order.amount.toLocaleString()} • {order.items} items</p>
                       </div>
                       <div className="text-right">
-                        <Badge 
-                          variant={order.status === 'Delivered' ? 'default' : 
+                        <Badge
+                          variant={order.status === 'Delivered' ? 'default' :
                                  order.status === 'In Transit' ? 'secondary' : 'outline'}
                         >
                           {order.status}
@@ -443,8 +443,8 @@ export function ERPModule() {
             <div className="flex space-x-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input 
-                  placeholder="Search assets..." 
+                <Input
+                  placeholder="Search assets..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 w-64"
@@ -490,7 +490,7 @@ export function ERPModule() {
                           ₹{(asset.value / 100000).toFixed(1)}L
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge 
+                          <Badge
                             variant={asset.status === 'Operational' ? 'default' : 'secondary'}
                             className={asset.status === 'Operational' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}
                           >
@@ -512,7 +512,7 @@ export function ERPModule() {
         {/* Financial Control Tab */}
         <TabsContent value="finance" className="space-y-6">
           <h3 className="text-lg text-gray-900">Financial Management & Control</h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4">
@@ -528,7 +528,7 @@ export function ERPModule() {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -543,7 +543,7 @@ export function ERPModule() {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -581,7 +581,7 @@ export function ERPModule() {
         {/* Strategic Planning Tab */}
         <TabsContent value="planning" className="space-y-6">
           <h3 className="text-lg text-gray-900">Strategic Planning & Forecasting</h3>
-          
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>

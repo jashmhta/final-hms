@@ -4,7 +4,11 @@ from appointments.models import Appointment, AppointmentStatus
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
+<<<<<<< HEAD
 from hospitals.models import Hospital
+=======
+from hospitals.models import Hospital, Plan, HospitalPlan
+>>>>>>> transform-refactor
 from hr.models import DutyRoster, Shift
 from patients.models import Patient
 from users.models import UserRole
@@ -13,6 +17,7 @@ from users.models import UserRole
 class AvailableSlotsTest(TestCase):
     def setUp(self):
         self.h = Hospital.objects.create(name="H", code="h")
+<<<<<<< HEAD
         User = get_user_model()
         self.doctor = User.objects.create_user(
             username="doc", password="x", role=UserRole.DOCTOR, hospital=self.h
@@ -20,6 +25,25 @@ class AvailableSlotsTest(TestCase):
         # Create a patient record
         self.patient = Patient.objects.create(
             hospital=self.h, first_name="Pat", last_name="Ient"
+=======
+        self.plan = Plan.objects.create(enable_opd=True)
+        self.hospital_plan = HospitalPlan.objects.create(
+            hospital=self.h, plan=self.plan
+        )
+        User = get_user_model()
+        self.doctor = User.objects.create_user(
+            username="doc",
+            password="x",
+            role=UserRole.ATTENDING_PHYSICIAN,
+            hospital=self.h,
+        )
+        # Create a patient record
+        self.patient = Patient.objects.create(
+            hospital=self.h,
+            first_name="Pat",
+            last_name="Ient",
+            date_of_birth=date.today() - timedelta(days=365 * 30),
+>>>>>>> transform-refactor
         )
         self.shift = Shift.objects.create(
             hospital=self.h, name="Day", start_time=time(9, 0), end_time=time(10, 0)

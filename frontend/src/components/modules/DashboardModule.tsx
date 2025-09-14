@@ -176,7 +176,7 @@ export function DashboardModule() {
                     </div>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
+                    <div
                       className={`h-2 rounded-full ${
                         dept.percentage >= 90 ? 'bg-red-600' :
                         dept.percentage >= 80 ? 'bg-orange-600' :

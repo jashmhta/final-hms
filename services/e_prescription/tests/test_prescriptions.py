@@ -1,9 +1,9 @@
+import models
 import pytest
 from fastapi.testclient import TestClient
+from main import app, get_db
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from main import app, get_db
-import models
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 
@@ -14,6 +14,7 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 models.Base.metadata.create_all(bind=engine)
 
+
 def override_get_db():
     try:
         db = TestingSessionLocal()
@@ -21,9 +22,11 @@ def override_get_db():
     finally:
         db.close()
 
+
 app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
+
 
 def test_create_prescription():
     response = client.post(
@@ -39,10 +42,10 @@ def test_create_prescription():
                     "frequency": "twice daily",
                     "duration": "7 days",
                     "quantity": 14,
-                    "instructions": "Take after food"
+                    "instructions": "Take after food",
                 }
-            ]
-        }
+            ],
+        },
     )
     assert response.status_code == 200
     data = response.json()
@@ -51,10 +54,12 @@ def test_create_prescription():
     assert data["diagnosis"] == "Common cold"
     assert len(data["items"]) == 1
 
+
 def test_get_prescriptions():
     response = client.get("/prescriptions/")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
+
 
 def test_health_check():
     response = client.get("/health")

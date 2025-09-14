@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
+
 
 class SecurityEventType(str, Enum):
     LOGIN_ATTEMPT = "login_attempt"
@@ -11,11 +13,13 @@ class SecurityEventType(str, Enum):
     SYSTEM_ALERT = "system_alert"
     COMPLIANCE_VIOLATION = "compliance_violation"
 
+
 class SecurityEventSeverity(str, Enum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
+
 
 class SecurityEventBase(BaseModel):
     event_id: str
@@ -30,8 +34,10 @@ class SecurityEventBase(BaseModel):
     details: Dict[str, Any]
     status: str
 
+
 class SecurityEventCreate(SecurityEventBase):
     pass
+
 
 class SecurityEvent(SecurityEventBase):
     id: int
@@ -40,6 +46,7 @@ class SecurityEvent(SecurityEventBase):
 
     class Config:
         from_attributes = True
+
 
 class AuditLogBase(BaseModel):
     log_id: str
@@ -56,8 +63,10 @@ class AuditLogBase(BaseModel):
     status: str
     details: Optional[str] = None
 
+
 class AuditLogCreate(AuditLogBase):
     pass
+
 
 class AuditLog(AuditLogBase):
     id: int
@@ -65,6 +74,7 @@ class AuditLog(AuditLogBase):
 
     class Config:
         from_attributes = True
+
 
 class SecurityPolicyBase(BaseModel):
     policy_id: str
@@ -76,8 +86,10 @@ class SecurityPolicyBase(BaseModel):
     version: int = 1
     created_by: str
 
+
 class SecurityPolicyCreate(SecurityPolicyBase):
     pass
+
 
 class SecurityPolicy(SecurityPolicyBase):
     id: int
@@ -86,6 +98,7 @@ class SecurityPolicy(SecurityPolicyBase):
 
     class Config:
         from_attributes = True
+
 
 class AccessControlRuleBase(BaseModel):
     rule_id: str
@@ -98,8 +111,10 @@ class AccessControlRuleBase(BaseModel):
     is_active: bool = True
     created_by: str
 
+
 class AccessControlRuleCreate(AccessControlRuleBase):
     pass
+
 
 class AccessControlRule(AccessControlRuleBase):
     id: int
@@ -108,6 +123,7 @@ class AccessControlRule(AccessControlRuleBase):
 
     class Config:
         from_attributes = True
+
 
 class IncidentBase(BaseModel):
     incident_id: str
@@ -123,8 +139,10 @@ class IncidentBase(BaseModel):
     remediation: Optional[str] = None
     affected_systems: Dict[str, Any]
 
+
 class IncidentCreate(IncidentBase):
     pass
+
 
 class Incident(IncidentBase):
     id: int
@@ -133,6 +151,7 @@ class Incident(IncidentBase):
 
     class Config:
         from_attributes = True
+
 
 class ComplianceCheckBase(BaseModel):
     check_id: str
@@ -144,8 +163,10 @@ class ComplianceCheckBase(BaseModel):
     last_check: datetime
     next_check: datetime
 
+
 class ComplianceCheckCreate(ComplianceCheckBase):
     pass
+
 
 class ComplianceCheck(ComplianceCheckBase):
     id: int
@@ -154,6 +175,7 @@ class ComplianceCheck(ComplianceCheckBase):
 
     class Config:
         from_attributes = True
+
 
 class EncryptionKeyBase(BaseModel):
     key_id: str
@@ -165,8 +187,10 @@ class EncryptionKeyBase(BaseModel):
     expires_at: Optional[datetime] = None
     rotated_at: Optional[datetime] = None
 
+
 class EncryptionKeyCreate(EncryptionKeyBase):
     pass
+
 
 class EncryptionKey(EncryptionKeyBase):
     id: int

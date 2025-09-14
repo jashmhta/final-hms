@@ -1,6 +1,10 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+<<<<<<< HEAD
 from hospitals.models import Hospital
+=======
+from hospitals.models import Hospital, Plan, HospitalPlan
+>>>>>>> transform-refactor
 from pharmacy.models import Medication
 from users.models import UserRole
 
@@ -8,6 +12,13 @@ from users.models import UserRole
 class LowStockTest(TestCase):
     def setUp(self):
         self.h = Hospital.objects.create(name="H", code="h")
+<<<<<<< HEAD
+=======
+        plan = Plan.objects.create(name="Test Plan", enable_pharmacy=True)
+        hp = HospitalPlan.objects.create(hospital=self.h, plan=plan)
+        hp.enable_pharmacy = True
+        hp.save()
+>>>>>>> transform-refactor
         User = get_user_model()
         self.user = User.objects.create_user(
             username="u", password="x", role=UserRole.PHARMACIST, hospital=self.h
@@ -33,3 +44,9 @@ class LowStockTest(TestCase):
         )
         self.assertIn("MedA", names)
         self.assertNotIn("MedB", names)
+<<<<<<< HEAD
+=======
+
+
+from hospitals.models import Plan, HospitalPlan
+>>>>>>> transform-refactor

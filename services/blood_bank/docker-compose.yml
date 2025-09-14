@@ -7,20 +7,18 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     ports:
-      - "5433:5432"
+    - 5433:5432
     volumes:
-      - blood_bank_data:/var/lib/postgresql/data
-  
+    - blood_bank_data:/var/lib/postgresql/data
   blood-bank-service:
     build: .
     ports:
-      - "8001:8001"
+    - 8001:8001
     environment:
       DATABASE_URL: postgresql://user:password@blood-bank-db:5432/blood_bank_db
     depends_on:
-      - blood-bank-db
+    - blood-bank-db
     volumes:
-      - .:/app
-
+    - .:/app
 volumes:
-  blood_bank_data:
+  blood_bank_data: null

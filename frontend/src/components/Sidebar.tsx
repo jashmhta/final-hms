@@ -1,10 +1,10 @@
-import { 
-  BarChart3, 
-  Users, 
-  UserCheck, 
-  Building, 
-  Calendar, 
-  CreditCard, 
+import {
+  BarChart3,
+  Users,
+  UserCheck,
+  Building,
+  Calendar,
+  CreditCard,
   Home,
   Stethoscope,
   Bed,
@@ -79,14 +79,14 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
                 {section.items.map((item) => {
                   const Icon = item.icon;
                   const isActive = activeModule === item.id;
-                  
+
                   return (
                     <Button
                       key={item.id}
                       variant="ghost"
                       className={`w-full justify-start h-10 px-3 text-sm transition-colors ${
-                        isActive 
-                          ? 'bg-teal-50 dark:bg-teal-900 text-teal-700 dark:text-teal-300 border-r-2 border-teal-500' 
+                        isActive
+                          ? 'bg-teal-50 dark:bg-teal-900 text-teal-700 dark:text-teal-300 border-r-2 border-teal-500'
                           : 'text-gray-700 dark:text-gray-300 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-700 dark:hover:text-teal-300'
                       }`}
                       onClick={() => onModuleChange(item.id)}
@@ -103,7 +103,7 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
             </div>
           ))}
         </nav>
-        
+
         <div className="mt-8 p-4 bg-teal-50 dark:bg-teal-900 rounded-lg">
           <div className="flex items-center space-x-2 mb-2">
             <BarChart3 className="h-5 w-5 text-teal-600 dark:text-teal-400" />

@@ -1,11 +1,11 @@
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta
 
-from main import app
+import pytest
 from database import Base, get_db
+from fastapi.testclient import TestClient
+from main import app
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 # Test database
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
@@ -16,6 +16,7 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 Base.metadata.create_all(bind=engine)
 
+
 def override_get_db():
     try:
         db = TestingSessionLocal()
@@ -23,19 +24,23 @@ def override_get_db():
     finally:
         db.close()
 
+
 app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
+
 
 def test_root():
     response = client.get("/")
     assert response.status_code == 200
     assert response.json()["message"] == "OPD Management Service is running"
 
+
 def test_health_check():
     response = client.get("/health")
     assert response.status_code == 200
     assert "healthy" in response.json()["status"]
+
 
 def test_create_patient():
     patient_data = {
@@ -45,11 +50,12 @@ def test_create_patient():
         "date_of_birth": "1990-01-01T00:00:00",
         "gender": "Male",
         "contact_number": "+1234567890",
-        "email": "john.doe@example.com"
+        "email": "john.doe@example.com",
     }
     response = client.post("/patients/", json=patient_data)
     assert response.status_code == 200
     assert response.json()["first_name"] == "John"
+
 
 def test_create_doctor():
     doctor_data = {
@@ -61,11 +67,12 @@ def test_create_doctor():
         "contact_number": "+1234567891",
         "email": "jane.smith@example.com",
         "consultation_fee": 150.0,
-        "working_hours": {"hours": [{"start": "09:00", "end": "17:00"}]}
+        "working_hours": {"hours": [{"start": "09:00", "end": "17:00"}]},
     }
     response = client.post("/doctors/", json=doctor_data)
     assert response.status_code == 200
     assert response.json()["specialization"] == "Cardiology"
+
 
 def test_create_appointment():
     appointment_data = {
@@ -75,11 +82,12 @@ def test_create_appointment():
         "appointment_date": "2024-01-15T10:00:00",
         "status": "scheduled",
         "consultation_type": "general",
-        "created_by": "system"
+        "created_by": "system",
     }
     response = client.post("/appointments/", json=appointment_data)
     assert response.status_code == 200
     assert response.json()["status"] == "scheduled"
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

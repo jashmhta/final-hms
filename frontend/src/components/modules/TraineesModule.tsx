@@ -295,8 +295,8 @@ export function TraineesModule() {
                         <span className="text-sm text-gray-600">{trainee.progress}%</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${getProgressColor(trainee.progress)}`} 
+                        <div
+                          className={`h-2 rounded-full ${getProgressColor(trainee.progress)}`}
                           style={{ width: `${trainee.progress}%` }}
                         ></div>
                       </div>

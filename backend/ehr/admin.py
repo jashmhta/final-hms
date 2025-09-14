@@ -34,7 +34,16 @@ class EncounterAdmin(admin.ModelAdmin):
         "primary_physician__username",
         "encounter_number",
     )
+<<<<<<< HEAD
     autocomplete_fields = ("patient", "primary_physician", "hospital", "appointment")
+=======
+    autocomplete_fields = (
+        "patient",
+        "primary_physician",
+        "hospital",
+        "appointment",
+    )
+>>>>>>> transform-refactor
     readonly_fields = ("encounter_number", "created_at", "updated_at")
     filter_horizontal = ("consulting_physicians",)
 
@@ -51,7 +60,14 @@ class VitalSignsAdmin(admin.ModelAdmin):
         "recorded_at",
     )
     list_filter = ("encounter__hospital", "recorded_by", "recorded_at")
+<<<<<<< HEAD
     search_fields = ("encounter__patient__first_name", "encounter__patient__last_name")
+=======
+    search_fields = (
+        "encounter__patient__first_name",
+        "encounter__patient__last_name",
+    )
+>>>>>>> transform-refactor
     autocomplete_fields = ("encounter", "recorded_by")
 
 
@@ -64,7 +80,16 @@ class AssessmentAdmin(admin.ModelAdmin):
         "diagnosis_description",
         "status",
     )
+<<<<<<< HEAD
     list_filter = ("encounter__hospital", "diagnosis_type", "status", "severity")
+=======
+    list_filter = (
+        "encounter__hospital",
+        "diagnosis_type",
+        "status",
+        "severity",
+    )
+>>>>>>> transform-refactor
     search_fields = (
         "encounter__patient__first_name",
         "encounter__patient__last_name",
@@ -91,20 +116,55 @@ class PlanOfCareAdmin(admin.ModelAdmin):
 
 @admin.register(ClinicalNote)
 class ClinicalNoteAdmin(admin.ModelAdmin):
+<<<<<<< HEAD
     list_display = ("encounter", "note_type", "author", "is_signed", "created_at")
     list_filter = ("encounter__hospital", "note_type", "is_signed", "is_amended")
+=======
+    list_display = (
+        "encounter",
+        "note_type",
+        "author",
+        "is_signed",
+        "created_at",
+    )
+    list_filter = (
+        "encounter__hospital",
+        "note_type",
+        "is_signed",
+        "is_amended",
+    )
+>>>>>>> transform-refactor
     search_fields = (
         "encounter__patient__first_name",
         "encounter__patient__last_name",
         "content",
     )
+<<<<<<< HEAD
     autocomplete_fields = ("encounter", "author", "co_signed_by", "original_note")
+=======
+    autocomplete_fields = (
+        "encounter",
+        "author",
+        "co_signed_by",
+        "original_note",
+    )
+>>>>>>> transform-refactor
     readonly_fields = ("created_at", "updated_at", "signed_at")
 
 
 @admin.register(Allergy)
 class AllergyAdmin(admin.ModelAdmin):
+<<<<<<< HEAD
     list_display = ("patient", "allergen", "allergen_type", "severity", "status")
+=======
+    list_display = (
+        "patient",
+        "allergen",
+        "allergen_type",
+        "severity",
+        "status",
+    )
+>>>>>>> transform-refactor
     list_filter = ("patient__hospital", "allergen_type", "severity", "status")
     search_fields = (
         "patient__first_name",

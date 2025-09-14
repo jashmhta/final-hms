@@ -147,13 +147,13 @@ export function Header({ onModuleChange }: HeaderProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  
+
   // Price estimation states
   const [isPriceDialogOpen, setIsPriceDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [estimatedTotal, setEstimatedTotal] = useState(0);
-  
+
   // Dark mode state
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -169,9 +169,9 @@ export function Header({ onModuleChange }: HeaderProps) {
 
   const searchData = (searchQuery: string): SearchResult[] => {
     if (!searchQuery.trim()) return [];
-    
+
     return allSearchData
-      .filter(item => 
+      .filter(item =>
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.subtitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -280,10 +280,10 @@ export function Header({ onModuleChange }: HeaderProps) {
   const handleServiceToggle = (serviceName: string, price: number) => {
     setSelectedServices(prev => {
       const isSelected = prev.includes(serviceName);
-      const newSelected = isSelected 
+      const newSelected = isSelected
         ? prev.filter(s => s !== serviceName)
         : [...prev, serviceName];
-      
+
       // Update total
       const newTotal = newSelected.reduce((total, service) => {
         const allServices = Object.values(serviceCategories).flatMap(cat => cat.services);
@@ -291,7 +291,7 @@ export function Header({ onModuleChange }: HeaderProps) {
         return total + servicePrice;
       }, 0);
       setEstimatedTotal(newTotal);
-      
+
       return newSelected;
     });
   };
@@ -347,7 +347,7 @@ export function Header({ onModuleChange }: HeaderProps) {
                   <span>{results.length} results found</span>
                   <span>Navigate with ↑↓ • Enter to select</span>
                 </div>
-                
+
                 {results.map((result, index) => {
                   const Icon = getCategoryIcon(result.category);
                   return (
@@ -408,7 +408,7 @@ export function Header({ onModuleChange }: HeaderProps) {
             />
             <Moon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
           </div>
-          
+
           <Dialog open={isPriceDialogOpen} onOpenChange={setIsPriceDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="bg-teal-50 hover:bg-teal-100 border-teal-200 text-teal-700 dark:bg-teal-900 dark:hover:bg-teal-800 dark:border-teal-600 dark:text-teal-300">
@@ -426,7 +426,7 @@ export function Header({ onModuleChange }: HeaderProps) {
                   Get instant price estimates for common hospital services. Select services to calculate total cost.
                 </p>
               </DialogHeader>
-              
+
               <div className="space-y-6">
                 {/* Category Selection */}
                 <div>
@@ -449,11 +449,11 @@ export function Header({ onModuleChange }: HeaderProps) {
                     <h3 className="text-lg text-gray-900">{serviceCategories[selectedCategory as keyof typeof serviceCategories].name}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {serviceCategories[selectedCategory as keyof typeof serviceCategories].services.map((service) => (
-                        <Card 
+                        <Card
                           key={service.name}
                           className={`cursor-pointer transition-all ${
-                            selectedServices.includes(service.name) 
-                              ? 'ring-2 ring-teal-500 bg-teal-50' 
+                            selectedServices.includes(service.name)
+                              ? 'ring-2 ring-teal-500 bg-teal-50'
                               : 'hover:bg-gray-50'
                           }`}
                           onClick={() => handleServiceToggle(service.name, service.price)}
@@ -490,11 +490,11 @@ export function Header({ onModuleChange }: HeaderProps) {
                         <CardContent>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             {category.services.slice(0, 4).map((service) => (
-                              <div 
+                              <div
                                 key={service.name}
                                 className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                                  selectedServices.includes(service.name) 
-                                    ? 'border-teal-500 bg-teal-50' 
+                                  selectedServices.includes(service.name)
+                                    ? 'border-teal-500 bg-teal-50'
                                     : 'border-gray-100 hover:bg-gray-50'
                                 }`}
                                 onClick={() => handleServiceToggle(service.name, service.price)}
@@ -512,9 +512,9 @@ export function Header({ onModuleChange }: HeaderProps) {
                             ))}
                           </div>
                           {category.services.length > 4 && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               className="mt-3 text-teal-600 hover:text-teal-700"
                               onClick={() => setSelectedCategory(key)}
                             >
@@ -556,14 +556,14 @@ export function Header({ onModuleChange }: HeaderProps) {
                         </div>
                       </div>
                       <div className="flex space-x-2 mt-4">
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={resetPriceEstimation}
                         >
                           Clear All
                         </Button>
-                        <Button 
+                        <Button
                           size="sm"
                           className="bg-teal-600 hover:bg-teal-700"
                           onClick={() => {
@@ -592,7 +592,7 @@ export function Header({ onModuleChange }: HeaderProps) {
               </div>
             </DialogContent>
           </Dialog>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center space-x-2 p-2">

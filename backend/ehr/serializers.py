@@ -6,7 +6,18 @@ from .models import Encounter, EncounterAttachment, EncounterNote
 class EncounterNoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = EncounterNote
+<<<<<<< HEAD
         fields = ["id", "encounter", "author", "content", "created_at", "updated_at"]
+=======
+        fields = [
+            "id",
+            "encounter",
+            "author",
+            "content",
+            "created_at",
+            "updated_at",
+        ]
+>>>>>>> transform-refactor
         read_only_fields = ["id", "created_at", "updated_at"]
 
 
@@ -46,4 +57,14 @@ class EncounterSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+<<<<<<< HEAD
         read_only_fields = ["id", "created_at", "updated_at", "notes", "attachments"]
+=======
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "notes",
+            "attachments",
+        ]
+>>>>>>> transform-refactor

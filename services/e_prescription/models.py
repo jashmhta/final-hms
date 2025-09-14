@@ -1,14 +1,26 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, Boolean, ForeignKey, Text, JSON
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime
 import enum
+from datetime import datetime
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
+
 class Medication(Base):
     __tablename__ = "medications"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True)
     generic_name = Column(String)
@@ -20,9 +32,10 @@ class Medication(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+
 class Prescription(Base):
     __tablename__ = "prescriptions"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, index=True)
     doctor_id = Column(Integer, index=True)
@@ -39,12 +52,13 @@ class Prescription(Base):
     expiry_date = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     medication = relationship("Medication")
+
 
 class Pharmacy(Base):
     __tablename__ = "pharmacies"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
     address = Column(String)
@@ -55,9 +69,10 @@ class Pharmacy(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+
 class PrescriptionDispatch(Base):
     __tablename__ = "prescription_dispatches"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     prescription_id = Column(Integer, ForeignKey("prescriptions.id"))
     pharmacy_id = Column(Integer, ForeignKey("pharmacies.id"))
@@ -67,13 +82,14 @@ class PrescriptionDispatch(Base):
     actual_pickup_date = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     prescription = relationship("Prescription")
     pharmacy = relationship("Pharmacy")
 
+
 class DrugInteraction(Base):
     __tablename__ = "drug_interactions"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     medication1_id = Column(Integer, ForeignKey("medications.id"))
     medication2_id = Column(Integer, ForeignKey("medications.id"))

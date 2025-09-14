@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
+
 
 class AppointmentStatus(str, Enum):
     SCHEDULED = "scheduled"
@@ -11,11 +13,13 @@ class AppointmentStatus(str, Enum):
     CANCELLED = "cancelled"
     NO_SHOW = "no_show"
 
+
 class ConsultationType(str, Enum):
     GENERAL = "general"
     SPECIALIST = "specialist"
     FOLLOW_UP = "follow_up"
     EMERGENCY = "emergency"
+
 
 class PatientBase(BaseModel):
     patient_id: str
@@ -32,8 +36,10 @@ class PatientBase(BaseModel):
     medical_history: Optional[Dict[str, Any]] = None
     insurance_details: Optional[Dict[str, Any]] = None
 
+
 class PatientCreate(PatientBase):
     pass
+
 
 class Patient(PatientBase):
     id: int
@@ -43,6 +49,7 @@ class Patient(PatientBase):
 
     class Config:
         from_attributes = True
+
 
 class DoctorBase(BaseModel):
     doctor_id: str
@@ -55,8 +62,10 @@ class DoctorBase(BaseModel):
     consultation_fee: float
     working_hours: Dict[str, Any]
 
+
 class DoctorCreate(DoctorBase):
     pass
+
 
 class Doctor(DoctorBase):
     id: int
@@ -66,6 +75,7 @@ class Doctor(DoctorBase):
 
     class Config:
         from_attributes = True
+
 
 class AppointmentBase(BaseModel):
     appointment_id: str
@@ -79,8 +89,10 @@ class AppointmentBase(BaseModel):
     notes: Optional[str] = None
     created_by: str
 
+
 class AppointmentCreate(AppointmentBase):
     pass
+
 
 class Appointment(AppointmentBase):
     id: int
@@ -89,6 +101,7 @@ class Appointment(AppointmentBase):
 
     class Config:
         from_attributes = True
+
 
 class ConsultationBase(BaseModel):
     consultation_id: str
@@ -105,8 +118,10 @@ class ConsultationBase(BaseModel):
     follow_up_date: Optional[datetime] = None
     notes: Optional[str] = None
 
+
 class ConsultationCreate(ConsultationBase):
     pass
+
 
 class Consultation(ConsultationBase):
     id: int
@@ -115,6 +130,7 @@ class Consultation(ConsultationBase):
 
     class Config:
         from_attributes = True
+
 
 class OPDBillBase(BaseModel):
     bill_id: str
@@ -128,8 +144,10 @@ class OPDBillBase(BaseModel):
     payment_method: Optional[str] = None
     insurance_claim_id: Optional[str] = None
 
+
 class OPDBillCreate(OPDBillBase):
     pass
+
 
 class OPDBill(OPDBillBase):
     id: int
@@ -139,10 +157,12 @@ class OPDBill(OPDBillBase):
     class Config:
         from_attributes = True
 
+
 class AppointmentSlot(BaseModel):
     doctor_id: int
     date: datetime
     available_slots: List[Dict[str, Any]]
+
 
 class OPDStatistics(BaseModel):
     total_patients: int
@@ -151,6 +171,7 @@ class OPDStatistics(BaseModel):
     revenue_today: float
     revenue_month: float
     average_wait_time: float
+
 
 class DoctorAvailability(BaseModel):
     doctor_id: int

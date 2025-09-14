@@ -1,14 +1,26 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, Boolean, ForeignKey, Text, JSON
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime
 import enum
+from datetime import datetime
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
+
 class BackupJob(Base):
     __tablename__ = "backup_jobs"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     job_name = Column(String, unique=True)
     description = Column(Text)
@@ -24,9 +36,10 @@ class BackupJob(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+
 class BackupExecution(Base):
     __tablename__ = "backup_executions"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     job_id = Column(Integer, ForeignKey("backup_jobs.id"))
     execution_id = Column(String, unique=True)
@@ -39,12 +52,13 @@ class BackupExecution(Base):
     error_message = Column(Text, nullable=True)
     checksum = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     job = relationship("BackupJob")
+
 
 class RecoveryJob(Base):
     __tablename__ = "recovery_jobs"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     backup_execution_id = Column(Integer, ForeignKey("backup_executions.id"))
     recovery_type = Column(String)  # full, partial, point_in_time
@@ -55,12 +69,13 @@ class RecoveryJob(Base):
     recovery_path = Column(String, nullable=True)
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     backup_execution = relationship("BackupExecution")
+
 
 class DisasterRecoveryPlan(Base):
     __tablename__ = "disaster_recovery_plans"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     plan_name = Column(String, unique=True)
     description = Column(Text)
@@ -75,9 +90,10 @@ class DisasterRecoveryPlan(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+
 class StorageConfiguration(Base):
     __tablename__ = "storage_configurations"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True)
     provider = Column(String)  # aws, azure, google, local

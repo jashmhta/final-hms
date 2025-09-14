@@ -10,7 +10,11 @@ class MedicationAdmin(admin.ModelAdmin):
         "strength",
         "form",
         "hospital",
+<<<<<<< HEAD
         "stock_quantity",
+=======
+        "total_stock_quantity",
+>>>>>>> transform-refactor
         "min_stock_level",
     )
     list_filter = ("hospital",)

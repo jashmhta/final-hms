@@ -8,7 +8,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -29,7 +28,14 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
+<<<<<<< HEAD
                 ("password", models.CharField(max_length=128, verbose_name="password")),
+=======
+                (
+                    "password",
+                    models.CharField(max_length=128, verbose_name="password"),
+                ),
+>>>>>>> transform-refactor
                 (
                     "last_login",
                     models.DateTimeField(
@@ -74,7 +80,13 @@ class Migration(migrations.Migration):
                 (
                     "email",
                     models.EmailField(
+<<<<<<< HEAD
                         blank=True, max_length=254, verbose_name="email address"
+=======
+                        blank=True,
+                        max_length=254,
+                        verbose_name="email address",
+>>>>>>> transform-refactor
                     ),
                 ),
                 (
@@ -96,7 +108,12 @@ class Migration(migrations.Migration):
                 (
                     "date_joined",
                     models.DateTimeField(
+<<<<<<< HEAD
                         default=django.utils.timezone.now, verbose_name="date joined"
+=======
+                        default=django.utils.timezone.now,
+                        verbose_name="date joined",
+>>>>>>> transform-refactor
                     ),
                 ),
                 (

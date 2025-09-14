@@ -43,13 +43,13 @@ export default function App() {
       case 'doctors':
         return <DoctorsModule />;
       case 'opd':
-        return <PlaceholderModule 
-          title="Outpatient Department (OPD)" 
+        return <PlaceholderModule
+          title="Outpatient Department (OPD)"
           description="OPD visits logging, consultation notes, prescriptions, and patient flow management"
         />;
       case 'ipd':
-        return <PlaceholderModule 
-          title="Inpatient Department (IPD)" 
+        return <PlaceholderModule
+          title="Inpatient Department (IPD)"
           description="Bed allocation, ward management, admission notes, progress notes, and discharge summaries"
         />;
       case 'emergency':
@@ -286,8 +286,8 @@ export default function App() {
           </div>
         </div>;
       case 'radiology':
-        return <PlaceholderModule 
-          title="Radiology & Imaging" 
+        return <PlaceholderModule
+          title="Radiology & Imaging"
           description="Scan requests (X-ray, CT, MRI, Ultrasound), image upload/viewer, and radiologist reports"
         />;
       case 'billing':
@@ -295,23 +295,23 @@ export default function App() {
       case 'erp':
         return <ERPModule />;
       case 'reports':
-        return <PlaceholderModule 
-          title="Reports & Analytics" 
+        return <PlaceholderModule
+          title="Reports & Analytics"
           description="Patient reports, revenue analysis, inventory usage, doctor performance, and custom report builder"
         />;
       case 'users':
-        return <PlaceholderModule 
-          title="User Management & Security" 
+        return <PlaceholderModule
+          title="User Management & Security"
           description="Role management (Admin, Doctor, Nurse, Receptionist), access control, and audit trails"
         />;
       case 'notifications':
-        return <PlaceholderModule 
-          title="Notifications & Communication" 
+        return <PlaceholderModule
+          title="Notifications & Communication"
           description="SMS/Email integration, appointment reminders, billing alerts, and internal messaging"
         />;
       case 'settings':
-        return <PlaceholderModule 
-          title="Settings & Configuration" 
+        return <PlaceholderModule
+          title="Settings & Configuration"
           description="Hospital info & branding, SMTP/SMS API config, backup & restore, and system settings"
         />;
       default:

@@ -83,7 +83,7 @@ export const appointmentsData = [
 
 export const doctors = [
   'Dr. James Smith',
-  'Dr. Sarah Williams', 
+  'Dr. Sarah Williams',
   'Dr. Michael Davis',
   'Dr. Emily Lee',
   'Dr. Robert Johnson'

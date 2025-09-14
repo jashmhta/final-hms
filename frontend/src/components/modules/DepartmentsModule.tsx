@@ -324,8 +324,8 @@ export function DepartmentsModule() {
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-teal-600 h-2 rounded-full" 
+                    <div
+                      className="bg-teal-600 h-2 rounded-full"
                       style={{ width: `${getOccupancyRate(department.occupiedBeds, department.totalBeds)}%` }}
                     ></div>
                   </div>
@@ -362,8 +362,8 @@ export function DepartmentsModule() {
                   <span className="text-sm text-gray-900">${(department.monthlyRevenue / 1000).toFixed(0)}K</span>
                 </div>
 
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full mt-4"
                   onClick={() => handleViewDetails(department)}
                 >

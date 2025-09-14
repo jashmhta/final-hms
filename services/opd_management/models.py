@@ -1,10 +1,23 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text, JSON, Float, Enum
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime
 import enum
+from datetime import datetime
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 
 Base = declarative_base()
+
 
 class AppointmentStatus(enum.Enum):
     SCHEDULED = "scheduled"
@@ -14,15 +27,17 @@ class AppointmentStatus(enum.Enum):
     CANCELLED = "cancelled"
     NO_SHOW = "no_show"
 
+
 class ConsultationType(enum.Enum):
     GENERAL = "general"
     SPECIALIST = "specialist"
     FOLLOW_UP = "follow_up"
     EMERGENCY = "emergency"
 
+
 class Patient(Base):
     __tablename__ = "patients"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(String, unique=True)
     first_name = Column(String)
@@ -41,9 +56,10 @@ class Patient(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+
 class Doctor(Base):
     __tablename__ = "doctors"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     doctor_id = Column(String, unique=True)
     first_name = Column(String)
@@ -58,9 +74,10 @@ class Doctor(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+
 class Appointment(Base):
     __tablename__ = "appointments"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     appointment_id = Column(String, unique=True)
     patient_id = Column(Integer, ForeignKey("patients.id"))
@@ -74,13 +91,14 @@ class Appointment(Base):
     created_by = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     patient = relationship("Patient")
     doctor = relationship("Doctor")
 
+
 class Consultation(Base):
     __tablename__ = "consultations"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     consultation_id = Column(String, unique=True)
     appointment_id = Column(Integer, ForeignKey("appointments.id"))
@@ -97,14 +115,15 @@ class Consultation(Base):
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     appointment = relationship("Appointment")
     patient = relationship("Patient")
     doctor = relationship("Doctor")
 
+
 class OPDBill(Base):
     __tablename__ = "opd_bills"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     bill_id = Column(String, unique=True)
     consultation_id = Column(Integer, ForeignKey("consultations.id"))
@@ -118,6 +137,6 @@ class OPDBill(Base):
     insurance_claim_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     consultation = relationship("Consultation")
     patient = relationship("Patient")

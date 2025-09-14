@@ -128,7 +128,7 @@ export function InvoiceCreationDialog({ isOpen, onOpenChange }: InvoiceCreationD
     const existingService = selectedServices.find(s => s.id === service.id);
     if (existingService) {
       // Increase quantity if service already exists
-      setSelectedServices(selectedServices.map(s => 
+      setSelectedServices(selectedServices.map(s =>
         s.id === service.id ? { ...s, quantity: s.quantity + 1 } : s
       ));
     } else {
@@ -151,7 +151,7 @@ export function InvoiceCreationDialog({ isOpen, onOpenChange }: InvoiceCreationD
     if (quantity <= 0) {
       handleRemoveService(serviceId);
     } else {
-      setSelectedServices(selectedServices.map(service => 
+      setSelectedServices(selectedServices.map(service =>
         service.id === serviceId ? { ...service, quantity } : service
       ));
     }
@@ -171,7 +171,7 @@ export function InvoiceCreationDialog({ isOpen, onOpenChange }: InvoiceCreationD
       paymentMethod,
       dueDate
     });
-    
+
     // Reset form and close dialog
     setPatientType('existing');
     setSelectedPatient('');
@@ -481,7 +481,7 @@ export function InvoiceCreationDialog({ isOpen, onOpenChange }: InvoiceCreationD
 
             {/* Action Buttons */}
             <div className="flex space-x-3">
-              <Button 
+              <Button
                 onClick={handleCreateInvoice}
                 className="flex-1 bg-teal-600 hover:bg-teal-700"
                 disabled={selectedServices.length === 0 || (patientType === 'existing' ? !selectedPatient : !newPatientData.name)}

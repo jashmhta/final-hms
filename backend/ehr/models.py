@@ -1,11 +1,19 @@
 import uuid
 
+<<<<<<< HEAD
 from core.models import TenantModel, TimeStampedModel
+=======
+>>>>>>> transform-refactor
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 from encrypted_model_fields.fields import EncryptedTextField
 
+<<<<<<< HEAD
+=======
+from core.models import TenantModel, TimeStampedModel
+
+>>>>>>> transform-refactor
 
 class EncounterType(models.TextChoices):
     INPATIENT = "INPATIENT", "Inpatient"
@@ -70,13 +78,26 @@ class Encounter(TenantModel):
         "users.User", blank=True, related_name="consulting_encounters"
     )
     appointment = models.OneToOneField(
+<<<<<<< HEAD
         "appointments.Appointment", on_delete=models.SET_NULL, null=True, blank=True
+=======
+        "appointments.Appointment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+>>>>>>> transform-refactor
     )
 
     # Encounter Details
     encounter_number = models.CharField(max_length=50, db_index=True, default="TEMP")
     encounter_type = models.CharField(
+<<<<<<< HEAD
         max_length=20, choices=EncounterType.choices, default=EncounterType.OUTPATIENT
+=======
+        max_length=20,
+        choices=EncounterType.choices,
+        default=EncounterType.OUTPATIENT,
+>>>>>>> transform-refactor
     )
     encounter_status = models.CharField(
         max_length=15,
@@ -155,7 +176,12 @@ class Encounter(TenantModel):
         ]
 
     def __str__(self) -> str:
+<<<<<<< HEAD
         return f"{self.patient} - {self.encounter_type} on {self.scheduled_start.date() if self.scheduled_start else 'TBD'}"
+=======
+        date_str = self.scheduled_start.date() if self.scheduled_start else "TBD"
+        return f"{self.patient} - {self.encounter_type} on {date_str}"
+>>>>>>> transform-refactor
 
     def save(self, *args, **kwargs):
         if not self.encounter_number:
@@ -632,3 +658,71 @@ class EncounterAttachment(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.encounter} - {self.description or self.file.name}"
+
+
+class ERTriage(TenantModel):
+    """Emergency Room Triage Assessment"""
+
+    encounter = models.OneToOneField(
+        Encounter, on_delete=models.CASCADE, related_name="triage"
+    )
+
+    # Triage Level (ESI - Emergency Severity Index)
+    triage_level = models.CharField(
+        max_length=10,
+        choices=[
+            ("LEVEL_1", "Level 1 - Resuscitation"),
+            ("LEVEL_2", "Level 2 - Emergent"),
+            ("LEVEL_3", "Level 3 - Urgent"),
+            ("LEVEL_4", "Level 4 - Less Urgent"),
+            ("LEVEL_5", "Level 5 - Non-urgent"),
+        ],
+        default="LEVEL_3",
+    )
+
+    # Chief Complaint
+    chief_complaint = EncryptedTextField(max_length=500)
+    onset_time = models.DateTimeField(null=True, blank=True)
+    pain_scale = models.PositiveIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(10)]
+    )
+
+    # Vital Signs Snapshot (reference or inline)
+    initial_vitals = models.ForeignKey(
+        VitalSigns, on_delete=models.SET_NULL, null=True, blank=True
+    )
+
+    # Assessment
+    mechanism_of_injury = models.TextField(blank=True)
+    associated_symptoms = models.JSONField(default=dict, blank=True)
+    past_medical_history_relevant = EncryptedTextField(blank=True)
+
+    # Risk Factors
+    allergy_status = models.CharField(max_length=20, blank=True)
+    medication_compliance = models.BooleanField(default=False)
+    recent_surgeries = models.TextField(blank=True)
+
+    # Disposition
+    triage_time = models.DateTimeField(auto_now_add=True)
+    triage_nurse = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="triage_assessments",
+    )
+    estimated_wait_time = models.PositiveIntegerField(null=True, blank=True)
+    bed_assigned = models.CharField(max_length=50, blank=True)
+
+    # Reassessment
+    reassessment_due_at = models.DateTimeField(null=True, blank=True)
+    last_reassessed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-triage_time"]
+        indexes = [
+            models.Index(fields=["encounter", "triage_level"]),
+            models.Index(fields=["triage_time"]),
+        ]
+
+    def __str__(self):
+        return f"Triage {self.triage_level} for {self.encounter.patient} at {self.triage_time}"

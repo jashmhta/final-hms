@@ -10,6 +10,11 @@ from .models import (
     AppointmentTemplate,
     Resource,
     WaitList,
+<<<<<<< HEAD
+=======
+    OTSlot,
+    OTBooking,
+>>>>>>> transform-refactor
 )
 
 
@@ -309,3 +314,175 @@ class WaitListSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+
+class OTSlotSerializer(serializers.ModelSerializer):
+    ot_room_name = serializers.CharField(source="ot_room.name", read_only=True)
+    scheduled_by_name = serializers.CharField(
+        source="scheduled_by.get_full_name", read_only=True
+    )
+    remaining_capacity = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OTSlot
+        fields = [
+            "id",
+            "ot_room",
+            "ot_room_name",
+            "start_time",
+            "end_time",
+            "duration_minutes",
+            "is_available",
+            "max_cases",
+            "scheduled_cases",
+            "surgery_type_allowed",
+            "requires_anesthesia",
+            "equipment_needed",
+            "scheduled_by",
+            "scheduled_by_name",
+            "notes",
+            "remaining_capacity",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "remaining_capacity",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_remaining_capacity(self, obj):
+        return obj.get_remaining_capacity()
+
+    def validate(self, attrs):
+        start_time = attrs.get("start_time")
+        end_time = attrs.get("end_time")
+        if start_time and end_time and end_time <= start_time:
+            raise serializers.ValidationError("End time must be after start time")
+        return attrs
+
+
+class OTBookingSerializer(serializers.ModelSerializer):
+    appointment_number = serializers.CharField(
+        source="appointment.appointment_number", read_only=True
+    )
+    patient_name = serializers.CharField(
+        source="appointment.patient.get_full_name", read_only=True
+    )
+    lead_surgeon_name = serializers.CharField(
+        source="lead_surgeon.get_full_name", read_only=True
+    )
+    assisting_surgeon_name = serializers.CharField(
+        source="assisting_surgeon.get_full_name", read_only=True
+    )
+    anesthesiologist_name = serializers.CharField(
+        source="anesthesiologist.get_full_name", read_only=True
+    )
+    scrub_nurse_name = serializers.CharField(
+        source="scrub_nurse.get_full_name", read_only=True
+    )
+    circulating_nurse_name = serializers.CharField(
+        source="circulating_nurse.get_full_name", read_only=True
+    )
+    ot_slot_start = serializers.DateTimeField(
+        source="ot_slot.start_time", read_only=True
+    )
+    ot_slot_end = serializers.DateTimeField(source="ot_slot.end_time", read_only=True)
+    is_ready_for_surgery = serializers.SerializerMethodField()
+    booked_by_name = serializers.CharField(
+        source="booked_by.get_full_name", read_only=True
+    )
+    confirmed_by_name = serializers.CharField(
+        source="confirmed_by.get_full_name", read_only=True
+    )
+
+    class Meta:
+        model = OTBooking
+        fields = [
+            "id",
+            "appointment",
+            "appointment_number",
+            "patient_name",
+            "ot_slot",
+            "ot_slot_start",
+            "ot_slot_end",
+            "lead_surgeon",
+            "lead_surgeon_name",
+            "assisting_surgeon",
+            "assisting_surgeon_name",
+            "anesthesiologist",
+            "anesthesiologist_name",
+            "scrub_nurse",
+            "scrub_nurse_name",
+            "circulating_nurse",
+            "circulating_nurse_name",
+            "procedure_name",
+            "procedure_code",
+            "estimated_duration",
+            "actual_duration",
+            "surgery_type",
+            "anesthesia_type",
+            "anesthesia_notes",
+            "pre_op_checklist_completed",
+            "time_out_completed",
+            "pre_op_labs_reviewed",
+            "informed_consent",
+            "incision_time",
+            "closure_time",
+            "blood_loss_ml",
+            "fluids_given_ml",
+            "specimens_sent",
+            "complications",
+            "recovery_room_assigned",
+            "post_op_orders",
+            "pain_management_plan",
+            "status",
+            "booked_by",
+            "booked_by_name",
+            "confirmed_by",
+            "confirmed_by_name",
+            "confirmed_at",
+            "priority",
+            "is_confidential",
+            "special_instructions",
+            "is_ready_for_surgery",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "appointment_number",
+            "patient_name",
+            "ot_slot_start",
+            "ot_slot_end",
+            "lead_surgeon_name",
+            "assisting_surgeon_name",
+            "anesthesiologist_name",
+            "scrub_nurse_name",
+            "circulating_nurse_name",
+            "booked_by_name",
+            "confirmed_by_name",
+            "is_ready_for_surgery",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_is_ready_for_surgery(self, obj):
+        return obj.is_ready_for_surgery()
+
+    def validate(self, attrs):
+        appointment = attrs.get("appointment")
+        ot_slot = attrs.get("ot_slot")
+        if appointment and ot_slot and appointment.start_at != ot_slot.start_time:
+            raise serializers.ValidationError(
+                "Appointment time must match OT slot start time"
+            )
+        return attrs
+
+    def create(self, validated_data):
+        # Check OT slot capacity
+        ot_slot = validated_data["ot_slot"]
+        if ot_slot.is_fully_booked():
+            raise serializers.ValidationError("OT slot is fully booked")
+        return super().create(validated_data)

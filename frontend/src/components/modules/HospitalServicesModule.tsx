@@ -160,7 +160,7 @@ export function HospitalServicesModule() {
                   <p className="text-gray-900">{surgery.time}</p>
                 </div>
                 <div className="flex-1 text-right">
-                  <Badge 
+                  <Badge
                     variant={surgery.status === 'prep' ? 'default' : 'secondary'}
                     className={surgery.status === 'prep' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}
                   >

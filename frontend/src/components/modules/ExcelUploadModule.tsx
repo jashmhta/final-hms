@@ -43,7 +43,7 @@ export function ExcelUploadModule() {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       setSelectedFile(e.dataTransfer.files[0]);
       setShowMapping(true);
@@ -60,7 +60,7 @@ export function ExcelUploadModule() {
   const simulateUpload = () => {
     setUploadStatus('uploading');
     setUploadProgress(0);
-    
+
     const interval = setInterval(() => {
       setUploadProgress(prev => {
         if (prev >= 100) {
@@ -270,7 +270,7 @@ export function ExcelUploadModule() {
                 <p className="text-sm text-gray-600">
                   Map Excel columns to database fields to ensure proper data import.
                 </p>
-                
+
                 <div className="space-y-3">
                   {columnMappings.map((mapping, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -338,7 +338,7 @@ export function ExcelUploadModule() {
                     <p className="text-sm text-gray-600">{upload.uploadTime}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center space-x-4">
                   <div className="text-right">
                     <p className="text-sm text-gray-600">Records: {upload.records}</p>

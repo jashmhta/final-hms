@@ -1,6 +1,8 @@
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel
+
 
 class InsuranceProviderBase(BaseModel):
     name: str
@@ -9,16 +11,19 @@ class InsuranceProviderBase(BaseModel):
     api_endpoint: Optional[str] = None
     is_active: bool = True
 
+
 class InsuranceProviderCreate(InsuranceProviderBase):
     api_key: Optional[str] = None
+
 
 class InsuranceProvider(InsuranceProviderBase):
     id: int
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
+
 
 class InsurancePolicyBase(BaseModel):
     patient_id: int
@@ -29,17 +34,20 @@ class InsurancePolicyBase(BaseModel):
     expiration_date: datetime
     coverage_details: Dict[str, Any]
 
+
 class InsurancePolicyCreate(InsurancePolicyBase):
     pass
+
 
 class InsurancePolicy(InsurancePolicyBase):
     id: int
     is_verified: bool
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
+
 
 class InsuranceClaimBase(BaseModel):
     patient_id: int
@@ -48,8 +56,10 @@ class InsuranceClaimBase(BaseModel):
     total_amount: float
     status: str
 
+
 class InsuranceClaimCreate(InsuranceClaimBase):
     pass
+
 
 class InsuranceClaim(InsuranceClaimBase):
     id: int
@@ -62,9 +72,10 @@ class InsuranceClaim(InsuranceClaimBase):
     resubmission_count: int
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
+
 
 class TPATransactionBase(BaseModel):
     claim_id: int
@@ -74,16 +85,19 @@ class TPATransactionBase(BaseModel):
     response_data: Dict[str, Any]
     status_code: int
 
+
 class TPATransactionCreate(TPATransactionBase):
     error_message: Optional[str] = None
+
 
 class TPATransaction(TPATransactionBase):
     id: int
     retry_count: int
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
+
 
 class PaymentRecordBase(BaseModel):
     claim_id: int
@@ -93,20 +107,24 @@ class PaymentRecordBase(BaseModel):
     reference_number: str
     adjustment_details: Dict[str, Any]
 
+
 class PaymentRecordCreate(PaymentRecordBase):
     pass
+
 
 class PaymentRecord(PaymentRecordBase):
     id: int
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
+
 
 class EligibilityRequest(BaseModel):
     patient_id: int
     policy_id: int
     service_date: datetime
+
 
 class EligibilityResponse(BaseModel):
     is_eligible: bool
@@ -114,9 +132,11 @@ class EligibilityResponse(BaseModel):
     limitations: Optional[List[str]] = None
     requires_preauth: bool
 
+
 class ClaimSubmissionRequest(BaseModel):
     claim_id: int
     tpa_provider_id: int
+
 
 class PaymentPostingRequest(BaseModel):
     claim_id: int

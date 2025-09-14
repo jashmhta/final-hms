@@ -73,8 +73,8 @@ export function UserPermissionsModule() {
   };
 
   const getStatusBadgeColor = (status: string) => {
-    return status === 'Active' 
-      ? 'bg-green-100 text-green-800' 
+    return status === 'Active'
+      ? 'bg-green-100 text-green-800'
       : 'bg-gray-100 text-gray-800';
   };
 
@@ -293,40 +293,40 @@ export function UserPermissionsModule() {
               <div className="space-y-3 pt-4">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="data-editing">Data Editing</Label>
-                  <Switch 
-                    id="data-editing" 
+                  <Switch
+                    id="data-editing"
                     checked={rolePermissions[selectedRole as keyof typeof rolePermissions]?.dataEditing}
                     disabled
                   />
                 </div>
                 <div className="flex items-center justify-between">
                   <Label htmlFor="excel-upload">Excel Upload</Label>
-                  <Switch 
-                    id="excel-upload" 
+                  <Switch
+                    id="excel-upload"
                     checked={rolePermissions[selectedRole as keyof typeof rolePermissions]?.excelUpload}
                     disabled
                   />
                 </div>
                 <div className="flex items-center justify-between">
                   <Label htmlFor="viewing">Data Viewing</Label>
-                  <Switch 
-                    id="viewing" 
+                  <Switch
+                    id="viewing"
                     checked={rolePermissions[selectedRole as keyof typeof rolePermissions]?.viewing}
                     disabled
                   />
                 </div>
                 <div className="flex items-center justify-between">
                   <Label htmlFor="user-management">User Management</Label>
-                  <Switch 
-                    id="user-management" 
+                  <Switch
+                    id="user-management"
                     checked={rolePermissions[selectedRole as keyof typeof rolePermissions]?.userManagement}
                     disabled
                   />
                 </div>
                 <div className="flex items-center justify-between">
                   <Label htmlFor="system-settings">System Settings</Label>
-                  <Switch 
-                    id="system-settings" 
+                  <Switch
+                    id="system-settings"
                     checked={rolePermissions[selectedRole as keyof typeof rolePermissions]?.systemSettings}
                     disabled
                   />

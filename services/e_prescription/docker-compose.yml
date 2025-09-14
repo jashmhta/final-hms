@@ -7,20 +7,18 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     ports:
-      - "5435:5432"
+    - 5435:5432
     volumes:
-      - prescription_data:/var/lib/postgresql/data
-  
+    - prescription_data:/var/lib/postgresql/data
   prescription-service:
     build: .
     ports:
-      - "8005:8005"
+    - 8005:8005
     environment:
       DATABASE_URL: postgresql://user:password@prescription-db:5432/prescription_db
     depends_on:
-      - prescription-db
+    - prescription-db
     volumes:
-      - .:/app
-
+    - .:/app
 volumes:
-  prescription_data:
+  prescription_data: null

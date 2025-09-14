@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import uuid
 from datetime import timedelta
 
@@ -6,6 +7,17 @@ from django.core.validators import RegexValidator
 from django.db import models
 from django.utils import timezone
 from encrypted_model_fields.fields import EncryptedCharField, EncryptedEmailField
+=======
+from datetime import timedelta
+
+from django.contrib.auth.models import AbstractUser, Permission
+from django.db import models
+from django.utils import timezone
+from encrypted_model_fields.fields import (
+    EncryptedCharField,
+    EncryptedEmailField,
+)
+>>>>>>> transform-refactor
 
 
 class UserRole(models.TextChoices):
@@ -65,7 +77,13 @@ class Department(models.Model):
     code = models.CharField(max_length=20, unique=True)
     description = models.TextField(blank=True)
     hospital = models.ForeignKey(
+<<<<<<< HEAD
         "hospitals.Hospital", on_delete=models.CASCADE, related_name="departments"
+=======
+        "hospitals.Hospital",
+        on_delete=models.CASCADE,
+        related_name="departments",
+>>>>>>> transform-refactor
     )
     head = models.ForeignKey(
         "User",
@@ -155,7 +173,13 @@ class User(AbstractUser):
 
     # Employment Information
     employment_type = models.CharField(
+<<<<<<< HEAD
         max_length=20, choices=EmploymentType.choices, default=EmploymentType.FULL_TIME
+=======
+        max_length=20,
+        choices=EmploymentType.choices,
+        default=EmploymentType.FULL_TIME,
+>>>>>>> transform-refactor
     )
     hire_date = models.DateField(null=True, blank=True)
     termination_date = models.DateField(null=True, blank=True)
@@ -219,7 +243,16 @@ class User(AbstractUser):
         return f"{self.get_full_name()} ({self.employee_id or self.username})"
 
     def get_full_name(self):
+<<<<<<< HEAD
         parts = [self.first_name, self.middle_name, self.last_name, self.suffix]
+=======
+        parts = [
+            self.first_name,
+            self.middle_name,
+            self.last_name,
+            self.suffix,
+        ]
+>>>>>>> transform-refactor
         return " ".join(part for part in parts if part)
 
     def is_account_locked(self):
@@ -252,7 +285,13 @@ class UserPermissionGroup(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     hospital = models.ForeignKey(
+<<<<<<< HEAD
         "hospitals.Hospital", on_delete=models.CASCADE, related_name="permission_groups"
+=======
+        "hospitals.Hospital",
+        on_delete=models.CASCADE,
+        related_name="permission_groups",
+>>>>>>> transform-refactor
     )
     permissions = models.ManyToManyField(Permission, blank=True)
     users = models.ManyToManyField(

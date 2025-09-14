@@ -2,6 +2,7 @@
 import subprocess
 import sys
 
+
 def run_command(command):
     """Run a shell command and return result"""
     try:
@@ -10,12 +11,13 @@ def run_command(command):
     except Exception as e:
         return False, "", str(e)
 
+
 print("Testing Blood Bank Service Implementation...")
 
 # Test 1: Check if all required files exist
 required_files = [
     "Dockerfile",
-    "requirements.txt", 
+    "requirements.txt",
     "models.py",
     "schemas.py",
     "crud.py",
@@ -25,7 +27,7 @@ required_files = [
     "alembic.ini",
     "docker-compose.yml",
     "k8s/deployment.yaml",
-    "README.md"
+    "README.md",
 ]
 
 all_files_exist = True
@@ -56,7 +58,9 @@ print(f"\nSyntax validation: {'✅ All good' if all_syntax_ok else '❌ Errors f
 
 # Test 3: Run basic tests
 print("\nRunning basic tests...")
-success, stdout, stderr = run_command("cd tests && python -m pytest test_blood_bank.py -v")
+success, stdout, stderr = run_command(
+    "cd tests && python -m pytest test_blood_bank.py -v"
+)
 if success:
     print("✅ Tests passed")
     print(stdout)
@@ -64,6 +68,6 @@ else:
     print("❌ Tests failed")
     print(stderr)
 
-print("\n" + "="*50)
+print("\n" + "=" * 50)
 print("ENTERPRISE-GRADE VALIDATION COMPLETE")
-print("="*50)
+print("=" * 50)

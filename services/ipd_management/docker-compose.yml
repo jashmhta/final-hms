@@ -7,20 +7,18 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     ports:
-      - "5433:5432"
+    - 5433:5432
     volumes:
-      - ipd_data:/var/lib/postgresql/data
-  
+    - ipd_data:/var/lib/postgresql/data
   ipd-service:
     build: .
     ports:
-      - "8003:8003"
+    - 8003:8003
     environment:
       DATABASE_URL: postgresql://user:password@ipd-db:5432/ipd_db
     depends_on:
-      - ipd-db
+    - ipd-db
     volumes:
-      - .:/app
-
+    - .:/app
 volumes:
-  ipd_data:
+  ipd_data: null

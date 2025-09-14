@@ -7,20 +7,18 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     ports:
-      - "5434:5432"
+    - 5434:5432
     volumes:
-      - insurance_data:/var/lib/postgresql/data
-  
+    - insurance_data:/var/lib/postgresql/data
   insurance-service:
     build: .
     ports:
-      - "8004:8004"
+    - 8004:8004
     environment:
       DATABASE_URL: postgresql://user:password@insurance-db:5432/insurance_db
     depends_on:
-      - insurance-db
+    - insurance-db
     volumes:
-      - .:/app
-
+    - .:/app
 volumes:
-  insurance_data:
+  insurance_data: null

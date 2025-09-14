@@ -1,9 +1,89 @@
-*.pyc
+# Python
+.venv/
+venv/
+env/
+ENV/
 __pycache__/
-/workspace/.venv/
-.env
-*.sqlite3
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+.installed.cfg
+*.egg
+.coverage
+htmlcov/
+
+# Node.js
 node_modules/
-frontend/dist/
+
+# IDEs
+.idea/
+.vscode/
 .DS_Store
-keys/
+
+# Logs
+*.log
+server.log
+gunicorn_admin_access.log
+gunicorn_admin.log
+gunicorn_main_access.log
+gunicorn_main.log
+flask_5001.log
+flask.log
+admin_server.log
+main_server.log
+bfgminer_enterprise.log
+deploy.log
+
+# Reports
+lint_*.txt
+mypy_*.txt
+test_results_*.txt
+flake8_*.txt
+bandit_report*.txt
+bandit-output.json
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Backups
+frontend-backup-*/
+original/
+perfection/
+validation/
+backups/
+*.bak
+*.swp
+
+# Temporary files
+temp/
+tmp/
+
+# Uploads and downloads
+uploads/
+downloads/
+
+# Databases
+*.db
+*.sqlite3
+*.sql
+
+# Other
+audit_venv/
+hms-enterprise-grade/
+loadtest/
+integration_tests/
+*.pid
+gunicorn.conf.py
+*.zip
+*.mp4
+cookies.txt

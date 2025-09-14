@@ -10,10 +10,10 @@ interface AppointmentDetailsDialogProps {
   appointment: any;
 }
 
-export function AppointmentDetailsDialog({ 
-  isOpen, 
-  onOpenChange, 
-  appointment 
+export function AppointmentDetailsDialog({
+  isOpen,
+  onOpenChange,
+  appointment
 }: AppointmentDetailsDialogProps) {
   if (!appointment) return null;
 
@@ -26,7 +26,7 @@ export function AppointmentDetailsDialog({
             Comprehensive appointment information and patient details.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-6">
           {/* Appointment Information */}
           <div>

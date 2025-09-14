@@ -44,7 +44,13 @@ router = DefaultRouter()
 # Configuration
 router.register(r"currencies", CurrencyViewSet, basename="currency")
 router.register(
+<<<<<<< HEAD
     r"tax-configurations", TaxConfigurationViewSet, basename="tax-configuration"
+=======
+    r"tax-configurations",
+    TaxConfigurationViewSet,
+    basename="tax-configuration",
+>>>>>>> transform-refactor
 )
 router.register(
     r"chart-of-accounts", ChartOfAccountsViewSet, basename="chart-of-accounts"
@@ -55,6 +61,11 @@ router.register(r"cost-centers", CostCenterViewSet, basename="cost-center")
 router.register(r"vendors", VendorViewSet, basename="vendor")
 router.register(r"customers", CustomerViewSet, basename="customer")
 router.register(r"service-packages", ServicePackageViewSet, basename="service-package")
+<<<<<<< HEAD
+=======
+# noqa: E501
+# noqa: E501
+>>>>>>> transform-refactor
 router.register(r"pricing-tiers", PricingTierViewSet, basename="pricing-tier")
 
 # Transactions
@@ -73,25 +84,56 @@ router.register(r"fixed-assets", FixedAssetViewSet, basename="fixed-asset")
 
 # Payroll
 router.register(r"payroll-entries", PayrollEntryViewSet, basename="payroll-entry")
+<<<<<<< HEAD
 
 # Insurance and Claims
 router.register(r"insurance-claims", InsuranceClaimViewSet, basename="insurance-claim")
+=======
+# noqa: E501
+# noqa: E501
+
+# Insurance and Claims
+router.register(r"insurance-claims", InsuranceClaimViewSet, basename="insurance-claim")
+# noqa: E501
+# noqa: E501
+>>>>>>> transform-refactor
 
 # Compliance
 router.register(r"tds-entries", TDSEntryViewSet, basename="tds-entry")
 router.register(r"book-locks", BookLockViewSet, basename="book-lock")
 router.register(
+<<<<<<< HEAD
     r"compliance-documents", ComplianceDocumentViewSet, basename="compliance-document"
+=======
+    r"compliance-documents",
+    ComplianceDocumentViewSet,
+    basename="compliance-document",
+>>>>>>> transform-refactor
 )
 
 # Vendor Management
 router.register(r"vendor-payouts", VendorPayoutViewSet, basename="vendor-payout")
+<<<<<<< HEAD
 
 # Planning and Budgeting
 router.register(r"financial-years", FinancialYearViewSet, basename="financial-year")
 router.register(r"budgets", BudgetViewSet, basename="budget")
 router.register(
     r"recurring-invoices", RecurringInvoiceViewSet, basename="recurring-invoice"
+=======
+# noqa: E501
+# noqa: E501
+
+# Planning and Budgeting
+router.register(r"financial-years", FinancialYearViewSet, basename="financial-year")
+# noqa: E501
+# noqa: E501
+router.register(r"budgets", BudgetViewSet, basename="budget")
+router.register(
+    r"recurring-invoices",
+    RecurringInvoiceViewSet,
+    basename="recurring-invoice",
+>>>>>>> transform-refactor
 )
 
 # Audit and Reporting

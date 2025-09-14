@@ -3,6 +3,9 @@
 import os
 import sys
 
+# Add the parent directory to Python path to enable 'backend' package
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
 
 def main():
     """Run administrative tasks."""

@@ -110,7 +110,7 @@ export function BillingModule() {
           <h2 className="text-2xl text-gray-900 dark:text-gray-100">Billing & Finance</h2>
           <p className="text-gray-600 dark:text-gray-400">Manage invoices, payments, and financial records</p>
         </div>
-        <Button 
+        <Button
           onClick={() => setIsNewBillOpen(true)}
           className="bg-teal-600 hover:bg-teal-700"
         >
@@ -338,9 +338,9 @@ export function BillingModule() {
       </Dialog>
 
       {/* Enhanced Invoice Creation Dialog */}
-      <InvoiceCreationDialog 
-        isOpen={isNewBillOpen} 
-        onOpenChange={setIsNewBillOpen} 
+      <InvoiceCreationDialog
+        isOpen={isNewBillOpen}
+        onOpenChange={setIsNewBillOpen}
       />
     </div>
   );

@@ -36,7 +36,7 @@ export function AppointmentScheduleDialog({
             Book a new appointment for a patient with available doctors.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -58,7 +58,7 @@ export function AppointmentScheduleDialog({
               />
             </div>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="department">Department</Label>
@@ -87,7 +87,7 @@ export function AppointmentScheduleDialog({
               </Select>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-3 gap-4">
             <div>
               <Label htmlFor="date">Date</Label>
@@ -121,7 +121,7 @@ export function AppointmentScheduleDialog({
               </Select>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="reason">Reason for Visit</Label>
@@ -146,7 +146,7 @@ export function AppointmentScheduleDialog({
               </Select>
             </div>
           </div>
-          
+
           <div className="flex space-x-2 pt-4">
             <Button onClick={onSchedule} className="bg-teal-600 hover:bg-teal-700">
               Schedule Appointment

@@ -1,5 +1,4 @@
 version: '3.8'
-
 services:
   cybersecurity-db:
     image: postgres:15
@@ -8,20 +7,18 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     ports:
-      - "5438:5432"
+    - 5438:5432
     volumes:
-      - cybersecurity_data:/var/lib/postgresql/data
-  
+    - cybersecurity_data:/var/lib/postgresql/data
   cybersecurity-service:
     build: .
     ports:
-      - "8008:8008"
+    - 8008:8008
     environment:
       DATABASE_URL: postgresql://user:password@cybersecurity-db:5432/cybersecurity_db
     depends_on:
-      - cybersecurity-db
+    - cybersecurity-db
     volumes:
-      - .:/app
-
+    - .:/app
 volumes:
-  cybersecurity_data:
+  cybersecurity_data: null

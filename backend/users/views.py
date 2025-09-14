@@ -1,17 +1,28 @@
 from django.contrib.auth.hashers import make_password
+<<<<<<< HEAD
 from django.shortcuts import render
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status, viewsets
+=======
+from drf_spectacular.utils import OpenApiResponse, extend_schema
+>>>>>>> transform-refactor
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+<<<<<<< HEAD
+=======
+from rest_framework.viewsets import ViewSet
+>>>>>>> transform-refactor
 
 from .models import User
 from .serializers import UserSerializer
 
+<<<<<<< HEAD
 # Create your views here.
 
+=======
+>>>>>>> transform-refactor
 
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
@@ -21,7 +32,7 @@ class MeView(APIView):
         return Response(UserSerializer(request.user).data)
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(ViewSet):
     serializer_class = UserSerializer
     queryset = User.objects.select_related("hospital").all()
     permission_classes = [IsAuthenticated]

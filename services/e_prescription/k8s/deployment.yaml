@@ -39,20 +39,8 @@ spec:
           periodSeconds: 5
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
+            memory: 256Mi
+            cpu: 250m
           limits:
-            memory: "512Mi"
-            cpu: "500m"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: e-prescription-service
-spec:
-  selector:
-    app: e-prescription
-  ports:
-  - port: 8005
-    targetPort: 8005
-  type: ClusterIP
+            memory: 512Mi
+            cpu: 500m
