@@ -1,6 +1,8 @@
 fastapi==0.115.5
 uvicorn[standard]==0.32.0
 pydantic==2.9.2
+python-jose[cryptography]==3.3.0
+prometheus-fastapi-instrumentator
 opentelemetry-distro
 opentelemetry-exporter-otlp
 opentelemetry-instrumentation-fastapi

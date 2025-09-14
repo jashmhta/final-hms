@@ -1,3 +1,4 @@
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -12,24 +13,24 @@ metadata:
     nginx.ingress.kubernetes.io/rate-limit-window: "1m"
 spec:
   tls:
-  - hosts:
-    - hms.example.com
-    secretName: hms-tls
+    - hosts:
+        - hms.example.com
+      secretName: hms-tls
   rules:
-  - host: hms.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: hms-frontend
-            port:
-              number: 80
-      - path: /api
-        pathType: Prefix
-        backend:
-          service:
-            name: hms-backend
-            port:
-              number: 80
+    - host: hms.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hms-frontend
+                port:
+                  number: 80
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: hms-backend
+                port:
+                  number: 8000

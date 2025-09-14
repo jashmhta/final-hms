@@ -1,16 +1,20 @@
-import { createContext } from 'react'
+import { createContext } from "react";
 
 type User = {
-  id: number
-  username: string
-  role: string
-  hospital: number | null
-}
+  id: number;
+  username: string;
+  role: string;
+  hospital: number | null;
+};
 
 type AuthContextType = {
-  user: User | null
-  loading: boolean
-  logout: () => void
-}
+  user: User | null;
+  loading: boolean;
+  logout: () => void;
+};
 
-export const AuthContext = createContext<AuthContextType>({ user: null, loading: true, logout: () => {} })
+export const AuthContext = createContext<AuthContextType>({
+  user: null,
+  loading: true,
+  logout: () => {},
+});

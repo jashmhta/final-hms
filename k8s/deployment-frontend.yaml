@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -13,7 +14,7 @@ spec:
         app: hms-frontend
     spec:
       containers:
-      - name: frontend
-        image: ghcr.io/yourorg/newhms-frontend:latest
-        ports:
-        - containerPort: 80
+        - name: frontend
+          image: ghcr.io/yourorg/newhms-frontend:latest
+          ports:
+            - containerPort: 80

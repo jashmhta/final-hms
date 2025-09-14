@@ -1,19 +1,23 @@
 import os
 from typing import List, Optional
 
-from core.auth.dependencies import get_current_user
-from core.db.base import Base, TimestampMixin
-from core.encryption.fields import EncryptedJSON, EncryptedString
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import Boolean, Column, Integer, String
-from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
+from models.models import (
+    Base,
+    ComplianceChecklist,
+    ChecklistItem,
+    ComplianceAudit,
+    Item,
+)
+from typing import List, Optional
+from datetime import datetime
 
 DATABASE_URL = os.getenv(
     "SERVICE_DATABASE_URL", "postgresql+psycopg2://hms:hms@db:5432/hms"
 )
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -31,14 +35,6 @@ def ensure_role(claims: dict, allowed: set[str]):
     role = claims.get("role")
     if role not in allowed:
         raise HTTPException(status_code=403, detail="Forbidden")
-
-
-class Item(Base, TimestampMixin):
-    __tablename__ = "service_items"
-    id = Column(Integer, primary_key=True)
-    name = Column(EncryptedString, nullable=False)
-    description = Column(EncryptedString, nullable=True)
-    active = Column(Boolean, default=True)
 
 
 class ItemIn(BaseModel):

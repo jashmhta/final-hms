@@ -9,4 +9,4 @@ COPY . /app
 EXPOSE 9014
 ENV OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
 ENV OTEL_METRICS_EXPORTER=none
-CMD sh -c "alembic upgrade head && opentelemetry-instrument --traces_exporter otlp --service_name consent uvicorn app.main:app --host 0.0.0.0 --port 9014"
+CMD ["sh", "-c", "alembic upgrade head && opentelemetry-instrument --traces_exporter otlp --service_name consent uvicorn app.main:app --host 0.0.0.0 --port 9014"]

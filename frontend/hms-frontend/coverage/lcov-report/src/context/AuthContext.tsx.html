@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/22</span>
+                <span class='fraction'>0/20</span>
             </div>
 
 
@@ -39,14 +39,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/8</span>
+                <span class='fraction'>0/6</span>
             </div>
 
 
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/19</span>
+                <span class='fraction'>0/20</span>
             </div>
 
 
@@ -101,22 +101,12 @@
 <a name='L36'></a><a href='#L36'>36</a>
 <a name='L37'></a><a href='#L37'>37</a>
 <a name='L38'></a><a href='#L38'>38</a>
-<a name='L39'></a><a href='#L39'>39</a>
-<a name='L40'></a><a href='#L40'>40</a>
-<a name='L41'></a><a href='#L41'>41</a>
-<a name='L42'></a><a href='#L42'>42</a>
-<a name='L43'></a><a href='#L43'>43</a>
-<a name='L44'></a><a href='#L44'>44</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L39'></a><a href='#L39'>39</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -127,13 +117,13 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -146,51 +136,46 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { createContext, useContext, useEffect, useState } from 'react'</span>
-<span class="cstat-no" title="statement not covered" >import axios from 'axios'</span>
-&nbsp;
-type User = {
-  id: number
-  username: string
-  role: string
-  hospital: number | null
-}
-&nbsp;
-type AuthContextType = {
-  user: User | null
-  loading: boolean
-  logout: () =&gt; void
-}
-&nbsp;
-const AuthContext = <span class="cstat-no" title="statement not covered" >createContext&lt;AuthContextType&gt;({ user: null, loading: true, logout: <span class="fstat-no" title="function not covered" >() =</span>&gt; {} })</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { useEffect, useState } from "react";</span>
+<span class="cstat-no" title="statement not covered" >import axios from "axios";</span>
+<span class="cstat-no" title="statement not covered" >import { AuthContext } from "./AuthContextValue";</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >A</span>uthProvider(</span>{ children }: { children: React.ReactNode }) {
-  const [user, setUser] = <span class="cstat-no" title="statement not covered" >useState&lt;User | null&gt;(null)</span>
-  const [loading, setLoading] = <span class="cstat-no" title="statement not covered" >useState(true)</span>
+  const [user, setUser] = <span class="cstat-no" title="statement not covered" >useState&lt;{</span>
+    id: number;
+    username: string;
+    role: string;
+    hospital: number | null;
+  } | null&gt;(null);
+  const [loading, setLoading] = <span class="cstat-no" title="statement not covered" >useState(true);</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  useEffect(<span class="fstat-no" title="function not covered" >() =</span>&gt; {</span>
-    const token = <span class="cstat-no" title="statement not covered" >localStorage.getItem('accessToken')</span>
+    const token = <span class="cstat-no" title="statement not covered" >localStorage.getItem("accessToken");</span>
 <span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (!token) {</span>
-<span class="cstat-no" title="statement not covered" >      setLoading(false)</span>
-<span class="cstat-no" title="statement not covered" >      return</span>
+<span class="cstat-no" title="statement not covered" >      setLoading(false);</span>
+<span class="cstat-no" title="statement not covered" >      return;</span>
     }
-<span class="cstat-no" title="statement not covered" >    axios.get('/api/users/me/').then(<span class="fstat-no" title="function not covered" >r </span>=&gt; <span class="cstat-no" title="statement not covered" >setUser(r.data))</span>.catch(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >setUser(null))</span>.finally(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >setLoading(false))</span></span>
-  }, [])
+<span class="cstat-no" title="statement not covered" >    axios</span>
+      .get("/api/users/me/")
+      .then(<span class="fstat-no" title="function not covered" >(r</span>) =&gt; <span class="cstat-no" title="statement not covered" >setUser(r.data))</span>
+      .catch(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >setUser(null))</span>
+      .finally(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >setLoading(false))</span>;
+  }, []);
 &nbsp;
   const logout = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >() =</span>&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    localStorage.removeItem('accessToken')</span>
-<span class="cstat-no" title="statement not covered" >    localStorage.removeItem('refreshToken')</span>
-<span class="cstat-no" title="statement not covered" >    window.location.href = '/login'</span>
-  }
+<span class="cstat-no" title="statement not covered" >    localStorage.removeItem("accessToken");</span>
+<span class="cstat-no" title="statement not covered" >    localStorage.removeItem("refreshToken");</span>
+<span class="cstat-no" title="statement not covered" >    window.location.href = "/login";</span>
+  };
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return &lt;AuthContext.Provider value={{ user, loading, logout }}&gt;{children}&lt;/AuthContext.Provider&gt;</span>
-}
-&nbsp;
-<span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >u</span>seAuth(</span>) {
-<span class="cstat-no" title="statement not covered" >  return useContext(AuthContext)</span>
+<span class="cstat-no" title="statement not covered" >  return (</span>
+    &lt;AuthContext.Provider value={{ user, loading, logout }}&gt;
+      {children}
+    &lt;/AuthContext.Provider&gt;
+  );
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -199,7 +184,7 @@ const AuthContext = <span class="cstat-no" title="statement not covered" >create
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-14T13:50:40.805Z
+                at 2025-09-14T20:52:39.565Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

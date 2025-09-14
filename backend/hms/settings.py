@@ -126,7 +126,7 @@ if os.getenv("POSTGRES_DB"):
             "HOST": os.getenv("POSTGRES_HOST", "localhost"),
             "PORT": os.getenv("POSTGRES_PORT", "5432"),
             "OPTIONS": {
-                "sslmode": "require",
+                "sslmode": "prefer",  # Allow non-SSL for local development
             },
         }
     }
@@ -279,9 +279,7 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = (
 SECURE_HSTS_PRELOAD = (
     not DEBUG and os.getenv("SECURE_HSTS_PRELOAD", "true").lower() == "true"
 )
-SECURE_SSL_REDIRECT = (
-    not DEBUG and os.getenv("SECURE_SSL_REDIRECT", "true").lower() == "true"
-)
+SECURE_SSL_REDIRECT = False  # Disable SSL redirect for development
 
 # Email
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@example.com")

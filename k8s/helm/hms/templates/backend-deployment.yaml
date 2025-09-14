@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -14,18 +15,18 @@ spec:
     spec:
       containers:
         - name: backend
-          image: {{ .Values.image.registry }}/{{ .Values.image.backend.repository }}:{{ .Values.image.backend.tag }}
+          image: "{{ .Values.image.registry }}/{{ .Values.image.backend.repository }}:{{ .Values.image.backend.tag }}"
           env:
             - name: DJANGO_DEBUG
-              value: {{ .Values.env.DJANGO_DEBUG | quote }}
+              value: "{{ .Values.env.DJANGO_DEBUG | quote }}"
             - name: ALLOWED_HOSTS
-              value: {{ .Values.env.ALLOWED_HOSTS | quote }}
+              value: "{{ .Values.env.ALLOWED_HOSTS | quote }}"
             - name: SECURE_SSL_REDIRECT
-              value: {{ .Values.env.SECURE_SSL_REDIRECT | quote }}
+              value: "{{ .Values.env.SECURE_SSL_REDIRECT | quote }}"
             - name: SECURE_HSTS_SECONDS
-              value: {{ .Values.env.SECURE_HSTS_SECONDS | quote }}
+              value: "{{ .Values.env.SECURE_HSTS_SECONDS | quote }}"
             - name: REDIS_URL
-              value: {{ .Values.env.REDIS_URL | quote }}
+              value: "{{ .Values.env.REDIS_URL | quote }}"
           ports:
             - containerPort: 8000
 ---

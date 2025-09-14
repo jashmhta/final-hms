@@ -102,9 +102,14 @@ def get_db():
         db.close()
 
 
-def recalc(bill: BillModel):
-    bill.total_cents = sum(i.quantity * i.unit_price_cents for i in bill.items)
+def recalc(bill: BillModel, insurance_coverage_percent=0, discount_percent=0):
+    """Recalculate bill totals with insurance and discounts"""
+    subtotal = sum(i.quantity * i.unit_price_cents for i in bill.items)
+    insurance_discount = int(subtotal * insurance_coverage_percent / 100)
+    additional_discount = int((subtotal - insurance_discount) * discount_percent / 100)
+    bill.total_cents = subtotal - insurance_discount - additional_discount
     bill.paid_cents = sum(p.amount_cents for p in bill.payments)
+
     if bill.total_cents > 0 and bill.paid_cents >= bill.total_cents:
         bill.status = "PAID"
     elif bill.paid_cents > 0:
@@ -141,7 +146,33 @@ def create_bill(payload: BillIn, db: Session = Depends(get_db)):
                 amount_cents=item.quantity * item.unit_price_cents,
             )
         )
-    recalc(bill)
+    recalc(bill, insurance_coverage_percent=0, discount_percent=0)
+    db.commit()
+    db.refresh(bill)
+    return bill
+
+
+@app.post("/api/billing/bills/{bill_id}/insurance", response_model=BillOut)
+def apply_insurance(
+    bill_id: int, insurance_percent: int, db: Session = Depends(get_db)
+):
+    """Apply insurance coverage to bill"""
+    bill = db.query(BillModel).get(bill_id)
+    if not bill:
+        raise HTTPException(status_code=404, detail="Bill not found")
+    recalc(bill, insurance_coverage_percent=insurance_percent)
+    db.commit()
+    db.refresh(bill)
+    return bill
+
+
+@app.post("/api/billing/bills/{bill_id}/discount", response_model=BillOut)
+def apply_discount(bill_id: int, discount_percent: int, db: Session = Depends(get_db)):
+    """Apply discount to bill"""
+    bill = db.query(BillModel).get(bill_id)
+    if not bill:
+        raise HTTPException(status_code=404, detail="Bill not found")
+    recalc(bill, discount_percent=discount_percent)
     db.commit()
     db.refresh(bill)
     return bill
@@ -157,7 +188,7 @@ def add_payment(bill_id: int, payload: PaymentIn, db: Session = Depends(get_db))
             bill=bill, amount_cents=payload.amount_cents, method=payload.method
         )
     )
-    recalc(bill)
+    recalc(bill, insurance_coverage_percent=0, discount_percent=0)
     db.commit()
     db.refresh(bill)
     return bill

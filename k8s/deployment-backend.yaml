@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -13,27 +14,27 @@ spec:
         app: hms-backend
     spec:
       containers:
-      - name: backend
-        image: ghcr.io/yourorg/newhms-backend:latest
-        env:
-        - name: DJANGO_SETTINGS_MODULE
-          value: hms.settings
-        - name: DJANGO_SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: hms-secrets
-              key: django-secret
-        ports:
-        - containerPort: 8000
-        readinessProbe:
-          httpGet:
-            path: /health/
-            port: 8000
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        livenessProbe:
-          httpGet:
-            path: /health/
-            port: 8000
-          initialDelaySeconds: 15
-          periodSeconds: 20
+        - name: backend
+          image: ghcr.io/yourorg/newhms-backend:latest
+          env:
+            - name: DJANGO_SETTINGS_MODULE
+              value: hms.settings
+            - name: DJANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hms-secrets
+                  key: django-secret
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health/
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20

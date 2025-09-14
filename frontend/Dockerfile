@@ -3,7 +3,7 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY hms-frontend/package*.json ./
 RUN npm install --legacy-peer-deps
-COPY hms-frontend .
+COPY hms-frontend/ .
 RUN npm run build
 
 FROM nginx:alpine
