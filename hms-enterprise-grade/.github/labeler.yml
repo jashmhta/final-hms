@@ -1,8 +1,0 @@
-frontend:
-- frontend/**
-backend:
-- backend/**
-services:
-- services/**
-ci:
-- .github/**
