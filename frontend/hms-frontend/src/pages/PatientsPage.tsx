@@ -1,11 +1,19 @@
-import { useEffect, useMemo, useState } from 'react'
+ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Container, Paper, Typography, TextField, Stack, Button } from '@mui/material'
 import axios from 'axios'
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 
+interface Patient {
+  id: number;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  email: string;
+}
+
 export default function PatientsPage() {
   const [q, setQ] = useState('')
-  const [rows, setRows] = useState<any[]>([])
+  const [rows, setRows] = useState<Patient[]>([])
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [hospitalId, setHospitalId] = useState<number | null>(null)
@@ -18,18 +26,18 @@ export default function PatientsPage() {
     { field: 'email', headerName: 'Email', flex: 1 },
   ], [])
 
-  const fetchPatients = async () => {
+  const fetchPatients = useCallback(async () => {
     const r = await axios.get('/api/patients/', { params: q ? { search: q } : {} })
     const data = r.data.results || r.data
     setRows(data)
-  }
+  }, [q])
 
   useEffect(() => {
     const source = axios.CancelToken.source()
     axios.get('/api/users/me/', { cancelToken: source.token }).then(r => setHospitalId(r.data.hospital))
     fetchPatients().catch(() => setRows([]))
     return () => source.cancel()
-  }, [q])
+  }, [q, fetchPatients])
 
   const createPatient = async () => {
     if (!hospitalId) return

@@ -3,8 +3,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import {
   Container, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody,
-  Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid
+  Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField
 } from '@mui/material';
+
+interface JournalEntry {
+  id: number;
+  date: string;
+  description: string;
+}
+
+interface FormData {
+  date: string;
+  description: string;
+}
 
 const AccountingPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -14,23 +25,23 @@ const AccountingPage: React.FC = () => {
   });
 
   const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({ date: '', description: '' });
+  const [formData, setFormData] = useState<FormData>({ date: '', description: '' });
   const [editId, setEditId] = useState<number | null>(null);
 
   const mutation = useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: FormData) => {
       if (editId) {
         return (await axios.put(`/api/erp/journal_entries/${editId}`, payload)).data;
       }
       return (await axios.post('/api/erp/journal_entries', payload)).data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['journal_entries']);
+      queryClient.invalidateQueries({ queryKey: ['journal_entries'] });
       handleClose();
     }
   });
 
-  const handleOpen = (record?: any) => {
+  const handleOpen = (record?: JournalEntry) => {
     if (record) {
       setFormData({ date: record.date, description: record.description });
       setEditId(record.id);
@@ -70,31 +81,27 @@ const AccountingPage: React.FC = () => {
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
-          <TableBody>
-            {data.map((entry: any) => (
-              <TableRow key={entry.id}>
-                <TableCell>{entry.date}</TableCell>
-                <TableCell>{entry.description}</TableCell>
-                <TableCell>
-                  <Button size="small" onClick={() => handleOpen(entry)}>Edit</Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
+           <TableBody>
+             {data?.map((entry: JournalEntry) => (
+               <TableRow key={entry.id}>
+                 <TableCell>{entry.date}</TableCell>
+                 <TableCell>{entry.description}</TableCell>
+                 <TableCell>
+                   <Button size="small" onClick={() => handleOpen(entry)}>Edit</Button>
+                 </TableCell>
+               </TableRow>
+             ))}
+           </TableBody>
         </Table>
       </Paper>
 
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
         <DialogTitle>{editId ? 'Edit Entry' : 'Add Entry'}</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Date" name="date" type="date" InputLabelProps={{ shrink: true }} value={formData.date} onChange={handleChange} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Description" name="description" value={formData.description} onChange={handleChange} />
-            </Grid>
-          </Grid>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            <TextField fullWidth label="Date" name="date" type="date" InputLabelProps={{ shrink: true }} value={formData.date} onChange={handleChange} />
+            <TextField fullWidth label="Description" name="description" value={formData.description} onChange={handleChange} />
+          </div>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>

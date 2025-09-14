@@ -12,9 +12,8 @@ from .models import (
 
 
 class PatientSerializer(serializers.ModelSerializer):
-    phone_primary = serializers.CharField(source="phone_primary", required=False)
-    email = serializers.EmailField(source="email", required=False)
-    address = serializers.CharField(source="address_line1", required=False)
+    phone_primary = serializers.CharField(required=False)
+    email = serializers.EmailField(required=False)
     insurance_provider = serializers.CharField(
         source="insurance_information.insurance_company_name", required=False
     )

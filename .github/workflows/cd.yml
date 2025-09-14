@@ -1,5 +1,5 @@
 name: CD
-true:
+on:
   push:
     branches:
     - main
@@ -9,7 +9,46 @@ permissions:
   contents: read
   packages: write
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+    - name: Run backend tests
+      run: |
+        cd backend
+        python manage.py test --coverage
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    - name: Install frontend dependencies
+      run: |
+        cd frontend/hms-frontend
+        npm install
+    - name: Run frontend tests
+      run: |
+        cd frontend/hms-frontend
+        npm run test:coverage
+    - name: Run E2E tests
+      run: |
+        cd frontend/hms-frontend
+        npx playwright install
+        npm run test:e2e
+    - name: Run security scan
+      run: |
+        cd backend
+        bandit -r .
+        safety check
   build-and-push:
+    needs: test
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4

@@ -3,11 +3,25 @@ import { Container, Paper, Typography, TextField, Stack, Button } from '@mui/mat
 import axios from 'axios'
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 
+interface Appointment {
+  id: number;
+  patient: string;
+  doctor: string;
+  start_at: string;
+  end_at: string;
+}
+
+interface Slot {
+  id: number;
+  start_time: string;
+  end_time: string;
+}
+
 export default function AppointmentsPage() {
-  const [rows, setRows] = useState<any[]>([])
+  const [rows, setRows] = useState<Appointment[]>([])
   const [doctorId, setDoctorId] = useState('')
   const [date, setDate] = useState('')
-  const [slots, setSlots] = useState<any[]>([])
+  const [slots, setSlots] = useState<Slot[]>([])
   const [patientId, setPatientId] = useState('')
   const [start, setStart] = useState('')
   const [durationMin, setDurationMin] = useState('30')

@@ -2,8 +2,15 @@ import { useEffect, useState } from 'react'
 import { Box, Button, Paper, Stack, TextField, Typography } from '@mui/material'
 import axios from 'axios'
 
+interface RadiologyOrder {
+  id: number;
+  patient_id: number;
+  study_type: string;
+  priority: string;
+}
+
 export default function RadiologyPage() {
-  const [orders, setOrders] = useState<any[]>([])
+  const [orders, setOrders] = useState<RadiologyOrder[]>([])
   const [form, setForm] = useState({ patient_id: '', study_type: '', priority: 'ROUTINE' })
   const [report, setReport] = useState({ order_id: '', impression: '' })
 

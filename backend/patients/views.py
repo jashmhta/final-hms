@@ -15,7 +15,7 @@ class IsSameHospital(permissions.BasePermission):
 class PatientViewSet(viewsets.ModelViewSet):
     serializer_class = PatientSerializer
     queryset = Patient.objects.all()
-    filterset_fields = ["gender", "active"]
+    filterset_fields = ["gender", "status"]
     search_fields = ["first_name", "last_name", "phone", "email"]
     ordering_fields = ["last_name", "first_name", "created_at"]
     permission_classes = [permissions.IsAuthenticated, ModuleEnabledPermission]

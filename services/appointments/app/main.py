@@ -2,6 +2,7 @@ import json
 import os
 from datetime import datetime, time, timedelta
 from typing import List, Optional
+from abc import ABC, abstractmethod
 
 import pika
 from fastapi import Depends, FastAPI, HTTPException, Query
@@ -22,11 +23,20 @@ Base = declarative_base()
 class AppointmentModel(Base):
     __tablename__ = "appointments_appointment_ms"
     id = Column(Integer, primary_key=True, index=True)
-    patient = Column(Integer, nullable=False)
-    doctor = Column(Integer, nullable=False)
-    start_at = Column(DateTime, nullable=False)
+    patient = Column(Integer, nullable=False, index=True)
+    doctor = Column(Integer, nullable=False, index=True)
+    start_at = Column(DateTime, nullable=False, index=True)
     end_at = Column(DateTime, nullable=False)
-    status = Column(String(16), nullable=False, default="SCHEDULED")
+    status = Column(String(16), nullable=False, default="SCHEDULED", index=True)
+
+
+class EventModel(Base):
+    __tablename__ = "events"
+    id = Column(Integer, primary_key=True, index=True)
+    aggregate_id = Column(Integer, nullable=False, index=True)
+    event_type = Column(String(50), nullable=False)
+    event_data = Column(String, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)
 
 
 class AppointmentIn(BaseModel):
@@ -49,6 +59,75 @@ class SlotOut(BaseModel):
     end_at: datetime
 
 
+# CQRS Implementation
+class Command(ABC):
+    @abstractmethod
+    def execute(self, db: Session):
+        pass
+
+
+class Query(ABC):
+    @abstractmethod
+    def execute(self, db: Session):
+        pass
+
+
+class CreateAppointmentCommand(Command):
+    def __init__(self, appointment_data: AppointmentIn):
+        self.appointment_data = appointment_data
+
+    def execute(self, db: Session):
+        db_appointment = AppointmentModel(**self.appointment_data.dict())
+        db.add(db_appointment)
+        db.commit()
+        db.refresh(db_appointment)
+        # Event sourcing: store event
+        event = EventModel(
+            aggregate_id=db_appointment.id,
+            event_type="AppointmentCreated",
+            event_data=json.dumps(self.appointment_data.dict()),
+        )
+        db.add(event)
+        db.commit()
+        return db_appointment
+
+
+class GetAppointmentsQuery(Query):
+    def __init__(
+        self, patient_id: Optional[int] = None, doctor_id: Optional[int] = None
+    ):
+        self.patient_id = patient_id
+        self.doctor_id = doctor_id
+
+    def execute(self, db: Session):
+        query = db.query(AppointmentModel)
+        if self.patient_id:
+            query = query.filter(AppointmentModel.patient == self.patient_id)
+        if self.doctor_id:
+            query = query.filter(AppointmentModel.doctor == self.doctor_id)
+        return query.all()
+
+
+class UpdateAppointmentCommand(Command):
+    def __init__(self, appointment_id: int, update_data: dict):
+        self.appointment_id = appointment_id
+        self.update_data = update_data
+
+    def execute(self, db: Session):
+        appointment = (
+            db.query(AppointmentModel)
+            .filter(AppointmentModel.id == self.appointment_id)
+            .first()
+        )
+        if not appointment:
+            raise HTTPException(status_code=404, detail="Appointment not found")
+        for key, value in self.update_data.items():
+            setattr(appointment, key, value)
+        db.commit()
+        db.refresh(appointment)
+        return appointment
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -66,8 +145,13 @@ def on_startup():
 
 
 @app.get("/api/appointments", response_model=List[AppointmentOut])
-def list_appointments(db: Session = Depends(get_db)):
-    return db.query(AppointmentModel).all()
+def list_appointments(
+    patient_id: Optional[int] = Query(None),
+    doctor_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    query = GetAppointmentsQuery(patient_id=patient_id, doctor_id=doctor_id)
+    return query.execute(db)
 
 
 @app.post("/api/appointments", response_model=AppointmentOut, status_code=201)
@@ -89,11 +173,8 @@ def create_appointment(payload: AppointmentIn, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=400, detail="Overlapping appointment for this doctor"
         )
-    obj = AppointmentModel(**payload.dict())
-    db.add(obj)
-    db.commit()
-    db.refresh(obj)
-    return obj
+    command = CreateAppointmentCommand(payload)
+    return command.execute(db)
 
 
 @app.get("/api/appointments/available_slots", response_model=List[SlotOut])

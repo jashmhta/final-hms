@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+ import React, { useCallback, useEffect, useState } from 'react'
 import { Box, Typography, Button, TextField, Stack, Paper, Divider } from '@mui/material'
 
 interface AlertItem { id: number; patient_id: number; severity: string; message: string; created_at: string }
@@ -11,14 +11,14 @@ const ERAlertsPage: React.FC = () => {
   const token = localStorage.getItem('accessToken') || ''
   const hospital = JSON.parse(atob((token.split('.')[1]||'') + '=='))?.hospital || 1
 
-  const fetchAlerts = async () => {
+  const fetchAlerts = useCallback(async () => {
     const res = await fetch(`/api/er/alerts?hospital_id=${hospital}`, { headers: { Authorization: `Bearer ${token}` } })
     if (res.ok) {
       setAlerts(await res.json())
     }
-  }
+  }, [hospital, token])
 
-  useEffect(() => { fetchAlerts() }, [])
+  useEffect(() => { fetchAlerts() }, [fetchAlerts])
 
   const createAlert = async () => {
     const payload = { hospital_id: hospital, patient_id: Number(patientId), severity, message }

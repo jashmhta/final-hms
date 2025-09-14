@@ -7,11 +7,6 @@ from encrypted_model_fields.fields import EncryptedTextField
 
 from core.models import TenantModel, TimeStampedModel
 
-<<<<<<< HEAD
-=======
-from core.models import TenantModel, TimeStampedModel
-
->>>>>>> transform-refactor
 
 class EncounterType(models.TextChoices):
     INPATIENT = "INPATIENT", "Inpatient"

@@ -664,8 +664,10 @@ class BudgetAdmin(admin.ModelAdmin):
         variance = obj.variance_cents / 100
         color = "green" if variance >= 0 else "red"
         return format_html(
-            f'<span style="color: {color};">₹ {variance:,.2f} ('
-            f"{obj.variance_percentage:.1f}%)</span>"
+            '<span style="color: {};">₹ {:,.2f} ({:.1f}%)</span>',
+            color,
+            variance,
+            obj.variance_percentage,
         )
 
     variance_display.short_description = "Variance"

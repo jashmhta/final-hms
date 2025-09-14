@@ -12,10 +12,8 @@ class MedicationSerializer(serializers.ModelSerializer):
             "name",
             "strength",
             "form",
-            "stock_quantity",
+            "total_stock_quantity",
             "min_stock_level",
-            "expiry_date",
-            "supplier",
             "created_at",
             "updated_at",
         ]

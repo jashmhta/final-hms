@@ -17,10 +17,18 @@ class LowStockTest(TestCase):
             username="u", password="x", role=UserRole.PHARMACIST, hospital=self.h
         )
         Medication.objects.create(
-            hospital=self.h, name="MedA", stock_quantity=5, min_stock_level=10
+            hospital=self.h,
+            name="MedA",
+            total_stock_quantity=5,
+            min_stock_level=10,
+            ndc_code="12345",
         )
         Medication.objects.create(
-            hospital=self.h, name="MedB", stock_quantity=20, min_stock_level=10
+            hospital=self.h,
+            name="MedB",
+            total_stock_quantity=20,
+            min_stock_level=10,
+            ndc_code="67890",
         )
 
     def test_low_stock(self):

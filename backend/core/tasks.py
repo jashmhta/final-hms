@@ -1,6 +1,7 @@
 from appointments.models import Appointment, AppointmentStatus
 from celery import shared_task
 from django.core.mail import send_mail
+from django.db import models
 from django.utils import timezone
 from pharmacy.models import Medication
 
@@ -14,7 +15,6 @@ def send_appointment_reminders():
     )
     for appt in upcoming.select_related("patient", "doctor"):
         subject = f"Appointment Reminder"
->>>>>>> transform-refactor
         body = f"Reminder: appointment on {appt.start_at} with doctor {appt.doctor_id}"
         # In real system, use patient email/phone
         send_mail(subject, body, None, ["admin@example.com"], fail_silently=True)

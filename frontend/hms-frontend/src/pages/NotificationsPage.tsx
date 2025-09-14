@@ -2,16 +2,24 @@ import { useEffect, useState } from 'react'
 import { Box, Button, Paper, Stack, TextField, Typography } from '@mui/material'
 import axios from 'axios'
 
+interface NotificationHistory {
+  id: number;
+  channel: string;
+  recipient: string;
+  subject: string;
+  status: string;
+}
+
 export default function NotificationsPage() {
   const [form, setForm] = useState({ channel: 'email', recipient: '', subject: '', message: '' })
   const [status, setStatus] = useState<string>('')
-  const [history, setHistory] = useState<any[]>([])
+  const [history, setHistory] = useState<NotificationHistory[]>([])
   const send = async () => {
     const r = await axios.post('/api/notifications/send', form)
     setStatus(r.data.status || 'sent')
     try {
       await axios.post('/api/audit/events', { service: 'notifications', action: 'send', resource_type: 'notification', resource_id: String(r.data.id), detail: `Sent to ${form.recipient}` })
-    } catch {}
+    } catch { /* Audit logging failed, but notification was sent */ }
     await loadHistory()
   }
   const loadHistory = async () => {

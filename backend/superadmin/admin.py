@@ -144,7 +144,9 @@ class HospitalSubscriptionAdmin(admin.ModelAdmin):
             <tr><td style="border: 1px solid #ddd; padding: 8px;"><strong>API Calls:</strong></td><td style="border: 1px solid #ddd; padding: 8px;">{obj.api_calls_this_month} / {tier_limits.api_calls_per_month}</td></tr>
         </table>
         """
-        return mark_safe(usage_html)
+        from django.utils.html import format_html
+
+        return format_html(usage_html)
 
     usage_summary.short_description = "Usage Summary"
 

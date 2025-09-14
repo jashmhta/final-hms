@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: hms
       POSTGRES_USER: hms
-      POSTGRES_PASSWORD: hms
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-strong-db-password-2024}"
     volumes:
     - pgdata:/var/lib/postgresql/data
     ports:
@@ -24,12 +24,12 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     environment:
-      DJANGO_SECRET_KEY: change-me
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-strong-django-secret-key-2024}
       DJANGO_DEBUG: 'false'
       ALLOWED_HOSTS: '*'
       POSTGRES_DB: hms
       POSTGRES_USER: hms
-      POSTGRES_PASSWORD: hms
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-strong-db-password-2024}"
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       REDIS_URL: redis://redis:6379/0
@@ -37,7 +37,7 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       SERVICE_JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
       AUDIT_SERVICE_URL: http://audit_service:9015/api/audit/events
-      SERVICE_SHARED_KEY: change-me
+      SERVICE_SHARED_KEY: ${SERVICE_SHARED_KEY:-strong-shared-key-2024}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
       KAFKA_BROKER: kafka:9092
     depends_on:
@@ -57,12 +57,12 @@ services:
     - -l
     - INFO
     environment:
-      DJANGO_SECRET_KEY: change-me
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-strong-django-secret-key-2024}
       DJANGO_DEBUG: 'false'
       ALLOWED_HOSTS: '*'
       POSTGRES_DB: hms
       POSTGRES_USER: hms
-      POSTGRES_PASSWORD: hms
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-strong-db-password-2024}"
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       REDIS_URL: redis://redis:6379/0
@@ -84,12 +84,12 @@ services:
     - -l
     - INFO
     environment:
-      DJANGO_SECRET_KEY: change-me
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-strong-django-secret-key-2024}
       DJANGO_DEBUG: 'false'
       ALLOWED_HOSTS: '*'
       POSTGRES_DB: hms
       POSTGRES_USER: hms
-      POSTGRES_PASSWORD: hms
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-strong-db-password-2024}"
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       REDIS_URL: redis://redis:6379/0
@@ -103,7 +103,7 @@ services:
     build:
       context: services/patients
     environment:
-      PATIENTS_DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
+      PATIENTS_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hms_user}:${POSTGRES_PASSWORD:-strong-db-password-2024}@db:5432/${POSTGRES_DB:-hms_db}?sslmode=require
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
     depends_on:
     - db
@@ -111,7 +111,7 @@ services:
     build:
       context: services/appointments
     environment:
-      APPOINTMENTS_DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
+      APPOINTMENTS_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hms_user}:${POSTGRES_PASSWORD:-strong-db-password-2024}@db:5432/${POSTGRES_DB:-hms_db}?sslmode=require
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
     depends_on:
@@ -121,7 +121,7 @@ services:
     build:
       context: services/billing
     environment:
-      BILLING_DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
+      BILLING_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hms_user}:${POSTGRES_PASSWORD:-strong-db-password-2024}@db:5432/${POSTGRES_DB:-hms_db}?sslmode=require
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
     depends_on:
     - db
@@ -129,7 +129,7 @@ services:
     build:
       context: services/pharmacy
     environment:
-      PHARMACY_DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
+      PHARMACY_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hms_user}:${POSTGRES_PASSWORD:-strong-db-password-2024}@db:5432/${POSTGRES_DB:-hms_db}?sslmode=require
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
     depends_on:
     - db
@@ -137,7 +137,7 @@ services:
     build:
       context: services/lab
     environment:
-      LAB_DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
+      LAB_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hms_user}:${POSTGRES_PASSWORD:-strong-db-password-2024}@db:5432/${POSTGRES_DB:-hms_db}?sslmode=require
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
     depends_on:
     - db
@@ -145,7 +145,7 @@ services:
     build:
       context: services/hr
     environment:
-      HR_DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
+      HR_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hms_user}:${POSTGRES_PASSWORD:-strong-db-password-2024}@db:5432/${POSTGRES_DB:-hms_db}?sslmode=require
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
     depends_on:
     - db
@@ -153,7 +153,7 @@ services:
     build:
       context: services/facilities
     environment:
-      FACILITIES_DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
+      FACILITIES_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hms_user}:${POSTGRES_PASSWORD:-strong-db-password-2024}@db:5432/${POSTGRES_DB:-hms_db}?sslmode=require
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
     depends_on:
     - db
@@ -161,9 +161,9 @@ services:
     build:
       context: services/price_estimator
     environment:
-      JWT_SECRET: change-me
+      JWT_SECRET: ${JWT_SECRET:-strong-jwt-secret-2024}
       JWT_ALG: HS256
-      DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hms_user}:${POSTGRES_PASSWORD:-strong-db-password-2024}@db:5432/${POSTGRES_DB:-hms_db}?sslmode=require
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
     depends_on:
     - backend
@@ -174,7 +174,7 @@ services:
       context: services/bed_management
     environment:
       BED_DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
-      JWT_SECRET: change-me
+      JWT_SECRET: ${JWT_SECRET:-strong-jwt-secret-2024}
       JWT_ALG: HS256
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
     depends_on:
@@ -185,9 +185,9 @@ services:
     build:
       context: services/triage
     environment:
-      JWT_SECRET: change-me
+      JWT_SECRET: ${JWT_SECRET:-strong-jwt-secret-2024}
       JWT_ALG: HS256
-      TRIAGE_DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
+      TRIAGE_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hms_user}:${POSTGRES_PASSWORD:-strong-db-password-2024}@db:5432/${POSTGRES_DB:-hms_db}?sslmode=require
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
       OPA_URL: http://opa:8181
     depends_on:
@@ -198,9 +198,9 @@ services:
     build:
       context: services/analytics_service
     environment:
-      JWT_SECRET: change-me
+      JWT_SECRET: ${JWT_SECRET:-strong-jwt-secret-2024}
       JWT_ALG: HS256
-      ANALYTICS_DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
+      ANALYTICS_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hms_user}:${POSTGRES_PASSWORD:-strong-db-password-2024}@db:5432/${POSTGRES_DB:-hms_db}?sslmode=require
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
       OPA_URL: http://opa:8181
       OTEL_RESOURCE_ATTRIBUTES: service.name=analytics_service,service.version=1.2.0
@@ -212,8 +212,8 @@ services:
     build:
       context: services/notifications
     environment:
-      NOTIFICATIONS_DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
-      JWT_SECRET: change-me
+      NOTIFICATIONS_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hms_user}:${POSTGRES_PASSWORD:-strong-db-password-2024}@db:5432/${POSTGRES_DB:-hms_db}?sslmode=require
+      JWT_SECRET: ${JWT_SECRET:-strong-jwt-secret-2024}
       JWT_ALG: HS256
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
       SMTP_HOST: ${SMTP_HOST}
@@ -225,7 +225,7 @@ services:
       SMS_PROVIDER_TOKEN: ${SMS_PROVIDER_TOKEN}
       FCM_SERVER_KEY: ${FCM_SERVER_KEY}
       VAULT_ADDR: http://vault:8200
-      VAULT_TOKEN: root
+      VAULT_TOKEN: ${VAULT_TOKEN:-strong-vault-token-2024}
       VAULT_SECRET_PATH: secret/data/notifications
     depends_on:
     - backend
@@ -241,7 +241,7 @@ services:
       RADIOLOGY_URL: http://radiology_service:9012
       BED_URL: http://bed_management_service:9008
       BACKEND_URL: http://backend:8000
-      SERVICE_SHARED_KEY: change-me
+      SERVICE_SHARED_KEY: ${SERVICE_SHARED_KEY:-strong-shared-key-2024}
     depends_on:
     - analytics_service
     - triage_service
@@ -251,8 +251,8 @@ services:
     build:
       context: services/radiology
     environment:
-      RADIOLOGY_DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
-      JWT_SECRET: change-me
+      RADIOLOGY_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hms_user}:${POSTGRES_PASSWORD:-strong-db-password-2024}@db:5432/${POSTGRES_DB:-hms_db}?sslmode=require
+      JWT_SECRET: ${JWT_SECRET:-strong-jwt-secret-2024}
       JWT_ALG: HS256
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
       OTEL_RESOURCE_ATTRIBUTES: service.name=radiology_service,service.version=1.2.0
@@ -264,8 +264,8 @@ services:
     build:
       context: services/feedback
     environment:
-      FEEDBACK_DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
-      JWT_SECRET: change-me
+      FEEDBACK_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hms_user}:${POSTGRES_PASSWORD:-strong-db-password-2024}@db:5432/${POSTGRES_DB:-hms_db}?sslmode=require
+      JWT_SECRET: ${JWT_SECRET:-strong-jwt-secret-2024}
       JWT_ALG: HS256
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
     depends_on:
@@ -276,8 +276,8 @@ services:
     build:
       context: services/consent
     environment:
-      CONSENT_DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
-      JWT_SECRET: change-me
+      CONSENT_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hms_user}:${POSTGRES_PASSWORD:-strong-db-password-2024}@db:5432/${POSTGRES_DB:-hms_db}?sslmode=require
+      JWT_SECRET: ${JWT_SECRET:-strong-jwt-secret-2024}
       JWT_ALG: HS256
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
     depends_on:
@@ -288,8 +288,8 @@ services:
     build:
       context: services/audit
     environment:
-      AUDIT_DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
-      JWT_SECRET: change-me
+      AUDIT_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hms_user}:${POSTGRES_PASSWORD:-strong-db-password-2024}@db:5432/${POSTGRES_DB:-hms_db}?sslmode=require
+      JWT_SECRET: ${JWT_SECRET:-strong-jwt-secret-2024}
       JWT_ALG: HS256
       REDIS_URL: redis://redis:6379/0
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
@@ -301,8 +301,8 @@ services:
     build:
       context: services/er_alerts
     environment:
-      ER_ALERTS_DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
-      JWT_SECRET: change-me
+      ER_ALERTS_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hms_user}:${POSTGRES_PASSWORD:-strong-db-password-2024}@db:5432/${POSTGRES_DB:-hms_db}?sslmode=require
+      JWT_SECRET: ${JWT_SECRET:-strong-jwt-secret-2024}
       JWT_ALG: HS256
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
     depends_on:
@@ -313,8 +313,8 @@ services:
     build:
       context: services/ot_scheduling
     environment:
-      OT_SCHED_DATABASE_URL: postgresql+psycopg2://hms:hms@db:5432/hms
-      JWT_SECRET: change-me
+      OT_SCHED_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hms_user}:${POSTGRES_PASSWORD:-strong-db-password-2024}@db:5432/${POSTGRES_DB:-hms_db}?sslmode=require
+      JWT_SECRET: ${JWT_SECRET:-strong-jwt-secret-2024}
       JWT_ALG: HS256
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4317
     depends_on:
@@ -358,8 +358,8 @@ services:
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: 'true'
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-strong-grafana-password-2024}
     ports:
     - 3001:3000
     volumes:

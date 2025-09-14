@@ -7,7 +7,7 @@ services:
     - 8001:8000
     environment:
     - DB_HOST=database-service
-    - ENCRYPTION_KEY=hipaa_encryption_key
+    - ENCRYPTION_KEY=${ENCRYPTION_KEY:-strong-encryption-key-2024}
     healthcheck:
       test:
       - CMD
@@ -42,7 +42,7 @@ services:
     environment:
       POSTGRES_DB: hms
       POSTGRES_USER: hmsuser
-      POSTGRES_PASSWORD: secure_db_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-strong-db-password-2024}
     volumes:
     - db_data:/var/lib/postgresql/data
     healthcheck:

@@ -3,7 +3,15 @@ import { Box, Typography, Paper, Stack, Switch, FormControlLabel, Divider, MenuI
 import axios from 'axios'
 
 interface Hospital { id: number; name: string }
-interface Plan { id: number; name: string }
+interface Plan {
+  id: number;
+  name: string;
+  enable_opd?: boolean;
+  enable_ipd?: boolean;
+  enable_diagnostics?: boolean;
+  enable_pharmacy?: boolean;
+  enable_accounting?: boolean;
+}
 interface HospitalPlan {
   id: number;
   hospital: number;
@@ -48,10 +56,10 @@ const SuperAdminPage: React.FC = () => {
   const changePlan = async (hospitalId: number, planId: number) => {
     const current = subsByHospital[hospitalId]
     if (!current) return
-    await updateSub(hospitalId, { plan_id: planId } as any)
+    await updateSub(hospitalId, { plan_id: planId })
   }
 
-  const flags: Array<{ key: keyof HospitalPlan; label: string }> = [
+  const flags: Array<{ key: 'enable_opd' | 'enable_ipd' | 'enable_diagnostics' | 'enable_pharmacy' | 'enable_accounting'; label: string }> = [
     { key: 'enable_opd', label: 'OPD' },
     { key: 'enable_ipd', label: 'IPD' },
     { key: 'enable_diagnostics', label: 'Diagnostics' },
@@ -80,8 +88,8 @@ const SuperAdminPage: React.FC = () => {
               <Stack direction="row" spacing={2}>
                 {flags.map(f => (
                   <FormControlLabel key={String(f.key)} control={<Switch
-                    checked={(sub && (sub[f.key] ?? (sub.plan ? (sub.plan as any)[f.key] : true))) ? true : false}
-                    onChange={(_e, checked) => updateSub(h.id, { [f.key]: checked } as any)}
+                     checked={(sub && (sub[f.key] ?? (sub.plan ? sub.plan[f.key] : true))) ? true : false}
+                     onChange={(_e, checked) => updateSub(h.id, { [f.key]: checked })}
                   />} label={f.label} />
                 ))}
               </Stack>

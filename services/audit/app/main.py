@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 DATABASE_URL = os.getenv(
     "AUDIT_DATABASE_URL", os.getenv("DATABASE_URL", "sqlite:///./audit.db")
 )
-JWT_SECRET = os.getenv("JWT_SECRET", "change-me")
+JWT_SECRET = os.getenv("JWT_SECRET", "strong-jwt-secret-2024")
 JWT_ALG = os.getenv("JWT_ALG", "HS256")
 SERVICE_SHARED_KEY = os.getenv("SERVICE_SHARED_KEY", None)
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/1")

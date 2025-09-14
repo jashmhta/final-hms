@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Box, Button, Container, Paper, Stack, TextField, Typography, Alert } from '@mui/material'
 import axios from 'axios'
 
 export default function LoginPage() {
@@ -18,26 +17,50 @@ export default function LoginPage() {
       localStorage.setItem('accessToken', access)
       localStorage.setItem('refreshToken', refresh)
       window.location.href = '/'
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Login failed')
+    } catch (err) {
+      const error = err as { response?: { data?: { detail?: string } } }
+      setError(error?.response?.data?.detail || 'Login failed')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Container maxWidth="xs" sx={{ mt: 10 }}>
-      <Paper elevation={3} sx={{ p: 3 }}>
-        <Typography variant="h5" gutterBottom>HMS Login</Typography>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        <Box component="form" onSubmit={onSubmit}>
-          <Stack spacing={2}>
-            <TextField label="Username" value={username} onChange={e => setUsername(e.target.value)} fullWidth autoFocus />
-            <TextField label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} fullWidth />
-            <Button type="submit" variant="contained" disabled={loading}>{loading ? 'Logging in...' : 'Login'}</Button>
-          </Stack>
-        </Box>
-      </Paper>
-    </Container>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-md">
+        <h1 className="text-2xl font-bold text-center mb-6">HMS Login</h1>
+        {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{error}</div>}
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Username</label>
+            <input
+              type="text"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoFocus
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+          >
+            {loading ? 'Logging in...' : 'Login'}
+          </button>
+        </form>
+      </div>
+    </div>
   )
 }

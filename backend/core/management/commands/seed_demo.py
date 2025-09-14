@@ -28,12 +28,18 @@ class Command(BaseCommand):
             defaults={"role": "SUPER_ADMIN", "is_staff": True, "is_superuser": True},
         )
         if created:
+            from django.contrib.auth.password_validation import validate_password
+
+            validate_password("admin123", user=admin)
             admin.set_password("admin123")
             admin.save()
         # Hospital admin
         hadmin, _ = User.objects.get_or_create(
             username="hadmin", defaults={"role": "HOSPITAL_ADMIN", "hospital": hospital}
         )
+        from django.contrib.auth.password_validation import validate_password
+
+        validate_password("admin123", user=hadmin)
         hadmin.set_password("admin123")
         hadmin.save()
         # Doctor
@@ -46,6 +52,9 @@ class Command(BaseCommand):
                 "last_name": "Smith",
             },
         )
+        from django.contrib.auth.password_validation import validate_password
+
+        validate_password("doctor123", user=doctor)
         doctor.set_password("doctor123")
         doctor.save()
         # Patients

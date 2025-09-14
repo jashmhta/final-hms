@@ -3,8 +3,21 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import {
   Container, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody,
-  Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid
+  Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField
 } from '@mui/material';
+
+interface Account {
+  id: number;
+  code: string;
+  name: string;
+  type: string;
+}
+
+interface FormData {
+  code: string;
+  name: string;
+  type: string;
+}
 
 const ERPPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -14,23 +27,23 @@ const ERPPage: React.FC = () => {
   });
 
   const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({ code: '', name: '', type: '' });
+  const [formData, setFormData] = useState<FormData>({ code: '', name: '', type: '' });
   const [editId, setEditId] = useState<number | null>(null);
 
   const mutation = useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: FormData) => {
       if (editId) {
         return (await axios.put(`/api/erp/chart_of_accounts/${editId}`, payload)).data;
       }
       return (await axios.post('/api/erp/chart_of_accounts', payload)).data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['chart_of_accounts']);
+      queryClient.invalidateQueries({ queryKey: ['chart_of_accounts'] });
       handleClose();
     }
   });
 
-  const handleOpen = (record?: any) => {
+  const handleOpen = (record?: Account) => {
     if (record) {
       setFormData({ code: record.code, name: record.name, type: record.type });
       setEditId(record.id);
@@ -71,35 +84,29 @@ const ERPPage: React.FC = () => {
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
-          <TableBody>
-            {data.map((acc: any) => (
-              <TableRow key={acc.id}>
-                <TableCell>{acc.code}</TableCell>
-                <TableCell>{acc.name}</TableCell>
-                <TableCell>{acc.type}</TableCell>
-                <TableCell>
-                  <Button size="small" onClick={() => handleOpen(acc)}>Edit</Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
+           <TableBody>
+             {data?.map((acc: Account) => (
+               <TableRow key={acc.id}>
+                 <TableCell>{acc.code}</TableCell>
+                 <TableCell>{acc.name}</TableCell>
+                 <TableCell>{acc.type}</TableCell>
+                 <TableCell>
+                   <Button size="small" onClick={() => handleOpen(acc)}>Edit</Button>
+                 </TableCell>
+               </TableRow>
+             ))}
+           </TableBody>
         </Table>
       </Paper>
 
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
         <DialogTitle>{editId ? 'Edit Account' : 'Add Account'}</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={4}>
-              <TextField fullWidth label="Code" name="code" value={formData.code} onChange={handleChange} />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField fullWidth label="Name" name="name" value={formData.name} onChange={handleChange} />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField fullWidth label="Type" name="type" value={formData.type} onChange={handleChange} />
-            </Grid>
-          </Grid>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+            <TextField fullWidth label="Code" name="code" value={formData.code} onChange={handleChange} />
+            <TextField fullWidth label="Name" name="name" value={formData.name} onChange={handleChange} />
+            <TextField fullWidth label="Type" name="type" value={formData.type} onChange={handleChange} />
+          </div>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+ import React, { useCallback, useEffect, useState } from 'react'
 import { Box, Typography, Button, TextField, Stack, Paper, Divider } from '@mui/material'
 
 interface SlotItem { id: number; theatre: string; start_at: string; end_at: string; procedure: string; surgeon: string }
@@ -13,11 +13,11 @@ const OTSchedulingPage: React.FC = () => {
   const token = localStorage.getItem('accessToken') || ''
   const hospital = JSON.parse(atob((token.split('.')[1]||'') + '=='))?.hospital || 1
 
-  const fetchSlots = async () => {
+  const fetchSlots = useCallback(async () => {
     const res = await fetch(`/api/ot/slots?hospital_id=${hospital}`, { headers: { Authorization: `Bearer ${token}` } })
     if (res.ok) setSlots(await res.json())
-  }
-  useEffect(() => { fetchSlots() }, [])
+  }, [hospital, token])
+  useEffect(() => { fetchSlots() }, [fetchSlots])
 
   const createSlot = async () => {
     const payload = { hospital_id: hospital, theatre, start_at: new Date(startAt).toISOString(), end_at: new Date(endAt).toISOString(), procedure, surgeon }

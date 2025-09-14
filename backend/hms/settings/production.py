@@ -19,27 +19,60 @@ ALLOWED_HOSTS = [
 
 # Database Configuration
 DATABASE_URL = os.environ.get("DATABASE_URL")
-if DATABASE_URL:
-    url = urlparse(DATABASE_URL)
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": url.path[1:],
-            "USER": url.username,
-            "PASSWORD": url.password,
-            "HOST": url.hostname,
-            "PORT": url.port or 5432,
-            "OPTIONS": {
-                "sslmode": "require",
-                "connect_timeout": 60,
-                "options": "-c default_transaction_isolation=serializable",
-            },
-            "CONN_MAX_AGE": 600,
-            "CONN_HEALTH_CHECKS": True,
-        }
+ACCOUNTING_DB_URL = os.environ.get("ACCOUNTING_DB_URL", DATABASE_URL)
+ANALYTICS_DB_URL = os.environ.get("ANALYTICS_DB_URL", DATABASE_URL)
+APPOINTMENTS_DB_URL = os.environ.get("APPOINTMENTS_DB_URL", DATABASE_URL)
+BILLING_DB_URL = os.environ.get("BILLING_DB_URL", DATABASE_URL)
+EHR_DB_URL = os.environ.get("EHR_DB_URL", DATABASE_URL)
+FACILITIES_DB_URL = os.environ.get("FACILITIES_DB_URL", DATABASE_URL)
+HR_DB_URL = os.environ.get("HR_DB_URL", DATABASE_URL)
+LAB_DB_URL = os.environ.get("LAB_DB_URL", DATABASE_URL)
+PATIENTS_DB_URL = os.environ.get("PATIENTS_DB_URL", DATABASE_URL)
+PHARMACY_DB_URL = os.environ.get("PHARMACY_DB_URL", DATABASE_URL)
+USERS_DB_URL = os.environ.get("USERS_DB_URL", DATABASE_URL)
+
+
+def parse_db_url(db_url):
+    if not db_url:
+        return None
+    url = urlparse(db_url)
+    return {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": url.path[1:],
+        "USER": url.username,
+        "PASSWORD": url.password,
+        "HOST": url.hostname,
+        "PORT": url.port or 5432,
+        "OPTIONS": {
+            "sslmode": "require",
+            "connect_timeout": 60,
+            "options": "-c default_transaction_isolation=serializable",
+        },
+        "CONN_MAX_AGE": 600,
+        "CONN_HEALTH_CHECKS": True,
     }
-else:
+
+
+DATABASES = {
+    "default": parse_db_url(DATABASE_URL) or {},
+    "accounting": parse_db_url(ACCOUNTING_DB_URL) or parse_db_url(DATABASE_URL),
+    "analytics": parse_db_url(ANALYTICS_DB_URL) or parse_db_url(DATABASE_URL),
+    "appointments": parse_db_url(APPOINTMENTS_DB_URL) or parse_db_url(DATABASE_URL),
+    "billing": parse_db_url(BILLING_DB_URL) or parse_db_url(DATABASE_URL),
+    "ehr": parse_db_url(EHR_DB_URL) or parse_db_url(DATABASE_URL),
+    "facilities": parse_db_url(FACILITIES_DB_URL) or parse_db_url(DATABASE_URL),
+    "hr": parse_db_url(HR_DB_URL) or parse_db_url(DATABASE_URL),
+    "lab": parse_db_url(LAB_DB_URL) or parse_db_url(DATABASE_URL),
+    "patients": parse_db_url(PATIENTS_DB_URL) or parse_db_url(DATABASE_URL),
+    "pharmacy": parse_db_url(PHARMACY_DB_URL) or parse_db_url(DATABASE_URL),
+    "users": parse_db_url(USERS_DB_URL) or parse_db_url(DATABASE_URL),
+}
+
+if not DATABASES["default"]:
     raise ValueError("DATABASE_URL environment variable is required")
+
+# Database Routers
+DATABASE_ROUTERS = ["core.routers.DatabaseRouter"]
 
 # Redis Configuration
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis-service:6379/0")
@@ -439,6 +472,30 @@ HEALTH_CHECK = {
     "DISK_USAGE_MAX": 90,  # percent
     "MEMORY_MIN": 100,  # MB
 }
+
+# Graceful Shutdown
+import signal
+import sys
+from django.core.management import execute_from_command_line
+
+
+def graceful_shutdown(signum, frame):
+    print("Received signal to shutdown gracefully...")
+    # Close database connections
+    from django.db import connections
+
+    for conn in connections.all():
+        conn.close()
+    # Stop Celery workers if running
+    from celery import current_app
+
+    if current_app:
+        current_app.control.shutdown()
+    sys.exit(0)
+
+
+signal.signal(signal.SIGTERM, graceful_shutdown)
+signal.signal(signal.SIGINT, graceful_shutdown)
 
 # Integration Settings
 TALLY_INTEGRATION_ENABLED = True

@@ -64,7 +64,9 @@ class MedicationViewSet(TenantScopedViewSet):
     @decorators.action(detail=False, methods=["get"])
     def low_stock(self, request):
         self.throttle_scope = "inventory"
-        qs = self.get_queryset().filter(stock_quantity__lt=models.F("min_stock_level"))
+        qs = self.get_queryset().filter(
+            total_stock_quantity__lt=models.F("min_stock_level")
+        )
         page = self.paginate_queryset(qs)
         if page is not None:
             ser = MedicationSerializer(page, many=True)
@@ -74,7 +76,9 @@ class MedicationViewSet(TenantScopedViewSet):
 
     @decorators.action(detail=False, methods=["post"])
     def auto_reorder(self, request):
-        qs = self.get_queryset().filter(stock_quantity__lt=models.F("min_stock_level"))
+        qs = self.get_queryset().filter(
+            total_stock_quantity__lt=models.F("min_stock_level")
+        )
         provider_url = request.data.get("provider_url") or ""
         token = request.data.get("token") or ""
         placed = []
@@ -85,7 +89,9 @@ class MedicationViewSet(TenantScopedViewSet):
                         provider_url,
                         json={
                             "item": m.name,
-                            "qty": int(m.min_stock_level) - int(m.stock_quantity) + 1,
+                            "qty": int(m.min_stock_level)
+                            - int(m.total_stock_quantity)
+                            + 1,
                         },
                         headers={"Authorization": f"Bearer {token}"} if token else {},
                         timeout=5,
@@ -112,10 +118,10 @@ class PrescriptionViewSet(TenantScopedViewSet):
         if obj.is_dispensed:
             return response.Response({"detail": "Already dispensed"}, status=400)
         med = obj.medication
-        if med.stock_quantity < obj.quantity:
+        if med.total_stock_quantity < obj.quantity:
             return response.Response({"detail": "Insufficient stock"}, status=400)
-        med.stock_quantity -= obj.quantity
-        med.save(update_fields=["stock_quantity"])
+        med.total_stock_quantity -= obj.quantity
+        med.save(update_fields=["total_stock_quantity"])
         obj.is_dispensed = True
         from django.utils import timezone as djtz
 
@@ -132,5 +138,5 @@ class InventoryTransactionViewSet(TenantScopedViewSet):
         self.ensure_tenant_on_create(serializer)
         transaction = self.get_queryset().order_by("-id").first()
         med = transaction.medication
-        med.stock_quantity = med.stock_quantity + transaction.change
-        med.save(update_fields=["stock_quantity"])
+        med.total_stock_quantity = med.total_stock_quantity + transaction.change
+        med.save(update_fields=["total_stock_quantity"])

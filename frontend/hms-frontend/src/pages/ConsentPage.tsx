@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+ import { useCallback, useEffect, useState } from 'react'
 import { Box, Button, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material'
 import axios from 'axios'
 
@@ -8,12 +8,12 @@ export default function ConsentPage() {
   const [signer, setSigner] = useState({ patient_id: '', signer_name: '', signer_phone: '' })
   const [message, setMessage] = useState('')
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     const r = await axios.get('/api/consent/templates')
     setTemplates(r.data)
     if (r.data.length && !selected) setSelected(r.data[0].id)
-  }
-  useEffect(() => { refresh().catch(() => setTemplates([])) }, [])
+  }, [selected])
+  useEffect(() => { refresh().catch(() => setTemplates([])) }, [refresh])
 
   const selectedTemplate = templates.find(t => t.id === selected)
 
@@ -40,7 +40,7 @@ export default function ConsentPage() {
           <Button variant="contained" onClick={async () => {
             const resp = await axios.post('/api/consent/sign', { template_id: selected, patient_id: parseInt(signer.patient_id || '0', 10), signer_name: signer.signer_name, signer_phone: signer.signer_phone })
             setMessage('Signed successfully')
-            try { await axios.post('/api/audit/events', { service: 'consent', action: 'sign', resource_type: 'signature', resource_id: String(resp.data.id) }) } catch {}
+              try { await axios.post('/api/audit/events', { service: 'consent', action: 'sign', resource_type: 'signature', resource_id: String(resp.data.id) }) } catch { /* Audit logging failed, but consent was signed */ }
           }} disabled={!selected || !signer.patient_id || !signer.signer_name}>Sign</Button>
         </Stack>
         {message && <Typography sx={{ mt: 1 }}>{message}</Typography>}

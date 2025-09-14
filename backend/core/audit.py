@@ -9,7 +9,9 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from pybreaker import CircuitBreaker
 
-AUDIT_URL = os.getenv("AUDIT_SERVICE_URL", "http://audit_service:9015/api/audit/events")
+AUDIT_URL = os.getenv(
+    "AUDIT_SERVICE_URL", "https://audit_service:9015/api/audit/events"
+)
 SERVICE_JWT = os.getenv("SERVICE_JWT", None)
 SERVICE_SHARED_KEY = os.getenv("SERVICE_SHARED_KEY", None)
 AUDIT_PUBLIC_KEY_PATH = os.getenv("AUDIT_PUBLIC_KEY_PATH", None)

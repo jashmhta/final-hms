@@ -1,13 +1,10 @@
 import ERPPage from "./pages/ERPPage";
 import AccountingPage from "./pages/AccountingPage";
-import React, { useState, Suspense, lazy, type ReactNode } from 'react'
+import React, { Suspense, lazy, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AppBar, Toolbar, Typography, Button, CssBaseline, ThemeProvider, Container, IconButton, CircularProgress } from '@mui/material'
-import { AuthProvider, useAuth } from './context/AuthContext'
-import getMonoTheme, { MonoMode } from './theme'
-import Brightness4Icon from '@mui/icons-material/Brightness4'
-import Brightness7Icon from '@mui/icons-material/Brightness7'
+import { AuthProvider } from './context/AuthContext'
+import { useAuth } from './hooks/useAuth'
 
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
@@ -33,76 +30,73 @@ function PrivateRoute({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
-function Shell({ children, mode, toggleMode }: { children: ReactNode, mode: MonoMode, toggleMode: () => void }) {
+function Shell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
   const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'HOSPITAL_ADMIN'
   const isSuper = user?.role === 'SUPER_ADMIN'
   return (
-    <>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>HMS</Typography>
-          <Button color="inherit" component={Link} to="/">Dashboard</Button>
-          <Button color="inherit" component={Link} to="/patients">Patients</Button>
-          <Button color="inherit" component={Link} to="/appointments">Appointments</Button>
-          <Button color="inherit" component={Link} to="/beds">Beds</Button>
-          <Button color="inherit" component={Link} to="/triage">Triage</Button>
-          <Button color="inherit" component={Link} to="/analytics">Analytics</Button>
-          <Button color="inherit" component={Link} to="/radiology">Radiology</Button>
-          <Button color="inherit" component={Link} to="/feedback">Feedback</Button>
-          <Button color="inherit" component={Link} to="/consent">Consent</Button>
-          <Button color="inherit" component={Link} to="/er-alerts">ER Alerts</Button>
-          <Button color="inherit" component={Link} to="/ot-scheduling">OT</Button>
-          {isAdmin && <Button color="inherit" component={Link} to="/audit">Audit</Button>}
-          {isAdmin && <Button color="inherit" component={Link} to="/notifications">Notifications</Button>}
-          {isSuper && <Button color="inherit" component={Link} to="/superadmin">Superadmin</Button>}
-          <IconButton color="inherit" onClick={toggleMode} aria-label="Toggle theme" sx={{ ml: 1 }}>
-            {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
-          </IconButton>
-          <Button color="inherit" onClick={logout}>Logout</Button>
-        </Toolbar>
-      </AppBar>
-      <Container sx={{ my: 3 }}>
+    <div className="min-h-screen bg-gray-100">
+      <nav className="bg-blue-600 text-white shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <Link to="/" className="text-xl font-bold">HMS</Link>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link to="/" className="hover:bg-blue-700 px-3 py-2 rounded">Dashboard</Link>
+              <Link to="/patients" className="hover:bg-blue-700 px-3 py-2 rounded">Patients</Link>
+              <Link to="/appointments" className="hover:bg-blue-700 px-3 py-2 rounded">Appointments</Link>
+              <Link to="/beds" className="hover:bg-blue-700 px-3 py-2 rounded">Beds</Link>
+              <Link to="/triage" className="hover:bg-blue-700 px-3 py-2 rounded">Triage</Link>
+              <Link to="/analytics" className="hover:bg-blue-700 px-3 py-2 rounded">Analytics</Link>
+              <Link to="/radiology" className="hover:bg-blue-700 px-3 py-2 rounded">Radiology</Link>
+              <Link to="/feedback" className="hover:bg-blue-700 px-3 py-2 rounded">Feedback</Link>
+              <Link to="/consent" className="hover:bg-blue-700 px-3 py-2 rounded">Consent</Link>
+              <Link to="/er-alerts" className="hover:bg-blue-700 px-3 py-2 rounded">ER Alerts</Link>
+              <Link to="/ot-scheduling" className="hover:bg-blue-700 px-3 py-2 rounded">OT</Link>
+              {isAdmin && <Link to="/audit" className="hover:bg-blue-700 px-3 py-2 rounded">Audit</Link>}
+              {isAdmin && <Link to="/notifications" className="hover:bg-blue-700 px-3 py-2 rounded">Notifications</Link>}
+              {isSuper && <Link to="/superadmin" className="hover:bg-blue-700 px-3 py-2 rounded">Superadmin</Link>}
+              <button onClick={logout} className="hover:bg-blue-700 px-3 py-2 rounded">Logout</button>
+            </div>
+          </div>
+        </div>
+      </nav>
+      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {children}
-      </Container>
-    </>
+      </main>
+    </div>
   )
 }
 
 function App() {
-  const [mode, setMode] = useState<MonoMode>('light')
-  const theme = getMonoTheme(mode)
-  const toggleMode = () => setMode(prev => prev === 'light' ? 'dark' : 'light')
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <BrowserRouter>
-            <Suspense fallback={<Container sx={{ py: 6, textAlign: 'center' }}><CircularProgress size={28} /></Container>}>
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/" element={<PrivateRoute><Shell mode={mode} toggleMode={toggleMode}><DashboardPage /></Shell></PrivateRoute>} />
-                <Route path="/patients" element={<PrivateRoute><Shell mode={mode} toggleMode={toggleMode}><PatientsPage /></Shell></PrivateRoute>} />
-                <Route path="/appointments" element={<PrivateRoute><Shell mode={mode} toggleMode={toggleMode}><AppointmentsPage /></Shell></PrivateRoute>} />
-                <Route path="/beds" element={<PrivateRoute><Shell mode={mode} toggleMode={toggleMode}><BedsPage /></Shell></PrivateRoute>} />
-                <Route path="/triage" element={<PrivateRoute><Shell mode={mode} toggleMode={toggleMode}><TriagePage /></Shell></PrivateRoute>} />
-                <Route path="/analytics" element={<PrivateRoute><Shell mode={mode} toggleMode={toggleMode}><AnalyticsPage /></Shell></PrivateRoute>} />
-                <Route path="/radiology" element={<PrivateRoute><Shell mode={mode} toggleMode={toggleMode}><RadiologyPage /></Shell></PrivateRoute>} />
-                <Route path="/feedback" element={<PrivateRoute><Shell mode={mode} toggleMode={toggleMode}><FeedbackPage /></Shell></PrivateRoute>} />
-                <Route path="/consent" element={<PrivateRoute><Shell mode={mode} toggleMode={toggleMode}><ConsentPage /></Shell></PrivateRoute>} />
-                <Route path="/er-alerts" element={<PrivateRoute><Shell mode={mode} toggleMode={toggleMode}><ERAlertsPage /></Shell></PrivateRoute>} />
-                <Route path="/ot-scheduling" element={<PrivateRoute><Shell mode={mode} toggleMode={toggleMode}><OTSchedulingPage /></Shell></PrivateRoute>} />
-                <Route path="/audit" element={<PrivateRoute><Shell mode={mode} toggleMode={toggleMode}><AuditPage /></Shell></PrivateRoute>} />
-                <Route path="/erp" element={<PrivateRoute><Shell mode={mode} toggleMode={toggleMode}><ERPPage /></Shell></PrivateRoute>} />
-	                <Route path="/accounting" element={<PrivateRoute><Shell mode={mode} toggleMode={toggleMode}><AccountingPage /></Shell></PrivateRoute>} />
-                <Route path="/notifications" element={<PrivateRoute><Shell mode={mode} toggleMode={toggleMode}><NotificationsPage /></Shell></PrivateRoute>} />
-                <Route path="/superadmin" element={<PrivateRoute><Shell mode={mode} toggleMode={toggleMode}><SuperAdminPage /></Shell></PrivateRoute>} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
-        </ThemeProvider>
+        <BrowserRouter>
+          <Suspense fallback={<div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/" element={<PrivateRoute><Shell><DashboardPage /></Shell></PrivateRoute>} />
+              <Route path="/patients" element={<PrivateRoute><Shell><PatientsPage /></Shell></PrivateRoute>} />
+              <Route path="/appointments" element={<PrivateRoute><Shell><AppointmentsPage /></Shell></PrivateRoute>} />
+              <Route path="/beds" element={<PrivateRoute><Shell><BedsPage /></Shell></PrivateRoute>} />
+              <Route path="/triage" element={<PrivateRoute><Shell><TriagePage /></Shell></PrivateRoute>} />
+              <Route path="/analytics" element={<PrivateRoute><Shell><AnalyticsPage /></Shell></PrivateRoute>} />
+              <Route path="/radiology" element={<PrivateRoute><Shell><RadiologyPage /></Shell></PrivateRoute>} />
+              <Route path="/feedback" element={<PrivateRoute><Shell><FeedbackPage /></Shell></PrivateRoute>} />
+              <Route path="/consent" element={<PrivateRoute><Shell><ConsentPage /></Shell></PrivateRoute>} />
+              <Route path="/er-alerts" element={<PrivateRoute><Shell><ERAlertsPage /></Shell></PrivateRoute>} />
+              <Route path="/ot-scheduling" element={<PrivateRoute><Shell><OTSchedulingPage /></Shell></PrivateRoute>} />
+              <Route path="/audit" element={<PrivateRoute><Shell><AuditPage /></Shell></PrivateRoute>} />
+              <Route path="/erp" element={<PrivateRoute><Shell><ERPPage /></Shell></PrivateRoute>} />
+              <Route path="/accounting" element={<PrivateRoute><Shell><AccountingPage /></Shell></PrivateRoute>} />
+              <Route path="/notifications" element={<PrivateRoute><Shell><NotificationsPage /></Shell></PrivateRoute>} />
+              <Route path="/superadmin" element={<PrivateRoute><Shell><SuperAdminPage /></Shell></PrivateRoute>} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
       </QueryClientProvider>
     </AuthProvider>
   )

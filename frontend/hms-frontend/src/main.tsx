@@ -28,11 +28,11 @@ axios.interceptors.response.use(
         h.set('Authorization', `Bearer ${newAccess}`)
         original.headers = h
         return axios(original)
-      } catch (e) {
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
-        window.location.href = '/login'
-      }
+        } catch {
+         localStorage.removeItem('accessToken')
+         localStorage.removeItem('refreshToken')
+         window.location.href = '/login'
+       }
     }
     return Promise.reject(error)
   }

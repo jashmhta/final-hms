@@ -36,7 +36,7 @@ load_dotenv(BASE_DIR / ".env")
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-insecure-change-me")
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "strong-django-secret-key-2024")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
@@ -125,6 +125,9 @@ if os.getenv("POSTGRES_DB"):
             "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
             "HOST": os.getenv("POSTGRES_HOST", "localhost"),
             "PORT": os.getenv("POSTGRES_PORT", "5432"),
+            "OPTIONS": {
+                "sslmode": "require",
+            },
         }
     }
 else:
@@ -204,18 +207,23 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.UserRateThrottle",
         "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
         "user": os.getenv("DRF_USER_THROTTLE", "1000/day"),
         "anon": os.getenv("DRF_ANON_THROTTLE", "100/day"),
+        "login": os.getenv("DRF_LOGIN_THROTTLE", "5/min"),
+        "register": os.getenv("DRF_REGISTER_THROTTLE", "3/min"),
     },
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.getenv("JWT_ACCESS_MIN", "60"))),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.getenv("JWT_REFRESH_DAYS", "7"))),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.getenv("JWT_ACCESS_MIN", "15"))),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.getenv("JWT_REFRESH_DAYS", "1"))),
     "SIGNING_KEY": os.getenv("JWT_SIGNING_KEY", SECRET_KEY),
     "AUTH_HEADER_TYPES": ("Bearer",),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
 
 SPECTACULAR_SETTINGS = {
@@ -262,12 +270,14 @@ SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "0")) if not DEBUG else 0
+SECURE_HSTS_SECONDS = (
+    int(os.getenv("SECURE_HSTS_SECONDS", "31536000")) if not DEBUG else 0
+)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = (
-    not DEBUG and os.getenv("SECURE_HSTS_INCLUDE_SUBDOMAINS", "false").lower() == "true"
+    not DEBUG and os.getenv("SECURE_HSTS_INCLUDE_SUBDOMAINS", "true").lower() == "true"
 )
 SECURE_HSTS_PRELOAD = (
-    not DEBUG and os.getenv("SECURE_HSTS_PRELOAD", "false").lower() == "true"
+    not DEBUG and os.getenv("SECURE_HSTS_PRELOAD", "true").lower() == "true"
 )
 SECURE_SSL_REDIRECT = (
     not DEBUG and os.getenv("SECURE_SSL_REDIRECT", "true").lower() == "true"
@@ -372,9 +382,13 @@ if os.getenv("SENTRY_DSN"):
 INSTALLED_APPS.append("django_celery_beat")
 
 X_FRAME_OPTIONS = "DENY"
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = "Strict"
 
-SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", "1800"))  # 30 min
+SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", "900"))  # 15 min
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Strict"
 
 _fe_key = os.getenv("FIELD_ENCRYPTION_KEY")
 if not _fe_key:

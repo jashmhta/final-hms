@@ -3,6 +3,7 @@
 venv/
 env/
 ENV/
+backend/venv/
 __pycache__/
 *.pyc
 *.pyo
@@ -44,7 +45,17 @@ mypy_*.txt
 test_results_*.txt
 flake8_*.txt
 bandit_report*.txt
+bandit-report.json
 bandit-output.json
+safety-report.json
+semgrep-report.json
+semgrep_report.json
+semgrep_report2.json
+eslint_report.json
+npm_audit.json
+license_report.json
+npm-audit-report.json
+npm-audit.json
 
 # Environment
 .env

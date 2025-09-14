@@ -3,8 +3,16 @@ import { Box, Button, Paper, Stack, TextField, Typography } from '@mui/material'
 import axios from 'axios'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
+interface FeedbackItem {
+  id: number;
+  rating: number;
+  comment: string;
+  hospital_id: number;
+  patient_id: number;
+}
+
 export default function FeedbackPage() {
-  const [items, setItems] = useState<any[]>([])
+  const [items, setItems] = useState<FeedbackItem[]>([])
   const [form, setForm] = useState({ hospital_id: '1', patient_id: '', rating: '5', comment: '' })
 
   const refresh = async () => {

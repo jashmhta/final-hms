@@ -8,15 +8,6 @@ from encrypted_model_fields.fields import (
     EncryptedEmailField,
 )
 
-from django.contrib.auth.models import AbstractUser, Permission
-from django.db import models
-from django.utils import timezone
-from encrypted_model_fields.fields import (
-    EncryptedCharField,
-    EncryptedEmailField,
-)
->>>>>>> transform-refactor
-
 
 class UserRole(models.TextChoices):
     SUPER_ADMIN = "SUPER_ADMIN", "Super Admin"
@@ -24,6 +15,7 @@ class UserRole(models.TextChoices):
     CHIEF_MEDICAL_OFFICER = "CHIEF_MEDICAL_OFFICER", "Chief Medical Officer"
     DEPARTMENT_HEAD = "DEPARTMENT_HEAD", "Department Head"
     ATTENDING_PHYSICIAN = "ATTENDING_PHYSICIAN", "Attending Physician"
+    DOCTOR = "DOCTOR", "Doctor"
     RESIDENT = "RESIDENT", "Resident"
     INTERN = "INTERN", "Intern"
     NURSE_MANAGER = "NURSE_MANAGER", "Nurse Manager"

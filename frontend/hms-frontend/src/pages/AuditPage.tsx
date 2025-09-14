@@ -1,20 +1,31 @@
-import { useEffect, useState } from 'react'
-import { Box, Button, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material'
+ import { useCallback, useEffect, useState } from 'react'
+import { Box, Button, Paper, Stack, TextField, Typography } from '@mui/material'
 import axios from 'axios'
 
+interface AuditEvent {
+  id: number;
+  service: string;
+  action: string;
+  resource_type: string;
+  resource_id?: number;
+  actor_role: string;
+  actor_user: string;
+  created_at: string;
+}
+
 export default function AuditPage() {
-  const [events, setEvents] = useState<any[]>([])
+  const [events, setEvents] = useState<AuditEvent[]>([])
   const [service, setService] = useState('')
   const [action, setAction] = useState('')
 
-  const load = async () => {
-    const params: any = {}
+  const load = useCallback(async () => {
+    const params: Record<string, string> = {}
     if (service) params.service = service
     if (action) params.action = action
     const r = await axios.get('/api/audit/events', { params })
     setEvents(r.data)
-  }
-  useEffect(() => { load().catch(() => setEvents([])) }, [])
+  }, [service, action])
+  useEffect(() => { load().catch(() => setEvents([])) }, [load])
 
   return (
     <Box>
