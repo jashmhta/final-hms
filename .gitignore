@@ -47,6 +47,8 @@ flake8_*.txt
 bandit_report*.txt
 bandit-report.json
 bandit-output.json
+bandit_scan.json
+bandit_report_new.json
 safety-report.json
 semgrep-report.json
 semgrep_report.json
@@ -56,6 +58,12 @@ npm_audit.json
 license_report.json
 npm-audit-report.json
 npm-audit.json
+
+# Coverage
+coverage/
+
+# Keys
+keys/
 
 # Environment
 .env
