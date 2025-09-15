@@ -16,9 +16,25 @@ dist/
 *.egg
 .coverage
 htmlcov/
+.pytest_cache/
+.mypy_cache/
+.coverage.*
+*.sqlite3
+db.sqlite3
+media/
+staticfiles/
 
 # Node.js
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.next/
+.nuxt/
+.cache/
+.sass-cache/
+.eslintcache
+.parcel-cache/
 
 # IDEs
 .idea/
@@ -71,7 +87,6 @@ keys/
 .env.*.local
 
 # OS generated files
-.DS_Store
 Thumbs.db
 
 # Backups
@@ -86,6 +101,9 @@ backups/
 # Temporary files
 temp/
 tmp/
+.cache/
+*.tmp
+*.temp
 
 # Uploads and downloads
 uploads/
