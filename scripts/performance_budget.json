@@ -1,0 +1,161 @@
+{
+  "performance_budget": {
+    "version": "1.0",
+    "description": "Enterprise-grade performance budgets for HMS",
+    "budgets": {
+      "api_response_times": {
+        "median": {
+          "value": 50,
+          "unit": "ms",
+          "description": "Median API response time"
+        },
+        "95th_percentile": {
+          "value": 100,
+          "unit": "ms",
+          "description": "95th percentile API response time (SLA target)"
+        },
+        "99th_percentile": {
+          "value": 500,
+          "unit": "ms",
+          "description": "99th percentile API response time"
+        }
+      },
+      "page_load_times": {
+        "first_contentful_paint": {
+          "value": 1000,
+          "unit": "ms",
+          "description": "First Contentful Paint"
+        },
+        "largest_contentful_paint": {
+          "value": 2500,
+          "unit": "ms",
+          "description": "Largest Contentful Paint"
+        },
+        "first_input_delay": {
+          "value": 100,
+          "unit": "ms",
+          "description": "First Input Delay"
+        },
+        "cumulative_layout_shift": {
+          "value": 0.1,
+          "unit": "score",
+          "description": "Cumulative Layout Shift"
+        }
+      },
+      "bundle_sizes": {
+        "main_bundle": {
+          "value": 200,
+          "unit": "KB",
+          "description": "Main JavaScript bundle size"
+        },
+        "vendor_bundle": {
+          "value": 500,
+          "unit": "KB",
+          "description": "Vendor JavaScript bundle size"
+        },
+        "css_bundle": {
+          "value": 50,
+          "unit": "KB",
+          "description": "CSS bundle size"
+        }
+      },
+      "resource_usage": {
+        "cpu_usage": {
+          "value": 70,
+          "unit": "percent",
+          "description": "Average CPU usage"
+        },
+        "memory_usage": {
+          "value": 80,
+          "unit": "percent",
+          "description": "Average memory usage"
+        },
+        "disk_usage": {
+          "value": 85,
+          "unit": "percent",
+          "description": "Disk usage threshold"
+        }
+      },
+      "reliability": {
+        "uptime": {
+          "value": 99.9,
+          "unit": "percent",
+          "description": "Service uptime SLA"
+        },
+        "error_rate": {
+          "value": 0.1,
+          "unit": "percent",
+          "description": "API error rate"
+        },
+        "mean_time_between_failures": {
+          "value": 720,
+          "unit": "hours",
+          "description": "Mean time between failures"
+        }
+      },
+      "database_performance": {
+        "query_response_time": {
+          "value": 50,
+          "unit": "ms",
+          "description": "Average database query time"
+        },
+        "connection_pool_utilization": {
+          "value": 80,
+          "unit": "percent",
+          "description": "Database connection pool utilization"
+        },
+        "cache_hit_rate": {
+          "value": 90,
+          "unit": "percent",
+          "description": "Database cache hit rate"
+        }
+      },
+      "network_performance": {
+        "time_to_first_byte": {
+          "value": 200,
+          "unit": "ms",
+          "description": "Time to First Byte"
+        },
+        "dns_lookup_time": {
+          "value": 50,
+          "unit": "ms",
+          "description": "DNS lookup time"
+        },
+        "ssl_handshake_time": {
+          "value": 100,
+          "unit": "ms",
+          "description": "SSL handshake time"
+        }
+      }
+    },
+    "monitoring": {
+      "alert_thresholds": {
+        "warning": {
+          "multiplier": 1.2,
+          "description": "Warning when budget exceeded by 20%"
+        },
+        "critical": {
+          "multiplier": 1.5,
+          "description": "Critical when budget exceeded by 50%"
+        }
+      },
+      "reporting": {
+        "frequency": "daily",
+        "format": "json",
+        "recipients": ["devops@hospital.com", "performance@hospital.com"]
+      }
+    },
+    "enforcement": {
+      "build_failure": {
+        "enabled": true,
+        "threshold": "warning",
+        "description": "Fail CI/CD builds when performance budgets are exceeded"
+      },
+      "deployment_blocks": {
+        "enabled": true,
+        "threshold": "critical",
+        "description": "Block deployments when critical performance thresholds are exceeded"
+      }
+    }
+  }
+}

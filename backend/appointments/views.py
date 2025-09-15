@@ -21,6 +21,9 @@ from .models import (
     Resource,
     WaitList,
 )
+from patients.models import Patient
+from users.models import User
+from core.utils import PerformanceTracker, optimize_queryset
 from .serializers import (
     AppointmentBasicSerializer,
     AppointmentHistorySerializer,
@@ -150,45 +153,65 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return AppointmentSerializer
 
     def get_queryset(self):
+        from django.core.cache import cache
+        from django.db.models import Prefetch
+
         user = self.request.user
-        qs = Appointment.objects.select_related(
-            "patient", "primary_provider", "hospital", "template"
-        ).all()
 
-        if user.is_superuser or getattr(user, "role", None) == "SUPER_ADMIN":
-            queryset = qs
-        elif getattr(user, "hospital_id", None) is None:
-            queryset = qs.none()
-        else:
-            queryset = qs.filter(hospital_id=user.hospital_id)
+        with PerformanceTracker("appointment_queryset") as tracker:
+            # Cache key for queryset filtering
+            cache_key = f"appointment_queryset_filters:{user.id}:{user.hospital_id}"
+            cached_filters = cache.get(cache_key, version=1)
 
-        # Role-based filtering for non-admin users
-        if not (
-            user.is_superuser
-            or getattr(user, "role", None) in ["SUPER_ADMIN", "HOSPITAL_ADMIN", "ADMIN"]
-        ):
-            if hasattr(user, "patient_profile"):
-                # Patient can only see their own appointments
-                queryset = queryset.filter(patient=user.patient_profile)
-            elif user.role in ["DOCTOR", "NURSE"]:
-                # Healthcare providers can see appointments they're involved in
-                queryset = queryset.filter(
-                    Q(primary_provider=user) | Q(additional_providers=user)
-                ).distinct()
+            if cached_filters:
+                queryset = Appointment.objects.filter(**cached_filters)
             else:
-                # Others get no appointments unless explicitly authorized
-                queryset = queryset.none()
+                qs = optimize_queryset(
+                    Appointment.objects.all(),
+                    select_related=["patient", "primary_provider", "hospital", "template"],
+                    prefetch_related=[
+                        Prefetch('patient', queryset=Patient.objects.only('id', 'first_name', 'last_name', 'medical_record_number')),
+                        Prefetch('primary_provider', queryset=User.objects.only('id', 'first_name', 'last_name')),
+                    ]
+                )
 
-        # Date range filtering
-        start_date = self.request.query_params.get("start_date")
-        end_date = self.request.query_params.get("end_date")
+                if user.is_superuser or getattr(user, "role", None) == "SUPER_ADMIN":
+                    queryset = qs
+                elif getattr(user, "hospital_id", None) is None:
+                    queryset = qs.none()
+                else:
+                    queryset = qs.filter(hospital_id=user.hospital_id)
 
-        if start_date:
-            queryset = queryset.filter(start_at__date__gte=start_date)
-        if end_date:
-            queryset = queryset.filter(start_at__date__lte=end_date)
+                # Role-based filtering for non-admin users
+                if not (
+                    user.is_superuser
+                    or getattr(user, "role", None) in ["SUPER_ADMIN", "HOSPITAL_ADMIN", "ADMIN"]
+                ):
+                    if hasattr(user, "patient_profile"):
+                        # Patient can only see their own appointments
+                        queryset = queryset.filter(patient=user.patient_profile)
+                    elif user.role in ["DOCTOR", "NURSE"]:
+                        # Healthcare providers can see appointments they're involved in
+                        queryset = queryset.filter(
+                            Q(primary_provider=user) | Q(additional_providers=user)
+                        ).distinct()
+                    else:
+                        # Others get no appointments unless explicitly authorized
+                        queryset = queryset.none()
 
-        return queryset
+                # Cache the filters for 5 minutes
+                cache.set(cache_key, queryset.query.where, timeout=300, version=1)
+
+            # Date range filtering (not cached as it's dynamic)
+            start_date = self.request.query_params.get("start_date")
+            end_date = self.request.query_params.get("end_date")
+
+            if start_date:
+                queryset = queryset.filter(start_at__date__gte=start_date)
+            if end_date:
+                queryset = queryset.filter(start_at__date__lte=end_date)
+
+            return queryset
 
     def perform_create(self, serializer):
         user = self.request.user

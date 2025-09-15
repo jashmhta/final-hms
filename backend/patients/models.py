@@ -97,6 +97,78 @@ class PreferredLanguage(models.TextChoices):
 
 
 class Patient(TenantModel):
+    """
+    Patient model representing a healthcare patient in the HMS.
+
+    This model stores comprehensive patient information including demographics,
+    medical history, contact details, and administrative data. It supports
+    multi-tenancy through the TenantModel inheritance.
+
+    Attributes:
+        uuid: Unique identifier for the patient across systems
+        medical_record_number: Hospital-specific medical record number
+        external_id: Identifier from external healthcare systems
+        first_name: Patient's first name
+        middle_name: Patient's middle name (optional)
+        last_name: Patient's last name
+        suffix: Name suffix (Jr., Sr., MD, etc.)
+        maiden_name: Patient's maiden name (for females)
+        preferred_name: Patient's preferred name for addressing
+        date_of_birth: Patient's date of birth
+        gender: Patient's gender identity
+        marital_status: Current marital status
+        race: Patient's racial background
+        ethnicity: Patient's ethnic background
+        religion: Patient's religious affiliation
+        preferred_language: Primary language for communication
+        interpreter_needed: Whether interpreter services are required
+        phone_primary: Primary phone number (encrypted)
+        phone_secondary: Secondary phone number (encrypted)
+        email: Email address (encrypted)
+        address_line1: Street address line 1 (encrypted)
+        address_line2: Street address line 2 (encrypted)
+        city: City of residence
+        state: State/province of residence
+        zip_code: Postal code
+        country: Country of residence
+        blood_type: ABO blood type and Rh factor
+        weight_kg: Current weight in kilograms
+        height_cm: Height in centimeters
+        status: Current patient status (active, inactive, deceased, etc.)
+        date_of_death: Date of death (if applicable)
+        cause_of_death: Cause of death description
+        organ_donor: Whether patient is an organ donor
+        advance_directive_on_file: Whether advance directive exists
+        do_not_resuscitate: DNR status
+        healthcare_proxy: Healthcare proxy information
+        preferred_contact_method: Preferred method of contact
+        allow_sms: Whether SMS communication is allowed
+        allow_email: Whether email communication is allowed
+        allow_automated_calls: Whether automated calls are permitted
+        hipaa_acknowledgment_date: Date HIPAA acknowledgment was signed
+        privacy_notice_date: Date privacy notice was provided
+        patient_portal_enrolled: Whether enrolled in patient portal
+        patient_portal_last_login: Last login to patient portal
+        primary_care_physician: Assigned primary care physician
+        referring_physician: Referring physician
+        created_by: User who created the patient record
+        vip_status: Whether patient has VIP status
+        confidential: Whether record is confidential
+        notes: Additional notes about the patient (encrypted)
+        last_updated_by: User who last updated the record
+
+    Methods:
+        get_full_name(): Returns the complete patient name
+        get_age(): Calculates current age
+        get_age_at_date(date): Calculates age at specific date
+        is_minor(): Returns True if patient is under 18
+        save(): Custom save method for MRN generation
+
+    Meta:
+        indexes: Comprehensive database indexes for performance
+        ordering: Default ordering by last name, first name
+    """
+
     # Identifiers
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     medical_record_number = models.CharField(
@@ -240,6 +312,7 @@ class Patient(TenantModel):
 
     class Meta:
         indexes = [
+            # Existing indexes
             models.Index(fields=["hospital", "last_name", "first_name"]),
             models.Index(fields=["uuid"]),
             models.Index(fields=["medical_record_number"]),
@@ -247,6 +320,21 @@ class Patient(TenantModel):
             models.Index(fields=["status"]),
             models.Index(fields=["primary_care_physician"]),
             models.Index(fields=["created_at"]),
+
+            # Performance optimization indexes
+            models.Index(fields=["hospital", "status", "created_at"]),
+            models.Index(fields=["hospital", "primary_care_physician", "status"]),
+            models.Index(fields=["hospital", "date_of_birth"]),
+            models.Index(fields=["hospital", "gender", "status"]),
+            models.Index(fields=["hospital", "city", "state"]),
+            models.Index(fields=["hospital", "vip_status"]),
+            models.Index(fields=["hospital", "confidential"]),
+            models.Index(fields=["hospital", "patient_portal_enrolled"]),
+
+            # Composite indexes for common queries
+            models.Index(fields=["hospital", "last_name", "first_name", "status"]),
+            models.Index(fields=["hospital", "medical_record_number", "status"]),
+            models.Index(fields=["hospital", "primary_care_physician", "created_at"]),
         ]
         ordering = ["last_name", "first_name"]
 
@@ -256,10 +344,22 @@ class Patient(TenantModel):
         )
 
     def get_full_name(self):
+        """
+        Returns the complete patient name including all components.
+
+        Returns:
+            str: Full name with first, middle, last, and suffix components
+        """
         parts = [self.first_name, self.middle_name, self.last_name, self.suffix]
         return " ".join(part for part in parts if part)
 
     def get_age(self):
+        """
+        Calculates the patient's current age in years.
+
+        Returns:
+            int or None: Age in years, or None if date_of_birth is not set
+        """
         if not self.date_of_birth:
             return None
         today = date.today()
@@ -273,6 +373,15 @@ class Patient(TenantModel):
         )
 
     def get_age_at_date(self, reference_date):
+        """
+        Calculates the patient's age at a specific reference date.
+
+        Args:
+            reference_date (date): The date to calculate age at
+
+        Returns:
+            int or None: Age in years at the reference date, or None if date_of_birth is not set
+        """
         if not self.date_of_birth:
             return None
         return (
@@ -285,6 +394,12 @@ class Patient(TenantModel):
         )
 
     def is_minor(self):
+        """
+        Determines if the patient is a minor (under 18 years old).
+
+        Returns:
+            bool: True if patient is under 18, False otherwise
+        """
         return self.get_age() < 18 if self.get_age() is not None else False
 
     def save(self, *args, **kwargs):

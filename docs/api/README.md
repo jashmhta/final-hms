@@ -98,36 +98,98 @@ Authorization: Bearer <access_token>
 ## Microservices Endpoints
 
 ### Patients Service
-- **Base URL**: `http://patients_service:8001`
-- **Endpoints**: Patient CRUD operations
+- **Base URL**: `http://patients-service:8001`
+- **OpenAPI Docs**: `http://patients-service:8001/docs`
+- **Schema**: `http://patients-service:8001/openapi.json`
+
+#### Endpoints
+- `GET /api/patients` - List patients
+- `POST /api/patients` - Create patient
+- `GET /api/patients/{id}` - Get patient details
+- `PUT /api/patients/{id}` - Update patient
+- `DELETE /api/patients/{id}` - Delete patient
+
+#### Example Request
+```bash
+curl -X GET "http://patients-service:8001/api/patients" \
+  -H "Authorization: Bearer <token>"
+```
 
 ### Appointments Service
-- **Base URL**: `http://appointments_service:8002`
-- **Endpoints**: Appointment scheduling and management
+- **Base URL**: `http://appointments-service:8002`
+- **OpenAPI Docs**: `http://appointments-service:8002/docs`
+- **Schema**: `http://appointments-service:8002/openapi.json`
+
+#### Endpoints
+- `GET /api/appointments` - List appointments
+- `POST /api/appointments` - Schedule appointment
+- `GET /api/appointments/{id}` - Get appointment details
+- `PUT /api/appointments/{id}` - Update appointment
+- `DELETE /api/appointments/{id}` - Cancel appointment
+- `POST /api/appointments/{id}/reschedule` - Reschedule appointment
 
 ### Billing Service
-- **Base URL**: `http://billing_service:8003`
-- **Endpoints**: Billing and payment processing
+- **Base URL**: `http://billing-service:8003`
+- **OpenAPI Docs**: `http://billing-service:8003/docs`
+- **Schema**: `http://billing-service:8003/openapi.json`
+
+#### Endpoints
+- `GET /api/invoices` - List invoices
+- `POST /api/invoices` - Create invoice
+- `GET /api/invoices/{id}` - Get invoice details
+- `PUT /api/invoices/{id}/pay` - Process payment
+- `GET /api/payments` - List payments
 
 ### Pharmacy Service
-- **Base URL**: `http://pharmacy_service:8004`
-- **Endpoints**: Medication management
+- **Base URL**: `http://pharmacy-service:8004`
+- **OpenAPI Docs**: `http://pharmacy-service:8004/docs`
+- **Schema**: `http://pharmacy-service:8004/openapi.json`
+
+#### Endpoints
+- `GET /api/medications` - List medications
+- `POST /api/prescriptions` - Create prescription
+- `GET /api/prescriptions/{id}` - Get prescription details
+- `PUT /api/prescriptions/{id}/dispense` - Dispense medication
 
 ### Lab Service
-- **Base URL**: `http://lab_service:8005`
-- **Endpoints**: Laboratory test management
+- **Base URL**: `http://lab-service:8005`
+- **OpenAPI Docs**: `http://lab-service:8005/docs`
+- **Schema**: `http://lab-service:8005/openapi.json`
+
+#### Endpoints
+- `GET /api/tests` - List lab tests
+- `POST /api/orders` - Order lab test
+- `GET /api/orders/{id}` - Get test order details
+- `GET /api/results/{id}` - Get test results
 
 ### Analytics Service
-- **Base URL**: `http://analytics_service:9010`
-- **Endpoints**: Data analytics and reporting
+- **Base URL**: `http://analytics-service:9010`
+- **OpenAPI Docs**: `http://analytics-service:9010/docs`
+- **Schema**: `http://analytics-service:9010/openapi.json`
+
+#### Endpoints
+- `GET /api/dashboard` - Get dashboard data
+- `GET /api/reports/patient-stats` - Patient statistics
+- `GET /api/reports/financial` - Financial reports
 
 ### Notifications Service
-- **Base URL**: `http://notifications_service:9011`
-- **Endpoints**: Email, SMS, push notifications
+- **Base URL**: `http://notifications-service:9011`
+- **OpenAPI Docs**: `http://notifications-service:9011/docs`
+- **Schema**: `http://notifications-service:9011/openapi.json`
+
+#### Endpoints
+- `POST /api/notifications/email` - Send email
+- `POST /api/notifications/sms` - Send SMS
+- `GET /api/notifications` - List notifications
 
 ### Audit Service
-- **Base URL**: `http://audit_service:9015`
-- **Endpoints**: Audit logging and compliance
+- **Base URL**: `http://audit-service:9015`
+- **OpenAPI Docs**: `http://audit-service:9015/docs`
+- **Schema**: `http://audit-service:9015/openapi.json`
+
+#### Endpoints
+- `GET /api/audit/logs` - Get audit logs
+- `POST /api/audit/events` - Log audit event
 
 ## Error Handling
 

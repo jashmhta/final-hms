@@ -22,6 +22,12 @@ const ERAlertsPage = lazy(() => import("./pages/ERAlertsPage"));
 const OTSchedulingPage = lazy(() => import("./pages/OTSchedulingPage"));
 const SuperAdminPage = lazy(() => import("./pages/SuperAdminPage"));
 const PatientPortal = lazy(() => import("./pages/PatientPortal"));
+const PatientAppointmentPage = lazy(() => import("./pages/PatientAppointmentPage"));
+const PatientRecordPage = lazy(() => import("./pages/PatientRecordPage"));
+const PatientPrescriptionPage = lazy(() => import("./pages/PatientPrescriptionPage"));
+const PatientBillingPage = lazy(() => import("./pages/PatientBillingPage"));
+const PatientMessagePage = lazy(() => import("./pages/PatientMessagePage"));
+const PatientProfilePage = lazy(() => import("./pages/PatientProfilePage"));
 const DoctorPortal = lazy(() => import("./pages/DoctorPortal"));
 
 const queryClient = new QueryClient();
@@ -389,16 +395,76 @@ function App() {
                   </PrivateRoute>
                 }
               />
-              <Route
-                path="/patient"
-                element={
-                  <PrivateRoute>
-                    <PatientShell>
-                      <PatientPortal />
-                    </PatientShell>
-                  </PrivateRoute>
-                }
-              />
+               <Route
+                 path="/patient"
+                 element={
+                   <PrivateRoute>
+                     <PatientShell>
+                       <PatientPortal />
+                     </PatientShell>
+                   </PrivateRoute>
+                 }
+               />
+               <Route
+                 path="/patient/appointments"
+                 element={
+                   <PrivateRoute>
+                     <PatientShell>
+                       <PatientAppointmentPage />
+                     </PatientShell>
+                   </PrivateRoute>
+                 }
+               />
+               <Route
+                 path="/patient/records"
+                 element={
+                   <PrivateRoute>
+                     <PatientShell>
+                       <PatientRecordPage />
+                     </PatientShell>
+                   </PrivateRoute>
+                 }
+               />
+               <Route
+                 path="/patient/prescriptions"
+                 element={
+                   <PrivateRoute>
+                     <PatientShell>
+                       <PatientPrescriptionPage />
+                     </PatientShell>
+                   </PrivateRoute>
+                 }
+               />
+               <Route
+                 path="/patient/billing"
+                 element={
+                   <PrivateRoute>
+                     <PatientShell>
+                       <PatientBillingPage />
+                     </PatientShell>
+                   </PrivateRoute>
+                 }
+               />
+               <Route
+                 path="/patient/messages"
+                 element={
+                   <PrivateRoute>
+                     <PatientShell>
+                       <PatientMessagePage />
+                     </PatientShell>
+                   </PrivateRoute>
+                 }
+               />
+               <Route
+                 path="/patient/profile"
+                 element={
+                   <PrivateRoute>
+                     <PatientShell>
+                       <PatientProfilePage />
+                     </PatientShell>
+                   </PrivateRoute>
+                 }
+               />
               <Route
                 path="/doctor"
                 element={

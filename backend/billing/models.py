@@ -32,6 +32,17 @@ class Bill(TenantModel):
     discount_cents = models.IntegerField(default=0)
     net_cents = models.IntegerField(default=0)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["hospital", "patient", "status"]),
+            models.Index(fields=["hospital", "status", "created_at"]),
+            models.Index(fields=["hospital", "appointment"]),
+            models.Index(fields=["hospital", "insurance_claim_status"]),
+            models.Index(fields=["hospital", "net_cents"]),
+            models.Index(fields=["hospital", "patient", "created_at"]),
+            models.Index(fields=["hospital", "status", "net_cents"]),
+        ]
+
     def recalc(self):
         total = sum(item.amount_cents for item in self.items.all())
         self.total_cents = total
@@ -62,6 +73,15 @@ class BillLineItem(TenantModel):
     department = models.CharField(max_length=64, default="GENERAL")
     is_outsourced = models.BooleanField(default=False)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["bill"]),
+            models.Index(fields=["hospital", "department"]),
+            models.Index(fields=["hospital", "is_outsourced"]),
+            models.Index(fields=["hospital", "amount_cents"]),
+            models.Index(fields=["hospital", "bill", "department"]),
+        ]
+
     def save(self, *args, **kwargs):
         self.amount_cents = self.quantity * self.unit_price_cents
         super().save(*args, **kwargs)
@@ -74,6 +94,15 @@ class Payment(TenantModel):
     method = models.CharField(max_length=32, default="CASH")
     reference = models.CharField(max_length=255, blank=True)
     received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["bill"]),
+            models.Index(fields=["hospital", "received_at"]),
+            models.Index(fields=["hospital", "method"]),
+            models.Index(fields=["hospital", "amount_cents"]),
+            models.Index(fields=["hospital", "bill", "received_at"]),
+        ]
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -89,6 +118,12 @@ class ServiceCatalog(TenantModel):
     class Meta:
         unique_together = (("hospital", "code"),)
         ordering = ["code"]
+        indexes = [
+            models.Index(fields=["hospital", "code"]),
+            models.Index(fields=["hospital", "active"]),
+            models.Index(fields=["hospital", "price_cents"]),
+            models.Index(fields=["hospital", "code", "active"]),
+        ]
 
 
 class Asset(TenantModel):
@@ -106,3 +141,11 @@ class DepartmentBudget(TenantModel):
     period = models.CharField(max_length=16, help_text="YYYY-MM")
     budget_cents = models.IntegerField(default=0)
     alerts_threshold_pct = models.IntegerField(default=80)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["hospital", "department", "period"]),
+            models.Index(fields=["hospital", "period"]),
+            models.Index(fields=["hospital", "department"]),
+            models.Index(fields=["hospital", "budget_cents"]),
+        ]

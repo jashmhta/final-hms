@@ -31,6 +31,12 @@ sys.path.insert(0, str(BASE_DIR.parent))
 
 load_dotenv(BASE_DIR / ".env")
 
+# Performance monitoring imports
+import os
+if os.getenv("REDIS_URL"):
+    import django_redis
+    from core.middleware import PerformanceMonitoringMiddleware
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -79,6 +85,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusBeforeMiddleware",
+    "core.middleware.PerformanceMonitoringMiddleware",
+    "core.middleware.APICacheMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -90,6 +98,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.RequestIdMiddleware",
     "core.middleware.SecurityHeadersMiddleware",
+    "core.middleware.SecurityAuditMiddleware",
+    "core.middleware.RateLimitMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
@@ -127,9 +137,32 @@ if os.getenv("POSTGRES_DB"):
             "PORT": os.getenv("POSTGRES_PORT", "5432"),
             "OPTIONS": {
                 "sslmode": "prefer",  # Allow non-SSL for local development
+                "CONN_MAX_AGE": 600,  # Connection pooling - keep connections alive for 10 minutes
+                "CONN_HEALTH_CHECKS": True,  # Enable connection health checks
+                "OPTIONS": "-c default_transaction_isolation=read_committed",
             },
+            "CONN_MAX_AGE": 600,  # Django 4.2+ connection pooling
+            "AUTOCOMMIT": True,
         }
     }
+
+    # Read/Write database splitting for scalability
+    if os.getenv("POSTGRES_READ_HOST"):
+        DATABASES["default"]["TEST"] = {"MIRROR": "default"}
+        DATABASES["replica"] = {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("POSTGRES_DB"),
+            "USER": os.getenv("POSTGRES_USER", ""),
+            "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
+            "HOST": os.getenv("POSTGRES_READ_HOST"),
+            "PORT": os.getenv("POSTGRES_PORT", "5432"),
+            "OPTIONS": {
+                "sslmode": "prefer",
+                "CONN_MAX_AGE": 600,
+                "CONN_HEALTH_CHECKS": True,
+            },
+        }
+        DATABASE_ROUTERS = ["core.db_router.DatabaseRouter"]
 else:
     DATABASES = {
         "default": {
@@ -214,7 +247,13 @@ REST_FRAMEWORK = {
         "anon": os.getenv("DRF_ANON_THROTTLE", "100/day"),
         "login": os.getenv("DRF_LOGIN_THROTTLE", "5/min"),
         "register": os.getenv("DRF_REGISTER_THROTTLE", "3/min"),
+        "password_reset": os.getenv("DRF_PASSWORD_RESET_THROTTLE", "3/hour"),
+        "mfa_setup": os.getenv("DRF_MFA_SETUP_THROTTLE", "10/hour"),
     },
+    "DEFAULT_RENDERER_CLASSES": (
+        "rest_framework.renderers.JSONRenderer",
+    ),
+    "EXCEPTION_HANDLER": "core.utils.custom_exception_handler",
 }
 
 SIMPLE_JWT = {
@@ -228,7 +267,7 @@ SIMPLE_JWT = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Hospital Management System API",
-    "DESCRIPTION": "Enterprise HMS API documentation",
+    "DESCRIPTION": "Enterprise-grade Hospital Management System API providing comprehensive healthcare management capabilities including patient records, appointments, billing, pharmacy, laboratory, and administrative functions.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
@@ -245,6 +284,34 @@ SPECTACULAR_SETTINGS = {
             }
         }
     },
+    "TAGS": [
+        {"name": "authentication", "description": "User authentication and authorization"},
+        {"name": "users", "description": "User management and profiles"},
+        {"name": "patients", "description": "Patient information and management"},
+        {"name": "appointments", "description": "Appointment scheduling and management"},
+        {"name": "ehr", "description": "Electronic Health Records"},
+        {"name": "pharmacy", "description": "Pharmacy and medication management"},
+        {"name": "lab", "description": "Laboratory test ordering and results"},
+        {"name": "billing", "description": "Billing and payment processing"},
+        {"name": "accounting", "description": "Financial accounting and reporting"},
+        {"name": "analytics", "description": "Healthcare analytics and reporting"},
+        {"name": "feedback", "description": "Patient and system feedback"},
+        {"name": "hr", "description": "Human resources management"},
+        {"name": "facilities", "description": "Hospital facilities management"},
+        {"name": "hospitals", "description": "Hospital information and management"},
+    ],
+    "EXAMPLES": [
+        {
+            "request": {
+                "username": "doctor@example.com",
+                "password": "securepassword123"
+            },
+            "response": {
+                "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+                "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+            }
+        }
+    ],
 }
 
 # CORS/CSRF (dev defaults)
@@ -326,7 +393,7 @@ if os.getenv("AWS_STORAGE_BUCKET_NAME"):
     AWS_DEFAULT_ACL = None
     DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 
-# Cache (Redis)
+# Advanced Redis Caching Configuration
 if os.getenv("REDIS_URL"):
     CACHES = {
         "default": {
@@ -334,11 +401,72 @@ if os.getenv("REDIS_URL"):
             "LOCATION": os.getenv("REDIS_URL"),
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "CONNECTION_POOL_KWARGS": {
+                    "max_connections": 20,
+                    "decode_responses": True,
+                    "retry_on_timeout": True,
+                    "socket_connect_timeout": 5,
+                    "socket_timeout": 5,
+                },
+                "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
+                "SERIALIZER": "django_redis.serializers.json.JSONSerializer",
             },
-        }
+            "KEY_PREFIX": "hms",
+            "TIMEOUT": 300,  # 5 minutes default
+            "VERSION": 1,
+        },
+        "session": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": os.getenv("REDIS_URL") + "/1",
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "CONNECTION_POOL_KWARGS": {
+                    "max_connections": 10,
+                    "decode_responses": True,
+                },
+            },
+            "KEY_PREFIX": "session",
+            "TIMEOUT": 3600,  # 1 hour
+        },
+        "api_cache": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": os.getenv("REDIS_URL") + "/2",
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "CONNECTION_POOL_KWARGS": {
+                    "max_connections": 15,
+                    "decode_responses": True,
+                },
+                "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
+            },
+            "KEY_PREFIX": "api",
+            "TIMEOUT": 600,  # 10 minutes
+        },
+        "query_cache": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": os.getenv("REDIS_URL") + "/3",
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "CONNECTION_POOL_KWARGS": {
+                    "max_connections": 10,
+                    "decode_responses": True,
+                },
+            },
+            "KEY_PREFIX": "query",
+            "TIMEOUT": 1800,  # 30 minutes
+        },
     }
 
-# Celery
+    # Cache-based session storage
+    SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+    SESSION_CACHE_ALIAS = "session"
+
+    # Cache settings for performance
+    CACHE_MIDDLEWARE_ALIAS = "default"
+    CACHE_MIDDLEWARE_SECONDS = 600
+    CACHE_MIDDLEWARE_KEY_PREFIX = "middleware"
+
+# Celery Configuration for Performance
 CELERY_BROKER_URL = os.getenv(
     "CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0")
 )
@@ -346,6 +474,43 @@ CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
 CELERY_TASK_ALWAYS_EAGER = (
     os.getenv("CELERY_TASK_ALWAYS_EAGER", "false").lower() == "true"
 )
+
+# Performance optimizations
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TIMEZONE = 'UTC'
+CELERY_ENABLE_UTC = True
+
+# Worker settings for performance
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000
+CELERY_TASK_SOFT_TIME_LIMIT = 300  # 5 minutes
+CELERY_TASK_TIME_LIMIT = 600  # 10 minutes
+
+# Task routing for performance
+CELERY_TASK_ROUTES = {
+    'core.tasks.send_appointment_reminder': {'queue': 'notifications'},
+    'core.tasks.cache_warmup': {'queue': 'maintenance'},
+    'core.tasks.generate_performance_report': {'queue': 'monitoring'},
+    'core.tasks.optimize_database': {'queue': 'maintenance'},
+}
+
+# Task scheduling for performance monitoring
+CELERY_BEAT_SCHEDULE = {
+    'cache-warmup': {
+        'task': 'core.tasks.cache_warmup',
+        'schedule': 1800.0,  # Every 30 minutes
+    },
+    'performance-report': {
+        'task': 'core.tasks.generate_performance_report',
+        'schedule': 86400.0,  # Daily
+    },
+    'database-optimization': {
+        'task': 'core.tasks.optimize_database',
+        'schedule': 604800.0,  # Weekly
+    },
+}
 
 # DRF throttling scopes
 REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = [

@@ -21,10 +21,18 @@ jobs:
       run: |
         cd backend
         pip install -r requirements.txt
-    - name: Run backend tests
-      run: |
-        cd backend
-        python manage.py test --coverage
+     - name: Run backend tests
+       run: |
+         cd backend
+         python manage.py test --coverage --cov-report=xml --cov-fail-under=100 -n auto
+     - name: Run mutation tests
+       run: |
+         cd backend
+         python ../scripts/run_mutation_tests.py
+     - name: Run property-based tests
+       run: |
+         cd backend
+         python -m pytest tests/test_property_based.py
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
@@ -42,11 +50,15 @@ jobs:
         cd frontend/hms-frontend
         npx playwright install
         npm run test:e2e
-    - name: Run security scan
-      run: |
-        cd backend
-        bandit -r .
-        safety check
+     - name: Run security scan
+       run: |
+         cd backend
+         bandit -r . --format json --output bandit_report.json
+         safety check --output safety_report.json
+     - name: Run load tests
+       run: |
+         cd load_tests
+         locust -f hms_load_test.py --headless --users 100 --spawn-rate 10 --run-time 1m
   build-and-push:
     needs: test
     runs-on: ubuntu-latest

@@ -153,11 +153,25 @@ class Encounter(TenantModel):
     class Meta:
         ordering = ["-scheduled_start"]
         indexes = [
+            # Existing indexes
             models.Index(fields=["patient", "-scheduled_start"]),
             models.Index(fields=["primary_physician", "-scheduled_start"]),
             models.Index(fields=["encounter_status"]),
             models.Index(fields=["encounter_type"]),
             models.Index(fields=["encounter_number"]),
+
+            # Performance optimization indexes
+            models.Index(fields=["hospital", "patient", "encounter_status"]),
+            models.Index(fields=["hospital", "primary_physician", "encounter_status"]),
+            models.Index(fields=["hospital", "encounter_type", "scheduled_start"]),
+            models.Index(fields=["hospital", "created_at"]),
+            models.Index(fields=["hospital", "scheduled_start", "actual_start"]),
+            models.Index(fields=["hospital", "priority_level"]),
+            models.Index(fields=["hospital", "is_confidential"]),
+
+            # Composite indexes for common queries
+            models.Index(fields=["hospital", "patient", "scheduled_start", "encounter_status"]),
+            models.Index(fields=["hospital", "primary_physician", "scheduled_start", "encounter_status"]),
         ]
 
     def __str__(self) -> str:
@@ -707,3 +721,82 @@ class ERTriage(TenantModel):
 
     def __str__(self):
         return f"Triage {self.triage_level} for {self.encounter.patient} at {self.triage_time}"
+
+
+class NotificationModel(models.Model):
+    """Real-time notifications for clinical updates"""
+
+    encounter = models.ForeignKey(
+        Encounter, on_delete=models.CASCADE, related_name="notifications"
+    )
+    notification_type = models.CharField(
+        max_length=50,
+        choices=[
+            ("CRITICAL_RESULT", "Critical Lab Result"),
+            ("MEDICATION_ALERT", "Medication Alert"),
+            ("APPOINTMENT_REMINDER", "Appointment Reminder"),
+            ("DISCHARGE_READY", "Discharge Ready"),
+            ("BED_AVAILABLE", "Bed Available"),
+            ("CONSULT_REQUEST", "Consultation Request"),
+        ],
+    )
+    message = models.TextField()
+    priority = models.CharField(
+        max_length=10,
+        choices=[
+            ("LOW", "Low"),
+            ("NORMAL", "Normal"),
+            ("HIGH", "High"),
+            ("URGENT", "Urgent"),
+        ],
+        default="NORMAL",
+    )
+    recipient_user = models.ForeignKey(
+        "users.User", on_delete=models.CASCADE, related_name="notifications"
+    )
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["encounter", "-created_at"]),
+            models.Index(fields=["recipient_user", "is_read", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.notification_type} for {self.encounter.patient}"
+
+
+class QualityMetric(models.Model):
+    """Quality metrics and analytics"""
+
+    hospital = models.ForeignKey(
+        "hospitals.Hospital", on_delete=models.CASCADE, related_name="quality_metrics"
+    )
+    metric_type = models.CharField(
+        max_length=50,
+        choices=[
+            ("PATIENT_SATISFACTION", "Patient Satisfaction"),
+            ("WAIT_TIME", "Average Wait Time"),
+            ("READMISSION_RATE", "Readmission Rate"),
+            ("INFECTION_RATE", "Infection Rate"),
+            ("MORTALITY_RATE", "Mortality Rate"),
+            ("LENGTH_OF_STAY", "Average Length of Stay"),
+        ],
+    )
+    value = models.DecimalField(max_digits=10, decimal_places=2)
+    target_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    period_start = models.DateField()
+    period_end = models.DateField()
+    calculated_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-period_end"]
+        indexes = [
+            models.Index(fields=["hospital", "metric_type", "-period_end"]),
+        ]
+
+    def __str__(self):
+        return f"{self.metric_type} for {self.hospital} ({self.period_start} - {self.period_end})"

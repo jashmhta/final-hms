@@ -14,6 +14,9 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 
 from .models import Bill, BillLineItem, DepartmentBudget, Payment, ServiceCatalog
+from appointments.models import Appointment
+from patients.models import Patient
+from django.db.models import Prefetch
 from .serializers import (
     BillLineItemSerializer,
     BillSerializer,
@@ -62,7 +65,12 @@ class BillViewSet(TenantScopedViewSet):
     serializer_class = BillSerializer
     queryset = (
         Bill.objects.select_related("patient", "appointment")
-        .prefetch_related("items", "payments")
+        .prefetch_related(
+            "items",
+            "payments",
+            Prefetch('patient', queryset=Patient.objects.only('id', 'first_name', 'last_name', 'medical_record_number')),
+            Prefetch('appointment', queryset=Appointment.objects.only('id', 'appointment_number', 'start_at')),
+        )
         .all()
     )
     required_module = "enable_accounting"
@@ -118,7 +126,7 @@ class BillViewSet(TenantScopedViewSet):
 
 class BillLineItemViewSet(TenantScopedViewSet):
     serializer_class = BillLineItemSerializer
-    queryset = BillLineItem.objects.select_related("bill").all()
+    queryset = BillLineItem.objects.select_related("bill", "bill__patient").all()
     required_module = "enable_accounting"
 
     def perform_create(self, serializer):
@@ -127,7 +135,7 @@ class BillLineItemViewSet(TenantScopedViewSet):
 
 class PaymentViewSet(TenantScopedViewSet):
     serializer_class = PaymentSerializer
-    queryset = Payment.objects.select_related("bill").all()
+    queryset = Payment.objects.select_related("bill", "bill__patient").all()
     required_module = "enable_accounting"
 
     def perform_create(self, serializer):

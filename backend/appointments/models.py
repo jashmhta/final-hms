@@ -305,6 +305,7 @@ class Appointment(TenantModel):
 
     class Meta:
         indexes = [
+            # Existing indexes
             models.Index(fields=["hospital", "primary_provider", "start_at"]),
             models.Index(fields=["hospital", "patient", "start_at"]),
             models.Index(fields=["status", "start_at"]),
@@ -312,6 +313,21 @@ class Appointment(TenantModel):
             models.Index(fields=["series_id"]),
             models.Index(fields=["uuid"]),
             models.Index(fields=["appointment_number"]),
+
+            # Performance optimization indexes
+            models.Index(fields=["hospital", "status", "start_at"]),
+            models.Index(fields=["hospital", "primary_provider", "status", "start_at"]),
+            models.Index(fields=["hospital", "patient", "status"]),
+            models.Index(fields=["hospital", "appointment_type", "status"]),
+            models.Index(fields=["hospital", "is_telehealth", "start_at"]),
+            models.Index(fields=["hospital", "priority", "start_at"]),
+            models.Index(fields=["hospital", "created_at"]),
+            models.Index(fields=["hospital", "start_at", "end_at"]),
+
+            # Composite indexes for complex queries
+            models.Index(fields=["hospital", "primary_provider", "start_at", "status"]),
+            models.Index(fields=["hospital", "patient", "start_at", "status"]),
+            models.Index(fields=["hospital", "appointment_type", "start_at", "status"]),
         ]
         ordering = ["start_at"]
 

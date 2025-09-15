@@ -7,8 +7,12 @@ from patients.models import Patient
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from .serializers import OverviewStatsSerializer
+from rest_framework import viewsets
+import joblib
+import numpy as np
+from sklearn.ensemble import IsolationForest
+from .models import MLModel, Prediction, Anomaly, EquipmentPrediction
+from .serializers import OverviewStatsSerializer, PredictionSerializer, AnomalySerializer, EquipmentPredictionSerializer
 
 # Create your views here.
 
@@ -38,3 +42,40 @@ class OverviewStatsView(APIView):
                 "revenue_cents": revenue_cents,
             }
         )
+
+
+class PredictionViewSet(viewsets.ModelViewSet):
+    queryset = Prediction.objects.all()
+    serializer_class = PredictionSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class AnomalyViewSet(viewsets.ModelViewSet):
+    queryset = Anomaly.objects.all()
+    serializer_class = AnomalySerializer
+    permission_classes = [IsAuthenticated]
+
+
+class EquipmentPredictionViewSet(viewsets.ModelViewSet):
+    queryset = EquipmentPrediction.objects.all()
+    serializer_class = EquipmentPredictionSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class ReadmissionPredictionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # Simple ML prediction for readmission
+        data = request.data
+        # Load or train model (placeholder)
+        model = IsolationForest(contamination=0.1)
+        # Assume data is features
+        features = np.array(data['features'])
+        prediction = model.fit_predict(features)
+        pred_obj = Prediction.objects.create(
+            model_id=1,  # placeholder
+            input_data=data,
+            prediction={'readmission_risk': prediction.tolist()}
+        )
+        return Response(PredictionSerializer(pred_obj).data)

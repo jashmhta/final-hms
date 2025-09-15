@@ -39,6 +39,27 @@ class EventModel(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
 
 
+class ConflictResolutionModel(Base):
+    __tablename__ = "conflict_resolutions"
+    id = Column(Integer, primary_key=True)
+    appointment_id = Column(Integer, nullable=False)
+    conflict_type = Column(String(50), nullable=False)  # e.g., "OVERLAP", "RESOURCE_CONFLICT"
+    resolution_action = Column(String(100), nullable=False)
+    resolved_at = Column(DateTime, default=datetime.utcnow)
+    resolved_by = Column(Integer, nullable=False)
+
+
+class ChecklistModel(Base):
+    __tablename__ = "checklists"
+    id = Column(Integer, primary_key=True)
+    appointment_id = Column(Integer, nullable=False)
+    checklist_type = Column(String(50), nullable=False)  # e.g., "PRE_OP", "POST_OP"
+    items = Column(Text, nullable=False)  # JSON string of checklist items
+    completed_items = Column(Text, nullable=True)  # JSON string of completed items
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+
 class AppointmentIn(BaseModel):
     patient: int
     doctor: int
@@ -57,6 +78,37 @@ class AppointmentOut(AppointmentIn):
 class SlotOut(BaseModel):
     start_at: datetime
     end_at: datetime
+
+
+class ConflictResolutionIn(BaseModel):
+    appointment_id: int
+    conflict_type: str
+    resolution_action: str
+    resolved_by: int
+
+
+class ConflictResolutionOut(ConflictResolutionIn):
+    id: int
+    resolved_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ChecklistIn(BaseModel):
+    appointment_id: int
+    checklist_type: str
+    items: str  # JSON string
+
+
+class ChecklistOut(ChecklistIn):
+    id: int
+    completed_items: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 # CQRS Implementation
@@ -251,3 +303,83 @@ def complete_appointment(appointment_id: int, db: Session = Depends(get_db)):
         {"appointment_id": appt.id, "patient": appt.patient, "doctor": appt.doctor},
     )
     return appt
+
+
+@app.post("/api/appointments/conflict_resolution", response_model=ConflictResolutionOut, status_code=201)
+def resolve_conflict(payload: ConflictResolutionIn, db: Session = Depends(get_db)):
+    resolution = ConflictResolutionModel(**payload.dict())
+    db.add(resolution)
+    db.commit()
+    db.refresh(resolution)
+    return resolution
+
+
+@app.get("/api/appointments/{appointment_id}/conflicts")
+def get_conflicts(appointment_id: int, db: Session = Depends(get_db)):
+    # Check for overlaps
+    appt = db.query(AppointmentModel).get(appointment_id)
+    if not appt:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    overlaps = (
+        db.query(AppointmentModel)
+        .filter(
+            AppointmentModel.doctor == appt.doctor,
+            AppointmentModel.start_at < appt.end_at,
+            AppointmentModel.end_at > appt.start_at,
+            AppointmentModel.id != appointment_id,
+            AppointmentModel.status.in_(["SCHEDULED", "COMPLETED"]),
+        )
+        .all()
+    )
+    return [{"id": o.id, "start_at": o.start_at, "end_at": o.end_at, "status": o.status} for o in overlaps]
+
+
+@app.post("/api/appointments/checklists", response_model=ChecklistOut, status_code=201)
+def create_checklist(payload: ChecklistIn, db: Session = Depends(get_db)):
+    checklist = ChecklistModel(**payload.dict())
+    db.add(checklist)
+    db.commit()
+    db.refresh(checklist)
+    return checklist
+
+
+@app.put("/api/appointments/checklists/{checklist_id}/complete")
+def complete_checklist_item(checklist_id: int, item: str, db: Session = Depends(get_db)):
+    checklist = db.query(ChecklistModel).get(checklist_id)
+    if not checklist:
+        raise HTTPException(status_code=404, detail="Checklist not found")
+
+    # Update completed items (simplified)
+    completed = checklist.completed_items or "[]"
+    import json
+    completed_list = json.loads(completed)
+    if item not in completed_list:
+        completed_list.append(item)
+    checklist.completed_items = json.dumps(completed_list)
+    checklist.updated_at = datetime.utcnow()
+    db.commit()
+    return {"status": "item completed"}
+
+
+@app.get("/api/appointments/{appointment_id}/checklists")
+def get_checklists(appointment_id: int, db: Session = Depends(get_db)):
+    checklists = db.query(ChecklistModel).filter(ChecklistModel.appointment_id == appointment_id).all()
+    return [
+        {
+            "id": c.id,
+            "checklist_type": c.checklist_type,
+            "items": c.items,
+            "completed_items": c.completed_items,
+            "created_at": c.created_at,
+            "updated_at": c.updated_at
+        }
+        for c in checklists
+    ]
+
+
+@app.post("/api/appointments/{appointment_id}/sync_ehr")
+def sync_with_ehr(appointment_id: int, db: Session = Depends(get_db)):
+    # Placeholder for EHR integration
+    # Would call EHR service to update encounter with appointment data
+    return {"message": "EHR sync placeholder", "appointment_id": appointment_id}

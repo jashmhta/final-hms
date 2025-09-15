@@ -1,0 +1,121 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "HMS Performance Overview",
+    "tags": ["hms", "performance"],
+    "timezone": "UTC",
+    "panels": [
+      {
+        "id": 1,
+        "title": "API Response Time (95th percentile)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"hms-backend\"}[5m]))",
+            "legendFormat": "95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{job=\"hms-backend\"}[5m]))",
+            "legendFormat": "50th percentile"
+          }
+        ],
+        "yAxes": [
+          {
+            "unit": "seconds",
+            "min": 0
+          }
+        ],
+        "thresholds": [
+          {
+            "value": 0.1,
+            "colorMode": "critical",
+            "op": "gt",
+            "fill": true,
+            "line": true,
+            "yaxis": "left"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Database Query Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(django_db_execute_total{job=\"hms-backend\"}[5m])",
+            "legendFormat": "Queries/sec"
+          },
+          {
+            "expr": "django_db_connections_waiting_total{job=\"hms-backend\"}",
+            "legendFormat": "Waiting connections"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Cache Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(django_cache_get_total{job=\"hms-backend\"}[5m]) / rate(django_cache_miss_total{job=\"hms-backend\"}[5m])",
+            "legendFormat": "Cache hit rate"
+          },
+          {
+            "expr": "rate(django_cache_get_total{job=\"hms-backend\"}[5m])",
+            "legendFormat": "Cache requests/sec"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "System Resources",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "100 - (avg by(instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+            "legendFormat": "CPU Usage %"
+          },
+          {
+            "expr": "(1 - system_memory_available_bytes / system_memory_total_bytes) * 100",
+            "legendFormat": "Memory Usage %"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Error Rates",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m]) * 100",
+            "legendFormat": "5xx Error Rate %"
+          },
+          {
+            "expr": "rate(http_requests_total{status=~\"4..\"}[5m]) / rate(http_requests_total[5m]) * 100",
+            "legendFormat": "4xx Error Rate %"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Queue Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "celery_queue_length{queue=\"celery\"}",
+            "legendFormat": "Queue length"
+          },
+          {
+            "expr": "rate(celery_task_sent_total[5m])",
+            "legendFormat": "Tasks sent/sec"
+          }
+        ]
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  }
+}

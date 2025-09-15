@@ -31,6 +31,14 @@ pytest
 pytest-asyncio
 pytest-django
 pytest-cov
+pytest-xdist
+pytest-html
+hypothesis
+mutmut
+factory-boy
+bandit
+safety
+locust
 black
 flake8
 isort
@@ -46,3 +54,11 @@ pyyaml
 structlog
 email-validator
 anyio>=4.4.0
+pip-tools
+scikit-learn
+tensorflow
+joblib
+twilio
+textblob
+transformers
+torch

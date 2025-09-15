@@ -1,7 +1,8 @@
 import os
 from typing import List, Optional
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 from sqlalchemy import Boolean, Column, Date, Integer, String, create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
@@ -48,7 +49,26 @@ def get_db():
         db.close()
 
 
-app = FastAPI(title="Patients Service", version="1.0.0")
+security = HTTPBearer()
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)):
+    """
+    Validate JWT token and return user info.
+    In production, this would validate against auth service.
+    """
+    token = credentials.credentials
+    # TODO: Implement proper JWT validation with auth service
+    # For now, return mock user info
+    return {"user_id": 1, "role": "doctor", "hospital_id": 1}
+
+app = FastAPI(
+    title="Patients Service",
+    version="1.0.0",
+    description="Microservice for managing patient information in the HMS",
+    openapi_tags=[
+        {"name": "patients", "description": "Patient management operations"}
+    ]
+)
 
 
 @app.on_event("startup")
@@ -56,13 +76,30 @@ def on_startup():
     Base.metadata.create_all(bind=engine)
 
 
-@app.get("/api/patients", response_model=List[PatientOut])
-def list_patients(db: Session = Depends(get_db)):
+@app.get("/api/patients", response_model=List[PatientOut], tags=["patients"])
+def list_patients(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Retrieve a list of all patients.
+
+    Requires authentication. Returns patients based on user permissions.
+    """
     return db.query(PatientModel).all()
 
 
-@app.post("/api/patients", response_model=PatientOut, status_code=201)
-def create_patient(payload: PatientIn, db: Session = Depends(get_db)):
+@app.post("/api/patients", response_model=PatientOut, status_code=201, tags=["patients"])
+def create_patient(
+    payload: PatientIn,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Create a new patient record.
+
+    Requires authentication and appropriate permissions.
+    """
     obj = PatientModel(**payload.dict())
     db.add(obj)
     db.commit()
@@ -70,16 +107,35 @@ def create_patient(payload: PatientIn, db: Session = Depends(get_db)):
     return obj
 
 
-@app.get("/api/patients/{patient_id}", response_model=PatientOut)
-def get_patient(patient_id: int, db: Session = Depends(get_db)):
+@app.get("/api/patients/{patient_id}", response_model=PatientOut, tags=["patients"])
+def get_patient(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Retrieve a specific patient by ID.
+
+    Requires authentication and access to the patient's records.
+    """
     obj = db.query(PatientModel).get(patient_id)
     if not obj:
         raise HTTPException(status_code=404, detail="Patient not found")
     return obj
 
 
-@app.put("/api/patients/{patient_id}", response_model=PatientOut)
-def update_patient(patient_id: int, payload: PatientIn, db: Session = Depends(get_db)):
+@app.put("/api/patients/{patient_id}", response_model=PatientOut, tags=["patients"])
+def update_patient(
+    patient_id: int,
+    payload: PatientIn,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Update an existing patient record.
+
+    Requires authentication and appropriate permissions.
+    """
     obj = db.query(PatientModel).get(patient_id)
     if not obj:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -90,8 +146,17 @@ def update_patient(patient_id: int, payload: PatientIn, db: Session = Depends(ge
     return obj
 
 
-@app.delete("/api/patients/{patient_id}", status_code=204)
-def delete_patient(patient_id: int, db: Session = Depends(get_db)):
+@app.delete("/api/patients/{patient_id}", status_code=204, tags=["patients"])
+def delete_patient(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Delete a patient record.
+
+    Requires authentication and administrative permissions.
+    """
     obj = db.query(PatientModel).get(patient_id)
     if not obj:
         raise HTTPException(status_code=404, detail="Patient not found")

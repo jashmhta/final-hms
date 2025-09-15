@@ -295,6 +295,11 @@ class TrustedDevice(TimeStampedModel):
     trust_expires_at = models.DateTimeField()
     last_used = models.DateTimeField(default=timezone.now)
 
+    # Zero-trust enhancements
+    trust_score = models.PositiveIntegerField(default=50)  # 0-100 trust score
+    risk_factors = models.JSONField(default=list, blank=True)
+    continuous_auth_enabled = models.BooleanField(default=True)
+
     class Meta:
         ordering = ["-last_used"]
 
@@ -303,3 +308,247 @@ class TrustedDevice(TimeStampedModel):
 
     def is_expired(self):
         return timezone.now() > self.trust_expires_at
+
+    def update_trust_score(self, factors):
+        """Update device trust score based on behavioral factors"""
+        score = 50  # Base score
+
+        # Positive factors
+        if factors.get('consistent_location', False):
+            score += 15
+        if factors.get('regular_usage_pattern', False):
+            score += 10
+        if factors.get('successful_auth_history', False):
+            score += 10
+
+        # Negative factors
+        if factors.get('unusual_time', False):
+            score -= 20
+        if factors.get('unusual_location', False):
+            score -= 15
+        if factors.get('suspicious_activity', False):
+            score -= 25
+
+        self.trust_score = max(0, min(100, score))
+        self.save()
+
+
+class DeviceTrustVerification(models.Model):
+    """Device trust verification for zero-trust architecture"""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    device = models.ForeignKey(TrustedDevice, on_delete=models.CASCADE)
+
+    # Verification methods
+    VERIFICATION_TYPES = [
+        ('CERTIFICATE', 'Device Certificate'),
+        ('BIOMETRIC', 'Biometric Verification'),
+        ('LOCATION', 'Location-based'),
+        ('BEHAVIORAL', 'Behavioral Analysis'),
+        ('NETWORK', 'Network Trust'),
+    ]
+
+    verification_type = models.CharField(max_length=20, choices=VERIFICATION_TYPES)
+    verification_data = models.JSONField(default=dict)
+    is_verified = models.BooleanField(default=False)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    # Trust metrics
+    confidence_score = models.PositiveIntegerField(default=0)  # 0-100
+    risk_level = models.CharField(max_length=10, choices=[
+        ('LOW', 'Low'), ('MEDIUM', 'Medium'), ('HIGH', 'High'), ('CRITICAL', 'Critical')
+    ], default='MEDIUM')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'device', 'verification_type']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.device.name} - {self.verification_type}"
+
+    def is_expired(self):
+        return self.expires_at and timezone.now() > self.expires_at
+
+
+class ContinuousAuthentication(models.Model):
+    """Continuous authentication monitoring"""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    session = models.ForeignKey(LoginSession, on_delete=models.CASCADE)
+
+    # Authentication factors
+    keystroke_pattern = models.JSONField(default=dict, blank=True)
+    mouse_movement = models.JSONField(default=dict, blank=True)
+    device_orientation = models.JSONField(default=dict, blank=True)
+    network_behavior = models.JSONField(default=dict, blank=True)
+
+    # Risk assessment
+    current_risk_score = models.PositiveIntegerField(default=0)
+    baseline_risk_score = models.PositiveIntegerField(default=0)
+    anomaly_detected = models.BooleanField(default=False)
+
+    # Monitoring
+    last_check = models.DateTimeField(default=timezone.now)
+    check_interval = models.PositiveIntegerField(default=300)  # 5 minutes
+
+    # Actions
+    requires_reauth = models.BooleanField(default=False)
+    reauth_reason = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Continuous Auth - {self.user.username}"
+
+    def check_anomaly(self, current_data):
+        """Check for behavioral anomalies"""
+        # Simple anomaly detection - in production, use ML models
+        anomalies = []
+
+        if self.keystroke_pattern:
+            # Check typing speed consistency
+            avg_speed = sum(self.keystroke_pattern.get('speeds', [])) / len(self.keystroke_pattern.get('speeds', [1]))
+            current_speed = current_data.get('keystroke_speed', avg_speed)
+            if abs(current_speed - avg_speed) > avg_speed * 0.5:
+                anomalies.append('unusual_typing_speed')
+
+        if self.mouse_movement:
+            # Check mouse movement patterns
+            avg_distance = sum(self.mouse_movement.get('distances', [])) / len(self.mouse_movement.get('distances', [1]))
+            current_distance = current_data.get('mouse_distance', avg_distance)
+            if abs(current_distance - avg_distance) > avg_distance * 0.7:
+                anomalies.append('unusual_mouse_movement')
+
+        self.anomaly_detected = len(anomalies) > 0
+        if self.anomaly_detected:
+            self.current_risk_score = min(100, self.current_risk_score + 20)
+            self.requires_reauth = self.current_risk_score > 70
+
+        self.save()
+        return anomalies
+
+    def update_trust_score(self, factors):
+        """Update device trust score based on behavioral factors"""
+        score = 50  # Base score
+
+        # Positive factors
+        if factors.get('consistent_location', False):
+            score += 15
+        if factors.get('regular_usage_pattern', False):
+            score += 10
+        if factors.get('successful_auth_history', False):
+            score += 10
+
+        # Negative factors
+        if factors.get('unusual_time', False):
+            score -= 20
+        if factors.get('unusual_location', False):
+            score -= 15
+        if factors.get('suspicious_activity', False):
+            score -= 25
+
+        self.trust_score = max(0, min(100, score))
+        self.save()
+
+
+class DeviceTrustVerification(models.Model):
+    """Device trust verification for zero-trust architecture"""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    device = models.ForeignKey(TrustedDevice, on_delete=models.CASCADE)
+
+    # Verification methods
+    VERIFICATION_TYPES = [
+        ('CERTIFICATE', 'Device Certificate'),
+        ('BIOMETRIC', 'Biometric Verification'),
+        ('LOCATION', 'Location-based'),
+        ('BEHAVIORAL', 'Behavioral Analysis'),
+        ('NETWORK', 'Network Trust'),
+    ]
+
+    verification_type = models.CharField(max_length=20, choices=VERIFICATION_TYPES)
+    verification_data = models.JSONField(default=dict)
+    is_verified = models.BooleanField(default=False)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    # Trust metrics
+    confidence_score = models.PositiveIntegerField(default=0)  # 0-100
+    risk_level = models.CharField(max_length=10, choices=[
+        ('LOW', 'Low'), ('MEDIUM', 'Medium'), ('HIGH', 'High'), ('CRITICAL', 'Critical')
+    ], default='MEDIUM')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'device', 'verification_type']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.device.name} - {self.verification_type}"
+
+    def is_expired(self):
+        return self.expires_at and timezone.now() > self.expires_at
+
+
+class ContinuousAuthentication(models.Model):
+    """Continuous authentication monitoring"""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    session = models.ForeignKey(LoginSession, on_delete=models.CASCADE)
+
+    # Authentication factors
+    keystroke_pattern = models.JSONField(default=dict, blank=True)
+    mouse_movement = models.JSONField(default=dict, blank=True)
+    device_orientation = models.JSONField(default=dict, blank=True)
+    network_behavior = models.JSONField(default=dict, blank=True)
+
+    # Risk assessment
+    current_risk_score = models.PositiveIntegerField(default=0)
+    baseline_risk_score = models.PositiveIntegerField(default=0)
+    anomaly_detected = models.BooleanField(default=False)
+
+    # Monitoring
+    last_check = models.DateTimeField(default=timezone.now)
+    check_interval = models.PositiveIntegerField(default=300)  # 5 minutes
+
+    # Actions
+    requires_reauth = models.BooleanField(default=False)
+    reauth_reason = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Continuous Auth - {self.user.username}"
+
+    def check_anomaly(self, current_data):
+        """Check for behavioral anomalies"""
+        # Simple anomaly detection - in production, use ML models
+        anomalies = []
+
+        if self.keystroke_pattern:
+            # Check typing speed consistency
+            avg_speed = sum(self.keystroke_pattern.get('speeds', [])) / len(self.keystroke_pattern.get('speeds', [1]))
+            current_speed = current_data.get('keystroke_speed', avg_speed)
+            if abs(current_speed - avg_speed) > avg_speed * 0.5:
+                anomalies.append('unusual_typing_speed')
+
+        if self.mouse_movement:
+            # Check mouse movement patterns
+            avg_distance = sum(self.mouse_movement.get('distances', [])) / len(self.mouse_movement.get('distances', [1]))
+            current_distance = current_data.get('mouse_distance', avg_distance)
+            if abs(current_distance - avg_distance) > avg_distance * 0.7:
+                anomalies.append('unusual_mouse_movement')
+
+        self.anomaly_detected = len(anomalies) > 0
+        if self.anomaly_detected:
+            self.current_risk_score = min(100, self.current_risk_score + 20)
+            self.requires_reauth = self.current_risk_score > 70
+
+        self.save()
+        return anomalies

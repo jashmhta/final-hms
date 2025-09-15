@@ -1,0 +1,135 @@
+---
+# Enterprise Security Monitoring Configuration
+# Prometheus AlertManager rules for HMS security events
+
+groups:
+  - name: security_alerts
+    rules:
+      # Authentication Security
+      - alert: HighFailedLoginAttempts
+        expr: rate(authentication_failed_logins_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: critical
+          category: authentication
+        annotations:
+          summary: "High rate of failed login attempts"
+          description: "More than 10 failed login attempts per minute detected"
+
+      - alert: AccountLocked
+        expr: increase(authentication_accounts_locked_total[1h]) > 5
+        for: 10m
+        labels:
+          severity: warning
+          category: authentication
+        annotations:
+          summary: "Multiple accounts locked"
+          description: "More than 5 accounts locked in the last hour"
+
+      # Authorization Security
+      - alert: PermissionDeniedSpike
+        expr: rate(authorization_permission_denied_total[5m]) > 20
+        for: 5m
+        labels:
+          severity: warning
+          category: authorization
+        annotations:
+          summary: "Spike in permission denied errors"
+          description: "Unusual number of permission denied requests"
+
+      # Data Protection
+      - alert: EncryptionFailures
+        expr: rate(encryption_operation_failures_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: critical
+          category: data_protection
+        annotations:
+          summary: "Encryption operation failures"
+          description: "Multiple encryption/decryption failures detected"
+
+      # API Security
+      - alert: HighRateLimitHits
+        expr: rate(api_rate_limit_exceeded_total[1m]) > 50
+        for: 5m
+        labels:
+          severity: warning
+          category: api_security
+        annotations:
+          summary: "High rate of rate limit violations"
+          description: "Excessive rate limit violations detected"
+
+      - alert: SuspiciousRequests
+        expr: rate(api_suspicious_requests_total[5m]) > 15
+        for: 5m
+        labels:
+          severity: warning
+          category: api_security
+        annotations:
+          summary: "Suspicious API requests detected"
+          description: "Multiple suspicious API requests from same source"
+
+      # Infrastructure Security
+      - alert: ContainerSecurityScanFailed
+        expr: container_security_scan_status{status="failed"} == 1
+        for: 1h
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: "Container security scan failed"
+          description: "Security scan failed for container images"
+
+      - alert: DatabaseConnectionAnomaly
+        expr: rate(database_connection_errors_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "Database connection anomalies"
+          description: "Multiple database connection errors detected"
+
+      # Audit & Compliance
+      - alert: AuditLogWriteFailures
+        expr: rate(audit_log_write_failures_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: critical
+          category: compliance
+        annotations:
+          summary: "Audit log write failures"
+          description: "Failed to write audit log entries"
+
+      - alert: ComplianceViolation
+        expr: compliance_violations_total > 0
+        for: 15m
+        labels:
+          severity: critical
+          category: compliance
+        annotations:
+          summary: "Compliance violations detected"
+          description: "System detected compliance violations"
+
+  - name: security_metrics
+    rules:
+      # Security KPIs
+      - alert: LowSecurityScore
+        expr: security_compliance_score < 80
+        for: 1h
+        labels:
+          severity: warning
+          category: compliance
+        annotations:
+          summary: "Security compliance score below threshold"
+          description: "Overall security compliance score is below 80%"
+
+      - alert: MFA AdoptionLow
+        expr: (users_with_mfa_total / users_total) < 0.5
+        for: 24h
+        labels:
+          severity: info
+          category: authentication
+        annotations:
+          summary: "Low MFA adoption rate"
+          description: "Less than 50% of users have MFA enabled"

@@ -105,3 +105,38 @@ class EncounterAttachmentViewSet(viewsets.ModelViewSet):
             ):
                 raise PermissionDenied("Unsupported file type")
         serializer.save()
+
+
+# Additional views for notifications and quality metrics
+from .models import NotificationModel, QualityMetric
+from .serializers import NotificationSerializer, QualityMetricSerializer
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    serializer_class = NotificationSerializer
+    queryset = NotificationModel.objects.select_related("encounter", "recipient_user").all()
+    permission_classes = [IsAuthenticated, ModuleEnabledPermission]
+    required_module = "enable_opd"
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = super().get_queryset()
+        if user.is_superuser or getattr(user, "role", None) == "SUPER_ADMIN":
+            return qs
+        return qs.filter(recipient_user=user)
+
+
+class QualityMetricViewSet(viewsets.ModelViewSet):
+    serializer_class = QualityMetricSerializer
+    queryset = QualityMetric.objects.select_related("hospital").all()
+    permission_classes = [IsAuthenticated, ModuleEnabledPermission]
+    required_module = "enable_opd"
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = super().get_queryset()
+        if user.is_superuser or getattr(user, "role", None) == "SUPER_ADMIN":
+            return qs
+        if getattr(user, "hospital_id", None) is None:
+            return qs.none()
+        return qs.filter(hospital_id=user.hospital_id)
