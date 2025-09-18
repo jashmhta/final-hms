@@ -1,0 +1,186 @@
+# pylint configuration for HMS Enterprise-Grade
+# Strict enterprise-grade standards
+
+[MASTER]
+# Specify a configuration file.
+# Files or directories to be skipped. They should be base names, not paths.
+ignore=
+    .git,
+    __pycache__,
+    .pytest_cache,
+    .coverage,
+    .mypy_cache,
+    .venv,
+    venv,
+    env,
+    build,
+    dist,
+    node_modules,
+    *.egg-info,
+    .tox,
+    .eggs,
+    *.pyc,
+    *.pyo,
+    *.pyd,
+    .Python,
+    .DS_Store,
+    Thumbs.db,
+    migrations,
+    management/commands
+
+# Use multiple processes to speed up Pylint.
+jobs=4
+# Allow loading of C extensions.
+extension-pkg-whitelist=
+# List of plugins (as comma separated values of python modules names) to load.
+load-plugins=
+# Pickle collected data for later comparisons.
+persistent=yes
+# Set the output format. Available formats are text, parseable, colorized, msvs
+# (visual studio) and html. You can also give a reporter class, eg
+# mypackage.mymodule.MyReporterClass.
+output-format=text
+# Tells whether to display a full report or only the messages
+reports=no
+# Python expression which should return a note less than 10 (10 is the highest
+# note). You have to respect what's written in the configuration file about
+# controlling the score.
+evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / statement) * 10)
+# Add files or directories matching the regex patterns to the blacklist. The
+# regex matches against base names, not paths.
+ignore-patterns=
+# Use a comment to mark sections of code where pylint warnings should be
+# disabled. The regex matches the start of a comment.
+disable-comment=# pylint: disable=
+# Python 3.8+
+python-version=3.8
+
+[MESSAGES CONTROL]
+# Only show warnings with the listed confidence levels. Leave empty to show
+# all. Valid levels are HIGH, INFERENCE, INFERENCE_FAILURE, UNDEFINED
+confidence=
+# Enable the message, report, category or checker with the given id(s). You can
+# either give multiple identifier separated by comma (,) or put this option
+# multiple time. See also the "--disable" option for examples.
+enable=all
+# Disable the message, report, category or checker with the given id(s). You
+# can either give multiple identifiers separated by comma (,) or put this
+# option multiple times (only on the command line, not in the configuration
+# file where it should appear only once).You can also use "--disable=all" to
+# disable everything first and then reenable specific checks. For example, if
+# you want to run only the similarities checker, you can use "--disable=all
+# --enable=similarities". If you want to run only the classes checker, but have
+# no Warning level messages displayed, use "--disable=all --enable=classes
+# --disable=W"
+disable=
+    # Too strict for enterprise code
+    too-few-public-methods,
+    too-many-public-methods,
+    too-many-instance-attributes,
+    too-many-arguments,
+    too-many-locals,
+    too-many-branches,
+    too-many-statements,
+    too-many-return-statements,
+    too-many-lines,
+    too-complex,
+    # Not applicable to modern Django
+    bad-continuation,
+    # Subjective style preferences
+    consider-using-f-string,
+    # Allow some flexibility for enterprise code
+    consider-using-with,
+    useless-return,
+    # Django specific exceptions
+    no-member,
+    # Testing patterns
+    redefined-outer-name,
+    unused-argument,
+    # Type checking is handled by mypy
+    unsubscriptable-object,
+
+[REPORTS]
+# Tells whether to display a full report or only the messages
+reports=no
+# Python expression which should return a score less than 10 (10 is the
+# highest score). You have to respect what's written in the configuration
+# file about controlling the score.
+evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / statement) * 10)
+
+[REFACTORING]
+# Maximum number of nested blocks for function / method body
+max-nested-blocks=5
+
+[FORMAT]
+# Maximum number of characters on a single line.
+max-line-length=88
+# String used as indentation unit. This is usually "    " (4 spaces) or "\t" (1 tab).
+indent-string='    '
+# Number of spaces of indent required inside a hanging  or continued line.
+indent-after-paren=4
+# String used as indentation unit. This is usually "    " (4 spaces) or "\t" (1 tab).
+indent-string='    '
+
+[LOGGING]
+# Logging modules to check that the string format arguments are in logging
+# function parameter format
+logging-modules=logging
+
+[SIMILARITIES]
+# Minimum lines number of a similarity.
+min-similarity-lines=4
+# Ignore comments when computing similarities.
+ignore-comments=yes
+# Ignore docstrings when computing similarities.
+ignore-docstrings=yes
+# Ignore imports when computing similarities.
+ignore-imports=yes
+
+[VARIABLES]
+# Tells whether we should check for unused import in __init__ files.
+init-import=no
+# A regular expression matching the name of dummy variables (i.e. expectedly
+# not used).
+dummy-variables-rgx=^_|dummy
+# List of additional names supposed to be defined in builtins. Remember that
+# you should avoid to define new builtins when possible.
+additional-builtins=
+
+[BASIC]
+# Good variable names which should always be accepted, separated by a comma
+good-names=_,i,j,k,ex,Run,_,id,pk,obj,query,qs
+# Bad variable names which should always be refused, separated by a comma
+bad-names=foo,bar,baz,toto,tutu,tata
+# Colon delimited lists of prohibited magic methods
+# (prohibit accessing magic methods on objects)
+bad-magic-methods=
+# List of builtins function names that should not be used, separated by a comma
+bad-functions=map,filter,input,apply
+# Minimum line length for functions/classes that require docstrings, shorter
+# ones are exempt.
+docstring-min-length=5
+
+[TYPECHECK]
+# Tells whether missing members accessed in mixin class should be ignored. A
+# mixin class is detected if its name ends with "mixin" (case insensitive).
+ignore-mixin-members=yes
+# List of module names for which member attributes should not be checked
+# (useful for modules/projects where namespaces are manipulated during runtime
+# and thus existing member attributes cannot be deduced by static analysis
+ignored-modules=
+# List of classes names for which member attributes should not be checked
+# (useful for classes with attributes dynamically set).
+ignored-classes=
+# List of members which are set dynamically and missed by pylint inference
+# system, and so shouldn't trigger E1101 when accessed. Python regular
+# expressions are accepted.
+generated-members=
+
+[STRING]
+# This flag controls whether inconsistent-quotes generates a warning when the
+# character used as a quote delimiter is used inconsistently within a module.
+check-quote-consistency=yes
+
+[MISCELLANEOUS]
+# List of note tags to take in consideration, separated by a comma.
+notes=FIXME,XXX,TODO,BUG,HACK,NOTE,WARNING,CAUTION

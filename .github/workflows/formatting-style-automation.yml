@@ -1,0 +1,274 @@
+name: Formatting and Style Automation
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 0 * * *'  
+  workflow_dispatch:
+jobs:
+  code-formatting:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - name: Install formatting tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install black isort autopep8 yapf pandas
+    - name: Run Black Code Formatter
+      run: |
+        black --check --diff --verbose . > black-report.txt || true
+        python .github/scripts/formatting_analysis.py --tool black
+    - name: Run Import Sorting
+      run: |
+        isort --check-only --diff . > isort-report.txt || true
+        python .github/scripts/import_analysis.py
+    - name: Run AutoPEP8
+      run: |
+        autopep8 --diff --aggressive --exit-code . > autopep8-report.txt || true
+        python .github/scripts/style_analysis.py --tool autopep8
+    - name: Run YAPF
+      run: |
+        yapf --diff --recursive . > yapf-report.txt || true
+        python .github/scripts/formatting_analysis.py --tool yapf
+    - name: Generate Formatting Report
+      run: |
+        python .github/scripts/formatting_dashboard.py
+    - name: Upload Formatting Reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: formatting-reports
+        path: |
+          black-report.txt
+          isort-report.txt
+          autopep8-report.txt
+          yapf-report.txt
+          formatting-dashboard.html
+  style-guide-enforcement:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - name: Install style tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install pycodestyle pydocstyle pylint bandit pandas
+    - name: Run PEP8 Style Checker
+      run: |
+        pycodestyle --format=json . > pycodestyle-report.json || true
+        python .github/scripts/style_enforcement.py --tool pycodestyle
+    - name: Run Docstring Checker
+      run: |
+        pydocstyle --format=json . > pydocstyle-report.json || true
+        python .github/scripts/docstring_analysis.py
+    - name: Run Naming Convention Checker
+      run: |
+        python .github/scripts/naming_convention_analysis.py
+    - name: Run Line Length Checker
+      run: |
+        python .github/scripts/line_length_analysis.py
+    - name: Generate Style Report
+      run: |
+        python .github/scripts/style_report.py
+    - name: Upload Style Reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: style-reports
+        path: |
+          pycodestyle-report.json
+          pydocstyle-report.json
+          style-report.html
+  documentation-generation:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - name: Install documentation tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install sphinx sphinx-rtd-theme pdoc3 pydoc-markdown pandas
+    - name: Generate API Documentation
+      run: |
+        python .github/scripts/api_documentation.py
+    - name: Generate Code Documentation
+      run: |
+        pdoc3 --html --output-dir docs/api .
+    - name: Generate README Documentation
+      run: |
+        python .github/scripts/readme_generation.py
+    - name: Generate Architecture Documentation
+      run: |
+        python .github/scripts/architecture_documentation.py
+    - name: Upload Documentation
+      uses: actions/upload-artifact@v3
+      with:
+        name: documentation
+        path: |
+          docs/
+          README-generated.md
+          ARCHITECTURE.md
+  code-cleanup-automation:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - name: Install cleanup tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas astroid re
+    - name: Remove Unused Imports
+      run: |
+        python .github/scripts/unused_import_removal.py --dry-run
+    - name: Remove Dead Code
+      run: |
+        python .github/scripts/dead_code_removal.py --dry-run
+    - name: Clean Up Comments
+      run: |
+        python .github/scripts/comment_cleanup.py
+    - name: Optimize File Structure
+      run: |
+        python .github/scripts/file_structure_optimization.py
+    - name: Generate Cleanup Report
+      run: |
+        python .github/scripts/cleanup_report.py
+    - name: Upload Cleanup Reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: cleanup-reports
+        path: |
+          cleanup-report.html
+          optimization-suggestions.json
+  automated-formatting-fix:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - name: Install formatting tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install black isort autopep8 yapf
+    - name: Apply Black Formatting
+      run: |
+        black .
+    - name: Apply Import Sorting
+      run: |
+        isort .
+    - name: Apply AutoPEP8
+      run: |
+        autopep8 --in-place --aggressive .
+    - name: Apply YAPF
+      run: |
+        yapf --in-place --recursive .
+    - name: Commit Formatting Changes
+      uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: 'style: Automated code formatting'
+        file_pattern: '**/*.py'
+        commit_user_name: 'Formatting Bot'
+        commit_user_email: 'bot@hms-automation.com'
+  naming-convention-enforcement:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - name: Install analysis tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas ast
+    - name: Run Naming Convention Analysis
+      run: |
+        python .github/scripts/naming_convention_analysis.py
+    - name: Generate Naming Convention Report
+      run: |
+        python .github/scripts/naming_convention_report.py
+    - name: Upload Naming Convention Reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: naming-convention-reports
+        path: |
+          naming-convention-report.html
+          naming-violations.json
+  style-validation:
+    runs-on: ubuntu-latest
+    needs: [code-formatting, style-guide-enforcement, naming-convention-enforcement]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+    - name: Run Style Validation
+      run: |
+        python .github/scripts/style_validation.py
+    - name: Generate Style Summary
+      run: |
+        python .github/scripts/style_summary.py
+    - name: Comment on PR with Style Summary
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const path = './style-summary.md';
+          if (fs.existsSync(path)) {
+            const summary = fs.readFileSync(path, 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
+          }
+    - name: Fail Build if Style Violations Found
+      if: always()
+      run: |
+        if [ -f "style-validation-failed" ]; then
+          echo "Style validation failed. Failing build."
+          exit 1
+        fi
+  formatting-dashboard-deployment:
+    runs-on: ubuntu-latest
+    needs: style-validation
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+    - name: Generate Comprehensive Style Dashboard
+      run: |
+        python .github/scripts/comprehensive_style_dashboard.py
+    - name: Deploy Style Dashboard
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./style-dashboard
+        destination_dir: style-dashboard

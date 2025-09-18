@@ -1,9 +1,7 @@
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-
 from hospitals.models import HospitalPlan
-
 from .models import (
     Department,
     User,
@@ -12,13 +10,10 @@ from .models import (
     UserPermissionGroup,
     UserSession,
 )
-
-
 class DepartmentSerializer(serializers.ModelSerializer):
     head_name = serializers.SerializerMethodField()
     user_count = serializers.SerializerMethodField()
     subdepartments_count = serializers.SerializerMethodField()
-
     class Meta:
         model = Department
         fields = [
@@ -39,17 +34,12 @@ class DepartmentSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-
     def get_head_name(self, obj):
         return obj.head.get_full_name() if obj.head else None
-
     def get_user_count(self, obj):
         return obj.users.filter(status="ACTIVE").count()
-
     def get_subdepartments_count(self, obj):
         return obj.subdepartments.filter(is_active=True).count()
-
-
 class UserCredentialSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserCredential
@@ -69,11 +59,8 @@ class UserCredentialSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         extra_kwargs = {"credential_number": {"write_only": True}}
-
-
 class UserSessionSerializer(serializers.ModelSerializer):
     duration = serializers.SerializerMethodField()
-
     class Meta:
         model = UserSession
         fields = [
@@ -89,13 +76,10 @@ class UserSessionSerializer(serializers.ModelSerializer):
             "duration",
         ]
         read_only_fields = ["session_key"]
-
     def get_duration(self, obj):
         if obj.logout_time:
             return (obj.logout_time - obj.login_time).total_seconds()
         return (obj.last_activity - obj.login_time).total_seconds()
-
-
 class UserLoginHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = UserLoginHistory
@@ -109,14 +93,11 @@ class UserLoginHistorySerializer(serializers.ModelSerializer):
             "timestamp",
             "location",
         ]
-
-
 class UserListSerializer(serializers.ModelSerializer):
     department_name = serializers.SerializerMethodField()
     supervisor_name = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
     credentials_count = serializers.SerializerMethodField()
-
     class Meta:
         model = User
         fields = [
@@ -139,20 +120,14 @@ class UserListSerializer(serializers.ModelSerializer):
             "is_active",
             "date_joined",
         ]
-
     def get_department_name(self, obj):
         return obj.department.name if obj.department else None
-
     def get_supervisor_name(self, obj):
         return obj.supervisor.get_full_name() if obj.supervisor else None
-
     def get_full_name(self, obj):
         return obj.get_full_name()
-
     def get_credentials_count(self, obj):
         return obj.credentials.filter(is_active=True).count()
-
-
 class UserSerializer(serializers.ModelSerializer):
     department_name = serializers.SerializerMethodField()
     supervisor_name = serializers.SerializerMethodField()
@@ -161,7 +136,6 @@ class UserSerializer(serializers.ModelSerializer):
     recent_sessions = UserSessionSerializer(
         many=True, read_only=True, source="sessions"
     )
-
     class Meta:
         model = User
         fields = [
@@ -207,28 +181,20 @@ class UserSerializer(serializers.ModelSerializer):
             "date_joined",
             "last_login",
         ]
-
     def get_department_name(self, obj):
         return obj.department.name if obj.department else None
-
     def get_supervisor_name(self, obj):
         return obj.supervisor.get_full_name() if obj.supervisor else None
-
     def get_full_name(self, obj):
         return obj.get_full_name()
-
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        # Limit recent sessions to last 10
         if "recent_sessions" in data:
             data["recent_sessions"] = data["recent_sessions"][:10]
         return data
-
-
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
     password_confirm = serializers.CharField(write_only=True)
-
     class Meta:
         model = User
         fields = [
@@ -276,19 +242,15 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "hourly_rate": {"write_only": True},
             "license_number": {"write_only": True},
         }
-
     def validate(self, data):
         if data.get("password") != data.get("password_confirm"):
             raise serializers.ValidationError("Passwords do not match")
         return data
-
     def create(self, validated_data):
         validated_data.pop("password_confirm", None)
         password = validated_data.pop("password")
         user = User.objects.create_user(password=password, **validated_data)
         return user
-
-
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -341,29 +303,22 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "hourly_rate": {"write_only": True},
             "license_number": {"write_only": True},
         }
-
-
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True, validators=[validate_password])
     new_password_confirm = serializers.CharField(required=True)
-
     def validate(self, data):
         if data["new_password"] != data["new_password_confirm"]:
             raise serializers.ValidationError("New passwords do not match")
         return data
-
     def validate_old_password(self, value):
         user = self.context["request"].user
         if not user.check_password(value):
             raise serializers.ValidationError("Old password is incorrect")
         return value
-
-
 class UserPermissionGroupSerializer(serializers.ModelSerializer):
     permissions_count = serializers.SerializerMethodField()
     users_count = serializers.SerializerMethodField()
-
     class Meta:
         model = UserPermissionGroup
         fields = [
@@ -378,14 +333,10 @@ class UserPermissionGroupSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-
     def get_permissions_count(self, obj):
         return obj.permissions.count()
-
     def get_users_count(self, obj):
         return obj.users.count()
-
-
 class UserStatsSerializer(serializers.Serializer):
     total_users = serializers.IntegerField()
     active_users = serializers.IntegerField()
@@ -397,8 +348,6 @@ class UserStatsSerializer(serializers.Serializer):
     recent_logins = serializers.IntegerField()
     failed_logins_today = serializers.IntegerField()
     credentials_expiring_soon = serializers.IntegerField()
-
-
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
@@ -410,8 +359,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token["full_name"] = user.get_full_name()
         token["status"] = getattr(user, "status", None)
         token["can_prescribe"] = user.can_prescribe()
-
-        # Include subscription module flags for convenience across services
         flags = [
             "enable_opd",
             "enable_ipd",

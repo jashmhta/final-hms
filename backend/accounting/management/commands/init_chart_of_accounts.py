@@ -1,46 +1,31 @@
-"""
-Management command to initialize Chart of Accounts for hospitals.
-"""
-
 from django.core.management.base import BaseCommand
-
 from accounting.models import AccountSubType, AccountType, ChartOfAccounts, Currency
 from hospitals.models import Hospital
-
-
 class Command(BaseCommand):
     help = "Initialize Chart of Accounts for hospitals"
-
     def add_arguments(self, parser):
         parser.add_argument(
             "--hospital-id",
             type=int,
-            help="Hospital ID to initialize accounts for (optional - if not provided, initializes for all)",  # noqa: E501      # noqa: E501
+            help="Hospital ID to initialize accounts for (optional - if not provided, initializes for all)",  
         )
-
     def handle(self, *args, **options):
         hospital_id = options.get("hospital_id")
-
         if hospital_id:
             hospitals = Hospital.objects.filter(id=hospital_id)
         else:
             hospitals = Hospital.objects.all()
-
         for hospital in hospitals:
             self.stdout.write(
                 f"Initializing Chart of Accounts for {hospital.name}..."
-            )  # noqa: E501
+            )  
             self.initialize_accounts_for_hospital(hospital)
             self.stdout.write(
                 self.style.SUCCESS(
                     f"Successfully initialized accounts for {hospital.name}"
                 )
             )
-
     def initialize_accounts_for_hospital(self, hospital):
-        """Initialize standard chart of accounts for a hospital"""
-
-        # Ensure base currency exists
         base_currency, created = Currency.objects.get_or_create(
             hospital=hospital,
             code="INR",
@@ -51,10 +36,7 @@ class Command(BaseCommand):
                 "exchange_rate": 1.0000,
             },
         )
-
-        # Standard Chart of Accounts for Healthcare
         accounts_data = [
-            # ASSETS
             (
                 "1000",
                 "ASSETS",
@@ -64,7 +46,6 @@ class Command(BaseCommand):
                 None,
                 True,
             ),
-            # Current Assets
             (
                 "1100",
                 "Cash in Hand",
@@ -137,7 +118,6 @@ class Command(BaseCommand):
                 "1000",
                 True,
             ),
-            # Fixed Assets
             (
                 "1500",
                 "Fixed Assets",
@@ -210,7 +190,6 @@ class Command(BaseCommand):
                 "1500",
                 True,
             ),
-            # LIABILITIES
             (
                 "2000",
                 "LIABILITIES",
@@ -220,7 +199,6 @@ class Command(BaseCommand):
                 None,
                 True,
             ),
-            # Current Liabilities
             (
                 "2100",
                 "Accounts Payable",
@@ -293,7 +271,6 @@ class Command(BaseCommand):
                 "2000",
                 True,
             ),
-            # Long Term Liabilities
             (
                 "2600",
                 "Long Term Loans",
@@ -303,7 +280,6 @@ class Command(BaseCommand):
                 "2000",
                 True,
             ),
-            # EQUITY
             (
                 "3000",
                 "EQUITY",
@@ -340,7 +316,6 @@ class Command(BaseCommand):
                 "3000",
                 True,
             ),
-            # INCOME
             (
                 "4000",
                 "INCOME",
@@ -350,7 +325,6 @@ class Command(BaseCommand):
                 None,
                 True,
             ),
-            # Operating Income
             (
                 "4100",
                 "Patient Services Revenue",
@@ -441,7 +415,6 @@ class Command(BaseCommand):
                 "4000",
                 True,
             ),
-            # Non-Operating Income
             (
                 "4900",
                 "Other Income",
@@ -460,7 +433,6 @@ class Command(BaseCommand):
                 "4900",
                 True,
             ),
-            # EXPENSES
             (
                 "5000",
                 "COST OF SERVICES",
@@ -497,7 +469,6 @@ class Command(BaseCommand):
                 "5000",
                 True,
             ),
-            # Operating Expenses
             (
                 "6000",
                 "OPERATING EXPENSES",
@@ -588,7 +559,6 @@ class Command(BaseCommand):
                 "6000",
                 True,
             ),
-            # Administrative Expenses
             (
                 "6800",
                 "Administrative Expenses",
@@ -625,7 +595,6 @@ class Command(BaseCommand):
                 "6800",
                 True,
             ),
-            # Depreciation and Other
             (
                 "6900",
                 "Depreciation Expense",
@@ -654,7 +623,6 @@ class Command(BaseCommand):
                 True,
             ),
         ]
-
         created_count = 0
         for account_data in accounts_data:
             (
@@ -666,7 +634,6 @@ class Command(BaseCommand):
                 parent_code,
                 is_system,
             ) = account_data
-
             parent_account = None
             if parent_code:
                 try:
@@ -676,11 +643,10 @@ class Command(BaseCommand):
                 except ChartOfAccounts.DoesNotExist:
                     self.stdout.write(
                         self.style.WARNING(
-                            f"Parent account {parent_code} not found for {account_code}"  # noqa: E501      # noqa: E501
+                            f"Parent account {parent_code} not found for {account_code}"  
                         )
                     )
                     continue
-
             account, created = ChartOfAccounts.objects.get_or_create(
                 hospital=hospital,
                 account_code=account_code,
@@ -694,15 +660,13 @@ class Command(BaseCommand):
                     "is_active": True,
                 },
             )
-
             if created:
                 created_count += 1
                 self.stdout.write(
                     f"  Created account: {account_code} - {account_name}"
-                )  # noqa: E501
-
+                )  
         self.stdout.write(
             self.style.SUCCESS(
                 f"Created {created_count} accounts for {hospital.name}"
-            )  # noqa: E501
+            )  
         )

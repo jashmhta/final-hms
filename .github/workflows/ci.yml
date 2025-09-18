@@ -85,10 +85,7 @@ jobs:
         run: |
           python - <<'PY'
 import json, base64, hmac, hashlib, time
-
-# Fixed problematic section for YAML validation
     return base64.urlsafe_b64encode(data).rstrip(b'=')
-
 header = {"alg": "HS256", "typ": "JWT"}
 claims = {
     "sub": "ci-user",
@@ -113,10 +110,7 @@ PY
         run: |
           TOKEN=$(python - <<'PY'
 import json, base64, hmac, hashlib, time
-
-# Fixed problematic section for YAML validation
     return base64.urlsafe_b64encode(data).rstrip(b'=')
-
 header = {"alg": "HS256", "typ": "JWT"}
 claims = {
     "sub": "ci-user",
@@ -142,10 +136,7 @@ PY
         run: |
           TOKEN=$(python - <<'PY'
 import json, base64, hmac, hashlib, time
-
-# Fixed problematic section for YAML validation
     return base64.urlsafe_b64encode(data).rstrip(b'=')
-
 header = {"alg": "HS256", "typ": "JWT"}
 claims = {
     "sub": "ci-user",
@@ -172,10 +163,7 @@ PY
         run: |
           TOKEN=$(python - <<'PY'
 import json, base64, hmac, hashlib, time
-
-# Fixed problematic section for YAML validation
     return base64.urlsafe_b64encode(data).rstrip(b'=')
-
 header = {"alg": "HS256", "typ": "JWT"}
 claims = {
     "sub": "ci-user",
@@ -204,10 +192,7 @@ PY
         run: |
           TOKEN=$(python - <<'PY'
 import json, base64, hmac, hashlib, time
-
-# Fixed problematic section for YAML validation
     return base64.urlsafe_b64encode(data).rstrip(b'=')
-
 header = {"alg": "HS256", "typ": "JWT"}
 claims = {
     "sub": "ci-user",
@@ -235,10 +220,7 @@ PY
         run: |
           TOKEN=$(python - <<'PY'
 import json, base64, hmac, hashlib, time
-
-# Fixed problematic section for YAML validation
     return base64.urlsafe_b64encode(data).rstrip(b'=')
-
 header = {"alg": "HS256", "typ": "JWT"}
 claims = {
     "sub": "ci-user",
@@ -269,10 +251,7 @@ PY
         run: |
           TOKEN=$(python - <<'PY'
 import json, base64, hmac, hashlib, time
-
-# Fixed problematic section for YAML validation
     return base64.urlsafe_b64encode(data).rstrip(b'=')
-
 header = {"alg": "HS256", "typ": "JWT"}
 claims = {
     "sub": "ci-user",
@@ -303,10 +282,7 @@ PY
         run: |
           TOKEN=$(python - <<'PY'
 import json, base64, hmac, hashlib, time
-
-# Fixed problematic section for YAML validation
     return base64.urlsafe_b64encode(data).rstrip(b'=')
-
 header = {"alg": "HS256", "typ": "JWT"}
 claims = {
     "sub": "ci-user",

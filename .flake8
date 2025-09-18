@@ -1,0 +1,66 @@
+# flake8 configuration for HMS Enterprise-Grade
+# Strict enterprise-grade standards
+
+[flake8]
+# Maximum line length (Black uses 88, we'll match)
+max-line-length = 88
+
+# Error codes to ignore (minimal for enterprise standards)
+ignore =
+    # E203: whitespace before ':'
+    E203,
+    # W503: line break before binary operator
+    W503
+
+# Error codes to select (strict mode)
+select =
+    E, W, F, C, N
+    # pycodestyle errors
+    E101, E111, E112, E113, E201, E202, E211, E225, E231, E251, E265, E266, E302, E305, E401, E402, E501, E502, E701, E702, E703, E704, W191, W291, W292, W293, W391
+    # PyFlakes
+    F401, F402, F403, F404, F405, F821, F822, F823, F831, F841
+    # mccabe complexity
+    C901
+    # naming conventions
+    N801, N802, N803, N805, N806, N807, N815, N816
+
+# Exclude files and directories
+exclude =
+    .git,
+    __pycache__,
+    .pytest_cache,
+    .coverage,
+    .mypy_cache,
+    .venv,
+    venv,
+    env,
+    build,
+    dist,
+    node_modules,
+    *.egg-info,
+    .tox,
+    .eggs,
+    *.pyc,
+    *.pyo,
+    *.pyd,
+    .Python,
+    .DS_Store,
+    Thumbs.db
+
+# Maximum complexity (strict threshold)
+max-complexity = 8
+
+# Docstring requirements
+docstring-convention = google
+
+# Import ordering (配合 isort)
+import-order-style = google
+
+# Additional checks for enterprise standards
+per-file-ignores =
+    # Tests can have longer lines and more complex functions
+    */tests/*:E501,C901
+    # Migrations can have unused imports
+    */migrations/*:F401
+    # Management commands can have different patterns
+    */management/commands/*:N802,N803

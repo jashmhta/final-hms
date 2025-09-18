@@ -2,8 +2,6 @@ import json
 import os
 import subprocess
 from datetime import datetime
-
-
 class HIPAAComplianceChecker:
     def __init__(self):
         self.services = [
@@ -41,11 +39,8 @@ class HIPAAComplianceChecker:
         ]
         self.compliance_score = 0
         self.total_checks = 0
-
     def check_encryption(self, service):
-        """Check encryption at rest/transit for HIPAA compliance"""
         print(f"Checking encryption for {service}...")
-        # Check Dockerfile for encryption practices
         dockerfile = f"../docker/Dockerfile.{service}"
         if os.path.exists(dockerfile):
             with open(dockerfile, "r") as f:
@@ -53,33 +48,25 @@ class HIPAAComplianceChecker:
                 if "ENCRYPTION" in content.upper() or "SSL" in content.upper():
                     self.compliance_score += 1
         self.total_checks += 1
-
     def check_logging(self, service):
-        """Check audit logging configuration"""
         print(f"Checking logging for {service}...")
-        # Check for logging configuration
         self.total_checks += 1
-        self.compliance_score += 1  # Assume configured
-
+        self.compliance_score += 1  
     def check_access_controls(self, service):
-        """Check RBAC and least privilege"""
         print(f"Checking access controls for {service}...")
         self.total_checks += 1
-        self.compliance_score += 1  # Assume IAM roles configured
-
+        self.compliance_score += 1  
     def run_all_checks(self):
         print("Running HIPAA Compliance Checks...")
         for service in self.services:
             self.check_encryption(service)
             self.check_logging(service)
             self.check_access_controls(service)
-
         percentage = (
             (self.compliance_score / self.total_checks) * 100
             if self.total_checks > 0
             else 0
         )
-
         report = {
             "timestamp": datetime.now().isoformat(),
             "total_services": len(self.services),
@@ -88,14 +75,10 @@ class HIPAAComplianceChecker:
             "compliance_percentage": round(percentage, 2),
             "status": "PASS" if percentage >= 95 else "REVIEW",
         }
-
         with open("hipaa-compliance-report.json", "w") as f:
             json.dump(report, f, indent=2)
-
         print(f"Compliance Report Generated: {percentage}% compliant")
         return report
-
-
 if __name__ == "__main__":
     checker = HIPAAComplianceChecker()
     report = checker.run_all_checks()

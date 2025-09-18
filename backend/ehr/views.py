@@ -1,22 +1,15 @@
 import os
-
 from django.shortcuts import render
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
-
 from core.permissions import ModuleEnabledPermission
-
 from .models import Encounter, EncounterAttachment, EncounterNote
 from .serializers import (
     EncounterAttachmentSerializer,
     EncounterNoteSerializer,
     EncounterSerializer,
 )
-
-# Create your views here.
-
-
 class EncounterViewSet(viewsets.ModelViewSet):
     serializer_class = EncounterSerializer
     queryset = Encounter.objects.select_related(
@@ -24,7 +17,6 @@ class EncounterViewSet(viewsets.ModelViewSet):
     ).all()
     permission_classes = [IsAuthenticated, ModuleEnabledPermission]
     required_module = "enable_opd"
-
     def get_queryset(self):
         user = self.request.user
         qs = super().get_queryset()
@@ -33,7 +25,6 @@ class EncounterViewSet(viewsets.ModelViewSet):
         if getattr(user, "hospital_id", None) is None:
             return qs.none()
         return qs.filter(hospital_id=user.hospital_id)
-
     def perform_create(self, serializer):
         user = self.request.user
         provided_hospital = serializer.validated_data.get("hospital")
@@ -56,14 +47,11 @@ class EncounterViewSet(viewsets.ModelViewSet):
                 provided_hospital.id if provided_hospital else user.hospital_id
             )
         )
-
-
 class EncounterNoteViewSet(viewsets.ModelViewSet):
     serializer_class = EncounterNoteSerializer
     queryset = EncounterNote.objects.select_related("encounter").all()
     permission_classes = [IsAuthenticated, ModuleEnabledPermission]
     required_module = "enable_opd"
-
     def get_queryset(self):
         user = self.request.user
         qs = super().get_queryset()
@@ -72,14 +60,11 @@ class EncounterNoteViewSet(viewsets.ModelViewSet):
         if getattr(user, "hospital_id", None) is None:
             return qs.none()
         return qs.filter(encounter__hospital_id=user.hospital_id)
-
-
 class EncounterAttachmentViewSet(viewsets.ModelViewSet):
     serializer_class = EncounterAttachmentSerializer
     queryset = EncounterAttachment.objects.select_related("encounter").all()
     permission_classes = [IsAuthenticated, ModuleEnabledPermission]
     required_module = "enable_opd"
-
     def get_queryset(self):
         user = self.request.user
         qs = super().get_queryset()
@@ -88,11 +73,9 @@ class EncounterAttachmentViewSet(viewsets.ModelViewSet):
         if getattr(user, "hospital_id", None) is None:
             return qs.none()
         return qs.filter(encounter__hospital_id=user.hospital_id)
-
     def perform_create(self, serializer):
         file_obj = self.request.FILES.get("file")
         if file_obj:
-            # Basic validation
             max_mb = int(os.getenv("EHR_MAX_ATTACHMENT_MB", "10"))
             if file_obj.size > max_mb * 1024 * 1024:
                 raise PermissionDenied("File too large")
@@ -105,33 +88,26 @@ class EncounterAttachmentViewSet(viewsets.ModelViewSet):
             ):
                 raise PermissionDenied("Unsupported file type")
         serializer.save()
-
-
-# Additional views for notifications and quality metrics
 from .models import NotificationModel, QualityMetric
 from .serializers import NotificationSerializer, QualityMetricSerializer
-
-
 class NotificationViewSet(viewsets.ModelViewSet):
     serializer_class = NotificationSerializer
-    queryset = NotificationModel.objects.select_related("encounter", "recipient_user").all()
+    queryset = NotificationModel.objects.select_related(
+        "encounter", "recipient_user"
+    ).all()
     permission_classes = [IsAuthenticated, ModuleEnabledPermission]
     required_module = "enable_opd"
-
     def get_queryset(self):
         user = self.request.user
         qs = super().get_queryset()
         if user.is_superuser or getattr(user, "role", None) == "SUPER_ADMIN":
             return qs
         return qs.filter(recipient_user=user)
-
-
 class QualityMetricViewSet(viewsets.ModelViewSet):
     serializer_class = QualityMetricSerializer
     queryset = QualityMetric.objects.select_related("hospital").all()
     permission_classes = [IsAuthenticated, ModuleEnabledPermission]
     required_module = "enable_opd"
-
     def get_queryset(self):
         user = self.request.user
         qs = super().get_queryset()

@@ -1,0 +1,582 @@
+name: 🏥 Healthcare Compliance Validation
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+    inputs:
+      compliance-standard:
+        description: 'Compliance standard to validate'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - hipaa
+        - gdpr
+        - pci-dss
+        - soc2
+        - fhir
+        - hl7
+      severity:
+        description: 'Validation severity level'
+        required: false
+        default: 'strict'
+        type: choice
+        options:
+        - strict
+        - moderate
+        - lenient
+      generate-report:
+        description: 'Generate detailed compliance report'
+        required: false
+        default: true
+        type: boolean
+env:
+  PYTHON_VERSION: '3.11'
+  COMPLIANCE_CONFIG_FILE: 'compliance/compliance-config.json'
+  VALIDATION_RULES_FILE: 'compliance/validation-rules.json'
+jobs:
+  compliance-preparation:
+    name: 📋 Compliance Preparation
+    runs-on: ubuntu-latest
+    outputs:
+      standards-to-validate: ${{ steps.prep.outputs.standards-to-validate }}
+      validation-severity: ${{ steps.prep.outputs.validation-severity }}
+      config-loaded: ${{ steps.prep.outputs.config-loaded }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Validate compliance configuration
+      id: prep
+      run: |
+        echo "📋 Preparing compliance validation..."
+        if [[ ! -f "${{ env.COMPLIANCE_CONFIG_FILE }}" ]]; then
+          echo "❌ Compliance configuration file not found: ${{ env.COMPLIANCE_CONFIG_FILE }}"
+          echo "config-loaded=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+        if [[ ! -f "${{ env.VALIDATION_RULES_FILE }}" ]]; then
+          echo "❌ Validation rules file not found: ${{ env.VALIDATION_RULES_FILE }}"
+          echo "config-loaded=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+        case "${{ github.event.inputs.compliance-standard }}" in
+          "hipaa")
+            STANDARDS='["HIPAA"]'
+            ;;
+          "gdpr")
+            STANDARDS='["GDPR"]'
+            ;;
+          "pci-dss")
+            STANDARDS='["PCI-DSS"]'
+            ;;
+          "soc2")
+            STANDARDS='["SOC2"]'
+            ;;
+          "fhir")
+            STANDARDS='["FHIR"]'
+            ;;
+          "hl7")
+            STANDARDS='["HL7"]'
+            ;;
+          *)
+            STANDARDS='["HIPAA", "GDPR", "PCI-DSS", "SOC2", "FHIR", "HL7"]'
+            ;;
+        esac
+        echo "standards-to-validate=$STANDARDS" >> $GITHUB_OUTPUT
+        echo "validation-severity=${{ github.event.inputs.severity || 'strict' }}" >> $GITHUB_OUTPUT
+        echo "config-loaded=true" >> $GITHUB_OUTPUT
+        echo "✅ Compliance preparation completed"
+        echo "  Standards: $STANDARDS"
+        echo "  Severity: ${{ github.event.inputs.severity || 'strict' }}"
+  hipaa-compliance:
+    name: 🏥 HIPAA Compliance
+    runs-on: ubuntu-latest
+    needs: compliance-preparation
+    if: needs.compliance-preparation.outputs.config-loaded == 'true'
+    strategy:
+      matrix:
+        validation-type: ['data-privacy', 'security', 'breach-notification', 'audit']
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install compliance tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install cryptography pydantic jsonschema
+    - name: Validate HIPAA ${{ matrix.validation-type }}
+      run: |
+        echo "🏥 Validating HIPAA ${{ matrix.validation-type }} compliance..."
+        python scripts/validate_hipaa.py \
+          --validation-type ${{ matrix.validation-type }} \
+          --config ${{ env.COMPLIANCE_CONFIG_FILE }} \
+          --rules ${{ env.VALIDATION_RULES_FILE }} \
+          --severity ${{ needs.compliance-preparation.outputs.validation-severity }} \
+          --output hipaa-${{ matrix.validation-type }}-report.json
+    - name: Validate PHI handling
+      if: matrix.validation-type == 'data-privacy'
+      run: |
+        echo "🔒 Validating PHI (Protected Health Information) handling..."
+        python scripts/validate_phi.py \
+          --scan-path backend/ services/ \
+          --output phi-validation-report.json \
+          --strict-mode
+    - name: Validate encryption requirements
+      if: matrix.validation-type == 'security'
+      run: |
+        echo "🔐 Validating encryption requirements..."
+        python scripts/validate_encryption.py \
+          --scan-path . \
+          --output encryption-validation-report.json \
+          --check-transit \
+          --check-at-rest \
+          --check-algorithms
+    - name: Upload HIPAA reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: hipaa-compliance-${{ matrix.validation-type }}
+        path: |
+          hipaa-${{ matrix.validation-type }}-report.json
+          phi-validation-report.json
+          encryption-validation-report.json
+  gdpr-compliance:
+    name: 🇪🇺 GDPR Compliance
+    runs-on: ubuntu-latest
+    needs: compliance-preparation
+    if: needs.compliance-preparation.outputs.config-loaded == 'true'
+    strategy:
+      matrix:
+        validation-type: ['data-protection', 'consent', 'rights', 'transfers']
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install compliance tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install pydantic jsonschema
+    - name: Validate GDPR ${{ matrix.validation-type }}
+      run: |
+        echo "🇪🇺 Validating GDPR ${{ matrix.validation-type }} compliance..."
+        python scripts/validate_gdpr.py \
+          --validation-type ${{ matrix.validation-type }} \
+          --config ${{ env.COMPLIANCE_CONFIG_FILE }} \
+          --rules ${{ env.VALIDATION_RULES_FILE }} \
+          --severity ${{ needs.compliance-preparation.outputs.validation-severity }} \
+          --output gdpr-${{ matrix.validation-type }}-report.json
+    - name: Validate data subject rights
+      if: matrix.validation-type == 'rights'
+      run: |
+        echo "👤 Validating data subject rights implementation..."
+        python scripts/validate_data_subject_rights.py \
+          --scan-path backend/ services/ \
+          --output data-subject-rights-report.json
+    - name: Validate data processing agreements
+      if: matrix.validation-type == 'data-protection'
+      run: |
+        echo "📄 Validating data processing agreements..."
+        python scripts/validate_dpa.py \
+          --config dp-config.json \
+          --output dpa-validation-report.json
+    - name: Upload GDPR reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: gdpr-compliance-${{ matrix.validation-type }}
+        path: |
+          gdpr-${{ matrix.validation-type }}-report.json
+          data-subject-rights-report.json
+          dpa-validation-report.json
+  pci-dss-compliance:
+    name: 💳 PCI-DSS Compliance
+    runs-on: ubuntu-latest
+    needs: compliance-preparation
+    if: needs.compliance-preparation.outputs.config-loaded == 'true'
+    strategy:
+      matrix:
+        validation-type: ['card-data', 'network-security', 'access-control', 'monitoring']
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install compliance tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install pydantic jsonschema
+    - name: Validate PCI-DSS ${{ matrix.validation-type }}
+      run: |
+        echo "💳 Validating PCI-DSS ${{ matrix.validation-type }} compliance..."
+        python scripts/validate_pci_dss.py \
+          --validation-type ${{ matrix.validation-type }} \
+          --config ${{ env.COMPLIANCE_CONFIG_FILE }} \
+          --rules ${{ env.VALIDATION_RULES_FILE }} \
+          --severity ${{ needs.compliance-preparation.outputs.validation-severity }} \
+          --output pci-dss-${{ matrix.validation-type }}-report.json
+    - name: Validate card data storage
+      if: matrix.validation-type == 'card-data'
+      run: |
+        echo "💳 Validating card data storage requirements..."
+        python scripts/validate_card_data_storage.py \
+          --scan-path . \
+          --output card-data-validation-report.json \
+          --check-storage \
+          --check-transmission \
+          --check-encryption
+    - name: Validate network security
+      if: matrix.validation-type == 'network-security'
+      run: |
+        echo "🌐 Validating network security requirements..."
+        python scripts/validate_network_security.py \
+          --config network-security-config.json \
+          --output network-security-report.json
+    - name: Upload PCI-DSS reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: pci-dss-compliance-${{ matrix.validation-type }}
+        path: |
+          pci-dss-${{ matrix.validation-type }}-report.json
+          card-data-validation-report.json
+          network-security-report.json
+  soc2-compliance:
+    name: 🏢 SOC 2 Compliance
+    runs-on: ubuntu-latest
+    needs: compliance-preparation
+    if: needs.compliance-preparation.outputs.config-loaded == 'true'
+    strategy:
+      matrix:
+        trust-service: ['security', 'availability', 'confidentiality', 'privacy']
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install compliance tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install pydantic jsonschema
+    - name: Validate SOC 2 ${{ matrix.trust-service }}
+      run: |
+        echo "🏢 Validating SOC 2 ${{ matrix.trust-service }} criteria..."
+        python scripts/validate_soc2.py \
+          --trust-service ${{ matrix.trust-service }} \
+          --config ${{ env.COMPLIANCE_CONFIG_FILE }} \
+          --rules ${{ env.VALIDATION_RULES_FILE }} \
+          --severity ${{ needs.compliance-preparation.outputs.validation-severity }} \
+          --output soc2-${{ matrix.trust-service }}-report.json
+    - name: Validate control procedures
+      run: |
+        echo "📋 Validating control procedures..."
+        python scripts/validate_control_procedures.py \
+          --trust-service ${{ matrix.trust-service }} \
+          --config control-procedures-config.json \
+          --output control-procedures-${{ matrix.trust-service }}-report.json
+    - name: Upload SOC 2 reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: soc2-compliance-${{ matrix.trust-service }}
+        path: |
+          soc2-${{ matrix.trust-service }}-report.json
+          control-procedures-${{ matrix.trust-service }}-report.json
+  fhir-compliance:
+    name: 🏥 FHIR Compliance
+    runs-on: ubuntu-latest
+    needs: compliance-preparation
+    if: needs.compliance-preparation.outputs.config-loaded == 'true'
+    strategy:
+      matrix:
+        validation-type: ['resource-validation', 'api-compliance', 'data-models', 'security']
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install FHIR tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install fhir.resources jsonschema
+    - name: Validate FHIR ${{ matrix.validation-type }}
+      run: |
+        echo "🏥 Validating FHIR ${{ matrix.validation-type }} compliance..."
+        python scripts/validate_fhir.py \
+          --validation-type ${{ matrix.validation-type }} \
+          --config ${{ env.COMPLIANCE_CONFIG_FILE }} \
+          --rules ${{ env.VALIDATION_RULES_FILE }} \
+          --severity ${{ needs.compliance-preparation.outputs.validation-severity }} \
+          --output fhir-${{ matrix.validation-type }}-report.json
+    - name: Validate FHIR resources
+      if: matrix.validation-type == 'resource-validation'
+      run: |
+        echo "📋 Validating FHIR resource definitions..."
+        python scripts/validate_fhir_resources.py \
+          --scan-path backend/models/ services/*/models/ \
+          --fhir-version R4 \
+          --output fhir-resources-report.json
+    - name: Upload FHIR reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: fhir-compliance-${{ matrix.validation-type }}
+        path: |
+          fhir-${{ matrix.validation-type }}-report.json
+          fhir-resources-report.json
+  hl7-compliance:
+    name: 🏥 HL7 Compliance
+    runs-on: ubuntu-latest
+    needs: compliance-preparation
+    if: needs.compliance-preparation.outputs.config-loaded == 'true'
+    strategy:
+      matrix:
+        validation-type: ['message-validation', 'integration', 'data-exchange']
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install HL7 tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install python-hl7
+    - name: Validate HL7 ${{ matrix.validation-type }}
+      run: |
+        echo "🏥 Validating HL7 ${{ matrix.validation-type }} compliance..."
+        python scripts/validate_hl7.py \
+          --validation-type ${{ matrix.validation-type }} \
+          --config ${{ env.COMPLIANCE_CONFIG_FILE }} \
+          --rules ${{ env.VALIDATION_RULES_FILE }} \
+          --severity ${{ needs.compliance-preparation.outputs.validation-severity }} \
+          --output hl7-${{ matrix.validation-type }}-report.json
+    - name: Validate HL7 message parsing
+      if: matrix.validation-type == 'message-validation'
+      run: |
+        echo "📨 Validating HL7 message parsing..."
+        python scripts/validate_hl7_messages.py \
+          --sample-dir test_data/hl7/ \
+          --output hl7-message-validation-report.json
+    - name: Upload HL7 reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: hl7-compliance-${{ matrix.validation-type }}
+        path: |
+          hl7-${{ matrix.validation-type }}-report.json
+          hl7-message-validation-report.json
+  data-privacy-assessment:
+    name: 🔒 Data Privacy Assessment
+    runs-on: ubuntu-latest
+    needs: compliance-preparation
+    if: needs.compliance-preparation.outputs.config-loaded == 'true'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install privacy tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas numpy
+    - name: Assess data collection practices
+      run: |
+        echo "📊 Assessing data collection practices..."
+        python scripts/assess_data_collection.py \
+          --scan-path backend/ services/ \
+          --output data-collection-assessment.json
+    - name: Assess data retention policies
+      run: |
+        echo "⏰ Assessing data retention policies..."
+        python scripts/assess_data_retention.py \
+          --config retention-config.json \
+          --output retention-assessment.json
+    - name: Assess data minimization
+      run: |
+        echo "📉 Assessing data minimization practices..."
+        python scripts/assess_data_minimization.py \
+          --scan-path backend/ services/ \
+          --output minimization-assessment.json
+    - name: Upload privacy assessment reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: data-privacy-assessment
+        path: |
+          data-collection-assessment.json
+          retention-assessment.json
+          minimization-assessment.json
+  compliance-aggregation:
+    name: 📊 Compliance Aggregation
+    runs-on: ubuntu-latest
+    needs: [
+      compliance-preparation,
+      hipaa-compliance,
+      gdpr-compliance,
+      pci-dss-compliance,
+      soc2-compliance,
+      fhir-compliance,
+      hl7-compliance,
+      data-privacy-assessment
+    ]
+    if: always()
+    steps:
+    - name: Download all compliance reports
+      uses: actions/download-artifact@v3
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install aggregation tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas numpy matplotlib seaborn jinja2
+    - name: Aggregate compliance results
+      run: |
+        echo "📊 Aggregating compliance validation results..."
+        python scripts/aggregate_compliance.py \
+          --standards ${{ needs.compliance-preparation.outputs.standards-to-validate }} \
+          --reports-dir . \
+          --output compliance-aggregation.json
+    - name: Generate compliance dashboard
+      run: |
+        echo "📈 Generating compliance dashboard..."
+        python scripts/generate_compliance_dashboard.py \
+          --input compliance-aggregation.json \
+          --output compliance-dashboard.html
+    - name: Generate compliance executive summary
+      run: |
+        echo "📋 Generating compliance executive summary..."
+        python scripts/generate_compliance_summary.py \
+          --input compliance-aggregation.json \
+          --output compliance-executive-summary.md
+    - name: Validate compliance requirements
+      run: |
+        echo "✅ Validating compliance requirements..."
+        python scripts/validate_compliance_requirements.py \
+          --input compliance-aggregation.json \
+          --severity ${{ needs.compliance-preparation.outputs.validation-severity }}
+    - name: Upload compliance reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: compliance-reports
+        path: |
+          compliance-aggregation.json
+          compliance-dashboard.html
+          compliance-executive-summary.md
+  compliance-documentation:
+    name: 📚 Compliance Documentation
+    runs-on: ubuntu-latest
+    needs: compliance-aggregation
+    if: github.event.inputs.generate-report == 'true' || github.event_name == 'schedule'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Download compliance reports
+      uses: actions/download-artifact@v3
+      with:
+        name: compliance-reports
+    - name: Generate compliance documentation
+      run: |
+        echo "📚 Generating compliance documentation..."
+        mkdir -p compliance/reports
+        cp compliance-aggregation.json compliance/reports/
+        cp compliance-dashboard.html compliance/reports/
+        cp compliance-executive-summary.md compliance/reports/
+        python scripts/generate_policy_updates.py \
+          --input compliance-aggregation.json \
+          --output compliance/policy-updates/
+        python scripts/generate_compliance_evidence.py \
+          --input compliance-aggregation.json \
+          --output compliance/evidence/
+    - name: Update compliance documentation
+      run: |
+        echo "📝 Updating compliance documentation..."
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add compliance/reports/ compliance/policy-updates/ compliance/evidence/
+        git commit -m "📚 Update compliance documentation
+        - Updated compliance reports and dashboards
+        - Generated policy updates and evidence documentation
+        - Validated against healthcare compliance standards
+        🤖 Generated with [Claude Code](https://claude.ai/code)
+        Co-Authored-By: GitHub Action <action@github.com"
+        git push
+  compliance-notifications:
+    name: 📢 Compliance Notifications
+    runs-on: ubuntu-latest
+    needs: compliance-aggregation
+    if: always() && github.event_name == 'schedule'
+    steps:
+    - name: Download compliance reports
+      uses: actions/download-artifact@v3
+      with:
+        name: compliance-reports
+    - name: Check for compliance issues
+      run: |
+        echo "🔍 Checking for compliance issues..."
+        python scripts/check_compliance_issues.py \
+          --input compliance-aggregation.json \
+          --webhook ${{ secrets.COMPLIANCE_WEBHOOK_URL }} \
+          --slack-webhook ${{ secrets.SLACK_COMPLIANCE_WEBHOOK }} \
+          --email ${{ secrets.COMPLIANCE_EMAIL }}
+    - name: Create compliance issue
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const compliance = JSON.parse(fs.readFileSync('compliance-aggregation.json', 'utf8'));
+          if (compliance.issues.length > 0) {
+            const issueTitle = `⚠️ Compliance Issues Detected - ${new Date().toISOString().split('T')[0]}`;
+            const issueBody = `
+            **Validation Date:** ${new Date().toISOString()}
+            **Repository:** ${{ github.repository }}
+            - **Total Issues:** ${compliance.issues.length}
+            - **Critical Issues:** ${compliance.issues.filter(i => i.severity === 'critical').length}
+            - **High Issues:** ${compliance.issues.filter(i => i.severity === 'high').length}
+            ${Object.entries(compliance.standards).map(([std, data]) => `
+            - **${std}**: ${data.passed}/${data.total} checks passed
+            `).join('\n')}
+            ${compliance.issues.slice(0, 5).map(issue => `
+            - **${issue.title}** (${issue.severity})
+              - Standard: ${issue.standard}
+              - Category: ${issue.category}
+              - Description: ${issue.description}
+              - Recommendation: ${issue.recommendation}
+            `).join('\n')}
+            1. Address critical and high severity issues immediately
+            2. Update policies and procedures as needed
+            3. Implement required controls
+            4. Conduct staff training if required
+            - [ ] Fix critical compliance issues
+            - [ ] Update documentation
+            - [ ] Implement required controls
+            - [ ] Re-run compliance validation
+            ---
+            🤖 Generated with [Claude Code](https://claude.ai/code)
+            `;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+              labels: ['compliance', 'healthcare', 'automated']
+            });
+          }

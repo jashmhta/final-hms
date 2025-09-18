@@ -1,6 +1,4 @@
-# Enterprise-Grade Monitoring Configuration
 version: '3.8'
-
 services:
   prometheus:
     image: prom/prometheus:latest
@@ -19,7 +17,6 @@ services:
       - '--storage.tsdb.retention.time=200h'
       - '--web.enable-lifecycle'
     restart: unless-stopped
-
   grafana:
     image: grafana/grafana:latest
     container_name: hms-grafana
@@ -34,7 +31,6 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin123
       - GF_USERS_ALLOW_SIGN_UP=false
     restart: unless-stopped
-
   jaeger:
     image: jaegertracing/all-in-one:latest
     container_name: hms-jaeger
@@ -44,7 +40,6 @@ services:
     environment:
       - COLLECTOR_OTLP_ENABLED=true
     restart: unless-stopped
-
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
     container_name: hms-elasticsearch
@@ -57,7 +52,6 @@ services:
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     restart: unless-stopped
-
   kibana:
     image: docker.elastic.co/kibana/kibana:8.11.0
     container_name: hms-kibana
@@ -68,7 +62,6 @@ services:
     depends_on:
       - elasticsearch
     restart: unless-stopped
-
   logstash:
     image: docker.elastic.co/logstash/logstash:8.11.0
     container_name: hms-logstash
@@ -83,7 +76,6 @@ services:
     depends_on:
       - elasticsearch
     restart: unless-stopped
-
   alertmanager:
     image: prom/alertmanager:latest
     container_name: hms-alertmanager
@@ -97,7 +89,6 @@ services:
       - '--storage.path=/alertmanager'
       - '--web.external-url=http://localhost:9093'
     restart: unless-stopped
-
 volumes:
   prometheus_data:
   grafana_data:

@@ -1,0 +1,67 @@
+# Black configuration for HMS Enterprise-Grade
+# Uncompromising Python code formatter
+
+[tool.black]
+# Target Python version
+target-version = ['py38']
+
+# Line length (must match flake8)
+line-length = 88
+
+# Files to include
+include = '\.pyi?$'
+
+# Files to exclude
+extend-exclude = '''
+/(
+    # Version control
+    \.git
+    # Virtual environments
+    | \.venv
+    | venv
+    | env
+    # Build directories
+    | build
+    | dist
+    # Python cache
+    | __pycache__
+    | \.pytest_cache
+    | \.mypy_cache
+    # Node modules
+    | node_modules
+    # Coverage reports
+    | \.coverage
+    | htmlcov
+    # Django specific
+    | migrations
+    # IDE files
+    | \.idea
+    | \.vscode
+    # OS files
+    | \.DS_Store
+    | Thumbs\.db
+    # Documentation
+    | docs
+)/
+'''
+
+# Skip string normalization (don't change quotes)
+skip-string-normalization = false
+
+# Use experimental string processing (better handling of multiline strings)
+experimental-string-processing = true
+
+# Check if files would be re-formatted without actually changing them
+check = false
+
+# Don't normalize quotes (leave single/double quotes as-is)
+skip-magic-trailing-comma = false
+
+# Force single quotes for strings that would otherwise use double quotes
+force-single-line = false
+
+# Preview features (enable for future compatibility)
+preview = false
+
+# Use verbose output
+verbose = false

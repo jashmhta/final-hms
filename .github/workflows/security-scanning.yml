@@ -1,0 +1,542 @@
+name: 🛡️ Ultimate Security Scanning
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      scan-type:
+        description: 'Type of security scan to run'
+        required: true
+        default: 'comprehensive'
+        type: choice
+        options:
+        - comprehensive
+        - sast
+        - dast
+        - dependency
+        - secrets
+        - compliance
+      fail-on-critical:
+        description: 'Fail workflow on critical vulnerabilities'
+        required: false
+        default: true
+        type: boolean
+      generate-report:
+        description: 'Generate detailed security report'
+        required: false
+        default: true
+        type: boolean
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+  MAX_CRITICAL_VULNERABILITIES: 0
+  MAX_HIGH_VULNERABILITIES: 0
+  MAX_MEDIUM_VULNERABILITIES: 5
+  OWASP_ZAP_API_KEY: ${{ secrets.OWASP_ZAP_API_KEY }}
+jobs:
+  sast-scanning:
+    name: 🔍 SAST Scanning
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        scanner: ['semgrep', 'codeql', 'bandit', 'sonarqube']
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Setup Python
+      if: matrix.scanner == 'bandit' || matrix.scanner == 'sonarqube'
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Setup Node.js
+      if: matrix.scanner == 'semgrep' || matrix.scanner == 'sonarqube'
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+    - name: Initialize CodeQL
+      if: matrix.scanner == 'codeql'
+      uses: github/codeql-action/init@v3
+      with:
+        languages: python, javascript
+    - name: Install scanner tools
+      run: |
+        case "${{ matrix.scanner }}" in
+          "semgrep")
+            pip install semgrep
+            ;;
+          "bandit")
+            pip install bandit
+            ;;
+          "sonarqube")
+            pip install sonar-scanner
+            ;;
+        esac
+    - name: Run Semgrep scan
+      if: matrix.scanner == 'semgrep'
+      run: |
+        echo "🔍 Running Semgrep SAST scan..."
+        semgrep --config=auto \
+                --json \
+                --output=semgrep-sast-report.json \
+                --exclude=node_modules \
+                --exclude=.git \
+                --max-target-bytes 10000000 \
+                .
+    - name: Run CodeQL analysis
+      if: matrix.scanner == 'codeql'
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{ matrix.language }}"
+    - name: Run Bandit scan
+      if: matrix.scanner == 'bandit'
+      run: |
+        echo "🔍 Running Bandit SAST scan..."
+        bandit -r . \
+               -f json \
+               -o bandit-sast-report.json \
+               --skip=B101 \
+               --exclude tests/,test_* \
+               --verbose
+    - name: Run SonarQube scan
+      if: matrix.scanner == 'sonarqube'
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      run: |
+        echo "🔍 Running SonarQube SAST scan..."
+        sonar-scanner \
+          -Dsonar.projectKey=hms-enterprise-grade \
+          -Dsonar.organization=hms-enterprise \
+          -Dsonar.sources=. \
+          -Dsonar.exclusions=node_modules/**,tests/**,test_*.py \
+          -Dsonar.python.version=3.11 \
+          -Dsonar.javascript.file.suffixes=js,jsx,ts,tsx \
+          -Dsonar.qualitygate.wait=true
+    - name: Upload SAST reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: sast-reports-${{ matrix.scanner }}
+        path: |
+          *-sast-report.json
+          *-sast-report.sarif
+  dast-scanning:
+    name: 🌐 DAST Scanning
+    runs-on: ubuntu-latest
+    needs: sast-scanning
+    if: github.event_name == 'schedule' || github.event.inputs.scan-type == 'dast' || github.event.inputs.scan-type == 'comprehensive'
+    strategy:
+      matrix:
+        scanner: ['owasp-zap', 'nuclei', 'burp-suite']
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup test environment
+      run: |
+        echo "🏗️ Setting up test environment for DAST..."
+        docker-compose -f docker-compose.test.yml up -d
+        sleep 30
+    - name: Run OWASP ZAP scan
+      if: matrix.scanner == 'owasp-zap'
+      run: |
+        echo "🌐 Running OWASP ZAP DAST scan..."
+        docker run --rm \
+          -v $(pwd):/zap/wrk/:rw \
+          -t owasp/zap2docker-stable \
+          zap-baseline.py \
+          -t ${{ secrets.TEST_APPLICATION_URL }} \
+          -g gen.conf \
+          -r zap-report.html \
+          -J zap-report.json \
+          -x zap-report.xml \
+          --hook=/zap/hook.py || true
+    - name: Run Nuclei scan
+      if: matrix.scanner == 'nuclei'
+      run: |
+        echo "🌐 Running Nuclei DAST scan..."
+        docker run --rm \
+          -v $(pwd):/data \
+          projectdiscovery/nuclei:latest \
+          -t http/cves/ \
+          -t http/vulnerabilities/ \
+          -target ${{ secrets.TEST_APPLICATION_URL }} \
+          -json \
+          -o nuclei-report.json \
+          -severity critical,high,medium \
+          -rate-limit 10 \
+          -timeout 10 || true
+    - name: Run Burp Suite scan
+      if: matrix.scanner == 'burp-suite'
+      env:
+        BURP_API_KEY: ${{ secrets.BURP_API_KEY }}
+      run: |
+        echo "🌐 Running Burp Suite DAST scan..."
+        python scripts/burp_scan.py \
+          --target ${{ secrets.TEST_APPLICATION_URL }} \
+          --output burp-report.json \
+          --config burp-config.json || true
+    - name: Cleanup test environment
+      if: always()
+      run: |
+        echo "🧹 Cleaning up test environment..."
+        docker-compose -f docker-compose.test.yml down -v
+    - name: Upload DAST reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: dast-reports-${{ matrix.scanner }}
+        path: |
+          *-report.json
+          *-report.html
+          *-report.xml
+  dependency-security:
+    name: 📦 Dependency Security Scanning
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        scanner: ['snyk', 'safety', 'npm-audit', 'trivy']
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      if: matrix.scanner == 'snyk' || matrix.scanner == 'safety'
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Setup Node.js
+      if: matrix.scanner == 'npm-audit' || matrix.scanner == 'snyk'
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+    - name: Install scanner tools
+      run: |
+        case "${{ matrix.scanner }}" in
+          "snyk")
+            npm install -g snyk
+            pip install snyk
+            ;;
+          "safety")
+            pip install safety
+            ;;
+          "npm-audit")
+            npm install -g npm-audit-resolver
+            ;;
+        esac
+    - name: Run Snyk scan
+      if: matrix.scanner == 'snyk'
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      run: |
+        echo "📦 Running Snyk dependency scan..."
+        snyk test --json --output=snyk-deps-report.json || true
+        snyk code --json --output=snyk-code-report.json || true
+    - name: Run Safety scan
+      if: matrix.scanner == 'safety'
+      run: |
+        echo "📦 Running Safety dependency scan..."
+        safety check --json --output=safety-report.json --db update || true
+        pip-audit --format json --output=pip-audit-report.json || true
+    - name: Run NPM audit
+      if: matrix.scanner == 'npm-audit'
+      run: |
+        echo "📦 Running NPM audit..."
+        npm audit --json > npm-audit-report.json || true
+        npm audit --audit-level moderate || true
+    - name: Run Trivy scan
+      if: matrix.scanner == 'trivy'
+      run: |
+        echo "📦 Running Trivy dependency scan..."
+        trivy fs --format json --output=trivy-deps-report.json . || true
+        trivy config --format json --output=trivy-config-report.json . || true
+    - name: Upload dependency reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: dependency-security-${{ matrix.scanner }}
+        path: |
+          *-report.json
+  secrets-scanning:
+    name: 🔑 Secrets Scanning
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        scanner: ['gitleaks', 'trufflehog', 'detect-secrets']
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Run Gitleaks scan
+      if: matrix.scanner == 'gitleaks'
+      run: |
+        echo "🔑 Running Gitleaks secrets scan..."
+        docker run --rm \
+          -v $(pwd):/code \
+          zricethezav/gitleaks:latest \
+          detect --source=/code --verbose --report-format=json --report-path=gitleaks-report.json || true
+    - name: Run TruffleHog scan
+      if: matrix.scanner == 'trufflehog'
+      run: |
+        echo "🔑 Running TruffleHog secrets scan..."
+        docker run --rm \
+          -v $(pwd):/code \
+          trufflesecurity/trufflehog:latest \
+          git /code --json --output=trufflehog-report.json || true
+    - name: Run detect-secrets scan
+      if: matrix.scanner == 'detect-secrets'
+      run: |
+        echo "🔑 Running detect-secrets scan..."
+        pip install detect-secrets
+        detect-secrets scan --all-files > detect-secrets-report.json || true
+    - name: Upload secrets reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: secrets-reports-${{ matrix.scanner }}
+        path: |
+          *-report.json
+  compliance-scanning:
+    name: 📋 Compliance Scanning
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event.inputs.scan-type == 'compliance' || github.event.inputs.scan-type == 'comprehensive'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install compliance tools
+      run: |
+        pip install pydantic cryptography
+    - name: Run HIPAA compliance check
+      run: |
+        echo "🏥 Running HIPAA compliance check..."
+        python scripts/hipaa_compliance.py > hipaa-compliance-report.json
+    - name: Run GDPR compliance check
+      run: |
+        echo "🇪🇺 Running GDPR compliance check..."
+        python scripts/gdpr_compliance.py > gdpr-compliance-report.json
+    - name: Run PCI-DSS compliance check
+      run: |
+        echo "💳 Running PCI-DSS compliance check..."
+        python scripts/pci_dss_compliance.py > pci-dss-compliance-report.json
+    - name: Run SOC 2 compliance check
+      run: |
+        echo "🏢 Running SOC 2 compliance check..."
+        python scripts/soc2_compliance.py > soc2-compliance-report.json
+    - name: Upload compliance reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: compliance-reports
+        path: |
+          *-compliance-report.json
+  container-security:
+    name: 🐳 Container Security Scanning
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Build Docker image
+      run: |
+        echo "🐳 Building Docker image for scanning..."
+        docker build -t hms-security-scan .
+    - name: Run Clair scan
+      run: |
+        echo "🐳 Running Clair container scan..."
+        docker run --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v $(pwd):/data \
+          arminc/clair-local-scan:latest \
+          hms-security-scan > clair-report.json || true
+    - name: Run Grype scan
+      run: |
+        echo "🐳 Running Grype container scan..."
+        docker run --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          anchore/grype:latest \
+          hms-security-scan \
+          --output json > grype-report.json || true
+    - name: Run Dive scan
+      run: |
+        echo "🐳 Running Dive container analysis..."
+        docker run --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          wagoodman/dive:latest \
+          hms-security-scan \
+          --jsonoutput dive-report.json || true
+    - name: Upload container reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: container-security
+        path: |
+          *-report.json
+  vulnerability-aggregation:
+    name: 📊 Vulnerability Aggregation
+    runs-on: ubuntu-latest
+    needs: [
+      sast-scanning,
+      dast-scanning,
+      dependency-security,
+      secrets-scanning,
+      compliance-scanning,
+      container-security
+    ]
+    if: always()
+    steps:
+    - name: Download all reports
+      uses: actions/download-artifact@v3
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install aggregation tools
+      run: |
+        pip install pandas numpy matplotlib seaborn jinja2
+    - name: Aggregate vulnerability reports
+      run: |
+        echo "📊 Aggregating vulnerability reports..."
+        python scripts/aggregate_vulnerabilities.py \
+          --sast-reports sast-reports-*/* \
+          --dast-reports dast-reports-*/* \
+          --dependency-reports dependency-security-*/* \
+          --secrets-reports secrets-reports-*/* \
+          --compliance-reports compliance-reports/* \
+          --container-reports container-security/* \
+          --output security-aggregation.json
+    - name: Generate security dashboard
+      run: |
+        echo "📈 Generating security dashboard..."
+        python scripts/generate_security_dashboard.py \
+          --input security-aggregation.json \
+          --output security-dashboard.html \
+          --format html
+    - name: Generate executive summary
+      run: |
+        echo "📋 Generating executive summary..."
+        python scripts/generate_security_summary.py \
+          --input security-aggregation.json \
+          --output security-executive-summary.md
+    - name: Validate vulnerability thresholds
+      run: |
+        echo "🔍 Validating vulnerability thresholds..."
+        python scripts/validate_vulnerabilities.py \
+          --input security-aggregation.json \
+          --max-critical ${{ env.MAX_CRITICAL_VULNERABILITIES }} \
+          --max-high ${{ env.MAX_HIGH_VULNERABILITIES }} \
+          --max-medium ${{ env.MAX_MEDIUM_VULNERABILITIES }} \
+          --fail-on-critical ${{ github.event.inputs.fail-on-critical }}
+    - name: Upload aggregated reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-aggregation
+        path: |
+          security-aggregation.json
+          security-dashboard.html
+          security-executive-summary.md
+  security-notifications:
+    name: 📢 Security Notifications
+    runs-on: ubuntu-latest
+    needs: vulnerability-aggregation
+    if: always() && github.event_name == 'schedule'
+    steps:
+    - name: Download security reports
+      uses: actions/download-artifact@v3
+      with:
+        name: security-aggregation
+    - name: Send critical vulnerability alert
+      run: |
+        echo "🚨 Checking for critical vulnerabilities..."
+        python scripts/send_security_alerts.py \
+          --input security-aggregation.json \
+          --webhook ${{ secrets.SECURITY_WEBHOOK_URL }} \
+          --slack-webhook ${{ secrets.SLACK_SECURITY_WEBHOOK }} \
+          --email ${{ secrets.SECURITY_EMAIL }} \
+          --threshold critical
+    - name: Create security issue
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const aggregation = JSON.parse(fs.readFileSync('security-aggregation.json', 'utf8'));
+          if (aggregation.critical_vulnerabilities > 0 || aggregation.high_vulnerabilities > 0) {
+            const issueTitle = `🚨 Security Vulnerabilities Detected - ${new Date().toISOString().split('T')[0]}`;
+            const issueBody = `
+            **Scan Date:** ${new Date().toISOString()}
+            **Repository:** ${{ github.repository }}
+            - **Critical:** ${aggregation.critical_vulnerabilities}
+            - **High:** ${aggregation.high_vulnerabilities}
+            - **Medium:** ${aggregation.medium_vulnerabilities}
+            - **Low:** ${aggregation.low_vulnerabilities}
+            ${aggregation.top_issues.slice(0, 5).map(issue => `
+            - **${issue.title}** (${issue.severity})
+              - Scanner: ${issue.scanner}
+              - Location: ${issue.location}
+              - Description: ${issue.description}
+            `).join('\n')}
+            1. Review and fix critical vulnerabilities immediately
+            2. Update vulnerable dependencies
+            3. Apply security patches
+            4. Review code security practices
+            - [ ] Fix critical vulnerabilities
+            - [ ] Update dependencies
+            - [ ] Run security tests
+            - [ ] Verify fixes
+            ---
+            🤖 Generated with [Claude Code](https://claude.ai/code)
+            `;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+              labels: ['security', 'critical', 'automated']
+            });
+          }
+  security-reporting:
+    name: 📋 Security Reporting
+    runs-on: ubuntu-latest
+    needs: vulnerability-aggregation
+    if: github.event.inputs.generate-report == 'true' || github.event_name == 'schedule'
+    steps:
+    - name: Download security reports
+      uses: actions/download-artifact@v3
+      with:
+        name: security-aggregation
+    - name: Generate PDF report
+      run: |
+        echo "📄 Generating PDF security report..."
+        python scripts/generate_pdf_report.py \
+          --input security-aggregation.json \
+          --output security-report.pdf \
+          --template security-template.html
+    - name: Upload security report
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-report
+        path: |
+          security-report.pdf
+          security-dashboard.html
+          security-executive-summary.md
+    - name: Upload to security documentation
+      run: |
+        echo "📚 Uploading to security documentation..."
+        mkdir -p security/reports
+        cp security-aggregation.json security/reports/
+        cp security-dashboard.html security/reports/
+        cp security-executive-summary.md security/reports/
+        cp security-report.pdf security/reports/
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add security/reports/
+        git commit -m "🛡️ Add security scan reports
+        - Added comprehensive security scan reports
+        - Updated security dashboard and documentation
+        - Generated executive summary
+        🤖 Generated with [Claude Code](https://claude.ai/code)
+        Co-Authored-By: GitHub Action <action@github.com>"
+        git push

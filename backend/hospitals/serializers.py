@@ -1,8 +1,5 @@
 from rest_framework import serializers
-
 from .models import Hospital, HospitalPlan, Plan
-
-
 class HospitalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Hospital
@@ -19,8 +16,6 @@ class HospitalSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
-
-
 class PlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plan
@@ -34,14 +29,11 @@ class PlanSerializer(serializers.ModelSerializer):
             "enable_pharmacy",
             "enable_accounting",
         ]
-
-
 class HospitalPlanSerializer(serializers.ModelSerializer):
     plan = PlanSerializer(read_only=True)
     plan_id = serializers.PrimaryKeyRelatedField(
         source="plan", queryset=Plan.objects.all(), write_only=True
     )
-
     class Meta:
         model = HospitalPlan
         fields = [

@@ -3,17 +3,11 @@ from django.shortcuts import render
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
-
 from .models import DutyRoster, LeaveRequest, Shift
 from .serializers import DutyRosterSerializer, LeaveRequestSerializer, ShiftSerializer
-
-# Create your views here.
-
-
 class TenantScopedViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, RolePermission]
     allowed_roles = ["HOSPITAL_ADMIN"]
-
     def get_queryset(self):
         qs = super().get_queryset()
         user = self.request.user
@@ -22,7 +16,6 @@ class TenantScopedViewSet(viewsets.ModelViewSet):
         if getattr(user, "hospital_id", None) is None:
             return qs.none()
         return qs.filter(hospital_id=user.hospital_id)
-
     def ensure_tenant_on_create(self, serializer):
         user = self.request.user
         provided_hospital = serializer.validated_data.get("hospital")
@@ -43,27 +36,18 @@ class TenantScopedViewSet(viewsets.ModelViewSet):
                 provided_hospital.id if provided_hospital else user.hospital_id
             )
         )
-
-
 class ShiftViewSet(TenantScopedViewSet):
     serializer_class = ShiftSerializer
     queryset = Shift.objects.all()
-
     def perform_create(self, serializer):
         self.ensure_tenant_on_create(serializer)
-
-
 class DutyRosterViewSet(TenantScopedViewSet):
     serializer_class = DutyRosterSerializer
     queryset = DutyRoster.objects.select_related("user", "shift").all()
-
     def perform_create(self, serializer):
         self.ensure_tenant_on_create(serializer)
-
-
 class LeaveRequestViewSet(TenantScopedViewSet):
     serializer_class = LeaveRequestSerializer
     queryset = LeaveRequest.objects.select_related("user").all()
-
     def perform_create(self, serializer):
         self.ensure_tenant_on_create(serializer)

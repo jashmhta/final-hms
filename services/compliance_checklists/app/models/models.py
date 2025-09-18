@@ -1,20 +1,15 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
-
 Base = declarative_base()
-
-
 class ComplianceChecklist(Base):
     __tablename__ = "compliance_checklists"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     description = Column(Text)
-    standard = Column(String)  # NABH or JCI
-    category = Column(String)  # e.g., Patient Safety, Infection Control
+    standard = Column(String)  
+    category = Column(String)  
     version = Column(String)
-
-
 class ChecklistItem(Base):
     __tablename__ = "checklist_items"
     id = Column(Integer, primary_key=True, index=True)
@@ -22,9 +17,7 @@ class ChecklistItem(Base):
     item_text = Column(Text)
     required = Column(Boolean, default=True)
     evidence_required = Column(Boolean, default=False)
-    frequency = Column(String)  # Daily, Weekly, Monthly
-
-
+    frequency = Column(String)  
 class ComplianceAudit(Base):
     __tablename__ = "compliance_audits"
     id = Column(Integer, primary_key=True, index=True)
@@ -34,8 +27,6 @@ class ComplianceAudit(Base):
     notes = Column(Text)
     auditor_id = Column(Integer)
     audit_date = Column(DateTime, default=datetime.utcnow)
-
-
 class Item(Base):
     __tablename__ = "items"
     id = Column(Integer, primary_key=True, index=True)

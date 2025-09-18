@@ -1,14 +1,260 @@
 version: 2
 updates:
-- package-ecosystem: npm
-  directory: /frontend/hms-frontend
-  schedule:
-    interval: weekly
-- package-ecosystem: pip
-  directory: /backend
-  schedule:
-    interval: weekly
-- package-ecosystem: pip
-  directory: /services
-  schedule:
-    interval: weekly
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "06:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "hms-team/backend"
+      - "hms-team/devops"
+    assignees:
+      - "hms-team/dependency-manager"
+    commit-message:
+      prefix: "📦 deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "python"
+      - "automated"
+    milestone: "Dependencies"
+    target-branch: "develop"
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    ignore:
+      - dependency-name: "django*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "djangorestframework*"
+        update-types: ["version-update:semver-major"]
+    rebase-strategy: "auto"
+    registries: "*"
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "07:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 8
+    reviewers:
+      - "hms-team/frontend"
+      - "hms-team/devops"
+    assignees:
+      - "hms-team/dependency-manager"
+    commit-message:
+      prefix: "📦 deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "javascript"
+      - "automated"
+    milestone: "Dependencies"
+    target-branch: "develop"
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "development"
+    ignore:
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+    rebase-strategy: "auto"
+    registries: "*"
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "hms-team/devops"
+      - "hms-team/security"
+    assignees:
+      - "hms-team/dependency-manager"
+    commit-message:
+      prefix: "🐳 deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "automated"
+      - "security"
+    milestone: "Dependencies"
+    target-branch: "develop"
+    rebase-strategy: "auto"
+    registries: "*"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "04:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "hms-team/devops"
+      - "hms-team/ci-cd"
+    assignees:
+      - "hms-team/dependency-manager"
+    commit-message:
+      prefix: "🔄 actions"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "ci-cd"
+      - "automated"
+    milestone: "Dependencies"
+    target-branch: "develop"
+    rebase-strategy: "auto"
+    registries: "*"
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "02:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "hms-team/security"
+      - "hms-team/devops"
+    assignees:
+      - "hms-team/security-manager"
+    commit-message:
+      prefix: "🔒 security"
+      include: "scope"
+    labels:
+      - "security"
+      - "dependencies"
+      - "automated"
+      - "priority"
+    milestone: "Security"
+    target-branch: "main"
+    allow:
+      - dependency-type: "all"
+    rebase-strategy: "auto"
+    registries: "*"
+    vulnerability-alerts: true
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "02:30"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "hms-team/security"
+      - "hms-team/frontend"
+    assignees:
+      - "hms-team/security-manager"
+    commit-message:
+      prefix: "🔒 security"
+      include: "scope"
+    labels:
+      - "security"
+      - "dependencies"
+      - "automated"
+      - "priority"
+    milestone: "Security"
+    target-branch: "main"
+    allow:
+      - dependency-type: "all"
+    rebase-strategy: "auto"
+    registries: "*"
+    vulnerability-alerts: true
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "01:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "hms-team/leads"
+      - "hms-team/devops"
+    assignees:
+      - "hms-team/dependency-manager"
+    commit-message:
+      prefix: "🚨 critical"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "critical"
+      - "automated"
+      - "priority"
+    milestone: "Critical"
+    target-branch: "main"
+    allow:
+      - dependency-type: "all"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
+    rebase-strategy: "auto"
+    registries: "*"
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "05:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 15
+    reviewers:
+      - "hms-team/backend"
+      - "hms-team/devops"
+    assignees:
+      - "hms-team/dependency-manager"
+    commit-message:
+      prefix: "📦 group"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "grouped"
+      - "automated"
+    milestone: "Dependencies"
+    target-branch: "develop"
+    grouping: "all"
+    rebase-strategy: "auto"
+    registries: "*"
+registries:
+  npm-registry:
+    type: "npm-registry"
+    url: "https://registry.npmjs.org"
+    username: "${{ secrets.NPM_USERNAME }}"
+    password: "${{ secrets.NPM_PASSWORD }}"
+    replaces-base: true
+  pip-registry:
+    type: "python-index"
+    url: "https://pypi.org/simple"
+    username: "${{ secrets.PYPI_USERNAME }}"
+    password: "${{ secrets.PYPI_PASSWORD }}"
+    replaces-base: true
+settings:
+  ignore-dependabot-updates: false
+  disable-semantic-commits: false
+  commit-message:
+    prefix: "🤖"
+    prefix-development: "🤖"
+    include: "scope"
+  branch-protection:
+    require-branch-up-to-date: true
+    require-code-owner-review: true
+    require-status-checks: true
+    required-status-checks:
+      - "CI/CD Pipeline"
+      - "Code Quality Checks"
+      - "Security Scanning"
+      - "Compliance Validation"
+  auto-merge:
+    enabled: true
+    require-approval: true
+    minimum-approvals: 2
+    wait-for-status-checks: true
+    required-status-checks:
+      - "CI/CD Pipeline"
+      - "Code Quality Checks"
+      - "Security Scanning"

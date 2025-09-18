@@ -3,14 +3,10 @@ from django.test import TestCase
 from patients.models import Patient
 from hospitals.models import Hospital
 from encrypted_model_fields.fields import EncryptedCharField
-
-
 class HIPAAComplianceTest(TestCase):
     def test_patient_data_encryption(self):
         from datetime import date
         from django.db import connection
-
-        # Create a test hospital first
         hospital = Hospital.objects.create(
             name="Test Hospital",
             code="TEST_HOSP",
@@ -18,7 +14,6 @@ class HIPAAComplianceTest(TestCase):
             phone="555-1234",
             email="test@hospital.com",
         )
-
         patient = Patient.objects.create(
             hospital=hospital,
             first_name="John",
@@ -28,26 +23,15 @@ class HIPAAComplianceTest(TestCase):
             phone_primary="123-45-6789",
             medical_record_number="MRN123",
         )
-
-        # Check that the field automatically decrypts when accessed
         self.assertEqual(patient.phone_primary, "123-45-6789")
-
-        # Check that the raw database value is encrypted
         with connection.cursor() as cursor:
             cursor.execute(
                 "SELECT phone_primary FROM patients_patient WHERE id = %s", [patient.id]
             )
             raw_value = cursor.fetchone()[0]
-            # The raw value should be encrypted (not equal to original)
             self.assertNotEqual(raw_value, "123-45-6789")
-            # And it should be longer (encrypted data is larger)
             self.assertGreater(len(raw_value), len("123-45-6789"))
-
     def test_access_control(self):
-        # Test that only authorized users can access PHI
-        # This would require setting up users and permissions
         pass
-
     def test_audit_logging(self):
-        # Test that access to PHI is logged
         pass

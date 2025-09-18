@@ -1,0 +1,252 @@
+name: 🗄️ Database Migration Automation
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/migrations/**'
+      - 'services/*/migrations/**'
+      - 'database/**'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/migrations/**'
+      - 'services/*/migrations/**'
+      - 'database/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - development
+        - staging
+        - production
+      dry-run:
+        description: 'Dry run only (no actual migrations)'
+        required: false
+        default: false
+        type: boolean
+      backup:
+        description: 'Create database backup before migration'
+        required: false
+        default: true
+        type: boolean
+env:
+  PYTHON_VERSION: '3.11'
+jobs:
+  migration-validation:
+    name: ✅ Migration Validation
+    runs-on: ubuntu-latest
+    outputs:
+      migrations-found: ${{ steps.validation.outputs.migrations-found }}
+      validation-passed: ${{ steps.validation.outputs.validation-passed }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install validation tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install alembic sqlalchemy psycopg2-binary
+    - name: Validate migrations
+      id: validation
+      run: |
+        echo "🗄️ Validating database migrations..."
+        if find . -name "*.py" -path "*/migrations/*" | grep -q .; then
+          echo "migrations-found=true" >> $GITHUB_OUTPUT
+        else
+          echo "migrations-found=false" >> $GITHUB_OUTPUT
+          echo "No migrations found, exiting"
+          exit 0
+        fi
+        python scripts/validate_migrations.py > migration-validation-report.json
+        if [ $? -eq 0 ]; then
+          echo "validation-passed=true" >> $GITHUB_OUTPUT
+          echo "✅ Migration validation passed"
+        else
+          echo "validation-passed=false" >> $GITHUB_OUTPUT
+          echo "❌ Migration validation failed"
+          exit 1
+        fi
+    - name: Upload validation report
+      uses: actions/upload-artifact@v3
+      with:
+        name: migration-validation
+        path: migration-validation-report.json
+  migration-testing:
+    name: 🧪 Migration Testing
+    runs-on: ubuntu-latest
+    needs: migration-validation
+    if: needs.migration-validation.outputs.migrations-found == 'true'
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hms_migration_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install testing tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-alembic factory-boy
+    - name: Setup test database
+      run: |
+        echo "🗄️ Setting up test database..."
+        python scripts/setup_test_db.py
+    - name: Run migrations in test environment
+      run: |
+        echo "🔄 Running migrations in test environment..."
+        python scripts/run_migrations.py --environment test --dry-run ${{ github.event.inputs.dry-run || false }}
+    - name: Run migration tests
+      run: |
+        echo "🧪 Running migration tests..."
+        pytest tests/migrations/ -v --tb=short
+    - name: Validate data integrity
+      run: |
+        echo "🔍 Validating data integrity..."
+        python scripts/validate_data_integrity.py > data-integrity-report.json
+    - name: Upload test reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: migration-testing
+        path: |
+          data-integrity-report.json
+          test-results/
+  database-backup:
+    name: 💾 Database Backup
+    runs-on: ubuntu-latest
+    needs: [migration-validation, migration-testing]
+    if: needs.migration-validation.outputs.migrations-found == 'true' && needs.migration-testing.result == 'success' && github.event.inputs.backup == 'true'
+    steps:
+    - name: Setup backup tools
+      run: |
+        echo "💾 Setting up backup tools..."
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client
+    - name: Create database backup
+      env:
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_PORT: ${{ secrets.DB_PORT }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      run: |
+        echo "💾 Creating database backup..."
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        BACKUP_FILE="backup_${TIMESTAMP}.sql"
+        pg_dump -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME > $BACKUP_FILE
+        echo "✅ Database backup created: $BACKUP_FILE"
+    - name: Upload backup
+      uses: actions/upload-artifact@v3
+      with:
+        name: database-backup
+        path: backup_*.sql
+  migration-execution:
+    name: 🚀 Migration Execution
+    runs-on: ubuntu-latest
+    needs: [migration-validation, migration-testing, database-backup]
+    if: needs.migration-validation.outputs.migrations-found == 'true' && needs.migration-testing.result == 'success'
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install migration tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Run migrations
+      env:
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_PORT: ${{ secrets.DB_PORT }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      run: |
+        echo "🚀 Running database migrations on ${{ github.event.inputs.environment || 'staging' }}..."
+        if [[ "${{ github.event.inputs.dry-run || false }}" == "true" ]]; then
+          echo "🔍 Running in dry-run mode..."
+          python scripts/run_migrations.py --environment ${{ github.event.inputs.environment || 'staging' }} --dry-run true
+        else
+          echo "🚀 Executing migrations..."
+          python scripts/run_migrations.py --environment ${{ github.event.inputs.environment || 'staging' }}
+        fi
+        echo "✅ Migrations completed successfully"
+  post-migration-validation:
+    name: ✅ Post-Migration Validation
+    runs-on: ubuntu-latest
+    needs: migration-execution
+    if: always() && needs.migration-execution.result == 'success'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install validation tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Validate migration results
+      env:
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_PORT: ${{ secrets.DB_PORT }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      run: |
+        echo "✅ Validating post-migration state..."
+        python scripts/validate_post_migration.py > post-migration-report.json
+    - name: Run health checks
+      run: |
+        echo "🏥 Running health checks..."
+        python scripts/run_health_checks.py --environment ${{ github.event.inputs.environment || 'staging' }}
+    - name: Upload validation reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: post-migration-validation
+        path: |
+          post-migration-report.json
+          health-checks.json
+  migration-notifications:
+    name: 📢 Migration Notifications
+    runs-on: ubuntu-latest
+    needs: post-migration-validation
+    if: always()
+    steps:
+    - name: Send migration notifications
+      run: |
+        echo "📢 Sending migration notifications..."
+        if [[ "${{ needs.post-migration-validation.result }}" == "success" ]]; then
+          MESSAGE="✅ Database migration completed successfully on ${{ github.event.inputs.environment || 'staging' }}"
+          COLOR="good"
+        else
+          MESSAGE="❌ Database migration failed on ${{ github.event.inputs.environment || 'staging' }}"
+          COLOR="danger"
+        fi
+        curl -X POST -H 'Content-type: application/json' \
+          --data "{\"text\":\"$MESSAGE\"}" \
+          ${{ secrets.SLACK_WEBHOOK_URL }}

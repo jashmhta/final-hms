@@ -1,0 +1,194 @@
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>HMS Performance Report</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+                .container { max-width: 1200px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                .header { background-color: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+                .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+                .metric { display: inline-block; margin: 10px; padding: 15px; background-color: #ecf0f1; border-radius: 5px; min-width: 200px; }
+                .metric h4 { margin: 0 0 10px 0; color: #2c3e50; }
+                .metric .value { font-size: 24px; font-weight: bold; color: #3498db; }
+                .status-optimal { color: #27ae60; font-weight: bold; }
+                .status-degraded { color: #e74c3c; font-weight: bold; }
+                .bottleneck { background-color: #ffe6e6; border-left: 4px solid #e74c3c; padding: 10px; margin: 10px 0; }
+                .recommendation { background-color: #e8f5e8; border-left: 4px solid #27ae60; padding: 10px; margin: 10px 0; }
+                table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+                th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+                th { background-color: #f8f9fa; }
+                .success { color: #27ae60; }
+                .warning { color: #f39c12; }
+                .error { color: #e74c3c; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🏥 HMS Enterprise-Grade Performance Report</h1>
+                    <p>Generated: 2025-09-17T17:11:29.544527</p>
+                    <p>System Status: <span class="status-degraded">DEGRADED</span></p>
+                    <p>Total Tests: 10 | Max Sustainable Users: 500</p>
+                </div>
+                <div class="section">
+                    <h2>📊 Performance Summary</h2>
+                    <div class="metric">
+                        <h4>Best Response Time</h4>
+                        <div class="value">0.034s</div>
+                    </div>
+                    <div class="metric">
+                        <h4>Average Response Time</h4>
+                        <div class="value">2.323s</div>
+                    </div>
+                    <div class="metric">
+                        <h4>Best Success Rate</h4>
+                        <div class="value">100.0%</div>
+                    </div>
+                    <div class="metric">
+                        <h4>Max Sustainable Users</h4>
+                        <div class="value">500</div>
+                    </div>
+                </div>
+                <div class="section">
+                    <h2>📈 Load Test Results</h2>
+                    <table>
+                        <tr><th>Test</th><th>Users</th><th>Avg Response</th><th>P95 Response</th><th>Success Rate</th><th>Throughput</th></tr>
+                        <tr>
+                            <td>baseline</td>
+                            <td>10</td>
+                            <td>0.034s</td>
+                            <td>0.043s</td>
+                            <td class="success">100.0%</td>
+                            <td>187.7 req/s</td>
+                        </tr>
+                        <tr>
+                            <td>light_load</td>
+                            <td>50</td>
+                            <td>0.582s</td>
+                            <td>1.460s</td>
+                            <td class="success">100.0%</td>
+                            <td>33.3 req/s</td>
+                        </tr>
+                        <tr>
+                            <td>moderate_load</td>
+                            <td>100</td>
+                            <td>2.180s</td>
+                            <td>7.105s</td>
+                            <td class="success">99.0%</td>
+                            <td>8.3 req/s</td>
+                        </tr>
+                        <tr>
+                            <td>heavy_load</td>
+                            <td>250</td>
+                            <td>2.169s</td>
+                            <td>8.176s</td>
+                            <td class="success">98.2%</td>
+                            <td>29.2 req/s</td>
+                        </tr>
+                        <tr>
+                            <td>peak_load</td>
+                            <td>500</td>
+                            <td>7.197s</td>
+                            <td>31.074s</td>
+                            <td class="error">86.4%</td>
+                            <td>16.7 req/s</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="section">
+                    <h2>🏥 Healthcare Scenarios</h2>
+                    <table>
+                        <tr><th>Scenario</th><th>Users</th><th>Avg Response</th><th>P95 Response</th><th>Success Rate</th></tr>
+                        <tr>
+                            <td>emergency_surge</td>
+                            <td>80</td>
+                            <td>1.103s</td>
+                            <td>3.804s</td>
+                            <td class="success">100.0%</td>
+                        </tr>
+                        <tr>
+                            <td>pharmacy_peak</td>
+                            <td>120</td>
+                            <td>1.823s</td>
+                            <td>6.804s</td>
+                            <td class="success">100.0%</td>
+                        </tr>
+                        <tr>
+                            <td>lab_processing</td>
+                            <td>60</td>
+                            <td>0.723s</td>
+                            <td>1.895s</td>
+                            <td class="success">100.0%</td>
+                        </tr>
+                        <tr>
+                            <td>mass_casualty</td>
+                            <td>150</td>
+                            <td>1.983s</td>
+                            <td>12.762s</td>
+                            <td class="success">98.5%</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="section">
+                    <h2>⚠️ Performance Bottlenecks</h2>
+                    <div class="bottleneck">
+                        <h4>HIGH_RESPONSE_TIME - moderate_load</h4>
+                        <p>Value: 7.105 (Threshold: 2.000)</p>
+                    </div>
+                    <div class="bottleneck">
+                        <h4>HIGH_RESPONSE_TIME - heavy_load</h4>
+                        <p>Value: 8.176 (Threshold: 2.000)</p>
+                    </div>
+                    <div class="bottleneck">
+                        <h4>HIGH_RESPONSE_TIME - peak_load</h4>
+                        <p>Value: 31.074 (Threshold: 2.000)</p>
+                    </div>
+                    <div class="bottleneck">
+                        <h4>HIGH_ERROR_RATE - peak_load</h4>
+                        <p>Value: 0.136 (Threshold: 0.050)</p>
+                    </div>
+                    <div class="bottleneck">
+                        <h4>HIGH_RESPONSE_TIME - emergency_surge</h4>
+                        <p>Value: 3.804 (Threshold: 2.000)</p>
+                    </div>
+                    <div class="bottleneck">
+                        <h4>HIGH_RESPONSE_TIME - pharmacy_peak</h4>
+                        <p>Value: 6.804 (Threshold: 2.000)</p>
+                    </div>
+                    <div class="bottleneck">
+                        <h4>HIGH_RESPONSE_TIME - mass_casualty</h4>
+                        <p>Value: 12.762 (Threshold: 2.000)</p>
+                    </div>
+                    <div class="bottleneck">
+                        <h4>HIGH_RESPONSE_TIME - stress_750users</h4>
+                        <p>Value: 31.055 (Threshold: 2.000)</p>
+                    </div>
+                    <div class="bottleneck">
+                        <h4>HIGH_ERROR_RATE - stress_750users</h4>
+                        <p>Value: 0.073 (Threshold: 0.050)</p>
+                    </div>
+                </div>
+                <div class="section">
+                    <h2>💡 Optimization Recommendations</h2>
+                    <div class="recommendation">
+                        <h4>CACHING - Priority: HIGH</h4>
+                        <p><strong>Description:</strong> Implement Redis caching for static content</p>
+                        <p><strong>Expected Improvement:</strong> 40-60% faster response times</p>
+                        <p><strong>Complexity:</strong> MEDIUM</p>
+                    </div>
+                    <div class="recommendation">
+                        <h4>DATABASE - Priority: MEDIUM</h4>
+                        <p><strong>Description:</strong> Optimize database queries and add indexing</p>
+                        <p><strong>Expected Improvement:</strong> 20-30% better performance</p>
+                        <p><strong>Complexity:</strong> HIGH</p>
+                    </div>
+                    <div class="recommendation">
+                        <h4>SCALING - Priority: MEDIUM</h4>
+                        <p><strong>Description:</strong> Implement horizontal scaling with load balancers</p>
+                        <p><strong>Expected Improvement:</strong> Better handling of high traffic</p>
+                        <p><strong>Complexity:</strong> MEDIUM</p>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>

@@ -1,6 +1,6 @@
 # Enterprise-Grade HMS Backend Dependencies
 # Core Django Framework
-Django==4.2.23
+Django==4.2.24
 djangorestframework==3.16.1
 djangorestframework-simplejwt==5.5.1
 drf-spectacular==0.28.0

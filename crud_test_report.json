@@ -1,0 +1,170 @@
+{
+  "test_suite": "HMS Enterprise-Grade CRUD Operations Testing",
+  "execution_timestamp": "2025-09-17T16:22:42.803343",
+  "total_duration": 1.3908166885375977,
+  "overall_status": "FAIL",
+  "test_summary": {
+    "total_tests": 9,
+    "passed_tests": 2,
+    "failed_tests": 7,
+    "success_rate": 22.22222222222222
+  },
+  "detailed_results": {
+    "create_operations": {
+      "status": "PASS",
+      "total_operations": 5,
+      "successful_operations": 5,
+      "failed_operations": 0,
+      "operations": [
+        {
+          "model": "User",
+          "operation": "create",
+          "status": "SUCCESS",
+          "execution_time": 0.16333436965942383,
+          "record_id": 13,
+          "data_fields": 8
+        },
+        {
+          "model": "Hospital",
+          "operation": "create",
+          "status": "SUCCESS",
+          "execution_time": 0.012930870056152344,
+          "record_id": 1,
+          "data_fields": 5
+        },
+        {
+          "model": "Patient",
+          "operation": "create",
+          "status": "SUCCESS",
+          "execution_time": 0.01897573471069336,
+          "record_id": 1,
+          "data_fields": 15
+        },
+        {
+          "model": "Appointment",
+          "operation": "create",
+          "status": "SUCCESS",
+          "execution_time": 0.026009798049926758,
+          "record_id": 1,
+          "data_fields": 10
+        },
+        {
+          "model": "EmergencyContact",
+          "operation": "create",
+          "status": "SUCCESS",
+          "execution_time": 0.009207010269165039,
+          "record_id": 1,
+          "data_fields": 12,
+          "has_encrypted_fields": true
+        }
+      ],
+      "average_execution_time": 0.046091556549072266,
+      "test_timestamp": "2025-09-17T16:22:41.643101"
+    },
+    "read_operations": {
+      "status": "PASS",
+      "total_operations": 6,
+      "successful_operations": 6,
+      "failed_operations": 0,
+      "operations": [
+        {
+          "model": "User",
+          "operation": "read_all",
+          "status": "SUCCESS",
+          "execution_time": 2.5033950805664062e-05,
+          "records_count": 10,
+          "query_type": "SELECT *"
+        },
+        {
+          "model": "User",
+          "operation": "read_filtered",
+          "status": "SUCCESS",
+          "execution_time": 8.0108642578125e-05,
+          "records_count": 13,
+          "query_type": "SELECT with WHERE"
+        },
+        {
+          "model": "Patient",
+          "operation": "read_with_relationships",
+          "status": "SUCCESS",
+          "execution_time": 0.00014734268188476562,
+          "records_count": 1,
+          "query_type": "SELECT with JOIN"
+        },
+        {
+          "model": "Patient",
+          "operation": "read_ordered",
+          "status": "SUCCESS",
+          "execution_time": 3.6716461181640625e-05,
+          "records_count": 1,
+          "query_type": "SELECT with ORDER BY"
+        },
+        {
+          "model": "Patient",
+          "operation": "read_search",
+          "status": "SUCCESS",
+          "execution_time": 0.00022792816162109375,
+          "records_count": 1,
+          "query_type": "SELECT with LIKE"
+        },
+        {
+          "model": "Patient",
+          "operation": "read_aggregate",
+          "status": "SUCCESS",
+          "execution_time": 0.0005154609680175781,
+          "aggregate_results": {
+            "total_count": 1,
+            "recent_count": 1
+          },
+          "query_type": "SELECT with AGGREGATE"
+        }
+      ],
+      "average_execution_time": 0.00017209847768147787,
+      "test_timestamp": "2025-09-17T16:22:41.648576"
+    },
+    "update_operations": {
+      "status": "FAIL",
+      "error": "Cannot resolve keyword 'appointment_date' into field. Choices are: additional_providers, appointment_number, appointment_type, appointmentresource, bill, cancellation_notes, cancellation_reason, cancelled_at, cancelled_by, cancelled_by_id, checked_in_at, checked_in_by, checked_in_by_id, chief_complaint, clinical_notes, confirmation_required, confirmed_at, confirmed_by, confirmed_by_id, copay_amount, created_at, duration_minutes, encounter, end_at, estimated_cost, history, hospital, hospital_id, id, insurance_authorization, internal_notes, interpreter_language, is_confidential, is_recurring, is_telehealth, location, no_show_at, no_show_fee, ot_booking, parent_appointment, parent_appointment_id, patient, patient_id, patient_instructions, preparation_instructions, primary_provider, primary_provider_id, priority, reason, recurrence_end_date, recurrence_pattern, recurring_appointments, reminder_sent, reminder_sent_at, reminders, requires_interpretation, requires_transportation, resources, room, scheduled_by, scheduled_by_id, series_id, special_instructions, start_at, status, telehealth_link, telehealth_platform, template, template_id, updated_at, uuid"
+    },
+    "delete_operations": {
+      "status": "FAIL",
+      "error": "NOT NULL constraint failed: patients_patient.hospital_id"
+    },
+    "bulk_operations": {
+      "status": "FAIL",
+      "error": "NOT NULL constraint failed: patients_patient.hospital_id"
+    },
+    "relationship_tests": {
+      "status": "FAIL",
+      "error": "NOT NULL constraint failed: patients_patient.hospital_id"
+    },
+    "constraint_tests": {
+      "status": "FAIL",
+      "error": "no such table: ehr_notificationmodel"
+    },
+    "transaction_tests": {
+      "status": "FAIL",
+      "error": "no such table: ehr_notificationmodel"
+    },
+    "performance_metrics": {}
+  },
+  "performance_metrics": {
+    "create_operations": {
+      "avg_execution_time": 0.046091556549072266,
+      "total_operations": 5,
+      "success_rate": 100.0
+    },
+    "read_operations": {
+      "avg_execution_time": 0.00017209847768147787,
+      "total_operations": 6,
+      "success_rate": 100.0
+    }
+  },
+  "database_configuration": {
+    "engine": "django.db.backends.sqlite3",
+    "name": "/home/azureuser/hms-enterprise-grade/backend/db.sqlite3",
+    "host": "",
+    "port": ""
+  },
+  "recommendations": []
+}

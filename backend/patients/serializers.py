@@ -1,5 +1,4 @@
 from rest_framework import serializers
-
 from .models import (
     Patient,
     EmergencyContact,
@@ -9,8 +8,6 @@ from .models import (
     InsuranceInformation,
     PatientStatus,
 )
-
-
 class PatientSerializer(serializers.ModelSerializer):
     phone_primary = serializers.CharField(required=False)
     email = serializers.EmailField(required=False)
@@ -21,7 +18,6 @@ class PatientSerializer(serializers.ModelSerializer):
         source="insurance_information.policy_number", required=False
     )
     status = serializers.ChoiceField(choices=PatientStatus.choices, default="ACTIVE")
-
     class Meta:
         model = Patient
         fields = [
@@ -63,19 +59,12 @@ class PatientSerializer(serializers.ModelSerializer):
             "email": {"write_only": True},
             "address_line1": {"write_only": True},
         }
-
     def create(self, validated_data):
-        # Handle nested emergency contacts and insurance if provided
         emergency_data = validated_data.pop("emergency_contacts", [])
         insurance_data = validated_data.pop("insurance_plans", [])
         patient = super().create(validated_data)
-
-        # Create emergency contacts
         for contact_data in emergency_data:
             EmergencyContact.objects.create(patient=patient, **contact_data)
-
-        # Create insurance plans
         for ins_data in insurance_data:
             InsuranceInformation.objects.create(patient=patient, **ins_data)
-
         return patient

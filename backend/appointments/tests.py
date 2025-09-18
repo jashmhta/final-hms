@@ -1,5 +1,4 @@
 from datetime import date, datetime, time, timedelta
-
 from appointments.models import Appointment, AppointmentStatus
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -8,8 +7,6 @@ from hospitals.models import Hospital, Plan, HospitalPlan
 from hr.models import DutyRoster, Shift
 from patients.models import Patient
 from users.models import UserRole
-
-
 class AvailableSlotsTest(TestCase):
     def setUp(self):
         self.h = Hospital.objects.create(name="H", code="h")
@@ -24,7 +21,6 @@ class AvailableSlotsTest(TestCase):
             role=UserRole.ATTENDING_PHYSICIAN,
             hospital=self.h,
         )
-        # Create a patient record
         self.patient = Patient.objects.create(
             hospital=self.h,
             first_name="Pat",
@@ -38,9 +34,7 @@ class AvailableSlotsTest(TestCase):
         DutyRoster.objects.create(
             hospital=self.h, user=self.doctor, date=self.target_date, shift=self.shift
         )
-
     def test_slots(self):
-        # Existing appt 09:00-09:30 on target date
         tz = timezone.get_current_timezone()
         start = timezone.make_aware(datetime.combine(self.target_date, time(9, 0)), tz)
         end = timezone.make_aware(datetime.combine(self.target_date, time(9, 30)), tz)
@@ -53,7 +47,6 @@ class AvailableSlotsTest(TestCase):
             status=AppointmentStatus.SCHEDULED,
         )
         from rest_framework.test import APIClient
-
         client = APIClient()
         client.force_authenticate(user=self.doctor)
         res = client.get(
@@ -61,6 +54,5 @@ class AvailableSlotsTest(TestCase):
         )
         self.assertEqual(res.status_code, 200)
         slots = res.data["slots"]
-        # Expect only 09:30-10:00 available
         self.assertEqual(len(slots), 1)
         self.assertIn("09:30:00", slots[0]["start_at"])

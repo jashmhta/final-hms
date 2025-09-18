@@ -3,8 +3,6 @@ from django.test import TestCase
 from hospitals.models import Hospital, Plan, HospitalPlan
 from pharmacy.models import Medication
 from users.models import UserRole
-
-
 class LowStockTest(TestCase):
     def setUp(self):
         self.h = Hospital.objects.create(name="H", code="h")
@@ -30,10 +28,8 @@ class LowStockTest(TestCase):
             min_stock_level=10,
             ndc_code="67890",
         )
-
     def test_low_stock(self):
         from rest_framework.test import APIClient
-
         client = APIClient()
         client.force_authenticate(user=self.user)
         res = client.get("/api/medications/low_stock/")
@@ -45,6 +41,4 @@ class LowStockTest(TestCase):
         )
         self.assertIn("MedA", names)
         self.assertNotIn("MedB", names)
-
-
 from hospitals.models import Plan, HospitalPlan

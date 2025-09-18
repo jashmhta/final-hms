@@ -2664,7 +2664,7 @@
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
-        "link": "https://cwe.mitre.org/data/definitions/259.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Possible hardcoded password: 'secure_test_password'",
@@ -2678,7 +2678,7 @@
         52,
         53
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b106_hardcoded_password_funcarg.html",
+      "more_info": "https:
       "test_id": "B106",
       "test_name": "hardcoded_password_funcarg"
     },
@@ -2690,7 +2690,7 @@
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
-        "link": "https://cwe.mitre.org/data/definitions/259.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Possible hardcoded password: 'secure_test_password'",
@@ -2704,7 +2704,7 @@
         410,
         411
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b106_hardcoded_password_funcarg.html",
+      "more_info": "https:
       "test_id": "B106",
       "test_name": "hardcoded_password_funcarg"
     },
@@ -2716,7 +2716,7 @@
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 703,
-        "link": "https://cwe.mitre.org/data/definitions/703.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Try, Except, Pass detected.",
@@ -2725,7 +2725,7 @@
         737,
         738
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b110_try_except_pass.html",
+      "more_info": "https:
       "test_id": "B110",
       "test_name": "try_except_pass"
     },
@@ -2737,7 +2737,7 @@
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
-        "link": "https://cwe.mitre.org/data/definitions/259.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Possible hardcoded password: 'x'",
@@ -2750,7 +2750,7 @@
         25,
         26
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b106_hardcoded_password_funcarg.html",
+      "more_info": "https:
       "test_id": "B106",
       "test_name": "hardcoded_password_funcarg"
     },
@@ -2762,7 +2762,7 @@
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 703,
-        "link": "https://cwe.mitre.org/data/definitions/703.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Try, Except, Pass detected.",
@@ -2771,7 +2771,7 @@
         410,
         411
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b110_try_except_pass.html",
+      "more_info": "https:
       "test_id": "B110",
       "test_name": "try_except_pass"
     },
@@ -2783,7 +2783,7 @@
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 703,
-        "link": "https://cwe.mitre.org/data/definitions/703.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Try, Except, Pass detected.",
@@ -2792,7 +2792,7 @@
         105,
         106
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b110_try_except_pass.html",
+      "more_info": "https:
       "test_id": "B110",
       "test_name": "try_except_pass"
     },
@@ -2804,7 +2804,7 @@
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
-        "link": "https://cwe.mitre.org/data/definitions/259.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Possible hardcoded password: 'admin123'",
@@ -2821,7 +2821,7 @@
         71,
         72
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b106_hardcoded_password_funcarg.html",
+      "more_info": "https:
       "test_id": "B106",
       "test_name": "hardcoded_password_funcarg"
     },
@@ -2833,7 +2833,7 @@
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
-        "link": "https://cwe.mitre.org/data/definitions/259.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Possible hardcoded password: 'admin123'",
@@ -2849,7 +2849,7 @@
         83,
         84
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b106_hardcoded_password_funcarg.html",
+      "more_info": "https:
       "test_id": "B106",
       "test_name": "hardcoded_password_funcarg"
     },
@@ -2861,7 +2861,7 @@
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
-        "link": "https://cwe.mitre.org/data/definitions/259.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Possible hardcoded password: 'doctor123'",
@@ -2877,7 +2877,7 @@
         95,
         96
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b106_hardcoded_password_funcarg.html",
+      "more_info": "https:
       "test_id": "B106",
       "test_name": "hardcoded_password_funcarg"
     },
@@ -2889,7 +2889,7 @@
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
-        "link": "https://cwe.mitre.org/data/definitions/259.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Possible hardcoded password: 'nurse123'",
@@ -2905,7 +2905,7 @@
         107,
         108
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b106_hardcoded_password_funcarg.html",
+      "more_info": "https:
       "test_id": "B106",
       "test_name": "hardcoded_password_funcarg"
     },
@@ -2917,7 +2917,7 @@
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 330,
-        "link": "https://cwe.mitre.org/data/definitions/330.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Standard pseudo-random generators are not suitable for security/cryptographic purposes.",
@@ -2925,7 +2925,7 @@
       "line_range": [
         56
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/blacklists/blacklist_calls.html#b311-random",
+      "more_info": "https:
       "test_id": "B311",
       "test_name": "blacklist"
     },
@@ -2937,7 +2937,7 @@
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 330,
-        "link": "https://cwe.mitre.org/data/definitions/330.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Standard pseudo-random generators are not suitable for security/cryptographic purposes.",
@@ -2945,7 +2945,7 @@
       "line_range": [
         57
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/blacklists/blacklist_calls.html#b311-random",
+      "more_info": "https:
       "test_id": "B311",
       "test_name": "blacklist"
     },
@@ -2957,7 +2957,7 @@
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 330,
-        "link": "https://cwe.mitre.org/data/definitions/330.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Standard pseudo-random generators are not suitable for security/cryptographic purposes.",
@@ -2965,7 +2965,7 @@
       "line_range": [
         76
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/blacklists/blacklist_calls.html#b311-random",
+      "more_info": "https:
       "test_id": "B311",
       "test_name": "blacklist"
     },
@@ -2977,7 +2977,7 @@
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 703,
-        "link": "https://cwe.mitre.org/data/definitions/703.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Try, Except, Pass detected.",
@@ -2986,7 +2986,7 @@
         41,
         42
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b110_try_except_pass.html",
+      "more_info": "https:
       "test_id": "B110",
       "test_name": "try_except_pass"
     },
@@ -2998,7 +2998,7 @@
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 703,
-        "link": "https://cwe.mitre.org/data/definitions/703.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Try, Except, Pass detected.",
@@ -3007,7 +3007,7 @@
         53,
         54
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b110_try_except_pass.html",
+      "more_info": "https:
       "test_id": "B110",
       "test_name": "try_except_pass"
     },
@@ -3019,7 +3019,7 @@
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 703,
-        "link": "https://cwe.mitre.org/data/definitions/703.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Try, Except, Pass detected.",
@@ -3028,7 +3028,7 @@
         78,
         79
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b110_try_except_pass.html",
+      "more_info": "https:
       "test_id": "B110",
       "test_name": "try_except_pass"
     },
@@ -3040,7 +3040,7 @@
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 377,
-        "link": "https://cwe.mitre.org/data/definitions/377.html"
+        "link": "https:
       },
       "issue_severity": "MEDIUM",
       "issue_text": "Probable insecure usage of temp file/directory.",
@@ -3048,7 +3048,7 @@
       "line_range": [
         560
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b108_hardcoded_tmp_directory.html",
+      "more_info": "https:
       "test_id": "B108",
       "test_name": "hardcoded_tmp_directory"
     },
@@ -3060,7 +3060,7 @@
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
-        "link": "https://cwe.mitre.org/data/definitions/259.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Possible hardcoded password: 'test-secret-key-for-testing-only'",
@@ -3068,7 +3068,7 @@
       "line_range": [
         3
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b105_hardcoded_password_string.html",
+      "more_info": "https:
       "test_id": "B105",
       "test_name": "hardcoded_password_string"
     },
@@ -3080,7 +3080,7 @@
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
-        "link": "https://cwe.mitre.org/data/definitions/259.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Possible hardcoded password: 'x'",
@@ -3090,7 +3090,7 @@
         17,
         18
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b106_hardcoded_password_funcarg.html",
+      "more_info": "https:
       "test_id": "B106",
       "test_name": "hardcoded_password_funcarg"
     },
@@ -3102,7 +3102,7 @@
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 703,
-        "link": "https://cwe.mitre.org/data/definitions/703.html"
+        "link": "https:
       },
       "issue_severity": "LOW",
       "issue_text": "Try, Except, Continue detected.",
@@ -3111,7 +3111,7 @@
         94,
         95
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b112_try_except_continue.html",
+      "more_info": "https:
       "test_id": "B112",
       "test_name": "try_except_continue"
     },
@@ -3123,7 +3123,7 @@
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 80,
-        "link": "https://cwe.mitre.org/data/definitions/80.html"
+        "link": "https:
       },
       "issue_severity": "MEDIUM",
       "issue_text": "Potential XSS on mark_safe function.",
@@ -3131,7 +3131,7 @@
       "line_range": [
         147
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b703_django_mark_safe.html",
+      "more_info": "https:
       "test_id": "B703",
       "test_name": "django_mark_safe"
     },
@@ -3143,7 +3143,7 @@
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 79,
-        "link": "https://cwe.mitre.org/data/definitions/79.html"
+        "link": "https:
       },
       "issue_severity": "MEDIUM",
       "issue_text": "Use of mark_safe() may expose cross-site scripting vulnerabilities and should be reviewed.",
@@ -3151,7 +3151,7 @@
       "line_range": [
         147
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/blacklists/blacklist_calls.html#b308-mark-safe",
+      "more_info": "https:
       "test_id": "B308",
       "test_name": "blacklist"
     }

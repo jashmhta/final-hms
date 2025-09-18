@@ -2,22 +2,15 @@ from django.shortcuts import render
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
-
 from .models import Feedback
 from .serializers import FeedbackSerializer
-
-# Create your views here.
-
-
 class FeedbackViewSet(viewsets.ModelViewSet):
     serializer_class = FeedbackSerializer
     queryset = Feedback.objects.select_related("patient").all()
-
     def get_permissions(self):
         if self.action == "create":
             return [AllowAny()]
         return [IsAuthenticated()]
-
     def get_queryset(self):
         qs = super().get_queryset()
         user = self.request.user
@@ -28,7 +21,6 @@ class FeedbackViewSet(viewsets.ModelViewSet):
         if getattr(user, "hospital_id", None) is None:
             return qs.none()
         return qs.filter(hospital_id=user.hospital_id)
-
     def perform_create(self, serializer):
         user = self.request.user
         hospital = serializer.validated_data.get("hospital")

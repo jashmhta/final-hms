@@ -1,0 +1,176 @@
+verbose: true
+quiet: false
+number: 0
+csv: false
+html: false
+xml: false
+json: true
+sort: cyclomatic_complexity
+list: false
+extension: []
+languages: []
+include: []
+exclude: []
+paths: [.]
+output_file: lizard_report.json
+working_threads: 1
+modified_lines: false
+all_diff: false
+sorting: file
+CCN:
+  normal: 10    
+  warning: 15   
+  error: 20     
+  ignore: null
+length:
+  normal: 50    
+  warning: 100  
+  ignore: null
+arguments:
+  normal: 5     
+  warning: 7    
+  ignore: null
+nesting:
+  normal: 3     
+  warning: 5    
+  ignore: null
+excludes:
+  - "*/migrations/*"
+  - "*/tests/*"
+  - "*/test_*"
+  - "*/__pycache__/*"
+  - "*/.venv/*"
+  - "*/venv/*"
+  - "*/env/*"
+  - "*/build/*"
+  - "*/dist/*"
+  - "*/node_modules/*"
+  - "*/static/*"
+  - "*/media/*"
+  - "*/coverage/*"
+  - "*/.*"
+includes:
+  - "**/*.py"
+  - "**/*.js"
+  - "**/*.ts"
+  - "**/*.java"
+  - "**/*.cpp"
+  - "**/*.c"
+python:
+  extensions: [".py"]
+  multi_line: true
+  docstring_as_comment: true
+javascript:
+  extensions: [".js", ".jsx"]
+  multi_line: true
+typescript:
+  extensions: [".ts", ".tsx"]
+  multi_line: true
+java:
+  extensions: [".java"]
+  multi_line: true
+cpp:
+  extensions: [".cpp", ".cc", ".cxx", ".c++", ".h", ".hpp"]
+  multi_line: true
+c:
+  extensions: [".c", ".h"]
+  multi_line: true
+healthcare:
+  patient_data_functions:
+    max_complexity: 8    
+    max_length: 40       
+    max_parameters: 4    
+    keywords:
+      - "patient"
+      - "medical"
+      - "health"
+      - "clinical"
+      - "diagnosis"
+      - "treatment"
+      - "medication"
+      - "record"
+  security_functions:
+    max_complexity: 5    
+    max_length: 30       
+    max_parameters: 3    
+    keywords:
+      - "auth"
+      - "encrypt"
+      - "decrypt"
+      - "token"
+      - "password"
+      - "security"
+      - "validate"
+      - "sanitize"
+  audit_functions:
+    max_complexity: 6    
+    max_length: 35       
+    keywords:
+      - "log"
+      - "audit"
+      - "track"
+      - "monitor"
+      - "history"
+ignore_function_patterns:
+  - "^test_"
+  - "^setUp"
+  - "^tearDown"
+  - "^__.*__$"
+  - "^main$"
+exclude_files:
+  - "__init__.py"
+  - "conftest.py"
+  - "fixtures.py"
+  - "factories.py"
+  - "settings.py"
+  - "urls.py"
+  - "admin.py"
+  - "wsgi.py"
+  - "manage.py"
+messages:
+  complexity_warning: "Function {function} has cyclomatic complexity {ccn} (threshold: {threshold})"
+  complexity_error: "Function {function} has critical cyclomatic complexity {ccn} (threshold: {threshold})"
+  length_warning: "Function {function} has {length} lines (threshold: {threshold})"
+  length_error: "Function {function} has critical length {length} (threshold: {threshold})"
+  parameter_warning: "Function {function} has {arguments} parameters (threshold: {threshold})"
+  parameter_error: "Function {function} has critical parameter count {arguments} (threshold: {threshold})"
+  nesting_warning: "Function {function} has nesting level {nesting} (threshold: {threshold})"
+  nesting_error: "Function {function} has critical nesting level {nesting} (threshold: {threshold})"
+healthcare_messages:
+  patient_data_complexity: "Patient data function {function} has complexity {ccn} (threshold: {threshold})"
+  security_function_complexity: "Security function {function} has complexity {ccn} (threshold: {threshold})"
+  audit_function_complexity: "Audit function {function} has complexity {ccn} (threshold: {threshold})"
+output:
+  show_file_summary: true
+  show_function_details: true
+  show_statistics: true
+  show_healthcare_violations: true
+  show_recommendations: true
+statistics:
+  max_file_complexity: 100
+  max_average_complexity: 15
+  max_total_complexity: 1000
+  min_maintainability_index: 70
+recommendations:
+  high_complexity:
+    message: "Consider refactoring this function to reduce complexity"
+    complexity_threshold: 15
+  long_function:
+    message: "Consider breaking this function into smaller functions"
+    length_threshold: 100
+  many_parameters:
+    message: "Consider using a parameter object or data class"
+    parameter_threshold: 7
+  deep_nesting:
+    message: "Consider extracting nested logic into separate functions"
+    nesting_threshold: 5
+healthcare_recommendations:
+  patient_data_complexity:
+    message: "Patient data functions should have low complexity for regulatory compliance"
+    complexity_threshold: 8
+  security_function_complexity:
+    message: "Security functions must have very low complexity for system security"
+    complexity_threshold: 5
+  audit_function_complexity:
+    message: "Audit functions should be simple and maintainable"
+    complexity_threshold: 6

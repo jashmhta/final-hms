@@ -1,10 +1,5 @@
-"""
-URL configuration for accounting module.
-"""
-
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-
 from .views import (
     AccountingAuditLogViewSet,
     AccountingInvoiceViewSet,
@@ -37,11 +32,7 @@ from .views import (
     VendorPayoutViewSet,
     VendorViewSet,
 )
-
-# Create router and register viewsets
 router = DefaultRouter()
-
-# Configuration
 router.register(r"currencies", CurrencyViewSet, basename="currency")
 router.register(
     r"tax-configurations",
@@ -52,40 +43,20 @@ router.register(
     r"chart-of-accounts", ChartOfAccountsViewSet, basename="chart-of-accounts"
 )
 router.register(r"cost-centers", CostCenterViewSet, basename="cost-center")
-
-# Master Data
 router.register(r"vendors", VendorViewSet, basename="vendor")
 router.register(r"customers", CustomerViewSet, basename="customer")
 router.register(r"service-packages", ServicePackageViewSet, basename="service-package")
-# noqa: E501
-# noqa: E501
 router.register(r"pricing-tiers", PricingTierViewSet, basename="pricing-tier")
-
-# Transactions
 router.register(r"invoices", AccountingInvoiceViewSet, basename="invoice")
 router.register(r"payments", AccountingPaymentViewSet, basename="payment")
 router.register(r"expenses", ExpenseViewSet, basename="expense")
-
-# Banking
 router.register(r"bank-accounts", BankAccountViewSet, basename="bank-account")
 router.register(
     r"bank-transactions", BankTransactionViewSet, basename="bank-transaction"
 )
-
-# Assets and Depreciation
 router.register(r"fixed-assets", FixedAssetViewSet, basename="fixed-asset")
-
-# Payroll
 router.register(r"payroll-entries", PayrollEntryViewSet, basename="payroll-entry")
-# noqa: E501
-# noqa: E501
-
-# Insurance and Claims
 router.register(r"insurance-claims", InsuranceClaimViewSet, basename="insurance-claim")
-# noqa: E501
-# noqa: E501
-
-# Compliance
 router.register(r"tds-entries", TDSEntryViewSet, basename="tds-entry")
 router.register(r"book-locks", BookLockViewSet, basename="book-lock")
 router.register(
@@ -93,35 +64,21 @@ router.register(
     ComplianceDocumentViewSet,
     basename="compliance-document",
 )
-
-# Vendor Management
 router.register(r"vendor-payouts", VendorPayoutViewSet, basename="vendor-payout")
-# noqa: E501
-# noqa: E501
-
-# Planning and Budgeting
 router.register(r"financial-years", FinancialYearViewSet, basename="financial-year")
-# noqa: E501
-# noqa: E501
 router.register(r"budgets", BudgetViewSet, basename="budget")
 router.register(
     r"recurring-invoices",
     RecurringInvoiceViewSet,
     basename="recurring-invoice",
 )
-
-# Audit and Reporting
 router.register(r"ledger-entries", LedgerEntryViewSet, basename="ledger-entry")
 router.register(r"audit-logs", AccountingAuditLogViewSet, basename="audit-log")
-
-# API endpoints
 urlpatterns = [
     path("", include(router.urls)),
-    # Reports
     path("reports/", ReportsAPIView.as_view(), name="reports"),
     path("dashboard/", DashboardAPIView.as_view(), name="dashboard"),
     path("export/", ExportAPIView.as_view(), name="export"),
-    # Utility endpoints
     path(
         "utilities/process-depreciation/",
         DepreciationProcessingAPIView.as_view(),

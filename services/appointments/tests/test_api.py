@@ -1,8 +1,6 @@
 import pytest
 from httpx import AsyncClient
 from app.main import app
-
-
 @pytest.mark.asyncio
 async def test_create_appointment():
     async with AsyncClient(app=app, base_url="http://testserver") as client:
@@ -17,16 +15,12 @@ async def test_create_appointment():
         data = response.json()
         assert data["patient"] == 1
         assert data["status"] == "SCHEDULED"
-
-
 @pytest.mark.asyncio
 async def test_list_appointments():
     async with AsyncClient(app=app, base_url="http://testserver") as client:
         response = await client.get("/api/appointments")
         assert response.status_code == 200
         assert isinstance(response.json(), list)
-
-
 @pytest.mark.asyncio
 async def test_available_slots():
     async with AsyncClient(app=app, base_url="http://testserver") as client:

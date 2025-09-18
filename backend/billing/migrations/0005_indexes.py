@@ -1,12 +1,8 @@
 from django.db import migrations, models
-
-
 class Migration(migrations.Migration):
-
     dependencies = [
         ("billing", "0004_departmentbudget"),
     ]
-
     operations = [
         migrations.AddIndex(
             model_name="bill",

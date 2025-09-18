@@ -1,0 +1,93 @@
+{
+  "hipaa_compliance": {
+    "privacy_rule": {
+      "phi_encryption_at_rest": true,
+      "phi_encryption_in_transit": true,
+      "access_controls": true,
+      "audit_logging": true,
+      "patient_rights": true,
+      "minimum_necessary": true
+    },
+    "security_rule": {
+      "administrative_safeguards": true,
+      "technical_safeguards": true,
+      "physical_safeguards": true,
+      "risk_analysis": true,
+      "contingency_planning": true
+    },
+    "breach_notification": {
+      "detection_procedures": true,
+      "reporting_procedures": true,
+      "notification_templates": true,
+      "response_team": true
+    }
+  },
+  "hl7_compliance": {
+    "v2_support": {
+      "adt_messages": true,
+      "orm_messages": true,
+      "oru_messages": true,
+      "scheduling_messages": true
+    },
+    "fhir_support": {
+      "fhir_r4": true,
+      "restful_api": true,
+      "json_support": true,
+      "validation": true
+    }
+  },
+  "gdpr_compliance": {
+    "data_protection": {
+      "lawfulness": true,
+      "purpose_limitation": true,
+      "data_minimization": true,
+      "accuracy": true,
+      "storage_limitation": true,
+      "integrity_confidentiality": true
+    },
+    "patient_rights": {
+      "right_to_access": true,
+      "right_to_rectification": true,
+      "right_to_erasure": true,
+      "right_to_restriction": true,
+      "right_to_portability": true,
+      "right_to_object": true
+    }
+  },
+  "technical_controls": {
+    "encryption": {
+      "aes_256_at_rest": true,
+      "tls_1.3_in_transit": true,
+      "end_to_end_encryption": true
+    },
+    "access_control": {
+      "multi_factor_auth": true,
+      "role_based_access": true,
+      "session_timeout": true,
+      "account_lockout": true
+    },
+    "audit_logging": {
+      "comprehensive_logging": true,
+      "real_time_monitoring": true,
+      "log_retention": true,
+      "audit_review": true
+    }
+  },
+  "operational_controls": {
+    "training": {
+      "security_awareness": true,
+      "compliance_training": true,
+      "role_specific_training": true
+    },
+    "incident_response": {
+      "response_plan": true,
+      "breach_detection": true,
+      "notification_procedures": true
+    },
+    "vendor_management": {
+      "ba_agreements": true,
+      "vendor_assessments": true,
+      "monitoring": true
+    }
+  }
+}

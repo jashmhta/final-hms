@@ -1,0 +1,213 @@
+# HMS Enterprise-Grade System - Coverage Configuration
+
+[run]
+# Source code location
+source = .
+omit =
+    */tests/*
+    */test_*
+    */migrations/*
+    */__pycache__/*
+    */.venv/*
+    */venv/*
+    */env/*
+    */build/*
+    */dist/*
+    */node_modules/*
+    */static/*
+    */media/*
+    */coverage/*
+    setup.py
+    conftest.py
+    manage.py
+    wsgi.py
+    */config/*
+    */settings/*
+    */urls.py
+    */admin.py
+
+include = *.py
+
+# Coverage analysis options
+branch = True
+parallel = True
+concurrency = thread,multiprocessing
+plugins = django_coverage_plugin
+relative_files = True
+source_pkgs = []
+
+# Disable warnings
+disable_warnings = no-data-collected
+
+[report]
+# Exclude lines from coverage
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    class .*\bProtocol\):
+    @(abc\.)?abstractmethod
+    if self\.debug:
+    if settings\.DEBUG
+    if DEBUG
+    if app\.debug
+    if not app\.production
+    if os\.environ\.get\('DEBUG'
+    logger\.debug\(
+    print\(
+    import pdb
+    pdb\.set_trace
+    breakpoint\(
+    raise ImportError
+    except ImportError
+    pass
+
+# Report formatting
+precision = 2
+show_missing = True
+skip_covered = False
+skip_empty = True
+
+# Fail under threshold
+fail_under = 95.0
+
+[html]
+directory = htmlcov
+title = HMS Enterprise-Grade System Coverage Report
+
+[xml]
+output = coverage.xml
+
+[json]
+output = coverage.json
+
+[paths]
+source =
+    /home/azureuser/hms-enterprise-grade
+    /app
+
+[combine]
+parallel = True
+
+[tool:pytest]
+# Pytest configuration for coverage
+addopts = --cov=. --cov-report=term-missing --cov-report=html --cov-report=xml
+testpaths = tests
+python_files = test_*.py *_test.py
+python_classes = Test*
+python_functions = test_*
+markers =
+    unit: Unit tests
+    integration: Integration tests
+    e2e: End-to-end tests
+    performance: Performance tests
+    security: Security tests
+    slow: Slow tests
+
+# Coverage configuration
+cov_core_source = .
+cov_core_datafile = .coverage
+cov_core_context = test
+cov_report_term = True
+cov_report_html = True
+cov_report_xml = True
+cov_config = .coveragerc
+
+# Healthcare-specific coverage requirements
+[healthcare]
+# Critical files requiring 100% coverage
+critical_files =
+    patient*.py
+    medical*.py
+    health*.py
+    clinical*.py
+    diagnosis*.py
+    treatment*.py
+    medication*.py
+    record*.py
+    auth*.py
+    security*.py
+    encrypt*.py
+    decrypt*.py
+    audit*.py
+    compliance*.py
+
+# Coverage thresholds
+critical_coverage_threshold = 100.0
+overall_coverage_threshold = 95.0
+minimum_file_coverage = 80.0
+
+# Test quality requirements
+min_test_quality_score = 85.0
+max_test_complexity = 15.0
+min_assertions_per_test = 1.0
+max_test_duration = 30.0
+
+# Compliance settings
+enforce_healthcare_compliance = True
+generate_compliance_report = True
+audit_trail_enabled = True
+
+# Quality gates
+quality_gates =
+    overall_line_coverage: 95.0
+    overall_branch_coverage: 90.0
+    overall_function_coverage: 95.0
+    healthcare_compliance: true
+    test_quality_score: 85.0
+
+# Reporting settings
+reporting =
+    include_recommendations: true
+    include_compliance_violations: true
+    include_risk_assessment: true
+    include_quality_gates: true
+    html_output: true
+    json_output: true
+    xml_output: true
+    csv_output: true
+
+# Exclude patterns for healthcare files
+healthcare_excludes =
+    */migrations/*
+    */fixtures/*
+    */factories/*
+    */management/commands/*
+    */wsgi.py
+    */asgi.py
+    */settings/base.py
+    */settings/local.py
+    */settings/production.py
+
+# Test patterns
+test_patterns =
+    unit_tests: tests/unit/*
+    integration_tests: tests/integration/*
+    e2e_tests: tests/e2e/*
+    performance_tests: tests/performance/*
+    security_tests: tests/security/*
+
+# Performance monitoring
+performance =
+    enable_profiling: true
+    max_test_duration_warning: 10.0
+    max_test_duration_error: 30.0
+    enable_benchmarking: true
+
+# Security requirements
+security =
+    scan_for_secrets: true
+    scan_for_vulnerabilities: true
+    enforce_security_tests: true
+    security_test_threshold: 100.0
+
+# Compliance requirements
+compliance =
+    hipaa_required: true
+    gdpr_required: true
+    pci_dss_required: true
+    generate_audit_report: true
+    track_changes: true

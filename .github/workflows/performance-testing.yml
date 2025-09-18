@@ -1,0 +1,532 @@
+name: ⚡ Ultimate Performance Testing
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      test-type:
+        description: 'Type of performance test to run'
+        required: true
+        default: 'comprehensive'
+        type: choice
+        options:
+        - comprehensive
+        - load
+        - stress
+        - spike
+        - endurance
+        - benchmark
+      duration:
+        description: 'Test duration in minutes'
+        required: false
+        default: '10'
+        type: string
+      users:
+        description: 'Number of concurrent users'
+        required: false
+        default: '100'
+        type: string
+      environment:
+        description: 'Target environment'
+        required: false
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+        - development
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+  MAX_RESPONSE_TIME: 200  
+  MIN_AVAILABILITY: 99.9  
+  MAX_ERROR_RATE: 0.1     
+  BASELINE_METRICS_FILE: 'performance/baseline-metrics.json'
+jobs:
+  performance-benchmark:
+    name: 📊 Performance Benchmark
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test-type: ['unit', 'integration', 'api']
+        include:
+          - test-type: unit
+            timeout: 300
+            iterations: 1000
+          - test-type: integration
+            timeout: 600
+            iterations: 500
+          - test-type: api
+            timeout: 900
+            iterations: 200
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install performance testing tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest-benchmark pytest-xdist locust k6
+        pip install -r requirements.txt
+    - name: Run ${{ matrix.test-type }} performance benchmarks
+      timeout-minutes: ${{ matrix.timeout }}
+      run: |
+        echo "📊 Running ${{ matrix.test-type }} performance benchmarks..."
+        case "${{ matrix.test-type }}" in
+          "unit")
+            pytest tests/unit/ \
+              --benchmark-only \
+              --benchmark-min-rounds=${{ matrix.iterations }} \
+              --benchmark-json=benchmark-${{ matrix.test-type }}.json \
+              --benchmark-sort=mean \
+              --benchmark-group-by=name \
+              --benchmark-warmup=on
+            ;;
+          "integration")
+            pytest tests/integration/ \
+              --benchmark-only \
+              --benchmark-min-rounds=${{ matrix.iterations }} \
+              --benchmark-json=benchmark-${{ matrix.test-type }}.json \
+              --benchmark-sort=mean \
+              --benchmark-group-by=name \
+              --benchmark-warmup=on
+            ;;
+          "api")
+            python scripts/api_benchmark.py \
+              --iterations ${{ matrix.iterations }} \
+              --output benchmark-${{ matrix.test-type }}.json \
+              --config api-benchmark-config.json
+            ;;
+        esac
+        echo "✅ ${{ matrix.test-type }} benchmarks completed"
+    - name: Compare with baseline
+      run: |
+        echo "📈 Comparing with baseline performance..."
+        python scripts/compare_benchmarks.py \
+          --current benchmark-${{ matrix.test-type }}.json \
+          --baseline ${{ env.BASELINE_METRICS_FILE }} \
+          --threshold 10 \
+          --output benchmark-comparison-${{ matrix.test-type }}.json
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-${{ matrix.test-type }}
+        path: |
+          benchmark-${{ matrix.test-type }}.json
+          benchmark-comparison-${{ matrix.test-type }}.json
+  load-testing:
+    name: 🔥 Load Testing
+    runs-on: ubuntu-latest
+    needs: performance-benchmark
+    if: github.event.inputs.test-type == 'load' || github.event.inputs.test-type == 'comprehensive' || github.event_name == 'schedule'
+    strategy:
+      matrix:
+        user-count: [50, 100, 200, 500]
+        include:
+          - user-count: 50
+            duration: 5
+            ramp-up: 1
+          - user-count: 100
+            duration: 10
+            ramp-up: 2
+          - user-count: 200
+            duration: 15
+            ramp-up: 5
+          - user-count: 500
+            duration: 20
+            ramp-up: 10
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install load testing tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install locust k6
+    - name: Run Locust load test
+      timeout-minutes: ${{ matrix.duration }}
+      run: |
+        echo "🔥 Running Locust load test with ${{ matrix.user-count }} users..."
+        locust --host=${{ secrets.TEST_APPLICATION_URL }} \
+               --users=${{ matrix.user-count }} \
+               --spawn-rate=${{ matrix.spawn-rate }} \
+               --run-time=${{ matrix.duration }}m \
+               --headless \
+               --html=load-test-${{ matrix.user-count }}-users.html \
+               --json \
+               --logfile=load-test-${{ matrix.user-count }}-users.log \
+               --locustfile=tests/locustfile.py
+    - name: Analyze load test results
+      run: |
+        echo "📊 Analyzing load test results..."
+        python scripts/analyze_load_test.py \
+          --input load-test-${{ matrix.user-count }}-users.log \
+          --output load-analysis-${{ matrix.user-count }}-users.json \
+          --max-response-time ${{ env.MAX_RESPONSE_TIME }} \
+          --max-error-rate ${{ env.MAX_ERROR_RATE }}
+    - name: Upload load test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: load-test-${{ matrix.user-count }}-users
+        path: |
+          load-test-${{ matrix.user-count }}-users.html
+          load-test-${{ matrix.user-count }}-users.log
+          load-analysis-${{ matrix.user-count }}-users.json
+  stress-testing:
+    name: 💥 Stress Testing
+    runs-on: ubuntu-latest
+    needs: load-testing
+    if: github.event.inputs.test-type == 'stress' || github.event.inputs.test-type == 'comprehensive' || github.event_name == 'schedule'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install stress testing tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install locust k6 siege
+    - name: Run stress test
+      timeout-minutes: 30
+      run: |
+        echo "💥 Running stress test to find breaking point..."
+        python scripts/stress_test.py \
+          --target ${{ secrets.TEST_APPLICATION_URL }} \
+          --initial-users 100 \
+          --max-users 2000 \
+          --increment 100 \
+          --duration 2 \
+          --output stress-test-results.json \
+          --failure-criteria "error_rate>5 || response_time>1000"
+    - name: Analyze stress test results
+      run: |
+        echo "📊 Analyzing stress test results..."
+        python scripts/analyze_stress_test.py \
+          --input stress-test-results.json \
+          --output stress-analysis.json \
+          --generate-report
+    - name: Upload stress test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: stress-test
+        path: |
+          stress-test-results.json
+          stress-analysis.json
+          stress-test-report.html
+  spike-testing:
+    name: 📈 Spike Testing
+    runs-on: ubuntu-latest
+    needs: load-testing
+    if: github.event.inputs.test-type == 'spike' || github.event.inputs.test-type == 'comprehensive' || github.event_name == 'schedule'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install spike testing tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install locust
+    - name: Run spike test
+      timeout-minutes: 20
+      run: |
+        echo "📈 Running spike test to handle sudden traffic increases..."
+        python scripts/spike_test.py \
+          --target ${{ secrets.TEST_APPLICATION_URL }} \
+          --baseline-users 50 \
+          --spike-users 1000 \
+          --spike-duration 5 \
+          --baseline-duration 5 \
+          --recovery-duration 5 \
+          --cycles 3 \
+          --output spike-test-results.json
+    - name: Analyze spike test results
+      run: |
+        echo "📊 Analyzing spike test results..."
+        python scripts/analyze_spike_test.py \
+          --input spike-test-results.json \
+          --output spike-analysis.json \
+          --max-recovery-time 300
+    - name: Upload spike test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: spike-test
+        path: |
+          spike-test-results.json
+          spike-analysis.json
+          spike-test-report.html
+  endurance-testing:
+    name: ⏰ Endurance Testing
+    runs-on: ubuntu-latest
+    needs: load-testing
+    if: github.event.inputs.test-type == 'endurance' || github.event.inputs.test-type == 'comprehensive' || github.event_name == 'schedule'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install endurance testing tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install locust
+    - name: Run endurance test
+      timeout-minutes: ${{ github.event.inputs.duration || 60 }}
+      run: |
+        echo "⏰ Running endurance test for ${{ github.event.inputs.duration || 60 }} minutes..."
+        locust --host=${{ secrets.TEST_APPLICATION_URL }} \
+               --users=100 \
+               --spawn-rate=10 \
+               --run-time=${{ github.event.inputs.duration || 60 }}m \
+               --headless \
+               --html=endurance-test.html \
+               --json \
+               --logfile=endurance-test.log \
+               --locustfile=tests/endurance_locustfile.py
+    - name: Analyze endurance test results
+      run: |
+        echo "📊 Analyzing endurance test results..."
+        python scripts/analyze_endurance_test.py \
+          --input endurance-test.log \
+          --output endurance-analysis.json \
+          --check-memory-leaks \
+          --check-performance-degradation
+    - name: Upload endurance test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: endurance-test
+        path: |
+          endurance-test.html
+          endurance-test.log
+          endurance-analysis.json
+  database-performance:
+    name: 🗄️ Database Performance Testing
+    runs-on: ubuntu-latest
+    needs: performance-benchmark
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hms_perf_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install database performance tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pgbench psycopg2-binary sqlalchemy
+    - name: Setup test database
+      run: |
+        echo "🗄️ Setting up test database..."
+        python scripts/setup_perf_test_db.py
+    - name: Run database performance tests
+      run: |
+        echo "🗄️ Running database performance tests..."
+        pgbench -h localhost -p 5432 -U postgres -d hms_perf_test \
+                -i -s 10  
+        pgbench -h localhost -p 5432 -U postgres -d hms_perf_test \
+                -c 50 -j 4 -t 1000 \
+                -f tests/database_performance.sql \
+                > pgbench-results.txt
+        python scripts/database_performance_test.py \
+          --config database-performance-config.json \
+          --output db-performance-results.json
+    - name: Analyze database performance
+      run: |
+        echo "📊 Analyzing database performance..."
+        python scripts/analyze_db_performance.py \
+          --input db-performance-results.json \
+          --baseline database-baseline.json \
+          --output db-analysis.json
+    - name: Upload database performance results
+      uses: actions/upload-artifact@v3
+      with:
+        name: database-performance
+        path: |
+          pgbench-results.txt
+          db-performance-results.json
+          db-analysis.json
+  performance-regression:
+    name: 📉 Performance Regression Analysis
+    runs-on: ubuntu-latest
+    needs: [
+      performance-benchmark,
+      load-testing,
+      stress-testing,
+      spike-testing,
+      endurance-testing,
+      database-performance
+    ]
+    if: always()
+    steps:
+    - name: Download all performance results
+      uses: actions/download-artifact@v3
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Install analysis tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas numpy matplotlib seaborn scipy
+    - name: Aggregate performance results
+      run: |
+        echo "📊 Aggregating all performance test results..."
+        python scripts/aggregate_performance_results.py \
+          --benchmark-dir benchmark-* \
+          --load-dir load-test-* \
+          --stress-dir stress-test \
+          --spike-dir spike-test \
+          --endurance-dir endurance-test \
+          --database-dir database-performance \
+          --output performance-aggregation.json
+    - name: Detect performance regressions
+      run: |
+        echo "📉 Detecting performance regressions..."
+        python scripts/detect_regressions.py \
+          --input performance-aggregation.json \
+          --baseline ${{ env.BASELINE_METRICS_FILE }} \
+          --thresholds config/performance-thresholds.json \
+          --output regression-report.json
+    - name: Generate performance dashboard
+      run: |
+        echo "📈 Generating performance dashboard..."
+        python scripts/generate_performance_dashboard.py \
+          --input performance-aggregation.json \
+          --regressions regression-report.json \
+          --output performance-dashboard.html
+    - name: Generate performance summary
+      run: |
+        echo "📋 Generating performance summary..."
+        python scripts/generate_performance_summary.py \
+          --input performance-aggregation.json \
+          --regressions regression-report.json \
+          --output performance-summary.md
+    - name: Validate performance requirements
+      run: |
+        echo "✅ Validating performance requirements..."
+        python scripts/validate_performance_requirements.py \
+          --input performance-aggregation.json \
+          --max-response-time ${{ env.MAX_RESPONSE_TIME }} \
+          --min-availability ${{ env.MIN_AVAILABILITY }} \
+          --max-error-rate ${{ env.MAX_ERROR_RATE }}
+    - name: Upload performance reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-reports
+        path: |
+          performance-aggregation.json
+          regression-report.json
+          performance-dashboard.html
+          performance-summary.md
+  performance-notifications:
+    name: 📢 Performance Notifications
+    runs-on: ubuntu-latest
+    needs: performance-regression
+    if: always() && github.event_name == 'schedule'
+    steps:
+    - name: Download performance reports
+      uses: actions/download-artifact@v3
+      with:
+        name: performance-reports
+    - name: Check for performance issues
+      run: |
+        echo "🔍 Checking for performance issues..."
+        python scripts/check_performance_issues.py \
+          --input regression-report.json \
+          --webhook ${{ secrets.PERFORMANCE_WEBHOOK_URL }} \
+          --slack-webhook ${{ secrets.SLACK_PERFORMANCE_WEBHOOK }}
+    - name: Create performance issue
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const regression = JSON.parse(fs.readFileSync('regression-report.json', 'utf8'));
+          if (regression.regressions.length > 0) {
+            const issueTitle = `⚠️ Performance Regression Detected - ${new Date().toISOString().split('T')[0]}`;
+            const issueBody = `
+            **Test Date:** ${new Date().toISOString()}
+            **Repository:** ${{ github.repository }}
+            - **Total Regressions:** ${regression.regressions.length}
+            - **Critical:** ${regression.regressions.filter(r => r.severity === 'critical').length}
+            - **High:** ${regression.regressions.filter(r => r.severity === 'high').length}
+            ${regression.regressions.slice(0, 5).map(reg => `
+            - **${reg.metric}** (${reg.severity})
+              - Before: ${reg.before_value}
+              - After: ${reg.after_value}
+              - Change: ${reg.percentage_change}%
+              - Threshold: ${reg.threshold}%
+            `).join('\n')}
+            1. Investigate performance regressions
+            2. Optimize slow queries and code
+            3. Consider scaling resources
+            4. Monitor performance in production
+            - [ ] Investigate root causes
+            - [ ] Implement optimizations
+            - [ ] Verify fixes
+            - [ ] Update baseline metrics
+            ---
+            🤖 Generated with [Claude Code](https://claude.ai/code)
+            `;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+              labels: ['performance', 'regression', 'automated']
+            });
+          }
+  baseline-update:
+    name: 📈 Update Baseline Metrics
+    runs-on: ubuntu-latest
+    needs: performance-regression
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.performance-regression.result == 'success'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Download performance reports
+      uses: actions/download-artifact@v3
+      with:
+        name: performance-reports
+    - name: Update baseline metrics
+      run: |
+        echo "📈 Updating baseline metrics..."
+        cp performance-aggregation.json performance/baseline-metrics.json
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add performance/baseline-metrics.json
+        git commit -m "📈 Update performance baseline metrics
+        - Updated baseline metrics from latest performance tests
+        - All performance requirements met
+        - No significant regressions detected
+        🤖 Generated with [Claude Code](https://claude.ai/code)
+        Co-Authored-By: GitHub Action <action@github.com>"
+        git push

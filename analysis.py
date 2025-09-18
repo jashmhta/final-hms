@@ -2,7 +2,6 @@ import os
 import ast
 from collections import defaultdict
 import math
-
 def get_complexity(node):
     complexity = 1
     for n in ast.walk(node):
@@ -11,7 +10,6 @@ def get_complexity(node):
         if isinstance(n, ast.BoolOp) and isinstance(n.op, (ast.And, ast.Or)):
             complexity += len(n.values) - 1
     return complexity
-
 def get_python_files(dirs):
     files = []
     for dir in dirs:
@@ -20,15 +18,11 @@ def get_python_files(dirs):
                 if filename.endswith('.py'):
                     files.append(os.path.join(root, filename))
     return files
-
 def analyze_file(filepath):
     with open(filepath, 'r') as f:
         content = f.read()
-    
     tree = ast.parse(content, filepath)
     lines = content.splitlines()
-    
-    # For functions
     func_complexities = []
     class_hierarchies = defaultdict(list)
     func_lengths = []
@@ -36,25 +30,20 @@ def analyze_file(filepath):
     annotated_funcs = 0
     total_funcs = 0
     imports = []
-    
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
             total_funcs += 1
-            # Complexity
             comp = get_complexity(node)
             func_complexities.append((node.name, comp))
-            # Length
             if hasattr(node, 'lineno') and hasattr(node, 'end_lineno') and node.end_lineno is not None and node.lineno is not None:
                 length = node.end_lineno - node.lineno + 1
                 func_lengths.append((node.name, length))
-            # Params
             params = len(node.args.args) + len(node.args.kwonlyargs)
             if node.args.vararg is not None:
                 params += 1
             if node.args.kwarg is not None:
                 params += 1
             func_params.append((node.name, params))
-            # Annotations
             if node.returns or any(arg.annotation for arg in node.args.args + node.args.kwonlyargs):
                 annotated_funcs += 1
         elif isinstance(node, ast.ClassDef):
@@ -67,10 +56,6 @@ def analyze_file(filepath):
             module = node.module or ''
             for alias in node.names:
                 imports.append(f"{module}.{alias.name}" if module else alias.name)
-    
-    # Maintainability index
-    # Simplified MI = 171 - 5.2 * ln(G) - 0.23 * G - 16.2 * ln(LOC)
-    # Where G is average complexity
     if func_complexities and len(lines) > 0:
         avg_g = sum(c for n,c in func_complexities) / len(func_complexities)
         if avg_g > 0:
@@ -79,10 +64,7 @@ def analyze_file(filepath):
             mi = 0
     else:
         mi = 0
-    
-    # Type coverage
     type_coverage = annotated_funcs / total_funcs if total_funcs > 0 else 0
-    
     return {
         'complexities': func_complexities,
         'class_hierarchies': dict(class_hierarchies),
@@ -93,7 +75,6 @@ def analyze_file(filepath):
         'imports': imports,
         'loc': len(lines)
     }
-
 def main():
     dirs = ['backend', 'services']
     files = get_python_files(dirs)
@@ -103,15 +84,11 @@ def main():
             results[file] = analyze_file(file)
         except Exception as e:
             results[file] = {'error': str(e)}
-    
-    # For dependency graph, collect all imports
     all_imports = defaultdict(list)
     for file, data in results.items():
         if 'error' not in data:
             for imp in data['imports']:
                 all_imports[imp].append(file)
-    
-    # Print results
     for file, data in results.items():
         print(f"File: {file}")
         if 'error' in data:
@@ -136,10 +113,8 @@ def main():
         for imp in data['imports']:
             print(f"    {imp}")
         print()
-    
     print("Import Dependency Graph:")
     for imp, files in all_imports.items():
         print(f"  {imp}: {files}")
-
 if __name__ == '__main__':
     main()

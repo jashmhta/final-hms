@@ -4,19 +4,14 @@ from app.database import Base, engine, get_db
 from app.main import app
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import sessionmaker
-
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
 @pytest.fixture(scope="module")
 def client():
     Base.metadata.create_all(bind=engine)
     with TestClient(app) as c:
         yield c
     Base.metadata.drop_all(bind=engine)
-
-
 def test_create_pricing_group(client):
     response = client.post(
         "/pricing_groups/",
@@ -25,8 +20,6 @@ def test_create_pricing_group(client):
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == "PG1"
-
-
 def test_double_entry_validation():
     asset = models.Asset(
         name="Machine",

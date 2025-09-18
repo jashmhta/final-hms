@@ -1,8 +1,6 @@
 import pytest
 from datetime import datetime, timedelta
 from app.main import AppointmentModel, AppointmentIn
-
-
 def test_appointment_model_creation(db):
     appointment_data = AppointmentIn(
         patient=1,

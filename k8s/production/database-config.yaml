@@ -5,7 +5,6 @@ metadata:
   namespace: hms-production
 spec:
   instances: 3
-  
   postgresql:
     parameters:
       max_connections: "200"
@@ -34,7 +33,6 @@ spec:
       ssl_cert_file: "/opt/certs/server.crt"
       ssl_key_file: "/opt/certs/server.key"
       ssl_ca_file: "/opt/certs/ca.crt"
-
   bootstrap:
     initdb:
       database: hms_production
@@ -46,9 +44,7 @@ spec:
         - "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
         - "CREATE EXTENSION IF NOT EXISTS uuid-ossp;"
         - "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
-
   primaryUpdateStrategy: unsupervised
-  
   resources:
     requests:
       memory: "4Gi"
@@ -56,18 +52,15 @@ spec:
     limits:
       memory: "8Gi"
       cpu: "4"
-
   storage:
     size: 100Gi
     storageClass: "fast-ssd"
-
   monitoring:
     enabled: true
     podMonitorMetricRelabelings:
     - sourceLabels: [__name__]
       regex: 'pg_stat_database_.*'
       action: keep
-
   backup:
     retentionPolicy: "30d"
     barmanObjectStore:
@@ -84,7 +77,6 @@ spec:
       data:
         retention: "30d"
         jobs: 2
-
 ---
 apiVersion: v1
 kind: Secret
@@ -95,7 +87,6 @@ type: kubernetes.io/basic-auth
 stringData:
   username: hms_user
   password: "CHANGE_ME_SECURE_PASSWORD_123!"
-
 ---
 apiVersion: v1
 kind: Secret
@@ -106,7 +97,6 @@ type: Opaque
 stringData:
   ACCESS_KEY_ID: "CHANGE_ME"
   SECRET_ACCESS_KEY: "CHANGE_ME"
-
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -167,7 +157,6 @@ spec:
       - name: redis-data
         persistentVolumeClaim:
           claimName: redis-pvc
-
 ---
 apiVersion: v1
 kind: Secret
@@ -177,7 +166,6 @@ metadata:
 type: Opaque
 stringData:
   password: "CHANGE_ME_REDIS_PASSWORD_456!"
-
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -191,7 +179,6 @@ spec:
     requests:
       storage: 50Gi
   storageClassName: fast-ssd
-
 ---
 apiVersion: v1
 kind: Service

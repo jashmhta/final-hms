@@ -1,0 +1,407 @@
+# HMS Enterprise-Grade System - Editor Configuration
+# ===================================================
+# This file helps developers maintain consistent coding styles
+# across different editors and IDEs in the healthcare enterprise system
+
+# ==========================================
+# ROOT CONFIGURATION
+# ==========================================
+root = true
+
+# ==========================================
+# DEFAULT SETTINGS
+# ==========================================
+[*]
+# Character encoding
+charset = utf-8
+
+# End of line characters
+end_of_line = lf
+
+# Line ending format (important for cross-platform compatibility)
+insert_final_newline = true
+
+# Remove trailing whitespace for cleaner code
+trim_trailing_whitespace = true
+
+# Maximum line length for healthcare enterprise code
+max_line_length = 120
+
+# Indentation style
+indent_style = space
+
+# Indentation size
+indent_size = 4
+
+# ==========================================
+# FILE TYPE SPECIFIC CONFIGURATIONS
+# ==========================================
+
+# Python files (Django backend, services)
+[*.py]
+# Python standard indentation
+indent_size = 4
+
+# Python line length (PEP 8 compliance with healthcare extensions)
+max_line_length = 88
+
+# Python-specific rules
+continuation_indent_size = 8
+
+# Python docstring formatting
+quote_type = double
+
+# ==========================================
+# WEB DEVELOPMENT FILES
+# ==========================================
+
+# JavaScript files (frontend, Node.js)
+[*.js]
+indent_size = 2
+max_line_length = 100
+
+# TypeScript files
+[*.ts]
+indent_size = 2
+max_line_length = 100
+
+# JSX/TSX files (React components)
+[*.{jsx,tsx}]
+indent_size = 2
+max_line_length = 100
+
+# HTML files
+[*.html]
+indent_size = 2
+max_line_length = 120
+
+# CSS files
+[*.css]
+indent_size = 2
+max_line_length = 100
+
+# SCSS/SASS files
+[*.{scss,sass}]
+indent_size = 2
+max_line_length = 100
+
+# Vue.js files
+[*.vue]
+indent_size = 2
+max_line_length = 100
+
+# ==========================================
+# CONFIGURATION AND DATA FILES
+# ==========================================
+
+# JSON files
+[*.json]
+indent_size = 2
+
+# YAML files
+[*.{yml,yaml}]
+indent_size = 2
+
+# XML files
+[*.xml]
+indent_size = 2
+
+# Markdown files
+[*.md]
+# Markdown specific settings
+max_line_length = 80
+trim_trailing_whitespace = false
+
+# Configuration files
+[*.{conf,config,ini}]
+indent_size = 4
+
+# ==========================================
+# SPECIALIZED HEALTHCARE FILES
+# ==========================================
+
+# DICOM configuration files
+[*.dcm]
+# Binary files - no specific formatting
+binary = true
+
+# Healthcare data files (CSV, TSV)
+[*.{csv,tsv}]
+indent_size = 2
+max_line_length = 200
+
+# Medical imaging metadata files
+[*.{dicom,dicomdir}]
+binary = true
+
+# ==========================================
+# BUILD AND PACKAGE FILES
+# ==========================================
+
+# Docker files
+[Dockerfile*]
+indent_size = 4
+
+# Shell scripts
+[*.{sh,bash,zsh,fish}]
+indent_size = 4
+end_of_line = lf
+
+# Makefiles
+[Makefile]
+indent_size = 4
+indent_style = tab
+
+# SQL files
+[*.sql]
+indent_size = 4
+max_line_length = 100
+
+# ==========================================
+# DOCUMENTATION FILES
+# ==========================================
+
+# README and documentation files
+[README*]
+max_line_length = 80
+trim_trailing_whitespace = false
+
+# Text documentation files
+[*.txt]
+max_line_length = 80
+trim_trailing_whitespace = false
+
+# ==========================================
+# DEVELOPMENT TOOL FILES
+# ==========================================
+
+# Editor-specific files (VSCode)
+[.vscode/*]
+indent_size = 2
+
+# IDE files (JetBrains)
+[.idea/*]
+indent_size = 4
+
+# Sublime Text project files
+[*.{sublime-project,sublime-workspace}]
+indent_size = 2
+
+# ==========================================
+# VERSION CONTROL FILES
+# ==========================================
+
+# Git files
+[.git*]
+indent_size = 2
+
+# Git hooks
+[.git/hooks/*]
+indent_size = 4
+end_of_line = lf
+
+# ==========================================
+# CI/CD PIPELINE FILES
+# ==========================================
+
+# GitHub Actions
+[.github/workflows/*]
+indent_size = 2
+
+# Jenkins files
+[Jenkinsfile]
+indent_size = 4
+
+# CircleCI files
+[.circleci/*]
+indent_size = 2
+
+# ==========================================
+# TESTING AND QUALITY FILES
+# ==========================================
+
+# Test files
+[*_test.{js,ts,py}]
+indent_size = 4
+
+# Test configuration files
+[jest.config.*]
+indent_size = 2
+
+# Coverage files
+[.coverage*]
+binary = true
+
+# ==========================================
+# SECURITY AND COMPLIANCE FILES
+# ==========================================
+
+# Security configuration files
+[security-*]
+indent_size = 4
+
+# Compliance files
+[compliance-*]
+indent_size = 4
+
+# Audit files
+[audit-*]
+indent_size = 4
+
+# ==========================================
+# DEPLOYMENT FILES
+# ==========================================
+
+# Terraform files
+[*.tf]
+indent_size = 2
+
+# Kubernetes files
+[*.yaml]
+indent_size = 2
+
+# Helm charts
+[Chart.yaml]
+indent_size = 2
+
+# ==========================================
+# DATABASE FILES
+# ==========================================
+
+# Database migration files
+[*_migration.{sql,py}]
+indent_size = 4
+
+# Database schema files
+[schema*]
+indent_size = 4
+
+# ==========================================
+# SPECIAL CASES
+# ==========================================
+
+# Generated files (should not be manually edited)
+[*-generated-*]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+# Third-party library files (vendor)
+[vendor/**/*]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+# Build artifacts
+[build/**/*]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+# ==========================================
+# HEALTHCARE-SPECIFIC EXCEPTIONS
+# ==========================================
+
+# Patient data files (should never be in repo)
+[patient_*]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+# Medical record files
+[medical_*]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+# PHI-related files (Protected Health Information)
+[*phi*]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+# ==========================================
+# PROJECT-SPECIFIC OVERRIDES
+# ==========================================
+
+# HMS Enterprise-Grade specific overrides
+[backend/**/*]
+# Backend specific settings
+max_line_length = 88
+
+[frontend/**/*]
+# Frontend specific settings
+max_line_length = 100
+
+[services/**/*]
+# Services specific settings
+max_line_length = 100
+
+[infrastructure/**/*]
+# Infrastructure specific settings
+max_line_length = 120
+
+# ==========================================
+# LEGACY FILE HANDLING
+# ==========================================
+
+# Legacy files (preserve original formatting)
+[legacy/**/*]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+[deprecated/**/*]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+# ==========================================
+# BINARY AND SPECIAL FILES
+# ==========================================
+
+# Binary files (images, executables)
+[*.{png,jpg,jpeg,gif,bmp,ico,svg,webp}]
+binary = true
+
+[*.{exe,dll,so,dylib,a,o,lib}]
+binary = true
+
+[*.{pdf,doc,docx,xls,xlsx,ppt,pptx}]
+binary = true
+
+[*.{zip,tar,gz,bz2,xz,7z,rar}]
+binary = true
+
+[*.{mp3,mp4,avi,mov,wmv,flv,wav,flac,aac,ogg}]
+binary = true
+
+# ==========================================
+# EDITOR-SPECIFIC OVERRIDES
+# ==========================================
+
+# Visual Studio Code specific
+[*.{js,ts,jsx,tsx}]
+vscode_language_id = javascript
+
+# JetBrains IDE specific
+[*.{py,pyw}]
+ij_python_indent_size = 4
+ij_python_continuation_indent_size = 8
+
+# Sublime Text specific
+[*.{py,pyw}]
+translate_tabs_to_spaces = true
+
+# Vim specific
+[*.{py,pyw}]
+vim_indent_size = 4
+vim_expand_tab = true
+
+# ==========================================
+# PLATFORM-SPECIFIC OVERRIDES
+# ==========================================
+
+# Windows specific (if needed)
+[*.bat]
+end_of_line = crlf
+
+# macOS specific
+[*.command]
+end_of_line = lf
+
+# Linux specific
+[*.sh]
+end_of_line = lf

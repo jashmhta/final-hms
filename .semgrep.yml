@@ -1,0 +1,128 @@
+rules:
+  - id: healthcare-data-protection
+    pattern-either:
+      - pattern: |
+          def $FUNCTION(..., $PARAM: str, ...):
+              ...
+              print($PARAM)
+      - pattern: |
+          def $FUNCTION(..., $PARAM: str, ...):
+              ...
+              logging.info($PARAM)
+    message: "Potential sensitive healthcare data exposure in logging"
+    severity: ERROR
+    languages: [python]
+  - id: sql-injection-healthcare
+    pattern-either:
+      - pattern: |
+          cursor.execute("... {} ...".format(...))
+      - pattern: |
+          cursor.execute("... %s ..." % (...))
+      - pattern: |
+          cursor.execute(f"...{...}...")
+    message: "Potential SQL injection vulnerability - use parameterized queries"
+    severity: ERROR
+    languages: [python]
+  - id: authentication-bypass
+    pattern: |
+      @login_required
+      def $FUNCTION(request):
+          ...
+          if not request.user.is_authenticated:
+              return $RESPONSE
+          ...
+    message: "Redundant authentication check - @login_required already handles this"
+    severity: WARNING
+    languages: [python]
+  - id: sensitive-data-in-comments
+    pattern-regex: |
+      (?i)(password|secret|key|token|api_key|db_password)\s*=\s*['"][^'"]+['"]
+    message: "Sensitive data potentially hardcoded in code"
+    severity: ERROR
+    languages: [python, javascript]
+  - id: hardcoded-ip-address
+    pattern-regex: |
+      \b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b
+    message: "Hardcoded IP address detected - use configuration"
+    severity: WARNING
+    languages: [python, javascript]
+  - id: healthcare-data-encryption
+    pattern: |
+      import json
+      ...
+      json.dumps($SENSITIVE_DATA)
+    message: "Sensitive healthcare data should be encrypted before JSON serialization"
+    severity: ERROR
+    languages: [python]
+  - id: input-validation-missing
+    pattern: |
+      def $FUNCTION(request):
+          $DATA = request.POST.get('$FIELD')
+    message: "Missing input validation for user data"
+    severity: WARNING
+    languages: [python]
+  - id: exception-handling-healthcare
+    pattern: |
+      try:
+          $OPERATION
+      except:
+          pass
+    message: "Bare except clause - should specify exception types"
+    severity: ERROR
+    languages: [python]
+  - id: csrf-protection-missing
+    pattern: |
+      @api_view(['POST'])
+      def $FUNCTION(request):
+          ...
+    message: "POST endpoint should have CSRF protection"
+    severity: WARNING
+    languages: [python]
+  - id: patient-data-access
+    pattern: |
+      def $FUNCTION(patient_id):
+          ...
+          Patient.objects.get(id=patient_id)
+    message: "Patient data access requires permission verification"
+    severity: ERROR
+    languages: [python]
+  - id: logging-sensitive-data
+    pattern: |
+      logging.$LEVEL($SENSITIVE_DATA)
+    message: "Sensitive data should not be logged directly"
+    severity: ERROR
+    languages: [python]
+  - id: session-security
+    pattern: |
+      request.session['$KEY'] = $SENSITIVE_VALUE
+    message: "Sensitive data in session should be encrypted"
+    severity: WARNING
+    languages: [python]
+  - id: database-connection-pooling
+    pattern: |
+      import sqlite3
+      ...
+      conn = sqlite3.connect(...)
+    message: "Use connection pooling for database connections"
+    severity: WARNING
+    languages: [python]
+  - id: password-strength-validation
+    pattern: |
+      def validate_password(password):
+          return len(password) >= 8
+    message: "Password validation should include complexity requirements"
+    severity: WARNING
+    languages: [python]
+include:
+  - "p/cwe-top-25"
+  - "p/owasp-top-ten"
+  - "p/security"
+  - "p/ correctness"
+exclude:
+  - "*/migrations/*"
+  - "*/tests/*"
+  - "*/test_*"
+  - "*/node_modules/*"
+  - "*/.venv/*"
+  - "*/venv/*"
+severity: WARNING

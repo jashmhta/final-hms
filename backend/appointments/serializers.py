@@ -1,6 +1,5 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
-
 from .models import (
     Appointment,
     AppointmentHistory,
@@ -13,8 +12,6 @@ from .models import (
     OTSlot,
     OTBooking,
 )
-
-
 class ResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resource
@@ -32,8 +29,6 @@ class ResourceSerializer(serializers.ModelSerializer):
             "hourly_rate",
             "is_active",
         ]
-
-
 class AppointmentTemplateSerializer(serializers.ModelSerializer):
     class Meta:
         model = AppointmentTemplate
@@ -53,14 +48,11 @@ class AppointmentTemplateSerializer(serializers.ModelSerializer):
             "base_cost",
             "is_active",
         ]
-
-
 class AppointmentResourceSerializer(serializers.ModelSerializer):
     resource_name = serializers.CharField(source="resource.name", read_only=True)
     resource_type = serializers.CharField(
         source="resource.resource_type", read_only=True
     )
-
     class Meta:
         model = AppointmentResource
         fields = [
@@ -73,8 +65,6 @@ class AppointmentResourceSerializer(serializers.ModelSerializer):
             "end_time",
             "notes",
         ]
-
-
 class AppointmentReminderSerializer(serializers.ModelSerializer):
     class Meta:
         model = AppointmentReminder
@@ -91,13 +81,10 @@ class AppointmentReminderSerializer(serializers.ModelSerializer):
             "response_type",
             "response_notes",
         ]
-
-
 class AppointmentHistorySerializer(serializers.ModelSerializer):
     changed_by_name = serializers.CharField(
         source="changed_by.get_full_name", read_only=True
     )
-
     class Meta:
         model = AppointmentHistory
         fields = [
@@ -112,8 +99,6 @@ class AppointmentHistorySerializer(serializers.ModelSerializer):
             "timestamp",
             "ip_address",
         ]
-
-
 class AppointmentSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source="patient.get_full_name", read_only=True)
     provider_name = serializers.CharField(
@@ -127,13 +112,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
     )
     reminders = AppointmentReminderSerializer(many=True, read_only=True)
     history = AppointmentHistorySerializer(many=True, read_only=True)
-
-    # Backward compatibility fields
     doctor = serializers.CharField(source="primary_provider", read_only=True)
     notes = serializers.CharField(
         source="clinical_notes", allow_blank=True, required=False
     )
-
     class Meta:
         model = Appointment
         fields = [
@@ -197,7 +179,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "hospital",
             "created_at",
             "updated_at",
-            # Backward compatibility fields
             "doctor",
             "notes",
         ]
@@ -209,19 +190,14 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-
     def validate(self, attrs):
         start_at = attrs.get("start_at") or getattr(self.instance, "start_at", None)
         end_at = attrs.get("end_at") or getattr(self.instance, "end_at", None)
         if start_at and end_at and end_at <= start_at:
             raise serializers.ValidationError("end_at must be after start_at")
-
-        # Handle backward compatibility for 'notes' field
         if "notes" in attrs:
             attrs["clinical_notes"] = attrs.pop("notes")
-
         return attrs
-
     def create(self, validated_data):
         instance = Appointment(**validated_data)
         try:
@@ -230,7 +206,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(e.message_dict or e.messages)
         instance.save()
         return instance
-
     def update(self, instance, validated_data):
         for field, value in validated_data.items():
             setattr(instance, field, value)
@@ -240,11 +215,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(e.message_dict or e.messages)
         instance.save()
         return instance
-
-
 class AppointmentBasicSerializer(serializers.ModelSerializer):
-    """A simplified serializer for appointments in lists or references"""
-
     patient_name = serializers.CharField(source="patient.get_full_name", read_only=True)
     provider_name = serializers.CharField(
         source="primary_provider.get_full_name", read_only=True
@@ -252,10 +223,7 @@ class AppointmentBasicSerializer(serializers.ModelSerializer):
     duration_display = serializers.CharField(
         source="get_duration_display", read_only=True
     )
-
-    # Backward compatibility
     doctor = serializers.CharField(source="primary_provider", read_only=True)
-
     class Meta:
         model = Appointment
         fields = [
@@ -277,8 +245,6 @@ class AppointmentBasicSerializer(serializers.ModelSerializer):
             "is_recurring",
             "doctor",
         ]
-
-
 class WaitListSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source="patient.get_full_name", read_only=True)
     provider_name = serializers.CharField(
@@ -287,7 +253,6 @@ class WaitListSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(
         source="created_by.get_full_name", read_only=True
     )
-
     class Meta:
         model = WaitList
         fields = [
@@ -311,15 +276,12 @@ class WaitListSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-
-
 class OTSlotSerializer(serializers.ModelSerializer):
     ot_room_name = serializers.CharField(source="ot_room.name", read_only=True)
     scheduled_by_name = serializers.CharField(
         source="scheduled_by.get_full_name", read_only=True
     )
     remaining_capacity = serializers.SerializerMethodField()
-
     class Meta:
         model = OTSlot
         fields = [
@@ -348,18 +310,14 @@ class OTSlotSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-
     def get_remaining_capacity(self, obj):
         return obj.get_remaining_capacity()
-
     def validate(self, attrs):
         start_time = attrs.get("start_time")
         end_time = attrs.get("end_time")
         if start_time and end_time and end_time <= start_time:
             raise serializers.ValidationError("End time must be after start time")
         return attrs
-
-
 class OTBookingSerializer(serializers.ModelSerializer):
     appointment_number = serializers.CharField(
         source="appointment.appointment_number", read_only=True
@@ -393,7 +351,6 @@ class OTBookingSerializer(serializers.ModelSerializer):
     confirmed_by_name = serializers.CharField(
         source="confirmed_by.get_full_name", read_only=True
     )
-
     class Meta:
         model = OTBooking
         fields = [
@@ -464,10 +421,8 @@ class OTBookingSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-
     def get_is_ready_for_surgery(self, obj):
         return obj.is_ready_for_surgery()
-
     def validate(self, attrs):
         appointment = attrs.get("appointment")
         ot_slot = attrs.get("ot_slot")
@@ -476,9 +431,7 @@ class OTBookingSerializer(serializers.ModelSerializer):
                 "Appointment time must match OT slot start time"
             )
         return attrs
-
     def create(self, validated_data):
-        # Check OT slot capacity
         ot_slot = validated_data["ot_slot"]
         if ot_slot.is_fully_booked():
             raise serializers.ValidationError("OT slot is fully booked")

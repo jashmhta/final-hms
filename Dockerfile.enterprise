@@ -1,18 +1,48 @@
-# Enterprise-Grade HMS Dockerfile
-FROM python:3.13-slim as base
+# Enterprise-Grade HMS Optimized Dockerfile
+FROM python:3.13-slim as builder
 
-# Set environment variables
+# Set environment variables for optimization
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DOCKERIZE_VERSION=v0.6.1
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    git \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Install Dockerize for health checks
+RUN curl -L https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz | tar -C /usr/local/bin -xzv
+
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy requirements and install Python dependencies with optimizations
+COPY backend/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir --compile --optimize=1 -r requirements.txt \
+    && find /opt/venv -name "*.pyc" -delete \
+    && find /opt/venv -name "*.pyo" -delete \
+    && find /opt/venv -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+
+# Production stage
+FROM python:3.13-slim as production
+
+# Install only runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy Dockerize
+COPY --from=builder /usr/local/bin/dockerize /usr/local/bin/
 
 # Create non-root user
 RUN groupadd -r hms && useradd -r -g hms hms
@@ -20,23 +50,33 @@ RUN groupadd -r hms && useradd -r -g hms hms
 # Set work directory
 WORKDIR /app
 
-# Copy requirements and install Python dependencies
-COPY backend/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy virtual environment
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy project
+# Copy project files with optimized permissions
 COPY backend/ /app/
+RUN chown -R hms:hms /app \
+    && find /app -type f -name "*.py" -exec chmod 644 {} \; \
+    && find /app -type d -exec chmod 755 {} \; \
+    && chmod +x /app/manage.py
 
-# Change ownership to non-root user
-RUN chown -R hms:hms /app
+# Create cache directories
+RUN mkdir -p /app/static /app/media /app/logs /app/cache \
+    && chown -R hms:hms /app/static /app/media /app/logs /app/cache
+
+# Switch to non-root user
 USER hms
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health/ || exit 1
+# Health check with timeout and retries
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD dockerize -wait http://localhost:8000/health/ -timeout 30s || exit 1
 
 # Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120", "hms.wsgi:application"]
+# Environment variables for Gunicorn optimization
+ENV GUNICORN_CMD_ARGS="--bind=0.0.0.0:8000 --workers=4 --worker-class=gevent --worker-connections=1000 --timeout=120 --keep-alive=2 --max-requests=1000 --max-requests-jitter=100 --preload-app --access-logfile=- --error-logfile=- --log-level=info"
+
+# Run the application with optimized Gunicorn settings
+CMD ["gunicorn", "hms.wsgi:application"]

@@ -1,5 +1,4 @@
 from rest_framework.routers import DefaultRouter
-
 from .views import (
     AppointmentHistoryViewSet,
     AppointmentReminderViewSet,
@@ -8,7 +7,6 @@ from .views import (
     ResourceViewSet,
     WaitListViewSet,
 )
-
 router = DefaultRouter()
 router.register(r"appointments", AppointmentViewSet, basename="appointment")
 router.register(
@@ -22,5 +20,4 @@ router.register(
 router.register(
     r"appointment-history", AppointmentHistoryViewSet, basename="appointmenthistory"
 )
-
 urlpatterns = router.urls

@@ -1,0 +1,540 @@
+name: "HMS Enterprise-Grade Quality Enforcement"
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 2 * * *'  
+  workflow_dispatch:
+    inputs:
+      target_directory:
+        description: 'Target directory for analysis'
+        required: false
+        default: '.'
+      enforce_strict:
+        description: 'Enforce strict quality gates'
+        required: false
+        default: 'true'
+        type: boolean
+      run_continuous:
+        description: 'Run continuous analysis'
+        required: false
+        default: 'false'
+        type: boolean
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+jobs:
+  setup-quality-environment:
+    name: Setup Quality Environment
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.setup.outputs.cache-key }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - name: Generate cache key
+        id: setup
+        run: echo "cache-key=${{ runner.os }}-quality-${{ hashFiles('requirements_code_quality.txt', 'package.json') }}" >> $GITHUB_OUTPUT
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            node_modules
+          key: ${{ steps.setup.outputs.cache-key }}
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements_code_quality.txt
+          pip install coverage.py pylint bandit safety mypy radon lizard jscpd
+      - name: Install Node.js dependencies
+        run: |
+          npm install
+          npm install -g eslint prettier typescript @typescript-eslint/parser @typescript-eslint/eslint-plugin
+      - name: Install quality tools
+        run: |
+          wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
+          unzip sonar-scanner-cli-4.8.0.2856-linux.zip
+          sudo mv sonar-scanner-4.8.0.2856-linux /opt/sonar-scanner
+          sudo ln -s /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin/sonar-scanner
+          wget https://github.com/github/codeql-action-binaries/releases/download/v2.15.0/codeql-bundle-linux64.tar.gz
+          tar -xzf codeql-bundle-linux64.tar.gz
+          sudo mv codeql /opt/codeql
+          sudo ln -s /opt/codeql/codeql /usr/local/bin/codeql
+          npm install -g snyk
+  static-code-analysis:
+    name: Static Code Analysis
+    runs-on: ubuntu-latest
+    needs: setup-quality-environment
+    strategy:
+      matrix:
+        tool: [sonarqube, codeql, semgrep, bandit, pylint, flake8]
+      fail-fast: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            node_modules
+          key: ${{ needs.setup-quality-environment.outputs.cache-key }}
+      - name: Run ${{ matrix.tool }} analysis
+        run: |
+          case "${{ matrix.tool }}" in
+            sonarqube)
+              sonar-scanner -Dsonar.login=${{ secrets.SONAR_TOKEN }} ;;
+            codeql)
+              codeql database create hms-db --language=python
+              codeql database analyze hms-db --format=sarif --output=codeql-${{ matrix.tool }}.sarif ;;
+            semgrep)
+              semgrep --config=.semgrep.yml --json --output=semgrep-${{ matrix.tool }}.json . ;;
+            bandit)
+              bandit -r . -f json -o bandit-${{ matrix.tool }}.json ;;
+            pylint)
+              pylint . --output-format=json > pylint-${{ matrix.tool }}.json 2>/dev/null || true ;;
+            flake8)
+              flake8 . --format=json > flake8-${{ matrix.tool }}.json 2>/dev/null || true ;;
+          esac
+      - name: Upload ${{ matrix.tool }} results
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.tool }}-results
+          path: |
+            codeql-${{ matrix.tool }}.sarif
+            semgrep-${{ matrix.tool }}.json
+            bandit-${{ matrix.tool }}.json
+            pylint-${{ matrix.tool }}.json
+            flake8-${{ matrix.tool }}.json
+  complexity-analysis:
+    name: Complexity Analysis
+    runs-on: ubuntu-latest
+    needs: setup-quality-environment
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            node_modules
+          key: ${{ needs.setup-quality-environment.outputs.cache-key }}
+      - name: Run complexity analysis
+        run: |
+          python complexity_analysis.py
+      - name: Upload complexity results
+        uses: actions/upload-artifact@v3
+        with:
+          name: complexity-results
+          path: |
+            complexity_analysis_report.json
+            complexity_analysis_report.html
+            lizard_report.json
+  security-analysis:
+    name: Security Analysis
+    runs-on: ubuntu-latest
+    needs: setup-quality-environment
+    strategy:
+      matrix:
+        tool: [snyk, safety, trufflehog]
+      fail-fast: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            node_modules
+          key: ${{ needs.setup-quality-environment.outputs.cache-key }}
+      - name: Run ${{ matrix.tool }} analysis
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          case "${{ matrix.tool }}" in
+            snyk)
+              snyk test --json > snyk-${{ matrix.tool }}.json || true ;;
+            safety)
+              safety check --json --output safety-${{ matrix.tool }}.json ;;
+            trufflehog)
+              docker run -v $GITHUB_WORKSPACE:/target trufflesecurity/trufflehog:latest /target --json > trufflehog-${{ matrix.tool }}.json || true ;;
+          esac
+      - name: Upload ${{ matrix.tool }} results
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-${{ matrix.tool }}-results
+          path: |
+            snyk-${{ matrix.tool }}.json
+            safety-${{ matrix.tool }}.json
+            trufflehog-${{ matrix.tool }}.json
+  coverage-analysis:
+    name: Coverage Analysis
+    runs-on: ubuntu-latest
+    needs: setup-quality-environment
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            node_modules
+          key: ${{ needs.setup-quality-environment.outputs.cache-key }}
+      - name: Run coverage analysis
+        run: |
+          python coverage_config.py
+      - name: Upload coverage results
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-results
+          path: |
+            coverage_analysis_report.json
+            coverage_analysis_report.html
+            htmlcov/
+            coverage.xml
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+  performance-analysis:
+    name: Performance Analysis
+    runs-on: ubuntu-latest
+    needs: setup-quality-environment
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            node_modules
+          key: ${{ needs.setup-quality-environment.outputs.cache-key }}
+      - name: Run performance analysis
+        run: |
+          python -m cProfile -o performance_profile.prof ultimate_code_quality_enforcer.py
+          python -m memory_profiler ultimate_code_quality_enforcer.py > memory_profile.txt
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-results
+          path: |
+            performance_profile.prof
+            memory_profile.txt
+  documentation-analysis:
+    name: Documentation Analysis
+    runs-on: ubuntu-latest
+    needs: setup-quality-environment
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            node_modules
+          key: ${{ needs.setup-quality-environment.outputs.cache-key }}
+      - name: Run documentation analysis
+        run: |
+          interrogate --verbose --ignore-init-module --ignore-module --ignore-private .
+          pydocstyle --config=setup.cfg . || true
+      - name: Upload documentation results
+        uses: actions/upload-artifact@v3
+        with:
+          name: documentation-results
+          path: documentation_quality_report.txt
+  duplication-analysis:
+    name: Duplication Analysis
+    runs-on: ubuntu-latest
+    needs: setup-quality-environment
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            node_modules
+          key: ${{ needs.setup-quality-environment.outputs.cache-key }}
+      - name: Run duplication analysis
+        run: |
+          jscpd --format python --max-duplicates 5 --output json --output-file jscpd-report.json .
+      - name: Upload duplication results
+        uses: actions/upload-artifact@v3
+        with:
+          name: duplication-results
+          path: jscpd-report.json
+  comprehensive-quality-analysis:
+    name: Comprehensive Quality Analysis
+    runs-on: ubuntu-latest
+    needs: [
+      static-code-analysis,
+      complexity-analysis,
+      security-analysis,
+      coverage-analysis,
+      performance-analysis,
+      documentation-analysis,
+      duplication-analysis
+    ]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            node_modules
+          key: ${{ needs.setup-quality-environment.outputs.cache-key }}
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+      - name: Run comprehensive quality analysis
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          python ultimate_code_quality_enforcer.py --target . --config .quality_config.json
+      - name: Upload comprehensive results
+        uses: actions/upload-artifact@v3
+        with:
+          name: comprehensive-quality-results
+          path: |
+            reports/
+            audits/
+            quality_analysis_report.json
+            quality_analysis_report.html
+      - name: Generate quality dashboard
+        run: |
+          python -c "
+          import json
+          with open('reports/quality_report.json', 'r') as f:
+              data = json.load(f)
+          metrics = data['metrics']
+          gates = data['quality_gates']
+          print('
+          print(f'Overall Quality Score: {metrics[\"overall_quality_score\"]:.1f}%')
+          print(f'Total Issues: {metrics[\"total_issues\"]}')
+          print(f'Critical Issues: {metrics[\"critical_issues\"]}')
+          print(f'Quality Gates: {\"PASSED\" if gates[\"passed\"] else \"FAILED\"}')
+          print(f'Files Analyzed: {metrics[\"files_analyzed\"]}')
+          "
+      - name: Comment PR with quality results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'reports/quality_report.json';
+            if (fs.existsSync(path)) {
+              const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+              const metrics = data.metrics;
+              const gates = data.quality_gates;
+              let comment = `
+              comment += `
+              comment += `- **Overall Quality Score**: ${metrics.overall_quality_score.toFixed(1)}%\n`;
+              comment += `- **Total Issues**: ${metrics.total_issues}\n`;
+              comment += `- **Critical Issues**: ${metrics.critical_issues}\n`;
+              comment += `- **Files Analyzed**: ${metrics.files_analyzed}\n\n`;
+              comment += `
+              comment += `${gates.passed ? '✅ **PASSED**' : '❌ **FAILED**'}\n`;
+              comment += `${gates.passed_gates}/${gates.total_gates} gates passed\n\n`;
+              if (!gates.passed) {
+                comment += `
+                comment += `Quality gates failed. Please address the issues before merging.\n\n`;
+              }
+              comment += `
+              comment += `View the [complete quality report](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) for detailed analysis.\n`;
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
+      - name: Enforce quality gates
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          python -c "
+          import json
+          import sys
+          with open('reports/quality_report.json', 'r') as f:
+              data = json.load(f)
+          if not data['quality_gates']['passed']:
+              print('❌ Quality gates failed - blocking merge')
+              sys.exit(1)
+          else:
+              print('✅ Quality gates passed')
+          "
+  continuous-quality-monitoring:
+    name: Continuous Quality Monitoring
+    runs-on: ubuntu-latest
+    needs: comprehensive-quality-analysis
+    if: github.event_name == 'schedule' || github.event.inputs.run_continuous == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            node_modules
+          key: ${{ needs.setup-quality-environment.outputs.cache-key }}
+      - name: Run continuous monitoring
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          python -c "
+          import json
+          import subprocess
+          import requests
+          import os
+          result = subprocess.run(['python', 'ultimate_code_quality_enforcer.py', '--target', '.'], capture_output=True, text=True)
+          if result.returncode == 0:
+              data = json.loads(result.stdout)
+              metrics = data['metrics']
+              gates = data['quality_gates']
+              if not gates['passed'] and os.environ.get('SLACK_WEBHOOK_URL'):
+                  webhook_url = os.environ['SLACK_WEBHOOK_URL']
+                  message = {
+                      'text': f'🚨 HMS Quality Gates Failed',
+                      'attachments': [
+                          {
+                              'color': 'danger',
+                              'title': 'Quality Analysis Results',
+                              'fields': [
+                                  {'title': 'Overall Quality Score', 'value': f'{metrics[\"overall_quality_score\"]:.1f}%', 'short': True},
+                                  {'title': 'Total Issues', 'value': str(metrics['total_issues']), 'short': True},
+                                  {'title': 'Critical Issues', 'value': str(metrics['critical_issues']), 'short': True},
+                                  {'title': 'Files Analyzed', 'value': str(metrics['files_analyzed']), 'short': True}
+                              ]
+                          }
+                      ]
+                  }
+                  requests.post(webhook_url, json=message)
+              print('Continuous monitoring completed')
+          else:
+              print('Continuous monitoring failed')
+              sys.exit(1)
+          "
+  generate-quality-report:
+    name: Generate Quality Report
+    runs-on: ubuntu-latest
+    needs: comprehensive-quality-analysis
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Download comprehensive results
+        uses: actions/download-artifact@v3
+        with:
+          name: comprehensive-quality-results
+          path: reports/
+      - name: Generate quality trends
+        run: |
+          python -c "
+          import json
+          import sqlite3
+          from datetime import datetime, timedelta
+          conn = sqlite3.connect('audits/quality_metrics.db')
+          cursor = conn.cursor()
+          thirty_days_ago = datetime.now() - timedelta(days=30)
+          cursor.execute('''
+              SELECT timestamp, overall_quality_score, total_issues, critical_issues
+              FROM quality_metrics
+              WHERE timestamp >= ?
+              ORDER BY timestamp
+          ''', (thirty_days_ago.isoformat(),))
+          results = cursor.fetchall()
+          if results:
+              print('
+              print('| Date | Quality Score | Total Issues | Critical Issues |')
+              print('|------|---------------|-------------|----------------|')
+              for row in results[-10:]:  
+                  date = datetime.fromisoformat(row[0]).strftime('%Y-%m-%d')
+                  print(f'| {date} | {row[1]:.1f}% | {row[2]} | {row[3]} |')
+              if len(results) >= 2:
+                  first_score = results[0][1]
+                  last_score = results[-1][1]
+                  trend = last_score - first_score
+                  trend_direction = '📈 Improving' if trend > 0 else '📉 Declining'
+                  print(f'\n
+                  print(f'Overall trend: {trend_direction} ({trend:+.1f}%)')
+          conn.close()
+          "
+      - name: Upload quality trends
+        uses: actions/upload-artifact@v3
+        with:
+          name: quality-trends
+          path: quality_trends.md
+  deploy-quality-dashboard:
+    name: Deploy Quality Dashboard
+    runs-on: ubuntu-latest
+    needs: [comprehensive-quality-analysis, generate-quality-report]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Download reports
+        uses: actions/download-artifact@v3
+        with:
+          name: comprehensive-quality-results
+          path: reports/
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: 'reports/'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Quality Analysis Release ${{ github.ref }}
+          body: |
+            HMS Enterprise-Grade Quality Analysis Report
+            This release includes comprehensive code quality analysis results:
+            - Static code analysis
+            - Security vulnerability scanning
+            - Code coverage metrics
+            - Performance analysis
+            - Healthcare compliance validation
+            - Overall Quality Score: TBD
+            - Total Issues: TBD
+            - Critical Issues: TBD
+            - [Quality Dashboard](https://${{ steps.deployment.outputs.page_url }})
+            - [Detailed Analysis](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            This analysis ensures the HMS Enterprise-Grade system meets all healthcare regulatory requirements including HIPAA, GDPR, and industry standards.
+          draft: false
+          prerelease: false

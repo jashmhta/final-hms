@@ -1,4 +1,10 @@
-# Python
+# HMS Enterprise-Grade System - Comprehensive .gitignore
+# ================================================
+# This file includes patterns for healthcare enterprise systems,
+# compliance requirements, security, and development workflows
+
+# Python Development
+# ==================
 .venv/
 venv/
 env/
@@ -10,39 +16,423 @@ __pycache__/
 *.pyd
 .Python
 build/
+develop-eggs/
 dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-.coverage
+MANIFEST
+
+# Virtual Environment wrappers
+.env.venv
+.env.virtual
+python-env
+p-env
+pyenv
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
 htmlcov/
-.pytest_cache/
-.mypy_cache/
+.tox/
+.nox/
+.coverage
 .coverage.*
-*.sqlite3
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django specific
+*.log
+local_settings.py
 db.sqlite3
+db.sqlite3-journal
 media/
 staticfiles/
+user_uploads/
+patient_uploads/
+medical_uploads/
 
-# Node.js
+# Environment and Configuration
+# =============================
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.template
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.staging.local
+
+# Configuration files with sensitive data
+config/secrets.yml
+config/database.yml
+config/redis.yml
+config/application.yml
+secrets/
+credentials/
+*.key
+*.pem
+*.p12
+*.crt
+*.cert
+*.pfx
+*.keystore
+*.truststore
+*.jks
+*.csr
+
+# Security and Authentication
+# ==========================
+# JWT and tokens
+jwt/
+tokens/
+*.token
+*.jwt
+auth_tokens/
+session_tokens/
+
+# Encryption keys
+encryption_keys/
+private_keys/
+public_keys/
+*.private
+*.public
+gpg_keys/
+pgp_keys/
+
+# Password files
+passwords.txt
+passwords.yml
+passwords.json
+*.password
+*.secret
+
+# API keys and credentials
+api_keys.txt
+api_keys.yml
+api_keys.json
+service_account.json
+service_account*.json
+*.apikey
+*.credentials
+
+# Database and Data Storage
+# =========================
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+*.sql.gz
+*.sql.zip
+*.dump
+*.backup
+*.bak
+
+# Database migrations (development)
+migrations/dev_*
+migrations/test_*
+migrations/local_*
+
+# Data exports and backups
+data_exports/
+data_backups/
+database_backups/
+patient_data_backups/
+*.backup
+*.export
+*.dump
+
+# Redis and cache data
+redis_data/
+redis_dump.rdb
+cache_data/
+session_data/
+
+# Healthcare-Specific Data (PHI)
+# ==============================
+# Patient data files
+patient_records/
+patient_data/
+phi_data/
+protected_health_information/
+medical_records/
+health_records/
+
+# Medical imaging
+dicom_files/
+medical_images/
+xray_files/
+mri_files/
+ct_scans/
+ultrasound_files/
+*.dcm
+*.dicom
+
+# Healthcare device data
+device_data/
+medical_device_data/
+iot_device_data/
+sensor_data/
+vital_signs_data/
+
+# Telemedicine and consultations
+telemedicine_recordings/
+consultation_recordings/
+video_consultations/
+audio_consultations/
+*.webm
+*.mp4
+*.mov
+*.avi
+*.wav
+*.mp3
+
+# Research and clinical data
+research_data/
+clinical_trials/
+study_data/
+participant_data/
+
+# Audit and Compliance
+# ====================
+# Audit logs and trails
+audit_logs/
+audit_trails/
+compliance_logs/
+security_audit_logs/
+access_logs/
+
+# Temporary compliance files
+temp_compliance/
+compliance_reports/
+hipaa_reports/
+gdpr_reports/
+sox_reports/
+
+# Security scan results
+security_scans/
+vulnerability_scans/
+penetration_test_results/
+*.nmap
+*.nessus
+*.burp
+
+# Performance monitoring
+performance_logs/
+monitoring_data/
+metrics_data/
+log_analysis/
+
+# Development and Build Artifacts
+# ==============================
+# Node.js and JavaScript
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Next.js
 .next/
+out/
+build/
+
+# Nuxt.js
 .nuxt/
-.cache/
+dist/
+
+# Vue.js
+.vite/
+dist-ssr/
+
+# Svelte
+.svelte-kit/
+
+# React Native
+ios/
+android/
+
+# Testing
+coverage/
+.nyc_output/
+test_results/
+*.lcov
+*.lcov.info
+junit.xml
+
+# Bundlers and package managers
+dist/
+build/
+*.tsbuildinfo
+
+# Frontend frameworks
 .sass-cache/
-.eslintcache
+.less-cache/
+.styl-cache/
 .parcel-cache/
+.eslintcache
+.stylelintcache
 
-# IDEs
-.idea/
+# IDE and Editor Files
+# ====================
+# Visual Studio Code
 .vscode/
-.DS_Store
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 
-# Logs
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+*.jar
+*.war
+*.ear
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# TextMate
+*.tmproject
+tmtags
+
+# Eclipse
+.project
+.classpath
+.settings/
+.metadata
+
+# NetBeans
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+nb-archives/
+
+# Operating System Files
+# =====================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.tmp
+*.temp
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Linux
+*~
+.nfs*
+.directory
+.Trash-*
+fuse_hidden*
+
+# Temporary and Cache Files
+# ========================
+# General temporary files
+temp/
+tmp/
+temporary/
+.cache/
+*.tmp
+*.temp
+*.cache
+*.lock
+*.pid
+
+# Upload and download directories
+uploads/
+downloads/
+file_uploads/
+media_uploads/
+document_uploads/
+
+# System and process files
+*.pid
+*.sock
+*.socket
+.pipe
+
+# Log files
 *.log
+logs/
+log_files/
+application_logs/
+system_logs/
+error_logs/
+debug_logs/
+info_logs/
+warn_logs/
+
+# Specific HMS logs (from existing config)
 server.log
 gunicorn_admin_access.log
 gunicorn_admin.log
@@ -55,7 +445,98 @@ main_server.log
 bfgminer_enterprise.log
 deploy.log
 
-# Reports
+# Container and Orchestration
+# ===========================
+# Docker
+.docker/
+docker-compose.override.yml
+docker-compose.dev.yml
+docker-compose.test.yml
+docker-compose.prod.yml
+.dockerignore
+
+# Kubernetes
+*.kubeconfig
+.kube/
+kubectl-history/
+kustomization.yaml
+
+# Terraform and Infrastructure
+# ===========================
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+terraform.tfvars
+terraform.tfstate.backup
+.terraform.lock.hcl
+
+# Cloud Provider Files
+# ===================
+# AWS
+.aws/
+aws-exports.js
+amplify/
+.aws-exports.js
+
+# Azure
+.azure/
+.azure-pipelines/
+service-principal.json
+
+# Google Cloud
+.gcloud/
+firebase.json
+.firebaserc
+
+# Package and Dependency Management
+# ================================
+# Python packages
+pip-wheel-metadata/
+pip-log.txt
+pip-delete-this-directory.txt
+requirements-dev.txt
+requirements-test.txt
+requirements-local.txt
+
+# npm/yarn/pnpm
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+package-lock.json.bak
+yarn.lock.bak
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Ruby
+Gemfile.lock
+.bundle/
+vendor/bundle
+
+# Go
+vendor/
+*.test
+*.prof
+
+# Testing and Quality Assurance
+# =============================
+# Code quality reports
 lint_*.txt
 mypy_*.txt
 test_results_*.txt
@@ -75,68 +556,173 @@ license_report.json
 npm-audit-report.json
 npm-audit.json
 
-# Coverage
-coverage/
+# Security scanning
+sonar-scanner.properties
+sonar-project.properties
+checkstyle-results.xml
+findbugs-results.xml
+pmd-results.xml
 
-# Keys
-keys/
+# Performance testing
+jmeter_results/
+load_test_results/
+performance_test_results/
 
-# Environment
-.env
-.env.local
-.env.*.local
+# Documentation and Notes
+# ======================
+# Personal notes
+notes/
+NOTES.md
+personal_notes/
+scratch/
+scratchpad/
 
-# OS generated files
-Thumbs.db
+# Temporary documentation
+docs/draft/
+docs/temp/
+docs/work-in-progress/
 
-# Backups
-frontend-backup-*/
-original/
-perfection/
-validation/
+# Binary and Media Files
+# ======================
+# Binary files
+*.bin
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.o
+*.obj
+
+# Media files (large files)
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+*.mkv
+*.webm
+*.m4v
+*.3gp
+*.wav
+*.mp3
+*.flac
+*.aac
+*.ogg
+*.wma
+*.m4a
+*.wma
+
+# Images
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.tif
+*.svg
+*.webp
+*.ico
+*.psd
+*.ai
+*.pdf
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.7z
+*.rar
+*.jar
+*.war
+*.ear
+
+# System and Service Files
+# ========================
+# Service configuration
+systemd/
+systemd-user/
+init.d/
+rc.d/
+
+# Process management
+supervisor/
+supervisord.conf
+gunicorn.conf.py
+uwsgi.ini
+circus.ini
+
+# Monitoring and metrics
+metrics/
+monitoring/
+grafana/
+prometheus/
+*.metrics
+
+# Backup and Recovery
+# ===================
+# Backup directories
+backup/
 backups/
+backup_files/
+restore_files/
+
+# Version control backups
 *.bak
-*.swp
+*.backup
+*.orig
+*.rej
 
-# Temporary files
-temp/
-tmp/
-.cache/
-*.tmp
-*.temp
+# Archive files
+archives/
+old_versions/
+deprecated/
 
-# Uploads and downloads
-uploads/
-downloads/
+# Development Environment
+# ======================
+# Virtual environments
+env-*/
+venv-*/
+.virtualenvs/
+conda-envs/
 
-# Databases
-*.db
-*.sqlite3
-*.sql
+# Development databases
+dev_db/
+test_db/
+local_db/
 
-# Terraform
-.terraform/
-*.tfstate
-*.tfstate.backup
-.terraform.lock.hcl
+# Development tools
+.tool-versions
+.node-version
+.python-version
+.ruby-version
+.java-version
 
-# Docker
-.docker/
-
-# Kubernetes
-# (usually no need for .gitignore in k8s, but if secrets)
-secrets/
-
-# Other
+# Project-specific
+# ================
+# HMS Enterprise-Grade specific
 audit_venv/
 hms-enterprise-grade/
 loadtest/
 integration_tests/
-*.pid
-gunicorn.conf.py
-*.zip
-*.mp4
+frontend-backup-*/
+original/
+perfection/
+validation/
+bin/
 cookies.txt
 
-# Binaries
-bin/
+# Research and development
+research/
+dev_notes/
+experiment/
+prototype/
+
+# Deprecated and legacy
+legacy/
+deprecated/
+old_*/

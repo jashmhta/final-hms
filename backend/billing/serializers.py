@@ -1,8 +1,5 @@
 from rest_framework import serializers
-
 from .models import Bill, BillLineItem, DepartmentBudget, Payment, ServiceCatalog
-
-
 class BillLineItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = BillLineItem
@@ -16,8 +13,6 @@ class BillLineItemSerializer(serializers.ModelSerializer):
             "amount_cents",
         ]
         read_only_fields = ["id", "amount_cents"]
-
-
 class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
@@ -31,12 +26,9 @@ class PaymentSerializer(serializers.ModelSerializer):
             "received_at",
         ]
         read_only_fields = ["id", "received_at"]
-
-
 class BillSerializer(serializers.ModelSerializer):
     items = BillLineItemSerializer(many=True, read_only=True)
     payments = PaymentSerializer(many=True, read_only=True)
-
     class Meta:
         model = Bill
         fields = [
@@ -54,15 +46,11 @@ class BillSerializer(serializers.ModelSerializer):
             "payments",
         ]
         read_only_fields = ["id", "total_cents", "net_cents", "paid_cents", "status"]
-
-
 class ServiceCatalogSerializer(serializers.ModelSerializer):
     class Meta:
         model = ServiceCatalog
         fields = ["id", "hospital", "code", "name", "price_cents", "active"]
         read_only_fields = ["id"]
-
-
 class DepartmentBudgetSerializer(serializers.ModelSerializer):
     class Meta:
         model = DepartmentBudget

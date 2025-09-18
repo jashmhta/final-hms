@@ -4,7 +4,6 @@ import smtplib
 from datetime import datetime
 from email.message import EmailMessage
 from threading import Thread
-
 import requests
 from fastapi import Depends, FastAPI, Header, HTTPException
 from jose import JWTError, jwt
@@ -12,27 +11,21 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 from sqlalchemy import Column, DateTime, Integer, String, Text, create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
-
 try:
     from kafka import KafkaConsumer
 except Exception:
     KafkaConsumer = None
-
 DATABASE_URL = os.getenv(
     "NOTIFICATIONS_DATABASE_URL",
     os.getenv("DATABASE_URL", "sqlite:///./notifications.db"),
 )
 JWT_SECRET = os.getenv("JWT_SECRET", "change-me")
 JWT_ALG = os.getenv("JWT_ALG", "HS256")
-
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
-
 app = FastAPI(title="Notifications Service", version="1.2.0")
 Instrumentator().instrument(app).expose(app)
-
-
 class NotificationModel(Base):
     __tablename__ = "notifications"
     id = Column(Integer, primary_key=True)
@@ -43,27 +36,19 @@ class NotificationModel(Base):
     status = Column(String(20), default="queued", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     sent_at = Column(DateTime, nullable=True)
-
-
 def create_tables():
     Base.metadata.create_all(bind=engine)
-
-
 @app.on_event("startup")
 def on_startup():
     create_tables()
     _load_secrets_from_vault()
     _start_kafka_consumer()
-
-
 def get_db() -> Session:
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-
-
 def require_auth(authorization: str | None = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -73,20 +58,14 @@ def require_auth(authorization: str | None = Header(None)):
         return payload
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
-
-
 class SendPayload(BaseModel):
     channel: str
     recipient: str
     subject: str
     message: str
-
-
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
-
 @app.post("/api/notifications/send")
 def send(
     payload: SendPayload,
@@ -106,7 +85,6 @@ def send(
     db.add(row)
     db.commit()
     db.refresh(row)
-    # Dispatch via providers
     try:
         if payload.channel.lower() == "email":
             _send_email(payload.recipient, payload.subject, payload.message)
@@ -128,8 +106,6 @@ def send(
         db.add(row)
         db.commit()
     return {"status": row.status, "id": row.id}
-
-
 @app.get("/api/notifications/history")
 def history(_: dict = Depends(require_auth), db: Session = Depends(get_db)):
     rows = (
@@ -150,8 +126,6 @@ def history(_: dict = Depends(require_auth), db: Session = Depends(get_db)):
         }
         for r in rows
     ]
-
-
 def _send_email(recipient: str, subject: str, body: str) -> None:
     host = os.getenv("SMTP_HOST")
     port = int(os.getenv("SMTP_PORT", "587"))
@@ -159,7 +133,6 @@ def _send_email(recipient: str, subject: str, body: str) -> None:
     password = os.getenv("SMTP_PASSWORD")
     sender = os.getenv("SMTP_SENDER", user or "noreply@example.com")
     if not host:
-        # No SMTP configured; noop
         return
     msg = EmailMessage()
     msg["From"] = sender
@@ -171,10 +144,7 @@ def _send_email(recipient: str, subject: str, body: str) -> None:
         if user and password:
             server.login(user, password)
         server.send_message(msg)
-
-
 def _send_sms(recipient: str, message: str) -> None:
-    # Generic HTTP SMS provider (e.g., Twilio-like webhook). Configure via env.
     url = os.getenv("SMS_PROVIDER_URL")
     token = os.getenv("SMS_PROVIDER_TOKEN")
     if not url:
@@ -183,8 +153,6 @@ def _send_sms(recipient: str, message: str) -> None:
     payload = {"to": recipient, "message": message}
     r = requests.post(url, json=payload, headers=headers, timeout=10)
     r.raise_for_status()
-
-
 def _send_fcm(recipient_token: str, title: str, body: str) -> None:
     server_key = os.getenv("FCM_SERVER_KEY")
     if not server_key:
@@ -195,8 +163,6 @@ def _send_fcm(recipient_token: str, title: str, body: str) -> None:
         "https://fcm.googleapis.com/fcm/send", json=payload, headers=headers, timeout=10
     )
     r.raise_for_status()
-
-
 def _load_secrets_from_vault() -> None:
     addr = os.getenv("VAULT_ADDR")
     token = os.getenv("VAULT_TOKEN")
@@ -209,7 +175,6 @@ def _load_secrets_from_vault() -> None:
         if not resp.ok:
             return
         data = resp.json().get("data", {}).get("data", {})
-        # Set env vars if missing
         for key in [
             "SMTP_HOST",
             "SMTP_PORT",
@@ -224,14 +189,11 @@ def _load_secrets_from_vault() -> None:
                 os.environ[key] = str(data[key])
     except Exception:
         return
-
-
 def _start_kafka_consumer():
     if KafkaConsumer is None:
         return
     broker = os.getenv("KAFKA_BROKER", "kafka:9092")
     topic = os.getenv("KAFKA_TOPIC_APPOINTMENTS", "appointments_events")
-
     def _run():
         try:
             consumer = KafkaConsumer(
@@ -242,7 +204,6 @@ def _start_kafka_consumer():
             for msg in consumer:
                 evt = msg.value
                 if evt.get("event") == "appointment_created":
-                    # minimal: log or enqueue notification row
                     with SessionLocal() as db:
                         row = NotificationModel(
                             channel="email",
@@ -255,6 +216,5 @@ def _start_kafka_consumer():
                         db.commit()
         except Exception:
             return
-
     t = Thread(target=_run, daemon=True)
     t.start()

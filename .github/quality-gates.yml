@@ -1,0 +1,252 @@
+quality_gates:
+  minimum_test_coverage: 100
+  maximum_vulnerabilities: 0
+  minimum_code_quality_score: 95
+  maximum_technical_debt: 5
+  maximum_response_time: 200  
+  minimum_availability: 99.9  
+  maximum_error_rate: 0.1     
+  compliance_score_minimum: 100
+  security_score_minimum: 100
+  documentation_coverage_minimum: 90
+code_quality:
+  python:
+    black_compliance: 100
+    line_length_limit: 88
+    flake8_max_errors: 0
+    flake8_max_warnings: 0
+    mypy_strict_mode: true
+    mypy_ignore_missing_imports: false
+    bandit_max_issues: 0
+    bandit_severity_level: "low"
+    max_cyclomatic_complexity: 10
+    max_cognitive_complexity: 15
+    max_maintainability_index: 85
+  javascript:
+    eslint_max_errors: 0
+    eslint_max_warnings: 0
+    eslint_rules:
+      "no-unused-vars": "error"
+      "no-console": "warn"
+      "prefer-const": "error"
+    prettier_compliance: 100
+    npm_audit_level: "moderate"
+    npm_audit_max_issues: 0
+testing:
+  coverage:
+    unit_tests_minimum: 100
+    integration_tests_minimum: 95
+    end_to_end_tests_minimum: 90
+    overall_minimum: 100
+  quality:
+    flaky_tests_max: 0
+    slow_tests_max: 5  
+    test_execution_time_max: 300  
+  required_tests:
+    - "unit"
+    - "integration"
+    - "security"
+    - "performance"
+    - "compliance"
+  structure:
+    test_to_code_ratio: 1.0  
+    mock_usage_limit: 30     
+security:
+  vulnerabilities:
+    critical: 0
+    high: 0
+    medium: 0
+    low: 5
+  sast_tools:
+    - "semgrep"
+    - "codeql"
+    - "bandit"
+    - "sonarqube"
+  dast_tools:
+    - "owasp-zap"
+    - "burp-suite"
+    - "nuclei"
+  secrets:
+    max_secrets: 0
+    secret_types:
+      - "api_keys"
+      - "passwords"
+      - "tokens"
+      - "certificates"
+  compliance:
+    hipaa: 100
+    gdpr: 100
+    pci_dss: 100
+    soc2: 100
+performance:
+  response_time:
+    p50_max: 100   
+    p90_max: 150   
+    p95_max: 200   
+    p99_max: 500   
+  throughput:
+    min_requests_per_second: 1000
+    max_concurrent_users: 10000
+  resources:
+    max_cpu_usage: 80      
+    max_memory_usage: 85   
+    max_disk_usage: 90     
+  load_testing:
+    duration_min: 30      
+    users_min: 1000
+    error_rate_max: 0.1   
+deployment:
+  strategy:
+    production: "blue-green"
+    staging: "rolling"
+    development: "recreate"
+  health_checks:
+    required_checks: 3
+    timeout_seconds: 30
+    retry_attempts: 3
+  rollback:
+    error_rate_threshold: 5    
+    response_time_threshold: 1000  
+    availability_threshold: 95  
+  monitoring:
+    alerts_configured: true
+    dashboards_configured: true
+    metrics_collected: true
+documentation:
+  api:
+    coverage: 100
+    examples_min: 3
+    schema_valid: true
+  code:
+    docstring_coverage: 90
+    comment_density: 20
+    complex_functions_documented: 100
+  user:
+    getting_started: true
+    deployment_guide: true
+    troubleshooting: true
+    api_reference: true
+  developer:
+    architecture_documentation: true
+    design_documents: true
+    testing_guide: true
+    contribution_guide: true
+dependencies:
+  licenses:
+    allowed_licenses:
+      - "MIT"
+      - "Apache-2.0"
+      - "BSD-3-Clause"
+      - "ISC"
+    forbidden_licenses:
+      - "GPL-3.0"
+      - "AGPL-3.0"
+  freshness:
+    max_outdated_dependencies: 5
+    critical_updates_required: 0
+  security:
+    max_vulnerable_dependencies: 0
+    auto_update_frequency: "daily"
+database:
+  performance:
+    max_query_time: 1000     
+    max_connection_time: 100  
+    index_usage_min: 95      
+  schema:
+    normalized_design: true
+    foreign_key_constraints: true
+    proper_indexes: true
+  backup:
+    frequency: "daily"
+    retention_days: 30
+    encryption_required: true
+  migrations:
+    rollback_available: true
+    data_loss_prevention: true
+    downtime_max: 0  
+infrastructure:
+  availability:
+    sla: 99.9
+    uptime_requirement: 99.95
+    maintenance_windows: true
+  scalability:
+    auto_scaling: true
+    load_balancing: true
+    horizontal_scaling: true
+  security:
+    firewall_configured: true
+    encryption_at_rest: true
+    encryption_in_transit: true
+    access_controls: true
+  monitoring:
+    comprehensive_monitoring: true
+    alert_configured: true
+    logging_enabled: true
+    metrics_collected: true
+ci_cd:
+  pipeline:
+    parallel_execution: true
+    caching_enabled: true
+    artifacts_retention: 30  
+  checks:
+    pre_commit_hooks: true
+    branch_protection: true
+    code_review_required: true
+  automation:
+    auto_deploy: true
+    auto_rollback: true
+    auto_scaling: true
+compliance:
+  healthcare:
+    hipaa_compliant: true
+    phi_protection: true
+    audit_trail: true
+    data_retention: true
+  data_protection:
+    gdpr_compliant: true
+    data_minimization: true
+    consent_management: true
+    right_to_be_forgotten: true
+  security_compliance:
+    pci_dss_compliant: true
+    soc2_compliant: true
+    iso27001_compliant: true
+  audit:
+    comprehensive_logging: true
+    immutable_logs: true
+    log_retention: 365  
+    audit_trail_enabled: true
+business_continuity:
+  disaster_recovery:
+    rpo: 1   
+    rto: 4   
+    backup_location: "multi-region"
+  high_availability:
+    multi_az: true
+    failover_enabled: true
+    redundant_components: true
+  incident_response:
+    response_time_max: 30  
+    escalation_procedure: true
+    communication_plan: true
+  capacity:
+    growth_projection: true
+    resource_monitoring: true
+    scaling_strategy: true
+environments:
+  development:
+    test_coverage: 90
+    security_scanning: true
+    code_quality: 85
+  staging:
+    test_coverage: 95
+    security_scanning: true
+    code_quality: 90
+    performance_testing: true
+  production:
+    test_coverage: 100
+    security_scanning: true
+    code_quality: 95
+    performance_testing: true
+    compliance_validation: true
+    manual_approval: true

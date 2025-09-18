@@ -1,0 +1,596 @@
+{
+  "total_services": 39,
+  "valid_services": 39,
+  "success_rate": 100.0,
+  "validation_results": [
+    {
+      "service_name": "insurance_tpa_integration",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "prescription",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "cybersecurity_enhancements",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "biomedical_equipment",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "operation_theatre",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "graphql_gateway",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "ot_scheduling",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "ambulance",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "triage",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "patient_portal",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "lab",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "facilities",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "emergency_department",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "mrd",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "consent",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "pharmacy",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "compliance_checklists",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "billing",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "price_estimator",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "ipd_management",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "appointments",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "dietary",
+      "valid": true,
+      "issues": [
+        "Missing required file: models.py"
+      ],
+      "files_found": [
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "marketing_crm",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "feedback",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "audit",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "opd_management",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "housekeeping_maintenance",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "notifications",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "blood_bank",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "doctor_portal",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "backup_disaster_recovery",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "erp",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "hr",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "e_prescription",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "analytics_service",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "radiology",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "er_alerts",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "patients",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    },
+    {
+      "service_name": "bed_management",
+      "valid": true,
+      "issues": [],
+      "files_found": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ],
+      "required_files": [
+        "models.py",
+        "main.py",
+        "schemas.py"
+      ]
+    }
+  ],
+  "recommendations": [
+    "Create missing required files for 1 services"
+  ]
+}

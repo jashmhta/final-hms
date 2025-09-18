@@ -5,24 +5,17 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ViewSet
-
 from .models import User
 from .serializers import UserSerializer
-
-
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
-
     @extend_schema(responses=OpenApiResponse(response=UserSerializer))
     def get(self, request):
         return Response(UserSerializer(request.user).data)
-
-
 class UserViewSet(ViewSet):
     serializer_class = UserSerializer
     queryset = User.objects.select_related("hospital").all()
     permission_classes = [IsAuthenticated]
-
     def get_queryset(self):
         user = self.request.user
         qs = super().get_queryset()
@@ -31,7 +24,6 @@ class UserViewSet(ViewSet):
         if getattr(user, "hospital_id", None):
             return qs.filter(hospital_id=user.hospital_id)
         return qs.none()
-
     def perform_create(self, serializer):
         actor = self.request.user
         role = serializer.validated_data.get("role")
@@ -55,7 +47,6 @@ class UserViewSet(ViewSet):
         if password:
             obj.password = make_password(password)
             obj.save(update_fields=["password"])
-
     def perform_update(self, serializer):
         actor = self.request.user
         role = serializer.validated_data.get("role", None)

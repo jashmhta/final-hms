@@ -1,8 +1,5 @@
 from django.contrib import admin
-
 from .models import Patient
-
-
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
     list_display = (
@@ -35,7 +32,6 @@ class PatientAdmin(admin.ModelAdmin):
         "created_by",
     )
     readonly_fields = ("uuid", "medical_record_number", "created_at", "updated_at")
-
     fieldsets = (
         (
             "Basic Information",

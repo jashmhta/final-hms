@@ -1,0 +1,1083 @@
+{
+  "config": {
+    "configFile": "/home/azureuser/hms-enterprise-grade/e2e-tests/playwright.config.ts",
+    "rootDir": "/home/azureuser/hms-enterprise-grade/e2e-tests/tests",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 8
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/results.json"
+        }
+      ],
+      [
+        "junit",
+        {
+          "outputFile": "test-results/junit.xml"
+        }
+      ],
+      [
+        "list",
+        null
+      ],
+      [
+        "/home/azureuser/hms-enterprise-grade/e2e-tests/node_modules/allure-playwright/dist/cjs/index.js",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 8
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/home/azureuser/hms-enterprise-grade/e2e-tests/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 8
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/home/azureuser/hms-enterprise-grade/e2e-tests/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/accessibility/**/*.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 8
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/home/azureuser/hms-enterprise-grade/e2e-tests/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/accessibility/**/*.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 8
+        },
+        "id": "Mobile Chrome",
+        "name": "Mobile Chrome",
+        "testDir": "/home/azureuser/hms-enterprise-grade/e2e-tests/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/mobile/**/*.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 8
+        },
+        "id": "Mobile Safari",
+        "name": "Mobile Safari",
+        "testDir": "/home/azureuser/hms-enterprise-grade/e2e-tests/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/mobile/**/*.spec.ts"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.55.0",
+    "workers": 8,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "phase1-user-journeys/patient-registration-journey.spec.ts",
+      "file": "phase1-user-journeys/patient-registration-journey.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "PHASE 1: Patient Registration Journey",
+          "file": "phase1-user-journeys/patient-registration-journey.spec.ts",
+          "line": 7,
+          "column": 6,
+          "specs": [],
+          "suites": [
+            {
+              "title": "Complete Patient Registration Journey",
+              "file": "phase1-user-journeys/patient-registration-journey.spec.ts",
+              "line": 18,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "1.1.1 - Complete patient registration from start to finish",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 120000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 23013,
+                          "error": {
+                            "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"], [data-testid=\"username\"]') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"], [data-testid=\"username\"]') to be visible\u001b[22m\n\n    at LoginPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at LoginPage.validateLoginPageElements (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/login-page.ts:108:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:24:23",
+                            "location": {
+                              "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                              "column": 21,
+                              "line": 53
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39m../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                                "column": 21,
+                                "line": 53
+                              },
+                              "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"], [data-testid=\"username\"]') to be visible\u001b[22m\n\n\n   at ../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**\n    at LoginPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at LoginPage.validateLoginPageElements (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/login-page.ts:108:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:24:23"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-17T16:31:18.660Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-8b10c-ration-from-start-to-finish-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-8b10c-ration-from-start-to-finish-chromium/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                            "column": 21,
+                            "line": 53
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "2bebb929828f375d0274-0f0236b6d7211bda56ea",
+                  "file": "phase1-user-journeys/patient-registration-journey.spec.ts",
+                  "line": 19,
+                  "column": 5
+                },
+                {
+                  "title": "1.1.2 - Patient registration with validation and error handling",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 90000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "failed",
+                          "duration": 24197,
+                          "error": {
+                            "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"], [data-testid=\"submit-registration\"], .submit-button') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"], [data-testid=\"submit-registration\"], .submit-button') to be visible\u001b[22m\n\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.click (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:67:16)\n    at PatientRegistrationPage.testFormValidation (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:109:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:65:35",
+                            "location": {
+                              "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                              "column": 21,
+                              "line": 53
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39m../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                                "column": 21,
+                                "line": 53
+                              },
+                              "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"], [data-testid=\"submit-registration\"], .submit-button') to be visible\u001b[22m\n\n\n   at ../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.click (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:67:16)\n    at PatientRegistrationPage.testFormValidation (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:109:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:65:35"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-17T16:31:18.841Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-43a09-lidation-and-error-handling-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-43a09-lidation-and-error-handling-chromium/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                            "column": 21,
+                            "line": 53
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "2bebb929828f375d0274-72af93f7bade5aca18de",
+                  "file": "phase1-user-journeys/patient-registration-journey.spec.ts",
+                  "line": 60,
+                  "column": 5
+                },
+                {
+                  "title": "1.1.3 - Patient registration with comprehensive data",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 90000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 2,
+                          "status": "failed",
+                          "duration": 23311,
+                          "error": {
+                            "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:126:23",
+                            "location": {
+                              "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                              "column": 21,
+                              "line": 53
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39m../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                                "column": 21,
+                                "line": 53
+                              },
+                              "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n\n\n   at ../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:126:23"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-17T16:31:19.080Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-c38cb-ion-with-comprehensive-data-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-c38cb-ion-with-comprehensive-data-chromium/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                            "column": 21,
+                            "line": 53
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "2bebb929828f375d0274-a4587a819c0dfaa36356",
+                  "file": "phase1-user-journeys/patient-registration-journey.spec.ts",
+                  "line": 88,
+                  "column": 5
+                },
+                {
+                  "title": "1.1.4 - Patient registration integration with appointment scheduling",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 120000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 3,
+                          "parallelIndex": 3,
+                          "status": "failed",
+                          "duration": 23095,
+                          "error": {
+                            "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at PatientRegistrationPage.registerRandomPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:78:21)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:142:31",
+                            "location": {
+                              "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                              "column": 21,
+                              "line": 53
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39m../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                                "column": 21,
+                                "line": 53
+                              },
+                              "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n\n\n   at ../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at PatientRegistrationPage.registerRandomPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:78:21)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:142:31"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-17T16:31:19.132Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-4e043-with-appointment-scheduling-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-4e043-with-appointment-scheduling-chromium/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                            "column": 21,
+                            "line": 53
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "2bebb929828f375d0274-3a71ee7d07bc8a8bb8d5",
+                  "file": "phase1-user-journeys/patient-registration-journey.spec.ts",
+                  "line": 138,
+                  "column": 5
+                },
+                {
+                  "title": "1.1.5 - Patient registration with document upload",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 90000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 4,
+                          "parallelIndex": 4,
+                          "status": "failed",
+                          "duration": 27351,
+                          "error": {
+                            "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"address.zipCode\"], [data-testid=\"address-zip\"]') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"address.zipCode\"], [data-testid=\"address-zip\"]') to be visible\u001b[22m\n\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.fill (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:75:16)\n    at PatientRegistrationPage.testAutoFill (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:221:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:180:31",
+                            "location": {
+                              "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                              "column": 21,
+                              "line": 53
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39m../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                                "column": 21,
+                                "line": 53
+                              },
+                              "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"address.zipCode\"], [data-testid=\"address-zip\"]') to be visible\u001b[22m\n\n\n   at ../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.fill (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:75:16)\n    at PatientRegistrationPage.testAutoFill (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:221:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:180:31"
+                            }
+                          ],
+                          "stdout": [
+                            {
+                              "text": "Document upload feature not available - this is acceptable for MVP\n"
+                            }
+                          ],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-17T16:31:19.010Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-889b2-ration-with-document-upload-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-889b2-ration-with-document-upload-chromium/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                            "column": 21,
+                            "line": 53
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "2bebb929828f375d0274-08a9965ecd6434e7867a",
+                  "file": "phase1-user-journeys/patient-registration-journey.spec.ts",
+                  "line": 167,
+                  "column": 5
+                },
+                {
+                  "title": "1.1.6 - Patient registration security and privacy",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 90000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 5,
+                          "parallelIndex": 5,
+                          "status": "failed",
+                          "duration": 23690,
+                          "error": {
+                            "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"firstName\"], [data-testid=\"first-name\"]') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"firstName\"], [data-testid=\"first-name\"]') to be visible\u001b[22m\n\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.fill (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:75:16)\n    at PatientRegistrationPage.testFormReset (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:240:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:192:32",
+                            "location": {
+                              "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                              "column": 21,
+                              "line": 53
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39m../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                                "column": 21,
+                                "line": 53
+                              },
+                              "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"firstName\"], [data-testid=\"first-name\"]') to be visible\u001b[22m\n\n\n   at ../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.fill (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:75:16)\n    at PatientRegistrationPage.testFormReset (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:240:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:192:32"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-17T16:31:18.760Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-a3549-ration-security-and-privacy-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-a3549-ration-security-and-privacy-chromium/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                            "column": 21,
+                            "line": 53
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "2bebb929828f375d0274-3289a04d5814d8beb418",
+                  "file": "phase1-user-journeys/patient-registration-journey.spec.ts",
+                  "line": 188,
+                  "column": 5
+                },
+                {
+                  "title": "1.1.7 - Patient registration with various user scenarios",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 120000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 6,
+                          "parallelIndex": 6,
+                          "status": "failed",
+                          "duration": 23397,
+                          "error": {
+                            "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:218:40",
+                            "location": {
+                              "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                              "column": 21,
+                              "line": 53
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39m../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                                "column": 21,
+                                "line": 53
+                              },
+                              "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n\n\n   at ../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:218:40"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-17T16:31:19.137Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-e818e-with-various-user-scenarios-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-e818e-with-various-user-scenarios-chromium/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                            "column": 21,
+                            "line": 53
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "2bebb929828f375d0274-da03bd45c9d056cc18c0",
+                  "file": "phase1-user-journeys/patient-registration-journey.spec.ts",
+                  "line": 210,
+                  "column": 5
+                },
+                {
+                  "title": "1.1.8 - Patient registration performance under load",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 180000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 7,
+                          "parallelIndex": 7,
+                          "status": "failed",
+                          "duration": 22901,
+                          "error": {
+                            "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at PatientRegistrationPage.registerRandomPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:78:21)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:255:29",
+                            "location": {
+                              "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                              "column": 21,
+                              "line": 53
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39m../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                                "column": 21,
+                                "line": 53
+                              },
+                              "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n\n\n   at ../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at PatientRegistrationPage.registerRandomPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:78:21)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:255:29"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-17T16:31:19.246Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-46795-tion-performance-under-load-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-46795-tion-performance-under-load-chromium/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                            "column": 21,
+                            "line": 53
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "2bebb929828f375d0274-aa9fb81e70f9c7a86ba9",
+                  "file": "phase1-user-journeys/patient-registration-journey.spec.ts",
+                  "line": 247,
+                  "column": 5
+                },
+                {
+                  "title": "1.1.9 - Patient registration with network conditions",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 120000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 8,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 21427,
+                          "error": {
+                            "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at PatientRegistrationPage.registerRandomPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:78:21)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:297:33",
+                            "location": {
+                              "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                              "column": 21,
+                              "line": 53
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39m../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                                "column": 21,
+                                "line": 53
+                              },
+                              "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n\n\n   at ../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at PatientRegistrationPage.registerRandomPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:78:21)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:297:33"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-17T16:31:43.740Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-f4bf2-ion-with-network-conditions-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-f4bf2-ion-with-network-conditions-chromium/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                            "column": 21,
+                            "line": 53
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "2bebb929828f375d0274-95aa94b093b036b88f9f",
+                  "file": "phase1-user-journeys/patient-registration-journey.spec.ts",
+                  "line": 287,
+                  "column": 5
+                },
+                {
+                  "title": "1.1.10 - Patient registration data validation and business rules",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 90000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 9,
+                          "parallelIndex": 7,
+                          "status": "failed",
+                          "duration": 22125,
+                          "error": {
+                            "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:322:7",
+                            "location": {
+                              "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                              "column": 21,
+                              "line": 53
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39m../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                                "column": 21,
+                                "line": 53
+                              },
+                              "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n\n\n   at ../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:322:7"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-17T16:31:43.854Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-f6dd6-lidation-and-business-rules-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-f6dd6-lidation-and-business-rules-chromium/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                            "column": 21,
+                            "line": 53
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "2bebb929828f375d0274-2922f6fd2dd5c85d6db9",
+                  "file": "phase1-user-journeys/patient-registration-journey.spec.ts",
+                  "line": 314,
+                  "column": 5
+                }
+              ]
+            },
+            {
+              "title": "Patient Registration Edge Cases",
+              "file": "phase1-user-journeys/patient-registration-journey.spec.ts",
+              "line": 362,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "1.1.11 - Patient registration with special characters in names",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 60000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 10,
+                          "parallelIndex": 3,
+                          "status": "failed",
+                          "duration": 11978,
+                          "error": {
+                            "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:371:23",
+                            "location": {
+                              "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                              "column": 21,
+                              "line": 53
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39m../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                                "column": 21,
+                                "line": 53
+                              },
+                              "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n\n\n   at ../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:371:23"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-17T16:31:44.056Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-bff29-special-characters-in-names-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-bff29-special-characters-in-names-chromium/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                            "column": 21,
+                            "line": 53
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "2bebb929828f375d0274-aa0c78caad91a5476836",
+                  "file": "phase1-user-journeys/patient-registration-journey.spec.ts",
+                  "line": 363,
+                  "column": 5
+                },
+                {
+                  "title": "1.1.12 - Patient registration with international phone numbers",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 60000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 11,
+                          "parallelIndex": 2,
+                          "status": "failed",
+                          "duration": 11860,
+                          "error": {
+                            "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:382:23",
+                            "location": {
+                              "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                              "column": 21,
+                              "line": 53
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39m../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                                "column": 21,
+                                "line": 53
+                              },
+                              "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\u001b[22m\n\n\n   at ../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:382:23"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-17T16:31:44.387Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-3bd64-international-phone-numbers-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-3bd64-international-phone-numbers-chromium/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                            "column": 21,
+                            "line": 53
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "2bebb929828f375d0274-a6c6f6d37ad60c7ab626",
+                  "file": "phase1-user-journeys/patient-registration-journey.spec.ts",
+                  "line": 375,
+                  "column": 5
+                },
+                {
+                  "title": "1.1.13 - Patient registration session timeout handling",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 120000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 12,
+                          "parallelIndex": 5,
+                          "status": "failed",
+                          "duration": 11999,
+                          "error": {
+                            "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"firstName\"], [data-testid=\"first-name\"]') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"firstName\"], [data-testid=\"first-name\"]') to be visible\u001b[22m\n\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.fill (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:75:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:391:37",
+                            "location": {
+                              "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                              "column": 21,
+                              "line": 53
+                            },
+                            "snippet": "\u001b[90m   at \u001b[39m../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                                "column": 21,
+                                "line": 53
+                              },
+                              "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"firstName\"], [data-testid=\"first-name\"]') to be visible\u001b[22m\n\n\n   at ../pages/base-page.ts:53\n\n  51 |    */\n  52 |   async waitForVisible(selector: string, timeout = 10000) {\n> 53 |     await this.page.waitForSelector(selector, { state: 'visible', timeout });\n     |                     ^\n  54 |   }\n  55 |\n  56 |   /**\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.fill (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:75:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:391:37"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-09-17T16:31:44.190Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-5775a-on-session-timeout-handling-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/azureuser/hms-enterprise-grade/e2e-tests/test-results/phase1-user-journeys-patie-5775a-on-session-timeout-handling-chromium/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts",
+                            "column": 21,
+                            "line": 53
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "2bebb929828f375d0274-6607b13cb75578c67df0",
+                  "file": "phase1-user-journeys/patient-registration-journey.spec.ts",
+                  "line": 386,
+                  "column": 5
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-09-17T16:31:16.955Z",
+    "duration": 49188.137,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 13,
+    "flaky": 0
+  }
+}

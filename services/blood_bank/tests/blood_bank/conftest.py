@@ -1,22 +1,15 @@
 import os
-
 import pytest
 from django.conf import settings
 from django.test import Client
-
-
 @pytest.fixture(scope="session")
 def django_db_setup(django_db_setup, django_db_blocker):
     with django_db_blocker.unblock():
         pass
-
-
 @pytest.fixture
 def api_client():
     client = Client()
     return client
-
-
 @pytest.fixture
 def admin_user(db, django_user_model):
     User = django_user_model
@@ -27,8 +20,6 @@ def admin_user(db, django_user_model):
         role="ADMIN",
     )
     return user
-
-
 @pytest.fixture
 def doctor_user(db, django_user_model):
     User = django_user_model
@@ -39,8 +30,6 @@ def doctor_user(db, django_user_model):
         role="DOCTOR",
     )
     return user
-
-
 @pytest.fixture
 def patient_user(db, django_user_model):
     User = django_user_model

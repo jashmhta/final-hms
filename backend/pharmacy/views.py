@@ -6,21 +6,15 @@ from django.utils import timezone
 from rest_framework import decorators, response, viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
-
 from .models import InventoryTransaction, Medication, Prescription
 from .serializers import (
     InventoryTransactionSerializer,
     MedicationSerializer,
     PrescriptionSerializer,
 )
-
-# Create your views here.
-
-
 class TenantScopedViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, ModuleEnabledPermission]
     required_module = "enable_pharmacy"
-
     def get_queryset(self):
         qs = super().get_queryset()
         user = self.request.user
@@ -29,7 +23,6 @@ class TenantScopedViewSet(viewsets.ModelViewSet):
         if getattr(user, "hospital_id", None) is None:
             return qs.none()
         return qs.filter(hospital_id=user.hospital_id)
-
     def ensure_tenant_on_create(self, serializer):
         user = self.request.user
         provided_hospital = serializer.validated_data.get("hospital")
@@ -50,17 +43,13 @@ class TenantScopedViewSet(viewsets.ModelViewSet):
                 provided_hospital.id if provided_hospital else user.hospital_id
             )
         )
-
-
 class MedicationViewSet(TenantScopedViewSet):
     serializer_class = MedicationSerializer
     queryset = Medication.objects.all()
     filterset_fields = ["name"]
     search_fields = ["name"]
-
     def perform_create(self, serializer):
         self.ensure_tenant_on_create(serializer)
-
     @decorators.action(detail=False, methods=["get"])
     def low_stock(self, request):
         self.throttle_scope = "inventory"
@@ -73,7 +62,6 @@ class MedicationViewSet(TenantScopedViewSet):
             return self.get_paginated_response(ser.data)
         ser = MedicationSerializer(qs, many=True)
         return response.Response(ser.data)
-
     @decorators.action(detail=False, methods=["post"])
     def auto_reorder(self, request):
         qs = self.get_queryset().filter(
@@ -100,18 +88,14 @@ class MedicationViewSet(TenantScopedViewSet):
             except Exception:
                 continue
         return response.Response({"orders": placed})
-
-
 class PrescriptionViewSet(TenantScopedViewSet):
     serializer_class = PrescriptionSerializer
     queryset = Prescription.objects.select_related(
         "patient", "doctor", "medication", "encounter"
     ).all()
-
     def perform_create(self, serializer):
         self.ensure_tenant_on_create(serializer)
         prescription = self.get_queryset().order_by("-id").first()
-
     @decorators.action(detail=True, methods=["post"])
     def dispense(self, request, pk=None):
         obj = self.get_object()
@@ -124,16 +108,12 @@ class PrescriptionViewSet(TenantScopedViewSet):
         med.save(update_fields=["total_stock_quantity"])
         obj.is_dispensed = True
         from django.utils import timezone as djtz
-
         obj.dispensed_at = djtz.now()
         obj.save(update_fields=["is_dispensed", "dispensed_at"])
         return response.Response(PrescriptionSerializer(obj).data)
-
-
 class InventoryTransactionViewSet(TenantScopedViewSet):
     serializer_class = InventoryTransactionSerializer
     queryset = InventoryTransaction.objects.select_related("medication").all()
-
     def perform_create(self, serializer):
         self.ensure_tenant_on_create(serializer)
         transaction = self.get_queryset().order_by("-id").first()

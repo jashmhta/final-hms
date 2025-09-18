@@ -1,9 +1,6 @@
-#!/usr/bin/env python
 import subprocess
 import sys
-
 def quality_gate():
-    # Run all checks
     checks = [
         ['python', 'manage.py', 'test', '--coverage', '--cov-fail-under=100'],
         ['flake8', '.'],
@@ -19,6 +16,5 @@ def quality_gate():
             print(result.stderr)
             sys.exit(1)
     print("All quality gates passed")
-
 if __name__ == "__main__":
     quality_gate()

@@ -1,0 +1,635 @@
+# HMS Enterprise-Grade System - Git Attributes
+# ==============================================
+# This file defines how Git should handle different file types
+# Especially important for healthcare enterprise systems with compliance requirements
+
+# ==========================================
+# DEFAULT SETTINGS
+# ==========================================
+# Set default behavior for all files
+* text=auto eol=lf
+
+# Disable Git LFS for most files (opt-in approach)
+* !filter !diff !merge !text
+
+# ==========================================
+# TEXT FILES - LINE ENDINGS
+# ==========================================
+# Source code files
+*.py text eol=lf diff=python
+*.js text eol=lf diff=javascript
+*.ts text eol=lf diff=typescript
+*.jsx text eol=lf diff=javascript
+*.tsx text eol=lf diff=typescript
+*.vue text eol=lf diff=javascript
+*.html text eol=lf diff=html
+*.css text eol=lf diff=css
+*.scss text eol=lf diff=css
+*.sass text eol=lf diff=css
+*.less text eol=lf diff=css
+*.json text eol=lf diff=json
+*.xml text eol=lf diff=xml
+*.yaml text eol=lf diff=yaml
+*.yml text eol=lf diff=yaml
+*.md text eol=lf diff=markdown
+*.txt text eol=lf
+*.sh text eol=lf diff=bash
+*.bash text eol=lf diff=bash
+*.zsh text eol=lf diff=bash
+*.fish text eol=lf diff=bash
+*.sql text eol=lf diff=sql
+*.conf text eol=lf
+*.ini text eol=lf
+*.toml text eol=lf diff=toml
+*.dockerfile text eol=lf diff=docker
+*.dockerignore text eol=lf
+*.gitattributes text eol=lf
+*.gitignore text eol=lf
+*.gitmodules text eol=lf
+
+# Configuration files
+*.env text eol=lf
+*.config text eol=lf
+*.cfg text eol=lf
+
+# Documentation
+*.rst text eol=lf
+*.tex text eol=lf
+*.adoc text eol=lf
+
+# ==========================================
+# BINARY FILES - NO DIFFS
+# ==========================================
+# Images
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.gif binary
+*.bmp binary
+*.tiff binary
+*.tif binary
+*.webp binary
+*.ico binary
+*.psd binary
+*.ai binary
+*.pdf binary
+*.svg binary
+
+# Audio files
+*.mp3 binary
+*.wav binary
+*.flac binary
+*.aac binary
+*.ogg binary
+*.wma binary
+*.m4a binary
+
+# Video files
+*.mp4 binary
+*.avi binary
+*.mov binary
+*.wmv binary
+*.flv binary
+*.mkv binary
+*.webm binary
+*.m4v binary
+*.3gp binary
+
+# Archive files
+*.zip binary
+*.tar binary
+*.tar.gz binary
+*.tar.bz2 binary
+*.tar.xz binary
+*.7z binary
+*.rar binary
+*.jar binary
+*.war binary
+*.ear binary
+
+# Database files
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+*.mdb binary
+*.accdb binary
+
+# Compiled code
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.a binary
+*.lib binary
+*.o binary
+*.obj binary
+*.class binary
+*.pyc binary
+*.pyo binary
+*.pyd binary
+*.jar binary
+*.war binary
+
+# Fonts
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.otf binary
+
+# ==========================================
+# HEALTHCARE-SPECIFIC FILES
+# ==========================================
+# Medical imaging (DICOM)
+*.dcm binary
+*.dicom binary
+dicom_files/** binary
+medical_images/** binary
+xray_files/** binary
+mri_files/** binary
+ct_scans/** binary
+ultrasound_files/** binary
+
+# Patient data (PHI) - should not be in Git but marked if accidentally added
+patient_data/** binary
+patient_records/** binary
+phi_data/** binary
+protected_health_information/** binary
+medical_records/** binary
+health_records/** binary
+
+# Healthcare device data
+device_data/** binary
+medical_device_data/** binary
+iot_device_data/** binary
+sensor_data/** binary
+vital_signs_data/** binary
+
+# Research and clinical data
+research_data/** binary
+clinical_trials/** binary
+study_data/** binary
+participant_data/** binary
+
+# Telemedicine recordings
+telemedicine_recordings/** binary
+consultation_recordings/** binary
+video_consultations/** binary
+audio_consultations/** binary
+
+# Healthcare-specific formats
+*.hl7 binary
+*.fhir binary
+*.ccd binary
+*.cda binary
+
+# ==========================================
+# SECURITY AND ENCRYPTION FILES
+# ==========================================
+# Encryption keys and certificates
+*.key binary
+*.pem binary
+*.p12 binary
+*.crt binary
+*.cert binary
+*.pfx binary
+*.keystore binary
+*.truststore binary
+*.jks binary
+*.csr binary
+*.crl binary
+
+# Secret files
+secrets/** binary
+credentials/** binary
+*.gpg binary
+*.pgp binary
+*.asc binary
+
+# ==========================================
+# DATABASE AND DATA FILES
+# ==========================================
+# Database dumps and backups
+*.sql binary
+*.sql.gz binary
+*.sql.zip binary
+*.dump binary
+*.backup binary
+*.bak binary
+
+# Data exports
+*.csv binary
+*.tsv binary
+*.jsonl binary
+*.parquet binary
+*.avro binary
+*.orc binary
+
+# Redis data
+*.rdb binary
+
+# ==========================================
+# VERSION CONTROL AND GIT
+# ==========================================
+# Git files
+.git/** export-ignore
+.gitignore export-ignore
+.gitattributes export-ignore
+.gitmodules export-ignore
+.git/** !filter !diff !merge
+
+# ==========================================
+# BUILD AND DEPLOYMENT
+# ==========================================
+# Node modules and build artifacts
+node_modules/** export-ignore
+dist/** export-ignore
+build/** export-ignore
+out/** export-ignore
+.next/** export-ignore
+.nuxt/** export-ignore
+.vite/** export-ignore
+.svelte-kit/** export-ignore
+
+# Python artifacts
+__pycache__/** export-ignore
+*.pyc export-ignore
+*.pyo export-ignore
+.venv/** export-ignore
+venv/** export-ignore
+env/** export-ignore
+*.egg-info/** export-ignore
+build/** export-ignore
+develop-eggs/** export-ignore
+dist/** export-ignore
+downloads/** export-ignore
+eggs/** export-ignore
+.eggs/** export-ignore
+lib/** export-ignore
+lib64/** export-ignore
+parts/** export-ignore
+sdist/** export-ignore
+var/** export-ignore
+wheels/** export-ignore
+
+# Coverage and test reports
+coverage/** export-ignore
+.nyc_output/** export-ignore
+htmlcov/** export-ignore
+.pytest_cache/** export-ignore
+.mypy_cache/** export-ignore
+test_results/** export-ignore
+*.lcov export-ignore
+*.lcov.info export-ignore
+junit.xml export-ignore
+
+# Temporary files
+temp/** export-ignore
+tmp/** export-ignore
+*.tmp export-ignore
+*.temp export-ignore
+*.cache export-ignore
+*.lock export-ignore
+
+# Logs
+*.log export-ignore
+logs/** export-ignore
+log_files/** export-ignore
+
+# ==========================================
+# CONTAINER AND ORCHESTRATION
+# ==========================================
+# Docker files
+.docker/** export-ignore
+
+# Terraform
+.terraform/** export-ignore
+*.tfstate export-ignore
+*.tfstate.backup export-ignore
+.terraform.lock.hcl export-ignore
+
+# ==========================================
+# CLOUD PROVIDER FILES
+# ==========================================
+# AWS
+.aws/** export-ignore
+aws-exports.js export-ignore
+amplify/** export-ignore
+
+# Azure
+.azure/** export-ignore
+.azure-pipelines/** export-ignore
+
+# Google Cloud
+.gcloud/** export-ignore
+firebase.json export-ignore
+.firebaserc export-ignore
+
+# ==========================================
+# IDE AND EDITOR FILES
+# ==========================================
+# Visual Studio Code
+.vscode/** export-ignore
+*.code-workspace export-ignore
+
+# JetBrains IDEs
+.idea/** export-ignore
+*.iml export-ignore
+*.ipr export-ignore
+*.iws export-ignore
+
+# Sublime Text
+*.sublime-project export-ignore
+*.sublime-workspace export-ignore
+
+# Vim
+*.swp export-ignore
+*.swo export-ignore
+*~ export-ignore
+
+# Emacs
+*~ export-ignore
+\#*\# export-ignore
+/.emacs.desktop export-ignore
+/.emacs.desktop.lock export-ignore
+*.elc export-ignore
+auto-save-list/** export-ignore
+tramp export-ignore
+.\#* export-ignore
+
+# TextMate
+*.tmproject export-ignore
+tmtags export-ignore
+
+# Eclipse
+.project export-ignore
+.classpath export-ignore
+.settings/** export-ignore
+.metadata export-ignore
+
+# NetBeans
+nbproject/** export-ignore
+build/** export-ignore
+nbbuild/** export-ignore
+dist/** export-ignore
+nbdist/** export-ignore
+nb-archives/** export-ignore
+
+# ==========================================
+# OPERATING SYSTEM FILES
+# ==========================================
+# macOS
+.DS_Store export-ignore
+.AppleDouble export-ignore
+.LSOverride export-ignore
+Icon? export-ignore
+._* export-ignore
+.DocumentRevisions-V100 export-ignore
+.fseventsd export-ignore
+.Spotlight-V100 export-ignore
+.TemporaryItems export-ignore
+.Trashes export-ignore
+.VolumeIcon.icns export-ignore
+.com.apple.timemachine.donotpresent export-ignore
+.AppleDB export-ignore
+.AppleDesktop export-ignore
+
+# Windows
+Thumbs.db export-ignore
+Thumbs.db:encryptable export-ignore
+ehthumbs.db export-ignore
+ehthumbs_vista.db export-ignore
+Desktop.ini export-ignore
+$RECYCLE.BIN/** export-ignore
+*.cab export-ignore
+*.msi export-ignore
+*.msix export-ignore
+*.msm export-ignore
+*.msp export-ignore
+
+# Linux
+*~ export-ignore
+.nfs* export-ignore
+.directory export-ignore
+.Trash-* export-ignore
+fuse_hidden* export-ignore
+
+# ==========================================
+# BACKUP AND ARCHIVE
+# ==========================================
+backup/** export-ignore
+backups/** export-ignore
+backup_files/** export-ignore
+restore_files/** export-ignore
+*.bak export-ignore
+*.backup export-ignore
+*.orig export-ignore
+*.rej export-ignore
+
+archives/** export-ignore
+old_versions/** export-ignore
+deprecated/** export-ignore
+
+# ==========================================
+# MONITORING AND METRICS
+# ==========================================
+metrics/** export-ignore
+monitoring/** export-ignore
+grafana/** export-ignore
+prometheus/** export-ignore
+*.metrics export-ignore
+
+performance_logs/** export-ignore
+monitoring_data/** export-ignore
+metrics_data/** export-ignore
+log_analysis/** export-ignore
+
+# ==========================================
+# COMPLIANCE AND AUDIT
+# ==========================================
+audit_logs/** export-ignore
+audit_trails/** export-ignore
+compliance_logs/** export-ignore
+security_audit_logs/** export-ignore
+access_logs/** export-ignore
+
+temp_compliance/** export-ignore
+compliance_reports/** export-ignore
+hipaa_reports/** export-ignore
+gdpr_reports/** export-ignore
+sox_reports/** export-ignore
+
+security_scans/** export-ignore
+vulnerability_scans/** export-ignore
+penetration_test_results/** export-ignore
+*.nmap export-ignore
+*.nessus export-ignore
+*.burp export-ignore
+
+# ==========================================
+# RESEARCH AND DEVELOPMENT
+# ==========================================
+research/** export-ignore
+dev_notes/** export-ignore
+experiment/** export-ignore
+prototype/** export-ignore
+
+dev_db/** export-ignore
+test_db/** export-ignore
+local_db/** export-ignore
+
+# ==========================================
+# PROJECT-SPECIFIC FILES
+# ==========================================
+# HMS Enterprise-Grade specific
+audit_venv/** export-ignore
+hms-enterprise-grade/** export-ignore
+loadtest/** export-ignore
+integration_tests/** export-ignore
+frontend-backup-*/** export-ignore
+original/** export-ignore
+perfection/** export-ignore
+validation/** export-ignore
+bin/** export-ignore
+cookies.txt export-ignore
+
+# ==========================================
+# GENERATED FILES
+# ==========================================
+*-generated.* export-ignore
+generated-* export-ignore
+auto-generated-* export-ignore
+*.generated.* export-ignore
+
+# Migration files
+migrations/** export-ignore
+*_migration.* export-ignore
+migrate-* export-ignore
+
+# API client generated files
+api/generated/** export-ignore
+swagger-codegen/** export-ignore
+openapi-generator/** export-ignore
+
+# Protocol buffer generated files
+*.pb.go export-ignore
+*.pb.cc export-ignore
+*.pb.h export-ignore
+*_pb2.py export-ignore
+
+# GraphQL generated files
+graphql/generated/** export-ignore
+__generated__/** export-ignore
+
+# ==========================================
+# THIRD-PARTY AND VENDOR
+# ==========================================
+vendor/** export-ignore
+third_party/** export-ignore
+libs/** export-ignore
+external/** export-ignore
+
+bower_components/** export-ignore
+
+packages/** export-ignore
+
+target/** export-ignore
+
+.gradle/** export-ignore
+build/** export-ignore
+
+# ==========================================
+# VIRTUAL MACHINES AND CONTAINERS
+# ==========================================
+.vagrant/** export-ignore
+Vagrantfile export-ignore
+
+# ==========================================
+# DOCUMENTATION (EXCLUDE FROM PACKAGES)
+# ==========================================
+docs/generated/** export-ignore
+docs/api/** export-ignore
+docs/build/** export-ignore
+
+# Documentation drafts
+docs/draft/** export-ignore
+docs/work-in-progress/** export-ignore
+
+# ==========================================
+# TESTING AND QUALITY
+# ==========================================
+cypress/** export-ignore
+playwright/** export-ignore
+test-results/** export-ignore
+playwright-report/** export-ignore
+*.spec.js.snap export-ignore
+*.test.js.snap export-ignore
+
+test-utils/** export-ignore
+__tests__/** export-ignore
+__mocks__/** export-ignore
+
+test/data/** export-ignore
+test/fixtures/** export-ignore
+test/mocks/** export-ignore
+
+# ==========================================
+# SPECIAL DIFF SETTINGS
+# ==========================================
+# Treat these as text but use custom diff tools
+*.csv diff=csv
+*.tsv diff=tsv
+*.json diff=json
+*.xml diff=xml
+*.yaml diff=yaml
+*.yml diff=yaml
+
+# Custom diff for specific file types
+*.py diff=python
+*.js diff=javascript
+*.ts diff=typescript
+*.html diff=html
+*.css diff=css
+*.md diff=markdown
+
+# ==========================================
+# MERGE DRIVERS
+# ==========================================
+# Custom merge drivers for specific file types
+*.json merge=json
+*.yaml merge=yaml
+*.yml merge=yaml
+
+# ==========================================
+# LFS CONFIGURATION
+# ==========================================
+# Large files that should use Git LFS
+# Uncomment and customize as needed for your project
+# *.pdf filter=lfs diff=lfs merge=lfs -text
+# *.zip filter=lfs diff=lfs merge=lfs -text
+# *.gz filter=lfs diff=lfs merge=lfs -text
+# *.mp4 filter=lfs diff=lfs merge=lfs -text
+# *.mov filter=lfs diff=lfs merge=lfs -text
+
+# ==========================================
+# EXPORT IGNORE FOR PACKAGES
+# ==========================================
+# Files to exclude from package exports
+# This is useful when creating releases or packages
+
+# Development files
+scripts/dev-*/** export-ignore
+scripts/local-*/** export-ignore
+scripts/test-*/** export-ignore
+
+# Development tools
+.npm/** export-ignore
+.yarn/** export-ignore
+.pip-cache/** export-ignore
+.maven/** export-ignore
+.gradle/** export-ignore
+.bundle/** export-ignore
+
+# ==========================================
+# END OF FILE
+# ==========================================

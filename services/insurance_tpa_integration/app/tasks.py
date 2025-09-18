@@ -1,23 +1,17 @@
 import json
 import time
 from datetime import datetime, timedelta
-
 import requests
 from celery import shared_task
 from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
-
 from .models import Claim, PreAuth, Reimbursement
-
-
 @shared_task(bind=True, max_retries=3)
 def submit_tpa_request(self, preauth_id):
-    """Submit TPA request asynchronously"""
     try:
         cache_key = "tpa_status_" + str(preauth_id)
         cache.set(cache_key, "submitting", timeout=300)
-
         preauth = PreAuth.objects.get(id=preauth_id)
         payload = {
             "patient_id": preauth.patient.id,
@@ -26,8 +20,6 @@ def submit_tpa_request(self, preauth_id):
             "diagnosis_codes": [],
             "procedure_codes": [],
         }
-
-        # Mock TPA endpoint
         response = requests.post(
             "http://mock-tpa.com/api/submit",
             json=payload,
@@ -36,7 +28,6 @@ def submit_tpa_request(self, preauth_id):
                 "Authorization": "Token " + getattr(settings, "TPA_API_TOKEN", "")
             },
         )
-
         if response.status_code == 200:
             result = response.json()
             preauth.tpa_response = json.dumps(result)
@@ -60,26 +51,18 @@ def submit_tpa_request(self, preauth_id):
     except Exception as e:
         cache.set(cache_key, "error: " + str(e), timeout=300)
         raise self.retry(countdown=60 * (2**self.request.retries))
-
-
 @shared_task(bind=True, max_retries=5)
 def poll_tpa_status(self, preauth_id):
-    """Poll TPA status for submitted request"""
     try:
         cache_key = "tpa_status_" + str(preauth_id)
         current_status = cache.get(cache_key)
-
         if current_status != "submitted":
             return {"status": "not_ready", "current_status": current_status}
-
         preauth = PreAuth.objects.get(id=preauth_id)
         response_data = json.loads(preauth.tpa_response) if preauth.tpa_response else {}
         transaction_id = response_data.get("transaction_id")
-
         if not transaction_id:
             return {"status": "no_transaction_id"}
-
-        # Mock TPA status endpoint
         status_url = "http://mock-tpa.com/api/status/" + str(transaction_id)
         response = requests.get(
             status_url,
@@ -88,19 +71,14 @@ def poll_tpa_status(self, preauth_id):
                 "Authorization": "Token " + getattr(settings, "TPA_API_TOKEN", "")
             },
         )
-
         if response.status_code == 200:
             status_data = response.json()
             preauth.status = status_data.get("status", "pending")
             preauth.tpa_response = json.dumps(status_data)
             preauth.save()
-
             cache.set(cache_key, preauth.status, timeout=300)
-
-            # Trigger notifications
             if preauth.status in ["approved", "rejected"]:
                 send_notification.delay(preauth_id, preauth.status)
-
             return {
                 "status": "polled",
                 "new_status": preauth.status,
@@ -112,11 +90,8 @@ def poll_tpa_status(self, preauth_id):
         return {"status": "error", "reason": "PreAuth not found"}
     except Exception as e:
         raise self.retry(countdown=300 * (2**self.request.retries))
-
-
 @shared_task
 def send_notification(preauth_id, status):
-    """Send notification via email/SMS (mock implementation)"""
     try:
         preauth = PreAuth.objects.get(id=preauth_id)
         message = (
@@ -128,8 +103,6 @@ def send_notification(preauth_id, status):
             + str(preauth.claim_amount)
             + "."
         )
-
-        # Mock notification - in production, integrate with email/SMS service
         print("NOTIFICATION: " + message)
         print(
             "To: "
@@ -138,8 +111,6 @@ def send_notification(preauth_id, status):
             + str(preauth.patient.phone)
             + " (SMS)"
         )
-
-        # Cache notification record
         cache.set(
             "notification_"
             + str(preauth_id)
@@ -153,9 +124,8 @@ def send_notification(preauth_id, status):
                 "timestamp": timezone.now().isoformat(),
                 "patient_id": preauth.patient.id,
             },
-            timeout=86400 * 30,  # 30 days
+            timeout=86400 * 30,  
         )
-
         return {
             "status": "notification_sent",
             "preauth_id": preauth_id,
@@ -166,30 +136,20 @@ def send_notification(preauth_id, status):
     except Exception as e:
         print("Notification failed: " + str(e))
         return {"status": "notification_failed", "error": str(e)}
-
-
 @shared_task
 def cleanup_old_records():
-    """Clean up records older than 365 days"""
     cutoff_date = timezone.now() - timedelta(days=365)
     deleted_count = 0
-
     try:
-        # Clean up old PreAuth records (cascade deletes related claims)
         old_preauths = PreAuth.objects.filter(created_at__lt=cutoff_date)
         count = old_preauths.count()
         old_preauths.delete()
         deleted_count += count
-
-        # Clean up old Reimbursements
         old_reimbursements = Reimbursement.objects.filter(payment_date__lt=cutoff_date)
         count = old_reimbursements.count()
         old_reimbursements.delete()
         deleted_count += count
-
-        # Clear related cache
         cache.clear()
-
         return {
             "status": "cleanup_complete",
             "deleted_count": deleted_count,

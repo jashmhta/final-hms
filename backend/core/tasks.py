@@ -4,8 +4,6 @@ from django.core.mail import send_mail
 from django.db import models
 from django.utils import timezone
 from pharmacy.models import Medication
-
-
 @shared_task
 def send_appointment_reminders():
     now = timezone.now()
@@ -16,10 +14,7 @@ def send_appointment_reminders():
     for appt in upcoming.select_related("patient", "doctor"):
         subject = f"Appointment Reminder"
         body = f"Reminder: appointment on {appt.start_at} with doctor {appt.doctor_id}"
-        # In real system, use patient email/phone
         send_mail(subject, body, None, ["admin@example.com"], fail_silently=True)
-
-
 @shared_task
 def check_low_stock_and_notify():
     low = Medication.objects.filter(stock_quantity__lt=models.F("min_stock_level"))

@@ -2,7 +2,6 @@ import base64
 import os
 from datetime import datetime
 from typing import List, Optional
-
 import redis.asyncio as aioredis
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -14,7 +13,6 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 from sqlalchemy import Column, DateTime, Integer, String, Text, create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
-
 DATABASE_URL = os.getenv(
     "AUDIT_DATABASE_URL", os.getenv("DATABASE_URL", "sqlite:///./audit.db")
 )
@@ -23,15 +21,11 @@ JWT_ALG = os.getenv("JWT_ALG", "HS256")
 SERVICE_SHARED_KEY = os.getenv("SERVICE_SHARED_KEY", None)
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/1")
 AUDIT_PRIVATE_KEY_PATH = os.getenv("AUDIT_PRIVATE_KEY_PATH", None)
-
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
-
 app = FastAPI(title="Audit Service", version="1.2.0")
 Instrumentator().instrument(app).expose(app)
-
-
 class AuditEventModel(Base):
     __tablename__ = "audit_events"
     id = Column(Integer, primary_key=True)
@@ -46,12 +40,8 @@ class AuditEventModel(Base):
     ip = Column(String(64), nullable=True)
     request_id = Column(String(128), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-
-
 def create_tables():
     Base.metadata.create_all(bind=engine)
-
-
 @app.on_event("startup")
 async def on_startup():
     create_tables()
@@ -60,20 +50,15 @@ async def on_startup():
         await FastAPILimiter.init(redis)
     except Exception:
         pass
-
-
 def get_db() -> Session:
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-
-
 def require_auth(
     authorization: str | None = Header(None), x_service_key: str | None = Header(None)
 ):
-    # Allow shared key for service-to-service
     if SERVICE_SHARED_KEY and x_service_key == SERVICE_SHARED_KEY:
         return {"role": "SUPER_ADMIN", "svc": "backend"}
     if not authorization or not authorization.startswith("Bearer "):
@@ -84,8 +69,6 @@ def require_auth(
         return payload
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
-
-
 class AuditEventIn(BaseModel):
     service: Optional[str] = None
     action: Optional[str] = None
@@ -94,8 +77,6 @@ class AuditEventIn(BaseModel):
     detail: Optional[str] = None
     encrypted: Optional[bool] = False
     ciphertext_b64: Optional[str] = None
-
-
 class AuditEventOut(BaseModel):
     id: int
     service: str
@@ -109,16 +90,11 @@ class AuditEventOut(BaseModel):
     ip: Optional[str]
     request_id: Optional[str]
     created_at: datetime
-
     class Config:
         from_attributes = True
-
-
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
-
 @app.post(
     "/api/audit/events",
     response_model=AuditEventOut,
@@ -148,7 +124,6 @@ def create_event(
             ),
         )
         import json as _json
-
         data = _json.loads(plaintext.decode("utf-8"))
         svc = data.get("service")
         act = data.get("action")
@@ -177,8 +152,6 @@ def create_event(
     db.commit()
     db.refresh(row)
     return row
-
-
 @app.get(
     "/api/audit/events",
     response_model=List[AuditEventOut],
@@ -191,7 +164,6 @@ def list_events(
     action: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=1000),
 ):
-    # Only admins can view audit logs
     if claims.get("role") not in {"SUPER_ADMIN", "HOSPITAL_ADMIN"}:
         raise HTTPException(status_code=403, detail="Forbidden")
     q = db.query(AuditEventModel).order_by(AuditEventModel.id.desc())

@@ -1,0 +1,188 @@
+# HMS Enterprise-Grade Docker Compose Template
+# Standardized configuration eliminates redundant docker-compose files
+
+version: '3.8'
+
+services:
+  # Database Service
+  {{SERVICE_NAME}}-db:
+    image: postgres:15
+    container_name: {{SERVICE_NAME}}-db
+    environment:
+      POSTGRES_DB: {{DATABASE_NAME}}
+      POSTGRES_USER: {{DATABASE_USER}}
+      POSTGRES_PASSWORD: {{DATABASE_PASSWORD}}
+    ports:
+      - "{{DB_PORT}}:5432"
+    volumes:
+      - {{SERVICE_NAME}}_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - {{SERVICE_NAME}}-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{DATABASE_USER}} -d {{DATABASE_NAME}}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache (Optional)
+  {{SERVICE_NAME}}-redis:
+    image: redis:7-alpine
+    container_name: {{SERVICE_NAME}}-redis
+    ports:
+      - "{{REDIS_PORT}}:6379"
+    volumes:
+      - {{SERVICE_NAME}}_redis_data:/data
+    networks:
+      - {{SERVICE_NAME}}-network
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    profiles:
+      - cache
+
+  # Main Application Service
+  {{SERVICE_NAME}}-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: {{SERVICE_NAME}}-service
+    ports:
+      - "{{SERVICE_PORT}}:{{CONTAINER_PORT}}"
+    environment:
+      # Database Configuration
+      DB_HOST: {{SERVICE_NAME}}-db
+      DB_PORT: 5432
+      DB_DATABASE: {{DATABASE_NAME}}
+      DB_USERNAME: {{DATABASE_USER}}
+      DB_PASSWORD: {{DATABASE_PASSWORD}}
+
+      # Redis Configuration (Optional)
+      REDIS_HOST: {{SERVICE_NAME}}-redis
+      REDIS_PORT: 6379
+
+      # Service Configuration
+      SERVICE_NAME: {{SERVICE_NAME}}
+      SERVICE_DESCRIPTION: {{SERVICE_DESCRIPTION}}
+      SERVICE_VERSION: {{SERVICE_VERSION}}
+      SERVICE_PORT: {{CONTAINER_PORT}}
+      ENVIRONMENT: {{ENVIRONMENT}}
+
+      # Security Configuration
+      SECRET_KEY: ${SECRET_KEY:-default-secret-key-change-in-production}
+      HIPAA_ENCRYPTION_KEY: ${HIPAA_ENCRYPTION_KEY:-default-hipaa-key-change-in-production}
+
+      # Monitoring Configuration
+      LOG_LEVEL: {{LOG_LEVEL}}
+      PROMETHEUS_ENABLED: "true"
+      METRICS_ENABLED: "true"
+
+      # CORS Configuration
+      CORS_ORIGINS: {{CORS_ORIGINS}}
+
+    depends_on:
+      {{SERVICE_NAME}}-db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+    networks:
+      - {{SERVICE_NAME}}-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:{{CONTAINER_PORT}}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Database Migration Service
+  {{SERVICE_NAME}}-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: {{SERVICE_NAME}}-migrate
+    environment:
+      DB_HOST: {{SERVICE_NAME}}-db
+      DB_PORT: 5432
+      DB_DATABASE: {{DATABASE_NAME}}
+      DB_USERNAME: {{DATABASE_USER}}
+      DB_PASSWORD: {{DATABASE_PASSWORD}}
+      SERVICE_NAME: {{SERVICE_NAME}}
+    command: python -m alembic upgrade head
+    depends_on:
+      {{SERVICE_NAME}}-db:
+        condition: service_healthy
+    networks:
+      - {{SERVICE_NAME}}-network
+    profiles:
+      - migrate
+
+  # Prometheus Monitoring (Optional)
+  {{SERVICE_NAME}}-prometheus:
+    image: prom/prometheus:latest
+    container_name: {{SERVICE_NAME}}-prometheus
+    ports:
+      - "{{PROMETHEUS_PORT}}:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - {{SERVICE_NAME}}_prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - {{SERVICE_NAME}}-network
+    profiles:
+      - monitoring
+
+  # Grafana Dashboard (Optional)
+  {{SERVICE_NAME}}-grafana:
+    image: grafana/grafana:latest
+    container_name: {{SERVICE_NAME}}-grafana
+    ports:
+      - "{{GRAFANA_PORT}}:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - {{SERVICE_NAME}}_grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - {{SERVICE_NAME}}-network
+    profiles:
+      - monitoring
+
+  # RabbitMQ Message Queue (Optional)
+  {{SERVICE_NAME}}-rabbitmq:
+    image: rabbitmq:3-management
+    container_name: {{SERVICE_NAME}}-rabbitmq
+    ports:
+      - "{{RABBITMQ_PORT}}:5672"
+      - "{{RABBITMQ_MGMT_PORT}}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: {{RABBITMQ_USER}}
+      RABBITMQ_DEFAULT_PASS: {{RABBITMQ_PASSWORD}}
+    volumes:
+      - {{SERVICE_NAME}}_rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - {{SERVICE_NAME}}-network
+    profiles:
+      - message-queue
+
+volumes:
+  {{SERVICE_NAME}}_data:
+  {{SERVICE_NAME}}_redis_data:
+  {{SERVICE_NAME}}_prometheus_data:
+  {{SERVICE_NAME}}_grafana_data:
+  {{SERVICE_NAME}}_rabbitmq_data:
+
+networks:
+  {{SERVICE_NAME}}-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: {{NETWORK_SUBNET}}

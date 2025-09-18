@@ -1,0 +1,371 @@
+# HMS Enterprise-Grade Kubernetes Deployment Template
+# Standardized configuration eliminates redundant deployment manifests
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{SERVICE_NAME}}-service
+  namespace: {{NAMESPACE}}
+  labels:
+    app: {{SERVICE_NAME}}
+    version: {{SERVICE_VERSION}}
+    component: service
+    tier: backend
+    managed-by: hms-enterprise
+spec:
+  replicas: {{REPLICAS}}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{MAX_SURGE}}
+      maxUnavailable: {{MAX_UNAVAILABLE}}
+  selector:
+    matchLabels:
+      app: {{SERVICE_NAME}}
+      component: service
+  template:
+    metadata:
+      labels:
+        app: {{SERVICE_NAME}}
+        version: {{SERVICE_VERSION}}
+        component: service
+        tier: backend
+        managed-by: hms-enterprise
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{CONTAINER_PORT}}"
+        prometheus.io/path: "/metrics"
+        checksum/config: {{CONFIG_CHECKSUM}}
+    spec:
+      {{#if SERVICE_ACCOUNT_NAME}}
+      serviceAccountName: {{SERVICE_ACCOUNT_NAME}}
+      {{/if}}
+      containers:
+      - name: {{SERVICE_NAME}}-service
+        image: {{IMAGE_REGISTRY}}/{{IMAGE_NAME}}:{{IMAGE_TAG}}
+        imagePullPolicy: {{IMAGE_PULL_POLICY}}
+        ports:
+        - containerPort: {{CONTAINER_PORT}}
+          name: http
+          protocol: TCP
+        env:
+        - name: SERVICE_NAME
+          value: {{SERVICE_NAME}}
+        - name: SERVICE_DESCRIPTION
+          value: {{SERVICE_DESCRIPTION}}
+        - name: SERVICE_VERSION
+          value: {{SERVICE_VERSION}}
+        - name: SERVICE_PORT
+          value: "{{CONTAINER_PORT}}"
+        - name: ENVIRONMENT
+          value: {{ENVIRONMENT}}
+        - name: NAMESPACE
+          value: {{NAMESPACE}}
+
+        # Database Configuration
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: {{DATABASE_SECRET_NAME}}
+              key: host
+        - name: DB_PORT
+          valueFrom:
+            secretKeyRef:
+              name: {{DATABASE_SECRET_NAME}}
+              key: port
+        - name: DB_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: {{DATABASE_SECRET_NAME}}
+              key: database
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: {{DATABASE_SECRET_NAME}}
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{DATABASE_SECRET_NAME}}
+              key: password
+
+        # Security Configuration
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{SECURITY_SECRET_NAME}}
+              key: secret-key
+        - name: HIPAA_ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{SECURITY_SECRET_NAME}}
+              key: hipaa-encryption-key
+
+        # Cache Configuration
+        - name: REDIS_HOST
+          value: "{{REDIS_HOST}}"
+        - name: REDIS_PORT
+          value: "{{REDIS_PORT}}"
+
+        # Message Queue Configuration
+        - name: RABBITMQ_HOST
+          value: "{{RABBITMQ_HOST}}"
+        - name: RABBITMQ_PORT
+          value: "{{RABBITMQ_PORT}}"
+
+        # Monitoring Configuration
+        - name: LOG_LEVEL
+          value: {{LOG_LEVEL}}
+        - name: PROMETHEUS_ENABLED
+          value: "{{PROMETHEUS_ENABLED}}"
+        - name: METRICS_ENABLED
+          value: "{{METRICS_ENABLED}}"
+
+        # Resource Limits
+        resources:
+          requests:
+            memory: "{{MEMORY_REQUEST}}"
+            cpu: "{{CPU_REQUEST}}"
+          limits:
+            memory: "{{MEMORY_LIMIT}}"
+            cpu: "{{CPU_LIMIT}}"
+
+        # Health Checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{CONTAINER_PORT}}
+          initialDelaySeconds: {{LIVENESS_INITIAL_DELAY}}
+          periodSeconds: {{LIVENESS_PERIOD}}
+          timeoutSeconds: {{LIVENESS_TIMEOUT}}
+          failureThreshold: {{LIVENESS_FAILURE_THRESHOLD}}
+          successThreshold: {{LIVENESS_SUCCESS_THRESHOLD}}
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: {{CONTAINER_PORT}}
+          initialDelaySeconds: {{READINESS_INITIAL_DELAY}}
+          periodSeconds: {{READINESS_PERIOD}}
+          timeoutSeconds: {{READINESS_TIMEOUT}}
+          failureThreshold: {{READINESS_FAILURE_THRESHOLD}}
+          successThreshold: {{READINESS_SUCCESS_THRESHOLD}}
+
+        # Volume Mounts
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+        - name: logs-volume
+          mountPath: /app/logs
+        {{#if TLS_VOLUME_MOUNTS}}
+        {{TLS_VOLUME_MOUNTS}}
+        {{/if}}
+
+        # Security Context
+        securityContext:
+          runAsNonRoot: {{RUN_AS_NON_ROOT}}
+          runAsUser: {{RUN_AS_USER}}
+          runAsGroup: {{RUN_AS_GROUP}}
+          readOnlyRootFilesystem: {{READ_ONLY_ROOT_FILESYSTEM}}
+          allowPrivilegeEscalation: {{ALLOW_PRIVILEGE_ESCALATION}}
+          capabilities:
+            drop:
+            - ALL
+            add:
+            {{#if CAPABILITIES_TO_ADD}}
+            {{CAPABILITIES_TO_ADD}}
+            {{/if}}
+
+      # Volumes
+      volumes:
+      - name: config-volume
+        configMap:
+          name: {{SERVICE_NAME}}-config
+      - name: logs-volume
+        emptyDir: {}
+      {{#if TLS_VOLUMES}}
+      {{TLS_VOLUMES}}
+      {{/if}}
+
+      # Node Selector and Tolerations
+      {{#if NODE_SELECTOR}}
+      nodeSelector:
+        {{NODE_SELECTOR}}
+      {{/if}}
+
+      {{#if TOLERATIONS}}
+      tolerations:
+        {{TOLERATIONS}}
+      {{/if}}
+
+      # Affinity
+      {{#if AFFINITY}}
+      affinity:
+        {{AFFINITY}}
+      {{/if}}
+
+      # Topology Spread Constraints
+      {{#if TOPOLOGY_SPREAD_CONSTRAINTS}}
+      topologySpreadConstraints:
+        {{TOPOLOGY_SPREAD_CONSTRAINTS}}
+      {{/if}}
+
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{SERVICE_NAME}}-service
+  namespace: {{NAMESPACE}}
+  labels:
+    app: {{SERVICE_NAME}}
+    component: service
+    tier: backend
+    managed-by: hms-enterprise
+  annotations:
+    {{#if SERVICE_ANNOTATIONS}}
+    {{SERVICE_ANNOTATIONS}}
+    {{/if}}
+spec:
+  type: {{SERVICE_TYPE}}
+  ports:
+  - port: {{SERVICE_PORT}}
+    targetPort: {{CONTAINER_PORT}}
+    protocol: TCP
+    name: http
+    {{#if NODE_PORT}}
+    nodePort: {{NODE_PORT}}
+    {{/if}}
+  selector:
+    app: {{SERVICE_NAME}}
+    component: service
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{SERVICE_NAME}}-hpa
+  namespace: {{NAMESPACE}}
+  labels:
+    app: {{SERVICE_NAME}}
+    component: service
+    managed-by: hms-enterprise
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{SERVICE_NAME}}-service
+  minReplicas: {{MIN_REPLICAS}}
+  maxReplicas: {{MAX_REPLICAS}}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{CPU_TARGET_UTILIZATION}}
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: {{MEMORY_TARGET_UTILIZATION}}
+  {{#if CUSTOM_METRICS}}
+  {{CUSTOM_METRICS}}
+  {{/if}}
+
+---
+# Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{SERVICE_NAME}}-pdb
+  namespace: {{NAMESPACE}}
+  labels:
+    app: {{SERVICE_NAME}}
+    component: service
+    managed-by: hms-enterprise
+spec:
+  minAvailable: {{MIN_AVAILABLE}}
+  selector:
+    matchLabels:
+      app: {{SERVICE_NAME}}
+      component: service
+
+---
+# Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{SERVICE_NAME}}-network-policy
+  namespace: {{NAMESPACE}}
+  labels:
+    app: {{SERVICE_NAME}}
+    component: service
+    managed-by: hms-enterprise
+spec:
+  podSelector:
+    matchLabels:
+      app: {{SERVICE_NAME}}
+      component: service
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: {{NAMESPACE}}
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    - podSelector:
+        matchLabels:
+          app: {{SERVICE_NAME}}
+          component: service
+    ports:
+    - protocol: TCP
+      port: {{CONTAINER_PORT}}
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: {{NAMESPACE}}
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+
+---
+# Service Monitor (Prometheus Operator)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{SERVICE_NAME}}-service-monitor
+  namespace: {{NAMESPACE}}
+  labels:
+    app: {{SERVICE_NAME}}
+    component: service
+    managed-by: hms-enterprise
+spec:
+  selector:
+    matchLabels:
+      app: {{SERVICE_NAME}}
+      component: service
+  endpoints:
+  - port: http
+    interval: 30s
+    path: /metrics
+    scheme: http
+    timeout: 10s
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: '(.*)'
+      targetLabel: service
+      replacement: {{SERVICE_NAME}}

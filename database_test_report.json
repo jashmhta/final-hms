@@ -1,0 +1,71 @@
+{
+  "test_suite": "HMS Enterprise-Grade Database Testing",
+  "execution_timestamp": "2025-09-17T16:04:24.132099",
+  "total_duration": 0.005079984664916992,
+  "overall_status": "FAIL",
+  "test_summary": {
+    "total_tests": 8,
+    "passed_tests": 0,
+    "failed_tests": 8,
+    "success_rate": 0.0
+  },
+  "detailed_results": {
+    "schema_validation": {
+      "status": "FAIL",
+      "error": "'OneToOneField' object has no attribute 'on_delete'"
+    },
+    "migration_tests": {
+      "status": "FAIL",
+      "error": "no such table: django_migrations"
+    },
+    "data_integrity": {
+      "status": "FAIL",
+      "error": "no such table: information_schema.table_constraints"
+    },
+    "performance_tests": {
+      "status": "FAIL",
+      "error": "no such table: django_migrations"
+    },
+    "security_tests": {
+      "status": "FAIL",
+      "error": "no such table: pg_user"
+    },
+    "compliance_tests": {
+      "status": "FAIL",
+      "error": "no such table: information_schema.tables"
+    },
+    "connection_tests": {
+      "default_db": {
+        "status": "FAIL",
+        "error": "no such function: version"
+      }
+    },
+    "query_optimization": {}
+  },
+  "database_configuration": {
+    "engine": "django.db.backends.sqlite3",
+    "name": "/home/azureuser/hms-enterprise-grade/backend/db.sqlite3",
+    "host": "",
+    "port": ""
+  },
+  "recommendations": [
+    {
+      "category": "Performance",
+      "priority": "MEDIUM",
+      "issue": "Limited number of indexes",
+      "recommendation": "Consider adding indexes for frequently queried columns"
+    },
+    {
+      "category": "Compliance",
+      "priority": "CRITICAL",
+      "issue": "Missing HIPAA encryption",
+      "recommendation": "Implement field-level encryption for PHI data"
+    },
+    {
+      "category": "Compliance",
+      "priority": "HIGH",
+      "issue": "Missing audit tables",
+      "recommendation": "Implement audit logging for data changes"
+    }
+  ]
+}

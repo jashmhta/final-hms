@@ -1,8 +1,5 @@
 from rest_framework import serializers
-
 from .models import LabOrder, LabResult, LabTest
-
-
 class LabTestSerializer(serializers.ModelSerializer):
     class Meta:
         model = LabTest
@@ -15,15 +12,11 @@ class LabTestSerializer(serializers.ModelSerializer):
             "price_cents",
         ]
         read_only_fields = ["id"]
-
-
 class LabOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = LabOrder
         fields = ["id", "hospital", "patient", "doctor", "test", "ordered_at", "status"]
         read_only_fields = ["id", "ordered_at"]
-
-
 class LabResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = LabResult

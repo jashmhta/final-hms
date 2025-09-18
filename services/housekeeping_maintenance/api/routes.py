@@ -2,7 +2,6 @@ from core.auth.dependencies import get_current_user, require_roles
 from core.db.session import get_db
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-
 from ..models import models
 from ..schemas import (
     AssetUpkeepCreate,
@@ -15,11 +14,7 @@ from ..schemas import (
     MaintenanceRequestRead,
     MaintenanceRequestUpdate,
 )
-
 router = APIRouter()
-
-
-# CleaningTask Endpoints
 @router.post("/cleaning_tasks", response_model=CleaningTaskRead)
 @require_roles("admin", "staff")
 def create_cleaning_task(
@@ -32,16 +27,12 @@ def create_cleaning_task(
     db.commit()
     db.refresh(db_task)
     return db_task
-
-
 @router.get("/cleaning_tasks", response_model=list[CleaningTaskRead])
 @require_roles("admin", "staff")
 def list_cleaning_tasks(
     db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     return db.query(models.CleaningTask).all()
-
-
 @router.put("/cleaning_tasks/{task_id}", response_model=CleaningTaskRead)
 @require_roles("admin", "staff")
 def update_cleaning_task(
@@ -58,8 +49,6 @@ def update_cleaning_task(
     db.commit()
     db.refresh(db_task)
     return db_task
-
-
 @router.delete("/cleaning_tasks/{task_id}")
 @require_roles("admin", "staff")
 def delete_cleaning_task(
@@ -71,9 +60,6 @@ def delete_cleaning_task(
     db.delete(db_task)
     db.commit()
     return {"detail": "Deleted"}
-
-
-# MaintenanceRequest Endpoints
 @router.post("/maintenance_requests", response_model=MaintenanceRequestRead)
 @require_roles("admin", "staff")
 def create_maintenance_request(
@@ -86,17 +72,12 @@ def create_maintenance_request(
     db.commit()
     db.refresh(db_req)
     return db_req
-
-
 @router.get("/maintenance_requests", response_model=list[MaintenanceRequestRead])
 @require_roles("admin", "staff")
 def list_maintenance_requests(
     db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     return db.query(models.MaintenanceRequest).all()
-
-
-# AssetUpkeep Endpoints
 @router.post("/asset_upkeep", response_model=AssetUpkeepRead)
 @require_roles("admin", "staff")
 def create_asset_upkeep(
@@ -109,8 +90,6 @@ def create_asset_upkeep(
     db.commit()
     db.refresh(db_upkeep)
     return db_upkeep
-
-
 @router.get("/asset_upkeep", response_model=list[AssetUpkeepRead])
 @require_roles("admin", "staff")
 def list_asset_upkeep(

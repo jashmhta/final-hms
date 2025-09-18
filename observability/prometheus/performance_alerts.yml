@@ -1,7 +1,6 @@
 groups:
   - name: performance_alerts
     rules:
-      # API Response Time Alerts
       - alert: HighAPIResponseTime
         expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="hms-backend"}[5m])) > 0.1
         for: 5m
@@ -10,7 +9,6 @@ groups:
         annotations:
           summary: "High API response time (95th percentile > 100ms)"
           description: "95th percentile response time is {{ $value }}s for {{ $labels.job }}"
-
       - alert: CriticalAPIResponseTime
         expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="hms-backend"}[5m])) > 1.0
         for: 2m
@@ -19,8 +17,6 @@ groups:
         annotations:
           summary: "Critical API response time (95th percentile > 1s)"
           description: "95th percentile response time is {{ $value }}s for {{ $labels.job }}"
-
-      # Database Performance Alerts
       - alert: HighDBQueryTime
         expr: rate(django_db_execute_total{job="hms-backend"}[5m]) > 100
         for: 5m
@@ -29,7 +25,6 @@ groups:
         annotations:
           summary: "High database query rate"
           description: "Database query rate is {{ $value }} queries/second"
-
       - alert: DBConnectionPoolExhausted
         expr: django_db_connections_waiting_total{job="hms-backend"} > 10
         for: 2m
@@ -38,8 +33,6 @@ groups:
         annotations:
           summary: "Database connection pool exhausted"
           description: "Waiting database connections: {{ $value }}"
-
-      # Cache Performance Alerts
       - alert: LowCacheHitRate
         expr: rate(django_cache_get_total{job="hms-backend"}[5m]) / rate(django_cache_get_total{job="hms-backend"}[5m]) < 0.8
         for: 10m
@@ -48,8 +41,6 @@ groups:
         annotations:
           summary: "Low cache hit rate"
           description: "Cache hit rate is below 80%"
-
-      # Memory Usage Alerts
       - alert: HighMemoryUsage
         expr: (1 - system_memory_available_bytes / system_memory_total_bytes) > 0.9
         for: 5m
@@ -58,8 +49,6 @@ groups:
         annotations:
           summary: "High memory usage"
           description: "Memory usage is {{ $value | humanizePercentage }}"
-
-      # CPU Usage Alerts
       - alert: HighCPUUsage
         expr: rate(process_cpu_user_seconds_total[5m]) / rate(process_cpu_seconds_total[5m]) > 0.8
         for: 5m
@@ -68,8 +57,6 @@ groups:
         annotations:
           summary: "High CPU usage"
           description: "CPU usage is {{ $value | humanizePercentage }}"
-
-      # Error Rate Alerts
       - alert: HighErrorRate
         expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
         for: 5m
@@ -78,8 +65,6 @@ groups:
         annotations:
           summary: "High error rate (5xx)"
           description: "Error rate is {{ $value | humanizePercentage }}"
-
-      # Queue Backlog Alerts
       - alert: CeleryQueueBacklog
         expr: celery_queue_length{queue="celery"} > 1000
         for: 5m
@@ -88,8 +73,6 @@ groups:
         annotations:
           summary: "Celery queue backlog"
           description: "Celery queue length: {{ $value }}"
-
-      # SLA Breach Alerts
       - alert: APISLABreach
         expr: increase(http_request_duration_seconds{quantile="0.95"}[1h]) > 3600
         for: 5m

@@ -3,25 +3,20 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 import enum
-
 Base = declarative_base()
-
 class BedStatus(enum.Enum):
     AVAILABLE = "available"
     OCCUPIED = "occupied"
     MAINTENANCE = "maintenance"
     RESERVED = "reserved"
-
 class BedType(enum.Enum):
     GENERAL = "general"
     ICU = "icu"
     CCU = "ccu"
     PRIVATE = "private"
     SEMI_PRIVATE = "semi_private"
-
 class Bed(Base):
     __tablename__ = "beds"
-    
     id = Column(Integer, primary_key=True, index=True)
     bed_number = Column(String, unique=True)
     bed_type = Column(Enum(BedType))
@@ -32,12 +27,9 @@ class Bed(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
     ward = relationship("Ward")
-
 class Ward(Base):
     __tablename__ = "wards"
-    
     id = Column(Integer, primary_key=True, index=True)
     ward_name = Column(String)
     ward_type = Column(String)
@@ -46,10 +38,8 @@ class Ward(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
 class BedAssignment(Base):
     __tablename__ = "bed_assignments"
-    
     id = Column(Integer, primary_key=True, index=True)
     bed_id = Column(Integer, ForeignKey("beds.id"))
     patient_id = Column(String)
@@ -60,20 +50,16 @@ class BedAssignment(Base):
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
     bed = relationship("Bed")
-
 class BedMaintenance(Base):
     __tablename__ = "bed_maintenance"
-    
     id = Column(Integer, primary_key=True, index=True)
     bed_id = Column(Integer, ForeignKey("beds.id"))
     maintenance_type = Column(String)
     description = Column(Text)
     scheduled_date = Column(DateTime)
     completed_date = Column(DateTime, nullable=True)
-    status = Column(String)  # scheduled, in_progress, completed
+    status = Column(String)  
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
     bed = relationship("Bed")

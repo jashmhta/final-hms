@@ -1,0 +1,318 @@
+<?xml version="1.0"?>
+<ruleset name="HMS Enterprise-Grade Rules"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>HMS Enterprise-Grade System PMD Ruleset</description>
+
+    <!-- Basic Code Quality Rules -->
+    <rule ref="category/java/bestpractices.xml">
+        <exclude name="AvoidReassigningParameters"/>
+        <exclude name="AvoidReassigningLoopVariables"/>
+        <exclude name="AvoidLiteralsInIfCondition"/>
+    </rule>
+
+    <!-- Code Style Rules -->
+    <rule ref="category/java/codestyle.xml">
+        <exclude name="AtLeastOneConstructor"/>
+        <exclude name="CommentDefaultAccessModifier"/>
+        <exclude name="DefaultPackage"/>
+        <exclude name="LinguisticNaming"/>
+    </rule>
+
+    <!-- Design Rules -->
+    <rule ref="category/java/design.xml">
+        <exclude name="TooManyMethods"/>
+        <exclude name="LawOfDemeter"/>
+    </rule>
+
+    <!-- Error Prone Rules -->
+    <rule ref="category/java/errorprone.xml">
+        <exclude name="BeanMembersShouldSerialize"/>
+        <exclude name="DataflowAnomalyAnalysis"/>
+    </rule>
+
+    <!-- Performance Rules -->
+    <rule ref="category/java/performance.xml">
+        <exclude name="AvoidInstantiatingObjectsInLoops"/>
+        <exclude name="AvoidSynchronizedAtMethodLevel"/>
+    </rule>
+
+    <!-- Security Rules -->
+    <rule ref="category/java/security.xml"/>
+
+    <!-- Custom Healthcare System Rules -->
+    <rule name="PatientDataEncryption"
+          language="java"
+          message="Patient data should be encrypted before storage"
+          class="net.sourceforge.pmd.lang.rule.XPathRule">
+        <description>
+            Patient data must be encrypted before storage in healthcare systems.
+        </description>
+        <priority>1</priority>
+        <properties>
+            <property name="xpath">
+                <value>
+                    //MethodDeclaration[.//VariableDeclarator/VariableDeclaratorId[contains(@Image, 'patient') or contains(@Image, 'medical')]]
+                    [not(.//MethodInvocation[contains(@Image, 'encrypt')])]
+                </value>
+            </property>
+        </properties>
+    </rule>
+
+    <rule name="SecureDatabaseConnection"
+          language="java"
+          message="Database connections should use SSL/TLS encryption"
+          class="net.sourceforge.pmd.lang.rule.XPathRule">
+        <description>
+            Database connections in healthcare systems must use SSL/TLS encryption.
+        </description>
+        <priority>1</priority>
+        <properties>
+            <property name="xpath">
+                <value>
+                    //MethodInvocation[@Image='getConnection' and
+                    not(contains(//VariableDeclarator/VariableDeclaratorId[@Image], 'ssl') or
+                    contains(//VariableDeclarator/VariableDeclaratorId[@Image], 'tls'))]
+                </value>
+            </property>
+        </properties>
+    </rule>
+
+    <rule name="InputValidation"
+          language="java"
+          message="User input must be validated before processing"
+          class="net.sourceforge.pmd.lang.rule.XPathRule">
+        <description>
+            All user input must be validated before processing in healthcare systems.
+        </description>
+        <priority>2</priority>
+        <properties>
+            <property name="xpath">
+                <value>
+                    //MethodDeclaration[.//MethodInvocation[contains(@Image, 'getParameter')]]
+                    [not(.//MethodInvocation[contains(@Image, 'validate') or
+                    contains(@Image, 'sanitize') or
+                    contains(@Image, 'escape')])]
+                </value>
+            </property>
+        </properties>
+    </rule>
+
+    <rule name="AuthenticationRequired"
+          language="java"
+          message="Healthcare data access requires authentication"
+          class="net.sourceforge.pmd.lang.rule.XPathRule">
+        <description>
+            Healthcare data access methods must have authentication checks.
+        </description>
+        <priority>1</priority>
+        <properties>
+            <property name="xpath">
+                <value>
+                    //MethodDeclaration[contains(@Image, 'getPatient') or
+                    contains(@Image, 'getMedical') or
+                    contains(@Image, 'getHealth')]
+                    [not(.//MethodInvocation[contains(@Image, 'authenticate') or
+                    contains(@Image, 'authorize')])]
+                </value>
+            </property>
+        </properties>
+    </rule>
+
+    <rule name="AuditLogging"
+          language="java"
+          message="Healthcare operations must be logged for audit"
+          class="net.sourceforge.pmd.lang.rule.XPathRule">
+        <description>
+            Healthcare operations must have audit logging.
+        </description>
+        <priority>2</priority>
+        <properties>
+            <property name="xpath">
+                <value>
+                    //MethodDeclaration[contains(@Image, 'create') or
+                    contains(@Image, 'update') or
+                    contains(@Image, 'delete')]
+                    [contains(//VariableDeclarator/VariableDeclaratorId[@Image], 'patient') or
+                    contains(//VariableDeclarator/VariableDeclaratorId[@Image], 'medical') or
+                    contains(//VariableDeclarator/VariableDeclaratorId[@Image], 'health')]
+                    [not(.//MethodInvocation[contains(@Image, 'log') or
+                    contains(@Image, 'audit')])]
+                </value>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- Healthcare System Specific Thresholds -->
+    <rule name="ExcessiveMethodLength"
+          language="java"
+          message="Method length should not exceed {maxLines} lines in healthcare systems"
+          class="net.sourceforge.pmd.lang.java.rule.design.ExcessiveMethodLengthRule">
+        <description>
+            Methods in healthcare systems should be concise and maintainable.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="maxLines" value="50"/>
+            <property name="sigma" value="3"/>
+        </properties>
+    </rule>
+
+    <rule name="ExcessiveParameterList"
+          language="java"
+          message="Method parameter list should not exceed {maxParams} parameters in healthcare systems"
+          class="net.sourceforge.pmd.lang.java.rule.design.ExcessiveParameterListRule">
+        <description>
+            Methods should have a limited number of parameters in healthcare systems.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="maxParams" value="5"/>
+            <property name="sigma" value="3"/>
+        </properties>
+    </rule>
+
+    <rule name="CyclomaticComplexity"
+          language="java"
+          method="xpath"
+          message="Cyclomatic complexity should not exceed {threshold} in healthcare systems"
+          class="net.sourceforge.pmd.lang.rule.XPathRule">
+        <description>
+            Healthcare system methods should have low cyclomatic complexity.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value>
+                    //MethodDeclaration[count(descendant::IfStatement) +
+                    count(descendant::WhileStatement) +
+                    count(descendant::DoStatement) +
+                    count(descendant::ForStatement) +
+                    count(descendant::SwitchStatement) +
+                    count(descendant::CatchStatement) +
+                    count(descendant::ConditionalExpression) + 1 > 10]
+                </value>
+            </property>
+            <property name="threshold" value="10"/>
+        </properties>
+    </rule>
+
+    <!-- Data Protection Rules -->
+    <rule name="SensitiveDataInLogs"
+          language="java"
+          message="Sensitive healthcare data should not be logged"
+          class="net.sourceforge.pmd.lang.rule.XPathRule">
+        <description>
+            Sensitive healthcare data should not appear in log statements.
+        </description>
+        <priority>1</priority>
+        <properties>
+            <property name="xpath">
+                <value>
+                    //MethodInvocation[contains(@Image, 'log') or contains(@Image, 'debug') or contains(@Image, 'info')]
+                    //ArgumentList/Expression[contains(@Image, 'patient') or
+                    contains(@Image, 'medical') or
+                    contains(@Image, 'health') or
+                    contains(@Image, 'diagnosis') or
+                    contains(@Image, 'treatment')]
+                </value>
+            </property>
+        </properties>
+    </rule>
+
+    <rule name="HardcodedCredentials"
+          language="java"
+          message="Hardcoded credentials are not allowed in healthcare systems"
+          class="net.sourceforge.pmd.lang.rule.XPathRule">
+        <description>
+            Healthcare systems must not have hardcoded credentials.
+        </description>
+        <priority>1</priority>
+        <properties>
+            <property name="xpath">
+                <value>
+                    //VariableDeclarator/VariableInitializer/Expression/Literal
+                    [contains(@Image, 'password') or
+                    contains(@Image, 'secret') or
+                    contains(@Image, 'key') or
+                    contains(@Image, 'token')]
+                </value>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- Exception Handling Rules -->
+    <rule name="HealthcareExceptionHandling"
+          language="java"
+          message="Healthcare operations must have proper exception handling"
+          class="net.sourceforge.pmd.lang.rule.XPathRule">
+        <description>
+            Healthcare operations must have proper exception handling.
+        </description>
+        <priority>2</priority>
+        <properties>
+            <property name="xpath">
+                <value>
+                    //MethodDeclaration[contains(@Image, 'save') or
+                    contains(@Image, 'update') or
+                    contains(@Image, 'delete')]
+                    [contains(//VariableDeclarator/VariableDeclaratorId[@Image], 'patient') or
+                    contains(//VariableDeclarator/VariableDeclaratorId[@Image], 'medical') or
+                    contains(//VariableDeclarator/VariableDeclaratorId[@Image], 'health')]
+                    [not(.//TryStatement)]
+                </value>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- Concurrency Rules -->
+    <rule name="ThreadSafety"
+          language="java"
+          message="Healthcare data access must be thread-safe"
+          class="net.sourceforge.pmd.lang.rule.XPathRule">
+        <description>
+            Healthcare data access methods must be thread-safe.
+        </description>
+        <priority>2</priority>
+        <properties>
+            <property name="xpath">
+                <value>
+                    //MethodDeclaration[contains(@Image, 'get') or
+                    contains(@Image, 'set') or
+                    contains(@Image, 'update')]
+                    [contains(//VariableDeclarator/VariableDeclaratorId[@Image], 'patient') or
+                    contains(//VariableDeclarator/VariableDeclaratorId[@Image], 'medical') or
+                    contains(//VariableDeclarator/VariableDeclaratorId[@Image], 'health')]
+                    [not(.//Annotation[contains(@Image, 'Synchronized')]) and
+                    not(.//MarkerAnnotation[contains(@Image, 'Transactional')])]
+                </value>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- Documentation Rules -->
+    <rule name="HealthcareDocumentation"
+          language="java"
+          message="Healthcare methods must have proper documentation"
+          class="net.sourceforge.pmd.lang.rule.XPathRule">
+        <description>
+            Healthcare methods must have proper JavaDoc documentation.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value>
+                    //MethodDeclaration[contains(@Image, 'getPatient') or
+                    contains(@Image, 'saveMedical') or
+                    contains(@Image, 'updateHealth') or
+                    contains(@Image, 'delete') or
+                    contains(@Image, 'create')]
+                    [not(.//Comment preceding-sibling::*)]
+                </value>
+            </property>
+        </properties>
+    </rule>
+
+</ruleset>

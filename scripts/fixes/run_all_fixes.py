@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
 import subprocess
 import sys
-
 fixes = [
     "fix_exec_eval.py",
     "fix_subprocess_shell.py",
@@ -9,9 +7,7 @@ fixes = [
     "fix_ftp_usage.py",
     "fix_marshal_deserialization.py",
 ]
-
 print("Running automated security fixes for HMS Enterprise...")
-
 for fix in fixes:
     print(f"\n=== Running {fix} ===")
     try:
@@ -25,5 +21,4 @@ for fix in fixes:
             print(result.stderr)
     except Exception as e:
         print(f"Exception running {fix}: {e}")
-
 print("\nAll automated fixes completed. Review backups and manual changes required.")

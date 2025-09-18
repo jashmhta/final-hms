@@ -3,22 +3,17 @@ import json
 import os
 import time
 from typing import Optional
-
 import requests
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from pybreaker import CircuitBreaker
-
 AUDIT_URL = os.getenv(
     "AUDIT_SERVICE_URL", "https://audit_service:9015/api/audit/events"
 )
 SERVICE_JWT = os.getenv("SERVICE_JWT", None)
 SERVICE_SHARED_KEY = os.getenv("SERVICE_SHARED_KEY", None)
 AUDIT_PUBLIC_KEY_PATH = os.getenv("AUDIT_PUBLIC_KEY_PATH", None)
-
 breaker = CircuitBreaker(fail_max=5, reset_timeout=60)
-
-
 def _encrypt_payload(payload: dict) -> dict:
     if not AUDIT_PUBLIC_KEY_PATH or not os.path.exists(AUDIT_PUBLIC_KEY_PATH):
         return payload
@@ -37,8 +32,6 @@ def _encrypt_payload(payload: dict) -> dict:
         "encrypted": True,
         "ciphertext_b64": base64.b64encode(cipher).decode("ascii"),
     }
-
-
 def send_audit_event(
     service: str,
     action: str,
@@ -61,11 +54,9 @@ def send_audit_event(
         "detail": detail,
     }
     payload = _encrypt_payload(payload)
-
     @breaker
     def post():
         requests.post(AUDIT_URL, json=payload, headers=headers, timeout=2)
-
     for attempt in range(3):
         try:
             post()
