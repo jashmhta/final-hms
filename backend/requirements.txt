@@ -15,7 +15,7 @@ psycopg2-binary==2.9.10
 
 # Cloud Storage
 boto3==1.34.162
-django-storages==1.14.4
+django-storages==1.14.6
 
 # Task Queue and Caching
 celery==5.4.0
