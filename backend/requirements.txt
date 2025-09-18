@@ -55,7 +55,7 @@ opentelemetry-instrumentation-psycopg2
 kafka-python==2.0.3
 
 # Utilities
-six==1.16.0
+six==1.17.0
 
 # Encrypted Model Fields
 django-encrypted-model-fields==0.6.5
