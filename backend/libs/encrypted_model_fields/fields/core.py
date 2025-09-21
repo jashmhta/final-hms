@@ -1,8 +1,12 @@
 import os
 from typing import Any
+
 from cryptography.fernet import Fernet, InvalidToken
+
 from django.db import models
 from django.utils.encoding import force_str
+
+
 def _get_fernet():
     key = os.environ.get("FERNET_KEY")
     if not key:
@@ -11,7 +15,11 @@ def _get_fernet():
     if isinstance(key, str):
         key = key.encode()
     return Fernet(key)
+
+
 _fernet = _get_fernet()
+
+
 class _EncryptedMixin:
     def _encrypt(self, value: Any) -> str:
         if value is None or value == "":
@@ -19,6 +27,7 @@ class _EncryptedMixin:
         data = force_str(value).encode("utf-8")
         token = _fernet.encrypt(data)
         return token.decode("utf-8")
+
     def _decrypt(self, value: Any):
         if value is None or value == "":
             return value
@@ -30,23 +39,34 @@ class _EncryptedMixin:
                 return force_str(value)
             except Exception:
                 return value
+
     def get_prep_value(self, value):
         value = super().get_prep_value(value)
         if value in ("", None):
             return value
         return self._encrypt(value)
+
     def from_db_value(self, value, expression, connection):
         if value in ("", None):
             return value
         return self._decrypt(value)
+
     def to_python(self, value):
         if value in ("", None):
             return value
         return self._decrypt(value)
+
+
 class EncryptedCharField(_EncryptedMixin, models.CharField):
     pass
+
+
 class EncryptedTextField(_EncryptedMixin, models.TextField):
     pass
+
+
 class EncryptedEmailField(_EncryptedMixin, models.EmailField):
     pass
+
+
 EncryptedField = EncryptedCharField

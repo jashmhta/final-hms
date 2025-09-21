@@ -1,0 +1,719 @@
+# Istio Gateway Configuration
+# Enterprise-grade traffic management for HMS microservices
+
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: hms-gateway
+  namespace: hms-system
+  labels:
+    app: hms-gateway
+    tier: infrastructure
+    networking: istio
+  annotations:
+    description: "Main ingress gateway for HMS microservices"
+    monitoring: "prometheus"
+    logging: "elasticsearch"
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "hms.enterprise.com"
+    - "api.hms.enterprise.com"
+    - "*.hms.enterprise.com"
+    tls:
+      httpsRedirect: true
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    hosts:
+    - "hms.enterprise.com"
+    - "api.hms.enterprise.com"
+    - "*.hms.enterprise.com"
+    tls:
+      mode: SIMPLE
+      credentialName: hms-tls-secret
+  - port:
+      number: 31400
+      name: tcp
+      protocol: TCP
+    hosts:
+    - "*"
+  - port:
+      number: 15443
+      name: tls
+      protocol: TLS
+    hosts:
+    - "*"
+    tls:
+      mode: PASSTHROUGH
+
+---
+# Patient Service Virtual Service
+
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: patient-service-vs
+  namespace: hms-system
+  labels:
+    app: patient-service
+    tier: backend
+    networking: istio
+  annotations:
+    description: "Traffic routing for Patient Service"
+spec:
+  hosts:
+  - "api.hms.enterprise.com"
+  - "patient-service.hms-system.svc.cluster.local"
+  gateways:
+  - hms-gateway
+  - mesh
+  http:
+  - match:
+    - uri:
+        prefix: /api/patients
+    - uri:
+        prefix: /patients
+    route:
+    - destination:
+        host: patient-service.hms-system.svc.cluster.local
+        port:
+          number: 80
+      weight: 100
+    retries:
+      attempts: 3
+      perTryTimeout: 2s
+      retryOn: gateway-error,connect-failure,refused-stream
+    timeout: 30s
+    fault:
+      delay:
+        percentage:
+          value: 0.1
+        fixedDelay: 2s
+      abort:
+        percentage:
+          value: 0.1
+        httpStatus: 500
+
+---
+# Auth Service Virtual Service
+
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: auth-service-vs
+  namespace: hms-system
+  labels:
+    app: auth-service
+    tier: backend
+    networking: istio
+  annotations:
+    description: "Traffic routing for Authentication Service"
+spec:
+  hosts:
+  - "api.hms.enterprise.com"
+  - "auth-service.hms-system.svc.cluster.local"
+  gateways:
+  - hms-gateway
+  - mesh
+  http:
+  - match:
+    - uri:
+        prefix: /api/auth
+    - uri:
+        prefix: /auth
+    route:
+    - destination:
+        host: auth-service.hms-system.svc.cluster.local
+        port:
+          number: 80
+      weight: 100
+    retries:
+      attempts: 3
+      perTryTimeout: 5s
+      retryOn: gateway-error,connect-failure,refused-stream
+    timeout: 10s
+
+---
+# Appointment Service Virtual Service
+
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: appointment-service-vs
+  namespace: hms-system
+  labels:
+    app: appointment-service
+    tier: backend
+    networking: istio
+  annotations:
+    description: "Traffic routing for Appointment Service"
+spec:
+  hosts:
+  - "api.hms.enterprise.com"
+  - "appointment-service.hms-system.svc.cluster.local"
+  gateways:
+  - hms-gateway
+  - mesh
+  http:
+  - match:
+    - uri:
+        prefix: /api/appointments
+    - uri:
+        prefix: /appointments
+    route:
+    - destination:
+        host: appointment-service.hms-system.svc.cluster.local
+        port:
+          number: 80
+      weight: 100
+    retries:
+      attempts: 3
+      perTryTimeout: 3s
+      retryOn: gateway-error,connect-failure,refused-stream
+    timeout: 30s
+
+---
+# Clinical Service Virtual Service
+
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: clinical-service-vs
+  namespace: hms-system
+  labels:
+    app: clinical-service
+    tier: backend
+    networking: istio
+  annotations:
+    description: "Traffic routing for Clinical Service"
+spec:
+  hosts:
+  - "api.hms.enterprise.com"
+  - "clinical-service.hms-system.svc.cluster.local"
+  gateways:
+  - hms-gateway
+  - mesh
+  http:
+  - match:
+    - uri:
+        prefix: /api/clinical
+    - uri:
+        prefix: /clinical
+    route:
+    - destination:
+        host: clinical-service.hms-system.svc.cluster.local
+        port:
+          number: 80
+      weight: 100
+    retries:
+      attempts: 3
+      perTryTimeout: 5s
+      retryOn: gateway-error,connect-failure,refused-stream
+    timeout: 45s
+
+---
+# Billing Service Virtual Service
+
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: billing-service-vs
+  namespace: hms-system
+  labels:
+    app: billing-service
+    tier: backend
+    networking: istio
+  annotations:
+    description: "Traffic routing for Billing Service"
+spec:
+  hosts:
+  - "api.hms.enterprise.com"
+  - "billing-service.hms-system.svc.cluster.local"
+  gateways:
+  - hms-gateway
+  - mesh
+  http:
+  - match:
+    - uri:
+        prefix: /api/billing
+    - uri:
+        prefix: /billing
+    route:
+    - destination:
+        host: billing-service.hms-system.svc.cluster.local
+        port:
+          number: 80
+      weight: 100
+    retries:
+      attempts: 3
+      perTryTimeout: 5s
+      retryOn: gateway-error,connect-failure,refused-stream
+    timeout: 30s
+
+---
+# Canary Deployment Virtual Service
+
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: patient-service-canary-vs
+  namespace: hms-system
+  labels:
+    app: patient-service
+    tier: backend
+    networking: istio
+    version: canary
+  annotations:
+    description: "Canary deployment routing for Patient Service"
+spec:
+  hosts:
+  - "api.hms.enterprise.com"
+  gateways:
+  - hms-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /api/patients
+      headers:
+        x-canary:
+          exact: "true"
+    route:
+    - destination:
+        host: patient-service-canary.hms-system.svc.cluster.local
+        port:
+          number: 80
+      weight: 10
+    - destination:
+        host: patient-service.hms-system.svc.cluster.local
+        port:
+          number: 80
+      weight: 90
+
+---
+# Destination Rules for Load Balancing
+
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: patient-service-dr
+  namespace: hms-system
+  labels:
+    app: patient-service
+    tier: backend
+    networking: istio
+  annotations:
+    description: "Load balancing and connection pool settings for Patient Service"
+spec:
+  host: patient-service.hms-system.svc.cluster.local
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_REQUEST
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 30s
+        tcpKeepalive:
+          time: 7200s
+          interval: 75s
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 1
+        maxRetries: 3
+        idleTimeout: 90s
+        h2UpgradePolicy: UPGRADE
+    outlierDetection:
+      consecutiveGatewayErrors: 5
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 50
+      splitExternalLocalOriginErrors: true
+    tls:
+      mode: ISTIO_MUTUAL
+  portLevelSettings:
+  - port:
+      number: 80
+    connectionPool:
+      tcp:
+        maxConnections: 200
+      http:
+        http1MaxPendingRequests: 200
+        http2MaxRequests: 2000
+    outlierDetection:
+      consecutiveGatewayErrors: 3
+      consecutive5xxErrors: 3
+      interval: 15s
+      baseEjectionTime: 15s
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: auth-service-dr
+  namespace: hms-system
+  labels:
+    app: auth-service
+    tier: backend
+    networking: istio
+  annotations:
+    description: "Load balancing and connection pool settings for Authentication Service"
+spec:
+  host: auth-service.hms-system.svc.cluster.local
+  trafficPolicy:
+    loadBalancer:
+      simple: ROUND_ROBIN
+    connectionPool:
+      tcp:
+        maxConnections: 50
+        connectTimeout: 10s
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 500
+        maxRequestsPerConnection: 1
+        maxRetries: 2
+        idleTimeout: 60s
+    outlierDetection:
+      consecutiveGatewayErrors: 3
+      consecutive5xxErrors: 3
+      interval: 20s
+      baseEjectionTime: 20s
+      maxEjectionPercent: 30
+    tls:
+      mode: ISTIO_MUTUAL
+
+---
+# Service Entry for External Services
+
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: external-database
+  namespace: hms-system
+  labels:
+    app: external-database
+    tier: infrastructure
+    networking: istio
+  annotations:
+    description: "External database service entry"
+spec:
+  hosts:
+  - "external-db.example.com"
+  ports:
+  - number: 5432
+    name: postgres
+    protocol: TCP
+  resolution: DNS
+  location: MESH_EXTERNAL
+  endpoints:
+  - address: 192.168.1.100
+
+---
+# Service Entry for External APIs
+
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: external-apis
+  namespace: hms-system
+  labels:
+    app: external-apis
+    tier: infrastructure
+    networking: istio
+  annotations:
+    description: "External API service entry"
+spec:
+  hosts:
+  - "api.twilio.com"
+  - "api.sendgrid.com"
+  - "fhir-api.example.com"
+  ports:
+  - number: 443
+    name: https
+    protocol: HTTPS
+  resolution: DNS
+  location: MESH_EXTERNAL
+
+---
+# Workload Entry for External Services
+
+apiVersion: networking.istio.io/v1alpha3
+kind: WorkloadEntry
+metadata:
+  name: external-db-workload
+  namespace: hms-system
+  labels:
+    app: external-db
+    tier: infrastructure
+    networking: istio
+  annotations:
+    description: "External database workload entry"
+spec:
+  serviceAccount: default
+  address: 192.168.1.100
+  ports:
+    postgres: 5432
+  labels:
+    app: external-db
+    instance-id: vm-1
+
+---
+# Peer Authentication Policy
+
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: hms-system
+  labels:
+    app: istio
+    tier: infrastructure
+    networking: istio
+  annotations:
+    description: "Default peer authentication policy"
+spec:
+  mtls:
+    mode: STRICT
+  peerAuthenticationMethod:
+    mtls:
+      mode: STRICT
+  portLevelMtls:
+    80:
+      mode: STRICT
+    443:
+      mode: STRICT
+
+---
+# Request Authentication Policy
+
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: jwt-authentication
+  namespace: hms-system
+  labels:
+    app: istio
+    tier: infrastructure
+    networking: istio
+  annotations:
+    description: "JWT authentication policy"
+spec:
+  selector:
+    matchLabels:
+      app: patient-service
+  jwtRules:
+  - issuer: "https://auth.hms.enterprise"
+    jwksUri: "https://auth.hms.enterprise/.well-known/jwks.json"
+    forwardOriginalToken: true
+    outputClaimToHeaders:
+    - header: "x-auth-user"
+        claim: "sub"
+    outputClaimToHeaders:
+    - header: "x-auth-email"
+        claim: "email"
+    outputClaimToHeaders:
+    - header: "x-auth-roles"
+        claim: "roles"
+
+---
+# Authorization Policy
+
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: patient-service-authorization
+  namespace: hms-system
+  labels:
+    app: patient-service
+    tier: backend
+    networking: istio
+  annotations:
+    description: "Authorization policy for Patient Service"
+spec:
+  selector:
+    matchLabels:
+      app: patient-service
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/hms-system/sa/patient-service-sa"]
+    to:
+    - operation:
+        methods: ["GET", "POST", "PUT", "DELETE"]
+        paths: ["/api/patients/*"]
+  - from:
+    - source:
+        namespaces: ["hms-system"]
+    to:
+    - operation:
+        methods: ["GET"]
+        paths: ["/api/patients", "/api/patients/health", "/api/patients/ready"]
+  action: ALLOW
+
+---
+# Rate Limiting Service
+
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: rate-limit-filter
+  namespace: hms-system
+  labels:
+    app: istio
+    tier: infrastructure
+    networking: istio
+  annotations:
+    description: "Rate limiting filter for API gateway"
+spec:
+  workloadSelector:
+    labels:
+      istio: ingressgateway
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: GATEWAY
+      listener:
+        filterChain:
+          filter:
+            name: envoy.filters.network.http_connection_manager
+    patch:
+      operation: INSERT_BEFORE
+      value:
+        name: envoy.filters.http.ratelimit
+        typed_config:
+          '@type': type.googleapis.com/envoy.extensions.filters.http.ratelimit.v3.RateLimit
+          domain: hms
+          failure_mode_deny: true
+          rate_limited_as_resource_exhausted: true
+          request_headers_to_add:
+            - header: "x-envoy-limiter-ratelimit-on"
+              append: true
+          enable_x_ratelimit_headers: FULL_HEADERS
+          filter_enabled:
+            default_value:
+              numerator: 100
+              denominator: HUNDRED
+            runtime_key: rate_limit_enabled
+          timeout: 0.25s
+
+---
+# CORS Policy
+
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: cors-filter
+  namespace: hms-system
+  labels:
+    app: istio
+    tier: infrastructure
+    networking: istio
+  annotations:
+    description: "CORS configuration for API gateway"
+spec:
+  workloadSelector:
+    labels:
+      istio: ingressgateway
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: GATEWAY
+      listener:
+        filterChain:
+          filter:
+            name: envoy.filters.network.http_connection_manager
+    patch:
+      operation: MERGE
+      value:
+        name: envoy.filters.network.http_connection_manager
+        typed_config:
+          '@type': type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          common_http_protocol_options:
+            idle_timeout: 1800s
+          http2_protocol_options:
+            max_concurrent_streams: 100
+            initial_stream_window_size: 65536
+            initial_connection_window_size: 1048576
+          generate_request_id: true
+          preserve_external_request_id: true
+          always_set_request_id_in_response: true
+          add_user_agent: true
+          use_remote_address: false
+          xff_num_trusted_hops: 3
+          original_ip_detection_extensions:
+          - name: envoy.extensions.original_ip_detection.custom_header
+            typed_config:
+              '@type': type.googleapis.com/envoy.extensions.original_ip_detection.custom_header.v3.CustomHeaderConfig
+              custom_header_name: x-forwarded-for
+          allow_chunked_length: true
+          server_header_transformation: PASS_THROUGH
+          stream_idle_timeout: 300s
+          request_timeout: 300s
+          drain_timeout: 30s
+          delayed_close_timeout: 1s
+          max_request_headers_kb: 96
+          max_request_headers_count: 1000
+          header_validation:
+            reject_absolute_path: true
+            reject_requests_with_http10: true
+            reject_method_name_with_underscore: true
+            default_header_value_format: STRICT
+          normalize_path: true
+          merge_slashes: true
+          path_with_escaped_slashes_action: REJECT_REQUEST
+          local_reply_config:
+            mappers:
+            - filter:
+                status_code_filter:
+                  comparison:
+                    op: GE
+                    value:
+                      default_value: 400
+                      runtime_key: upstream_local_error_status
+              status_code: 500
+              body:
+                inline_string: "Internal Server Error"
+              headers_to_add:
+                - header:
+                    key: "content-type"
+                    value: "application/json"
+                - header:
+                    key: "x-envoy-lb-local-metadata"
+                    value: "%DYNAMIC_METADATA(envoy.lb)%"
+              body_format_override:
+                format_text:
+                  text_format_source:
+                    inline_string: '{"error": "%LOCAL_REPLY_BODY%", "code": "%RESPONSE_CODE%", "service": "%UPSTREAM_CLUSTER%"}'
+          route_config:
+            name: local_route
+            virtual_hosts:
+            - name: "*"
+              domains:
+              - "*"
+              routes:
+              - match:
+                  prefix: "/"
+                direct_response:
+                  status: 200
+                  body:
+                    inline_string: "OK"
+              cors:
+                allow_origin_string_match:
+                  safe_regex:
+                    google_re2:
+                      regex: "https://(app|api|admin)\\.hms\\.enterprise\\.com"
+                    engine_type: REGEX
+                allow_methods: GET, PUT, DELETE, POST, OPTIONS
+                allow_headers: keep-alive,user-agent,cache-control,content-type,content-transfer-encoding,custom-header-1,x-accept-content-transfer-encoding,x-accept-response-streaming,x-user-agent,x-grpc-web,grpc-timeout
+                max_age: "1728000"
+                expose_headers: custom-header-1,grpc-status,grpc-message
+                allow_credentials: true

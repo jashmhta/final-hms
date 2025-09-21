@@ -1,5 +1,7 @@
-from django.urls import include, path
 from rest_framework.routers import DefaultRouter
+
+from django.urls import include, path
+
 from .views import (
     GlobalSettingsViewSet,
     HospitalSubscriptionViewSet,
@@ -8,10 +10,9 @@ from .views import (
     SystemAlertViewSet,
     UsageMetricsViewSet,
 )
+
 router = DefaultRouter()
-router.register(
-    r"subscription-tiers", SubscriptionTierViewSet, basename="subscription-tier"
-)
+router.register(r"subscription-tiers", SubscriptionTierViewSet, basename="subscription-tier")
 router.register(
     r"hospital-subscriptions",
     HospitalSubscriptionViewSet,

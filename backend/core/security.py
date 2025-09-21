@@ -57,9 +57,7 @@ class SecurityUtils:
         Returns:
             bool: True if signature is valid, False otherwise
         """
-        expected = hmac.new(
-            secret.encode(), message.encode(), hashlib.sha256
-        ).hexdigest()
+        expected = hmac.new(secret.encode(), message.encode(), hashlib.sha256).hexdigest()
         return hmac.compare_digest(expected, signature)
 
     @staticmethod
@@ -130,9 +128,7 @@ class SecurityUtils:
         suspicious_agents = ["curl", "wget", "python-requests"]
         flags = {
             "high_request_rate": request_count > 100,
-            "suspicious_user_agent": any(
-                agent in user_agent.lower() for agent in suspicious_agents
-            ),
+            "suspicious_user_agent": any(agent in user_agent.lower() for agent in suspicious_agents),
             "unusual_fingerprint": False,
         }
         risk_score = sum(flags.values()) * 25
@@ -198,9 +194,7 @@ class SessionSecurity:
         current_ip = SecurityUtils.get_client_ip(request)
         if session_data["ip"] != current_ip:
             logger = logging.getLogger(__name__)
-            logger.warning(
-                f"IP mismatch for session {session_id}: {session_data['ip']} != {current_ip}"
-            )
+            logger.warning(f"IP mismatch for session {session_id}: {session_data['ip']} != {current_ip}")
 
         current_ua = request.META.get("HTTP_USER_AGENT", "")
         if session_data["user_agent"] != current_ua:

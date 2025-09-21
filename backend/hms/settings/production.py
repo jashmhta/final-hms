@@ -1,6 +1,8 @@
 import os
 from urllib.parse import urlparse
+
 from .base import *
+
 DEBUG = False
 SECRET_KEY = os.environ.get("SECRET_KEY")
 if not SECRET_KEY:
@@ -9,7 +11,7 @@ ALLOWED_HOSTS = [
     "hms.yourdomain.com",
     "api.hms.yourdomain.com",
     "*.hms.yourdomain.com",
-    "localhost",  
+    "localhost",
 ]
 DATABASE_URL = os.environ.get("DATABASE_URL")
 ACCOUNTING_DB_URL = os.environ.get("ACCOUNTING_DB_URL", DATABASE_URL)
@@ -23,6 +25,8 @@ LAB_DB_URL = os.environ.get("LAB_DB_URL", DATABASE_URL)
 PATIENTS_DB_URL = os.environ.get("PATIENTS_DB_URL", DATABASE_URL)
 PHARMACY_DB_URL = os.environ.get("PHARMACY_DB_URL", DATABASE_URL)
 USERS_DB_URL = os.environ.get("USERS_DB_URL", DATABASE_URL)
+
+
 def parse_db_url(db_url):
     if not db_url:
         return None
@@ -42,6 +46,8 @@ def parse_db_url(db_url):
         "CONN_MAX_AGE": 600,
         "CONN_HEALTH_CHECKS": True,
     }
+
+
 DATABASES = {
     "default": parse_db_url(DATABASE_URL) or {},
     "accounting": parse_db_url(ACCOUNTING_DB_URL) or parse_db_url(DATABASE_URL),
@@ -81,7 +87,7 @@ CACHES = {
 }
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
-SESSION_COOKIE_AGE = 1800  
+SESSION_COOKIE_AGE = 1800
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Strict"
@@ -96,7 +102,7 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 SECURE_SSL_REDIRECT = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-SECURE_HSTS_SECONDS = 31536000  
+SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -187,7 +193,7 @@ LOGGING = {
             "level": "WARNING",
             "class": "logging.handlers.RotatingFileHandler",
             "filename": "/app/logs/django.log",
-            "maxBytes": 1024 * 1024 * 100,  
+            "maxBytes": 1024 * 1024 * 100,
             "backupCount": 5,
             "formatter": "json",
         },
@@ -195,7 +201,7 @@ LOGGING = {
             "level": "INFO",
             "class": "logging.handlers.RotatingFileHandler",
             "filename": "/app/logs/security.log",
-            "maxBytes": 1024 * 1024 * 50,  
+            "maxBytes": 1024 * 1024 * 50,
             "backupCount": 10,
             "formatter": "json",
         },
@@ -332,19 +338,19 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 MFA_ENABLED = True
 MFA_REQUIRED_FOR_SUPERUSERS = True
-MFA_TOKEN_VALIDITY = 300  
+MFA_TOKEN_VALIDITY = 300
 MFA_BACKUP_CODES_COUNT = 10
 TOTP_ISSUER_NAME = "HMS Enterprise"
-TOTP_TOKEN_VALIDITY = 30  
+TOTP_TOKEN_VALIDITY = 30
 ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY")
 if not ENCRYPTION_KEY:
     raise ValueError("ENCRYPTION_KEY environment variable is required")
 JWT_SECRET_KEY = os.environ.get("JWT_SECRET", SECRET_KEY)
 JWT_ALGORITHM = "HS256"
-JWT_ACCESS_TOKEN_LIFETIME = 900  
-JWT_REFRESH_TOKEN_LIFETIME = 86400  
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  
+JWT_ACCESS_TOKEN_LIFETIME = 900
+JWT_REFRESH_TOKEN_LIFETIME = 86400
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760
 FILE_UPLOAD_PERMISSIONS = 0o644
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000
 ALLOWED_UPLOAD_EXTENSIONS = [
@@ -373,7 +379,7 @@ ALLOWED_UPLOAD_EXTENSIONS = [
 HIPAA_AUDIT_ENABLED = True
 HIPAA_ENCRYPTION_REQUIRED = True
 HIPAA_ACCESS_LOGGING = True
-HIPAA_DATA_RETENTION_DAYS = 2555  
+HIPAA_DATA_RETENTION_DAYS = 2555
 MONITORING_ENABLED = True
 PROMETHEUS_METRICS_ENABLED = True
 JAEGER_TRACING_ENABLED = True
@@ -383,6 +389,7 @@ if SENTRY_DSN:
     from sentry_sdk.integrations.celery import CeleryIntegration
     from sentry_sdk.integrations.django import DjangoIntegration
     from sentry_sdk.integrations.redis import RedisIntegration
+
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         integrations=[
@@ -396,38 +403,45 @@ if SENTRY_DSN:
         release=os.environ.get("APP_VERSION", "unknown"),
     )
 HEALTH_CHECK = {
-    "DISK_USAGE_MAX": 90,  
-    "MEMORY_MIN": 100,  
+    "DISK_USAGE_MAX": 90,
+    "MEMORY_MIN": 100,
 }
 import signal
 import sys
+
 from django.core.management import execute_from_command_line
+
+
 def graceful_shutdown(signum, frame):
     print("Received signal to shutdown gracefully...")
     from django.db import connections
+
     for conn in connections.all():
         conn.close()
     from celery import current_app
+
     if current_app:
         current_app.control.shutdown()
     sys.exit(0)
+
+
 signal.signal(signal.SIGTERM, graceful_shutdown)
 signal.signal(signal.SIGINT, graceful_shutdown)
 TALLY_INTEGRATION_ENABLED = True
 TALLY_API_TIMEOUT = 30
 TALLY_RETRY_ATTEMPTS = 3
-SMS_PROVIDER = "twilio"  
+SMS_PROVIDER = "twilio"
 SMS_API_KEY = os.environ.get("SMS_API_KEY")
-EMAIL_PROVIDER = "sendgrid"  
+EMAIL_PROVIDER = "sendgrid"
 EMAIL_API_KEY = os.environ.get("EMAIL_API_KEY")
-CONN_MAX_AGE = 0  
+CONN_MAX_AGE = 0
 DATABASE_CONN_HEALTH_CHECKS = True
 USE_TZ = True
 USE_I18N = True
 USE_L10N = True
 SECURITY_EVENT_RETENTION_DAYS = 365
 FAILED_LOGIN_THRESHOLD = 5
-FAILED_LOGIN_LOCKOUT_TIME = 1800  
+FAILED_LOGIN_LOCKOUT_TIME = 1800
 SUSPICIOUS_ACTIVITY_THRESHOLD = 10
 BACKUP_ENABLED = True
 BACKUP_STORAGE = "s3://hms-backups/"

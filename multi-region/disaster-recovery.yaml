@@ -1,0 +1,482 @@
+# Multi-Region Disaster Recovery Configuration
+# Enterprise-grade automated disaster recovery for HMS microservices
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: disaster-recovery-scripts
+  namespace: hms-system
+  labels:
+    app.kubernetes.io/name: disaster-recovery
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: backup
+data:
+  backup-database.sh: |
+    #!/bin/bash
+
+    # Automated database backup script
+    set -e
+
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    BACKUP_DIR="/backup/databases"
+    BACKUP_FILE="${BACKUP_DIR}/hms_backup_${TIMESTAMP}.sql"
+    COMPRESSED_FILE="${BACKUP_FILE}.gz"
+    RETENTION_DAYS=30
+
+    echo "Starting database backup at $(date)"
+
+    # Create backup directory
+    mkdir -p ${BACKUP_DIR}
+
+    # Perform database backup
+    pg_dump -h postgres-primary.hms.system.svc.cluster.local \
+            -U postgres \
+            -d hms \
+            --no-password \
+            --format=custom \
+            --file=${BACKUP_FILE}
+
+    # Compress backup
+    gzip ${BACKUP_FILE}
+
+    # Upload to S3
+    aws s3 cp ${COMPRESSED_FILE} s3://hms-backups-${REGION}/databases/${COMPRESSED_FILE} \
+            --region ${AWS_REGION}
+
+    # Verify backup
+    BACKUP_SIZE=$(stat -c%s ${COMPRESSED_FILE})
+    if [ ${BACKUP_SIZE} -gt 0 ]; then
+        echo "Backup successful: ${COMPRESSED_FILE} (${BACKUP_SIZE} bytes)"
+    else
+        echo "ERROR: Backup file is empty"
+        exit 1
+    fi
+
+    # Clean up old backups
+    find ${BACKUP_DIR} -name "*.sql.gz" -mtime +${RETENTION_DAYS} -delete
+
+    # Clean up S3 old backups
+    aws s3 ls s3://hms-backups-${REGION}/databases/ --region ${AWS_REGION} | \
+        while read -r line; do
+            createDate=$(echo $line | awk {'print $1" "$2'})
+            createDate=$(date -d "$createDate" +%s)
+            olderThan=$(date -d "${RETENTION_DAYS} days ago" +%s)
+            if [[ $createDate -lt $olderThan ]]; then
+                fileName=$(echo $line | awk {'print $4'})
+                aws s3 rm s3://hms-backups-${REGION}/databases/$fileName --region ${AWS_REGION}
+            fi
+        done
+
+    echo "Database backup completed at $(date)"
+
+  restore-database.sh: |
+    #!/bin/bash
+
+    # Automated database restore script
+    set -e
+
+    BACKUP_FILE=${1}
+    RESTORE_DIR="/restore"
+    RESTORE_FILE="${RESTORE_DIR}/$(basename ${BACKUP_FILE%.*})"
+
+    if [ -z "${BACKUP_FILE}" ]; then
+        echo "ERROR: Backup file not specified"
+        echo "Usage: $0 <backup-file>"
+        exit 1
+    fi
+
+    echo "Starting database restore from ${BACKUP_FILE} at $(date)"
+
+    # Create restore directory
+    mkdir -p ${RESTORE_DIR}
+
+    # Download backup from S3
+    aws s3 cp s3://hms-backups-${REGION}/databases/${BACKUP_FILE} \
+            ${RESTORE_DIR}/${BACKUP_FILE} \
+            --region ${AWS_REGION}
+
+    # Decompress backup
+    gunzip ${RESTORE_DIR}/${BACKUP_FILE}
+
+    # Stop application services
+    kubectl scale deployment --all -n hms-system --replicas=0
+
+    # Drop and recreate database
+    dropdb -h postgres-primary.hms.system.svc.cluster.local \
+           -U postgres \
+           -d hms \
+           --no-password || true
+
+    createdb -h postgres-primary.hms.system.svc.cluster.local \
+             -U postgres \
+             -d hms \
+             --no-password
+
+    # Restore database
+    pg_restore -h postgres-primary.hms.system.svc.cluster.local \
+               -U postgres \
+               -d hms \
+               --no-password \
+               --verbose \
+               --jobs=4 \
+               ${RESTORE_FILE}
+
+    # Restart application services
+    kubectl scale deployment --all -n hms-system --replicas=1
+
+    # Verify restore
+    kubectl rollout status deployment --all -n hms-system --timeout=600s
+
+    echo "Database restore completed at $(date)"
+
+  backup-kubernetes.sh: |
+    #!/bin/bash
+
+    # Automated Kubernetes backup script
+    set -e
+
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    BACKUP_DIR="/backup/kubernetes"
+    RETENTION_DAYS=30
+
+    echo "Starting Kubernetes backup at $(date)"
+
+    # Create backup directory
+    mkdir -p ${BACKUP_DIR}
+
+    # Backup all namespaces
+    kubectl get all --all-namespaces -o yaml > ${BACKUP_DIR}/all-resources_${TIMESTAMP}.yaml
+
+    # Backup persistent volumes
+    kubectl get pv -o yaml > ${BACKUP_DIR}/persistent-volumes_${TIMESTAMP}.yaml
+
+    # backup persistent volume claims
+    kubectl get pvc --all-namespaces -o yaml > ${BACKUP_DIR}/persistent-volume-claims_${TIMESTAMP}.yaml
+
+    # Backup config maps
+    kubectl get cm --all-namespaces -o yaml > ${BACKUP_DIR}/config-maps_${TIMESTAMP}.yaml
+
+    # Backup secrets
+    kubectl get secret --all-namespaces -o yaml > ${BACKUP_DIR}/secrets_${TIMESTAMP}.yaml
+
+    # Backup deployments
+    kubectl get deployment --all-namespaces -o yaml > ${BACKUP_DIR}/deployments_${TIMESTAMP}.yaml
+
+    # Backup statefulsets
+    kubectl get statefulset --all-namespaces -o yaml > ${BACKUP_DIR}/statefulsets_${TIMESTAMP}.yaml
+
+    # Backup daemonsets
+    kubectl get daemonset --all-namespaces -o yaml > ${BACKUP_DIR}/daemonsets_${TIMESTAMP}.yaml
+
+    # Create archive
+    tar -czf ${BACKUP_DIR}/kubernetes_backup_${TIMESTAMP}.tar.gz -C ${BACKUP_DIR} .
+
+    # Upload to S3
+    aws s3 cp ${BACKUP_DIR}/kubernetes_backup_${TIMESTAMP}.tar.gz \
+            s3://hms-backups-${REGION}/kubernetes/kubernetes_backup_${TIMESTAMP}.tar.gz \
+            --region ${AWS_REGION}
+
+    # Clean up old backups
+    find ${BACKUP_DIR} -name "*.tar.gz" -mtime +${RETENTION_DAYS} -delete
+
+    echo "Kubernetes backup completed at $(date)"
+
+  restore-kubernetes.sh: |
+    #!/bin/bash
+
+    # Automated Kubernetes restore script
+    set -e
+
+    BACKUP_FILE=${1}
+    RESTORE_DIR="/restore"
+
+    if [ -z "${BACKUP_FILE}" ]; then
+        echo "ERROR: Backup file not specified"
+        echo "Usage: $0 <backup-file>"
+        exit 1
+    fi
+
+    echo "Starting Kubernetes restore from ${BACKUP_FILE} at $(date)"
+
+    # Create restore directory
+    mkdir -p ${RESTORE_DIR}
+
+    # Download backup from S3
+    aws s3 cp s3://hms-backups-${REGION}/kubernetes/${BACKUP_FILE} \
+            ${RESTORE_DIR}/${BACKUP_FILE} \
+            --region ${AWS_REGION}
+
+    # Extract backup
+    tar -xzf ${RESTORE_DIR}/${BACKUP_FILE} -C ${RESTORE_DIR}
+
+    # Find the extracted directory
+    EXTRACTED_DIR=$(find ${RESTORE_DIR} -name "*.yaml" -type f | head -1 | xargs dirname)
+
+    # Restore resources in order
+    echo "Restoring config maps..."
+    kubectl apply -f ${EXTRACTED_DIR}/config-maps_*.yaml
+
+    echo "Restoring secrets..."
+    kubectl apply -f ${EXTRACTED_DIR}/secrets_*.yaml
+
+    echo "Restoring persistent volumes..."
+    kubectl apply -f ${EXTRACTED_DIR}/persistent-volumes_*.yaml
+
+    echo "Restoring persistent volume claims..."
+    kubectl apply -f ${EXTRACTED_DIR}/persistent-volume-claims_*.yaml
+
+    echo "Restoring daemonsets..."
+    kubectl apply -f ${EXTRACTED_DIR}/daemonsets_*.yaml
+
+    echo "Restoring statefulsets..."
+    kubectl apply -f ${EXTRACTED_DIR}/statefulsets_*.yaml
+
+    echo "Restoring deployments..."
+    kubectl apply -f ${EXTRACTED_DIR}/deployments_*.yaml
+
+    echo "Kubernetes restore completed at $(date)"
+
+  failover-region.sh: |
+    #!/bin/bash
+
+    # Automated regional failover script
+    set -e
+
+    PRIMARY_REGION=${1}
+    SECONDARY_REGION=${2}
+
+    if [ -z "${PRIMARY_REGION}" ] || [ -z "${SECONDARY_REGION}" ]; then
+        echo "ERROR: Primary and secondary regions not specified"
+        echo "Usage: $0 <primary-region> <secondary-region>"
+        exit 1
+    fi
+
+    echo "Starting regional failover from ${PRIMARY_REGION} to ${SECONDARY_REGION} at $(date)"
+
+    # Check primary region health
+    if kubectl get nodes --context=${PRIMARY_REGION} &>/dev/null; then
+        echo "WARNING: Primary region ${PRIMARY_REGION} is still accessible"
+        echo "Aborting automatic failover"
+        exit 1
+    fi
+
+    # Switch kubectl context to secondary region
+    kubectl config use-context ${SECONDARY_REGION}
+
+    # Promote secondary database
+    kubectl exec -it postgres-secondary-${SECONDARY_REGION#us-} -n hms-system -- \
+        pg_ctl promote -D /var/lib/postgresql/data
+
+    # Update DNS records (this would be done via your DNS provider's API)
+    echo "Updating DNS records to point to ${SECONDARY_REGION}..."
+    # Example: Update Route 53 records
+    # aws route53 change-resource-record-sets \
+    #     --hosted-zone-id ${HOSTED_ZONE_ID} \
+    #     --change-batch file://dns-update.json
+
+    # Scale up services in secondary region
+    kubectl scale deployment --all -n hms-system --replicas=3
+
+    # Wait for services to be ready
+    kubectl wait --for=condition=ready pod --all -n hms-system --timeout=600s
+
+    # Verify services are responding
+    curl -f https://api-${SECONDARY_REGION}.hms.enterprise.com/health || \
+        { echo "ERROR: Services not responding in secondary region"; exit 1; }
+
+    # Send notification
+    curl -X POST "${SLACK_WEBHOOK}" \
+        -d '{"text": "Regional failover completed: '"${PRIMARY_REGION}"' -> '"${SECONDARY_REGION}"'"}'
+
+    echo "Regional failover completed at $(date)"
+
+  health-check.sh: |
+    #!/bin/bash
+
+    # Multi-region health check script
+    set -e
+
+    REGIONS=("us-east-1" "us-west-2" "eu-west-1")
+    HEALTHY_REGIONS=()
+
+    echo "Starting multi-region health check at $(date)"
+
+    for region in "${REGIONS[@]}"; do
+        echo "Checking health for region: ${region}"
+
+        # Check Kubernetes nodes
+        if kubectl get nodes --context=${region} &>/dev/null; then
+            NODE_COUNT=$(kubectl get nodes --context=${region} --no-headers | wc -l)
+            READY_NODES=$(kubectl get nodes --context=${region} --no-headers | grep "Ready" | wc -l)
+
+            if [ ${READY_NODES} -eq ${NODE_COUNT} ]; then
+                echo "✓ All nodes are ready in ${region}"
+                HEALTHY_REGIONS+=(${region})
+            else
+                echo "✗ Not all nodes are ready in ${region} (${READY_NODES}/${NODE_COUNT})"
+            fi
+        else
+            echo "✗ Cannot connect to ${region}"
+        fi
+
+        # Check critical services
+        for service in patient-service appointment-service clinical-service billing-service; do
+            if curl -f https://api-${region}.hms.enterprise.com/${service}/health &>/dev/null; then
+                echo "✓ ${service} is healthy in ${region}"
+            else
+                echo "✗ ${service} is unhealthy in ${region}"
+            fi
+        done
+
+        # Check database connectivity
+        if kubectl exec -it postgres-primary-${region#us-} -n hms-system -- \
+            pg_isready -h localhost -p 5432 &>/dev/null; then
+            echo "✓ Database is healthy in ${region}"
+        else
+            echo "✗ Database is unhealthy in ${region}"
+        fi
+
+        echo "---"
+    done
+
+    # Report overall health
+    if [ ${#HEALTHY_REGIONS[@]} -gt 0 ]; then
+        echo "Healthy regions: ${HEALTHY_REGIONS[*]}"
+    else
+        echo "ERROR: No healthy regions detected"
+        exit 1
+    fi
+
+    echo "Health check completed at $(date)"
+
+  backup-verification.sh: |
+    #!/bin/bash
+
+    # Backup verification script
+    set -e
+
+    BACKUP_FILE=${1}
+
+    if [ -z "${BACKUP_FILE}" ]; then
+        echo "ERROR: Backup file not specified"
+        echo "Usage: $0 <backup-file>"
+        exit 1
+    fi
+
+    echo "Starting backup verification for ${BACKUP_FILE} at $(date)"
+
+    # Create temporary directory
+    TEMP_DIR=$(mktemp -d)
+    trap "rm -rf ${TEMP_DIR}" EXIT
+
+    # Download backup from S3
+    aws s3 cp s3://hms-backups-${REGION}/databases/${BACKUP_FILE} \
+            ${TEMP_DIR}/${BACKUP_FILE} \
+            --region ${AWS_REGION}
+
+    # Verify backup file integrity
+    if ! gzip -t ${TEMP_DIR}/${BACKUP_FILE}; then
+        echo "ERROR: Backup file is corrupted"
+        exit 1
+    fi
+
+    # Decompress backup
+    gunzip ${TEMP_DIR}/${BACKUP_FILE}
+
+    # Verify backup file structure
+    if ! pg_restore -l ${TEMP_DIR}/${BACKUP_FILE%.*} &>/dev/null; then
+        echo "ERROR: Backup file structure is invalid"
+        exit 1
+    fi
+
+    # Check backup file size
+    BACKUP_SIZE=$(stat -c%s ${TEMP_DIR}/${BACKUP_FILE%.*})
+    if [ ${BACKUP_SIZE} -lt 1024 ]; then
+        echo "ERROR: Backup file is too small (${BACKUP_SIZE} bytes)"
+        exit 1
+    fi
+
+    echo "Backup verification completed successfully"
+    echo "Backup size: ${BACKUP_SIZE} bytes"
+
+  automated-restore-test.sh: |
+    #!/bin/bash
+
+    # Automated restore test script
+    set -e
+
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    TEST_NAMESPACE="hms-restore-test-${TIMESTAMP}"
+
+    echo "Starting automated restore test at $(date)"
+
+    # Create test namespace
+    kubectl create namespace ${TEST_NAMESPACE}
+
+    # Deploy test database
+    kubectl apply -f - <<EOF
+    apiVersion: apps/v1
+    kind: StatefulSet
+    metadata:
+      name: postgres-test
+      namespace: ${TEST_NAMESPACE}
+    spec:
+      serviceName: postgres-test
+      replicas: 1
+      selector:
+        matchLabels:
+          app: postgres-test
+      template:
+        metadata:
+          labels:
+            app: postgres-test
+        spec:
+          containers:
+          - name: postgres
+            image: postgres:15-alpine
+            env:
+            - name: POSTGRES_PASSWORD
+              value: testpassword
+            - name: POSTGRES_DB
+              value: testdb
+            ports:
+            - containerPort: 5432
+            volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+      volumeClaimTemplates:
+      - metadata:
+          name: postgres-data
+        spec:
+          accessModes: [ "ReadWriteOnce" ]
+          storageClassName: "gp2"
+          resources:
+            requests:
+              storage: 10Gi
+    EOF
+
+    # Wait for test database to be ready
+    kubectl wait --for=condition=ready pod -l app=postgres-test -n ${TEST_NAMESPACE} --timeout=300s
+
+    # Get latest backup
+    LATEST_BACKUP=$(aws s3 ls s3://hms-backups-${REGION}/databases/ --region ${AWS_REGION} | \
+        sort | tail -1 | awk '{print $4}')
+
+    # Download and restore backup to test database
+    kubectl cp /restore-scripts/restore-database.sh ${TEST_NAMESPACE}/postgres-test:/tmp/restore-database.sh
+    kubectl exec -it postgres-test-0 -n ${TEST_NAMESPACE} -- \
+        bash /tmp/restore-database.sh ${LATEST_BACKUP}
+
+    # Verify restore
+    if kubectl exec -it postgres-test-0 -n ${TEST_NAMESPACE} -- \
+        psql -U postgres -d testdb -c "SELECT COUNT(*) FROM patients;" &>/dev/null; then
+        echo "✓ Restore test successful"
+    else
+        echo "✗ Restore test failed"
+        exit 1
+    fi
+
+    # Clean up
+    kubectl delete namespace ${TEST_NAMESPACE}
+
+    echo "Automated restore test completed at $(date)"

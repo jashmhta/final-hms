@@ -1,0 +1,244 @@
+# HMS Enterprise-Grade Pod Disruption Budgets
+# Ensures high availability during maintenance and failures
+
+---
+# API Service Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: hms-api-pdb
+  namespace: hms
+  labels:
+    app: hms-api
+    component: api
+    tier: backend
+    compliance: hipaa
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: hms-api
+      component: api
+
+---
+# Database Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: postgres-pdb
+  namespace: hms
+  labels:
+    app: postgres
+    component: database
+    tier: data
+    compliance: hipaa
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: postgres
+      component: database
+
+---
+# Redis Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-pdb
+  namespace: hms
+  labels:
+    app: redis
+    component: cache
+    tier: data
+    compliance: hipaa
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: redis
+      component: cache
+
+---
+# Patient Service Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: patient-service-pdb
+  namespace: hms
+  labels:
+    app: patient-service
+    component: patient-api
+    tier: backend
+    compliance: hipaa
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: patient-service
+      component: patient-api
+
+---
+# EHR Service Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ehr-service-pdb
+  namespace: hms
+  labels:
+    app: ehr-service
+    component: ehr-api
+    tier: backend
+    compliance: hipaa
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: ehr-service
+      component: ehr-api
+
+---
+# Appointment Service Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: appointment-service-pdb
+  namespace: hms
+  labels:
+    app: appointment-service
+    component: appointment-api
+    tier: backend
+    compliance: hipaa
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: appointment-service
+      component: appointment-api
+
+---
+# Pharmacy Service Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pharmacy-service-pdb
+  namespace: hms
+  labels:
+    app: pharmacy-service
+    component: pharmacy-api
+    tier: backend
+    compliance: hipaa
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: pharmacy-service
+      component: pharmacy-api
+
+---
+# Laboratory Service Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: lab-service-pdb
+  namespace: hms
+  labels:
+    app: lab-service
+    component: lab-api
+    tier: backend
+    compliance: hipaa
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: lab-service
+      component: lab-api
+
+---
+# Billing Service Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: billing-service-pdb
+  namespace: hms
+  labels:
+    app: billing-service
+    component: billing-api
+    tier: backend
+    compliance: hipaa
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: billing-service
+      component: billing-api
+
+---
+# Monitoring Stack Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: monitoring-pdb
+  namespace: monitoring
+  labels:
+    app: prometheus
+    component: monitoring
+    tier: observability
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: prometheus
+      component: monitoring
+
+---
+# Grafana Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: grafana-pdb
+  namespace: monitoring
+  labels:
+    app: grafana
+    component: dashboard
+    tier: observability
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: grafana
+      component: dashboard
+
+---
+# Alertmanager Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: alertmanager-pdb
+  namespace: monitoring
+  labels:
+    app: alertmanager
+    component: alerting
+    tier: observability
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+      component: alerting
+
+---
+# Ingress Controller Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ingress-pdb
+  namespace: ingress-nginx
+  labels:
+    app.kubernetes.io/name: ingress-nginx
+    component: ingress
+    tier: networking
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingress-nginx

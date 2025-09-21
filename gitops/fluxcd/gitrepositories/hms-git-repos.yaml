@@ -1,0 +1,474 @@
+# FluxCD Git Repositories
+# Enterprise-grade GitOps source management for HMS microservices
+
+---
+# HMS Infrastructure Repository
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: hms-infra-repo
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-infra-repo
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: infrastructure
+spec:
+  interval: 5m0s
+  url: https://github.com/hms-enterprise/hms-infrastructure.git
+  ref:
+    branch: main
+  secretRef:
+    name: github-credentials
+  timeout: 60s
+  ignore: |
+    # Exclude build artifacts and temporary files
+    *.log
+    *.tmp
+    .git/
+    node_modules/
+    .DS_Store
+    # Exclude documentation (optional)
+    docs/
+    README.md
+    # Exclude test files
+    tests/
+    test/
+    # Exclude local development files
+    .env*
+    docker-compose.override.yml
+    # Exclude IDE files
+    .vscode/
+    .idea/
+    # Exclude backup files
+    *.bak
+    *.backup
+---
+# HMS Services Repository
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: hms-services-repo
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-services-repo
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: services
+spec:
+  interval: 5m0s
+  url: https://github.com/hms-enterprise/hms-microservices.git
+  ref:
+    branch: main
+  secretRef:
+    name: github-credentials
+  timeout: 60s
+  ignore: |
+    # Exclude build artifacts and temporary files
+    *.log
+    *.tmp
+    .git/
+    node_modules/
+    .DS_Store
+    # Exclude documentation (optional)
+    docs/
+    README.md
+    # Exclude test files
+    tests/
+    test/
+    # Exclude local development files
+    .env*
+    docker-compose.override.yml
+    # Exclude IDE files
+    .vscode/
+    .idea/
+    # Exclude backup files
+    *.bak
+    *.backup
+    # Exclude source code (only deploy manifests)
+    src/
+    frontend/
+    backend/
+    microservices/
+---
+# HMS Monitoring Repository
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: hms-monitoring-repo
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-monitoring-repo
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: monitoring
+spec:
+  interval: 5m0s
+  url: https://github.com/hms-enterprise/hms-microservices.git
+  ref:
+    branch: main
+  secretRef:
+    name: github-credentials
+  timeout: 60s
+  ignore: |
+    # Exclude everything except monitoring directory
+    /*
+    !/monitoring
+    # Exclude build artifacts and temporary files
+    *.log
+    *.tmp
+    .git/
+    node_modules/
+    .DS_Store
+    # Exclude documentation (optional)
+    docs/
+    README.md
+    # Exclude test files
+    tests/
+    test/
+    # Exclude local development files
+    .env*
+    docker-compose.override.yml
+    # Exclude IDE files
+    .vscode/
+    .idea/
+    # Exclude backup files
+    *.bak
+    *.backup
+---
+# HMS Security Repository
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: hms-security-repo
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-security-repo
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: security
+spec:
+  interval: 5m0s
+  url: https://github.com/hms-enterprise/hms-microservices.git
+  ref:
+    branch: main
+  secretRef:
+    name: github-credentials
+  timeout: 60s
+  ignore: |
+    # Exclude everything except security directory
+    /*
+    !/security
+    # Exclude build artifacts and temporary files
+    *.log
+    *.tmp
+    .git/
+    node_modules/
+    .DS_Store
+    # Exclude documentation (optional)
+    docs/
+    README.md
+    # Exclude test files
+    tests/
+    test/
+    # Exclude local development files
+    .env*
+    docker-compose.override.yml
+    # Exclude IDE files
+    .vscode/
+    .idea/
+    # Exclude backup files
+    *.bak
+    *.backup
+---
+# HMS Config Repository
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: hms-config-repo
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-config-repo
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: config
+spec:
+  interval: 5m0s
+  url: https://github.com/hms-enterprise/hms-config.git
+  ref:
+    branch: main
+  secretRef:
+    name: github-credentials
+  timeout: 60s
+  ignore: |
+    # Exclude build artifacts and temporary files
+    *.log
+    *.tmp
+    .git/
+    node_modules/
+    .DS_Store
+    # Exclude documentation (optional)
+    docs/
+    README.md
+    # Exclude test files
+    tests/
+    test/
+    # Exclude local development files
+    .env*
+    docker-compose.override.yml
+    # Exclude IDE files
+    .vscode/
+    .idea/
+    # Exclude backup files
+    *.bak
+    *.backup
+---
+# HMS Backups Repository
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: hms-backups-repo
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-backups-repo
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: backup
+spec:
+  interval: 5m0s
+  url: https://github.com/hms-enterprise/hms-backups.git
+  ref:
+    branch: main
+  secretRef:
+    name: github-credentials
+  timeout: 60s
+  ignore: |
+    # Exclude build artifacts and temporary files
+    *.log
+    *.tmp
+    .git/
+    node_modules/
+    .DS_Store
+    # Exclude documentation (optional)
+    docs/
+    README.md
+    # Exclude test files
+    tests/
+    test/
+    # Exclude local development files
+    .env*
+    docker-compose.override.yml
+    # Exclude IDE files
+    .vscode/
+    .idea/
+    # Exclude backup files
+    *.bak
+    *.backup
+---
+# HMS CQRS Repository
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: hms-cqrs-repo
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-cqrs-repo
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: cqrs
+spec:
+  interval: 5m0s
+  url: https://github.com/hms-enterprise/hms-microservices.git
+  ref:
+    branch: main
+  secretRef:
+    name: github-credentials
+  timeout: 60s
+  ignore: |
+    # Exclude everything except CQRS directory
+    /*
+    !/cqrs
+    # Exclude build artifacts and temporary files
+    *.log
+    *.tmp
+    .git/
+    node_modules/
+    .DS_Store
+    # Exclude documentation (optional)
+    docs/
+    README.md
+    # Exclude test files
+    tests/
+    test/
+    # Exclude local development files
+    .env*
+    docker-compose.override.yml
+    # Exclude IDE files
+    .vscode/
+    .idea/
+    # Exclude backup files
+    *.bak
+    *.backup
+---
+# HMS API Gateway Repository
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: hms-gateway-repo
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-gateway-repo
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: gateway
+spec:
+  interval: 5m0s
+  url: https://github.com/hms-enterprise/hms-microservices.git
+  ref:
+    branch: main
+  secretRef:
+    name: github-credentials
+  timeout: 60s
+  ignore: |
+    # Exclude everything except gateway directory
+    /*
+    !/microservices/api-gateway
+    # Exclude build artifacts and temporary files
+    *.log
+    *.tmp
+    .git/
+    node_modules/
+    .DS_Store
+    # Exclude documentation (optional)
+    docs/
+    README.md
+    # Exclude test files
+    tests/
+    test/
+    # Exclude local development files
+    .env*
+    docker-compose.override.yml
+    # Exclude IDE files
+    .vscode/
+    .idea/
+    # Exclude backup files
+    *.bak
+    *.backup
+---
+# HMS Messaging Repository
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: hms-messaging-repo
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-messaging-repo
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: messaging
+spec:
+  interval: 5m0s
+  url: https://github.com/hms-enterprise/hms-microservices.git
+  ref:
+    branch: main
+  secretRef:
+    name: github-credentials
+  timeout: 60s
+  ignore: |
+    # Exclude everything except messaging directory
+    /*
+    !/microservices/kafka-cluster
+    # Exclude build artifacts and temporary files
+    *.log
+    *.tmp
+    .git/
+    node_modules/
+    .DS_Store
+    # Exclude documentation (optional)
+    docs/
+    README.md
+    # Exclude test files
+    tests/
+    test/
+    # Exclude local development files
+    .env*
+    docker-compose.override.yml
+    # Exclude IDE files
+    .vscode/
+    .idea/
+    # Exclude backup files
+    *.bak
+    *.backup
+---
+# HMS Helm Repository
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: hms-helm-repo
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-helm-repo
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: helm
+spec:
+  interval: 5m0s
+  url: https://github.com/hms-enterprise/hms-helm-charts.git
+  ref:
+    branch: main
+  secretRef:
+    name: github-credentials
+  timeout: 60s
+  ignore: |
+    # Exclude build artifacts and temporary files
+    *.log
+    *.tmp
+    .git/
+    node_modules/
+    .DS_Store
+    # Exclude documentation (optional)
+    docs/
+    README.md
+    # Exclude test files
+    tests/
+    test/
+    # Exclude local development files
+    .env*
+    docker-compose.override.yml
+    # Exclude IDE files
+    .vscode/
+    .idea/
+    # Exclude backup files
+    *.bak
+    *.backup
+---
+# HMS Policies Repository
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: hms-policies-repo
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-policies-repo
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: policies
+spec:
+  interval: 5m0s
+  url: https://github.com/hms-enterprise/hms-policies.git
+  ref:
+    branch: main
+  secretRef:
+    name: github-credentials
+  timeout: 60s
+  ignore: |
+    # Exclude build artifacts and temporary files
+    *.log
+    *.tmp
+    .git/
+    node_modules/
+    .DS_Store
+    # Exclude documentation (optional)
+    docs/
+    README.md
+    # Exclude test files
+    tests/
+    test/
+    # Exclude local development files
+    .env*
+    docker-compose.override.yml
+    # Exclude IDE files
+    .vscode/
+    .idea/
+    # Exclude backup files
+    *.bak
+    *.backup

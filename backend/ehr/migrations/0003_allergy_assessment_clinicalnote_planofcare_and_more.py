@@ -1,10 +1,14 @@
 import uuid
+
+import encrypted_model_fields.fields
+
 import django.core.validators
 import django.db.models.deletion
 import django.utils.timezone
-import encrypted_model_fields.fields
 from django.conf import settings
 from django.db import migrations, models
+
+
 class Migration(migrations.Migration):
     dependencies = [
         (
@@ -94,9 +98,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "diagnosis_code",
-                    models.CharField(
-                        blank=True, help_text="ICD-10 code", max_length=20
-                    ),
+                    models.CharField(blank=True, help_text="ICD-10 code", max_length=20),
                 ),
                 (
                     "diagnosis_description",
@@ -230,9 +232,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "content",
-                    encrypted_model_fields.fields.EncryptedTextField(
-                        blank=True, help_text="Free-form note content"
-                    ),
+                    encrypted_model_fields.fields.EncryptedTextField(blank=True, help_text="Free-form note content"),
                 ),
                 ("is_signed", models.BooleanField(default=False)),
                 ("signed_at", models.DateTimeField(blank=True, null=True)),
@@ -583,9 +583,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="encounter",
             name="encounter_number",
-            field=models.CharField(
-                db_index=True, default="TEMP", max_length=50, unique=True
-            ),
+            field=models.CharField(db_index=True, default="TEMP", max_length=50, unique=True),
         ),
         migrations.AddField(
             model_name="encounter",
@@ -911,9 +909,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="planofcare",
-            index=models.Index(
-                fields=["plan_type"], name="ehr_planofc_plan_ty_affdf6_idx"
-            ),
+            index=models.Index(fields=["plan_type"], name="ehr_planofc_plan_ty_affdf6_idx"),
         ),
         migrations.AddIndex(
             model_name="clinicalnote",
@@ -924,15 +920,11 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="clinicalnote",
-            index=models.Index(
-                fields=["author"], name="ehr_clinica_author__e1285e_idx"
-            ),
+            index=models.Index(fields=["author"], name="ehr_clinica_author__e1285e_idx"),
         ),
         migrations.AddIndex(
             model_name="clinicalnote",
-            index=models.Index(
-                fields=["note_type"], name="ehr_clinica_note_ty_746a79_idx"
-            ),
+            index=models.Index(fields=["note_type"], name="ehr_clinica_note_ty_746a79_idx"),
         ),
         migrations.AddIndex(
             model_name="assessment",
@@ -957,9 +949,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="allergy",
-            index=models.Index(
-                fields=["allergen_type"], name="ehr_allergy_allerge_eb2d9e_idx"
-            ),
+            index=models.Index(fields=["allergen_type"], name="ehr_allergy_allerge_eb2d9e_idx"),
         ),
         migrations.AlterUniqueTogether(
             name="allergy",

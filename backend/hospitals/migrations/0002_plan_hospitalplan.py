@@ -1,5 +1,7 @@
 import django.db.models.deletion
 from django.db import migrations, models
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("hospitals", "0001_initial"),
@@ -53,9 +55,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "plan",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.PROTECT, to="hospitals.plan"
-                    ),
+                    models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to="hospitals.plan"),
                 ),
             ],
         ),

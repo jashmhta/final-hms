@@ -1,0 +1,184 @@
+{
+  "environments": {
+    "development": {
+      "base_url": "/static/",
+      "enabled": false
+    },
+    "staging": {
+      "base_url": "https://staging-cdn.yourdomain.com",
+      "enabled": true,
+      "aws": {
+        "bucket": "staging-assets-bucket",
+        "region": "us-east-1",
+        "cloudfront_distribution_id": "E1A2B3C4D5E6F7",
+        "invalidation_batch_size": 15
+      },
+      "cloudflare": {
+        "zone_id": "your-staging-zone-id",
+        "account_id": "your-account-id",
+        "purge_by_url": true,
+        "purge_by_prefix": false
+      }
+    },
+    "production": {
+      "base_url": "https://cdn.yourdomain.com",
+      "enabled": true,
+      "aws": {
+        "bucket": "production-assets-bucket",
+        "region": "us-east-1",
+        "cloudfront_distribution_id": "E1A2B3C4D5E6F7",
+        "invalidation_batch_size": 15,
+        "price_class": "PriceClass_100"
+      },
+      "cloudflare": {
+        "zone_id": "your-production-zone-id",
+        "account_id": "your-account-id",
+        "purge_by_url": true,
+        "purge_by_prefix": false,
+        "api_token": "your-api-token"
+      }
+    }
+  },
+  "optimization": {
+    "css": {
+      "minify": true,
+      "autoprefixer": true,
+      "purge": true,
+      "inline_critical": true
+    },
+    "js": {
+      "minify": true,
+      "bundle": true,
+      "tree_shaking": true,
+      "code_splitting": true
+    },
+    "images": {
+      "optimize": true,
+      "webp": true,
+      "avif": true,
+      "lazy_loading": true,
+      "placeholder": true,
+      "responsive": true,
+      "quality": 85
+    },
+    "fonts": {
+      "preload": true,
+      "display_swap": true,
+      "subset": true,
+      "formats": ["woff2", "woff"]
+    }
+  },
+  "caching": {
+    "static_files": {
+      "browser_ttl": 31536000,
+      "cdn_ttl": 31536000,
+      "immutable": true,
+      "vary_headers": ["Accept-Encoding"]
+    },
+    "html_files": {
+      "browser_ttl": 300,
+      "cdn_ttl": 300,
+      "immutable": false,
+      "vary_headers": []
+    },
+    "api_responses": {
+      "browser_ttl": 0,
+      "cdn_ttl": 600,
+      "immutable": false,
+      "vary_headers": ["Authorization"]
+    }
+  },
+  "compression": {
+    "gzip": {
+      "enabled": true,
+      "level": 6,
+      "min_size": 256
+    },
+    "brotli": {
+      "enabled": true,
+      "level": 6,
+      "min_size": 256
+    }
+  },
+  "security": {
+    "cors": {
+      "enabled": true,
+      "allowed_origins": ["https://yourdomain.com"],
+      "allowed_methods": ["GET", "HEAD", "OPTIONS"],
+      "allowed_headers": ["Origin", "Accept", "Accept-Encoding"]
+    },
+    "headers": {
+      "strict_transport_security": "max-age=31536000; includeSubDomains; preload",
+      "content_security_policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src 'self' https:; frame-src 'self'; object-src 'none';",
+      "x_frame_options": "SAMEORIGIN",
+      "x_content_type_options": "nosniff",
+      "x_xss_protection": "1; mode=block",
+      "referrer_policy": "strict-origin-when-cross-origin"
+    }
+  },
+  "performance": {
+    "http2": {
+      "enabled": true,
+      "server_push": true,
+      "prioritize_critical": true
+    },
+    "resource_hints": {
+      "preconnect": ["https://fonts.googleapis.com", "https://fonts.gstatic.com"],
+      "dns_prefetch": ["//fonts.googleapis.com", "//fonts.gstatic.com"],
+      "prefetch": ["/static/css/main.css", "/static/js/main.js"]
+    },
+    "service_worker": {
+      "enabled": true,
+      "cache_name": "hms-assets-v1",
+      "runtime_caching": [
+        {
+          "url_pattern": "/static/.*",
+          "handler": "CacheFirst",
+          "options": {
+            "cache_name": "static-assets",
+            "expiration": {
+              "max_entries": 100,
+              "max_age_seconds": 604800
+            }
+          }
+        },
+        {
+          "url_pattern": "/api/.*",
+          "handler": "NetworkFirst",
+          "options": {
+            "cache_name": "api-cache",
+            "network_timeout_seconds": 5,
+            "expiration": {
+              "max_entries": 100,
+              "max_age_seconds": 86400
+            }
+          }
+        }
+      ]
+    }
+  },
+  "monitoring": {
+    "enabled": true,
+    "metrics_endpoint": "/metrics",
+    "health_check": "/health",
+    "log_level": "info",
+    "notifications": {
+      "slack_webhook": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+      "email_recipients": ["devops@yourdomain.com"]
+    }
+  },
+  "deployment": {
+    "strategy": "blue_green",
+    "zero_downtime": true,
+    "health_check_delay": 30,
+    "health_check_timeout": 10,
+    "rollback_on_failure": true,
+    "max_retries": 3
+  },
+  "backup": {
+    "enabled": true,
+    "schedule": "0 2 * * *",  # Daily at 2 AM
+    "retention_days": 30,
+    "storage_location": "s3://backup-bucket/cdn-backups"
+  }
+}

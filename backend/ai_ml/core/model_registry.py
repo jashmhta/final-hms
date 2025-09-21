@@ -1,28 +1,32 @@
-import os
+import hashlib
 import json
 import logging
-import hashlib
+import os
 import pickle
 from datetime import datetime
-from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
-import mlflow
-import mlflow.sklearn
-import mlflow.pyfunc
+from typing import Any, Dict, List, Optional, Tuple
+
 import boto3
+import mlflow
+import mlflow.pyfunc
+import mlflow.sklearn
 from botocore.exceptions import ClientError
+
 from django.conf import settings
 from django.core.cache import cache
+
 logger = logging.getLogger(__name__)
+
+
 class ModelRegistry:
     def __init__(self, registry_path: Optional[str] = None):
-        self.registry_path = registry_path or os.path.join(
-            settings.BASE_DIR, "ml_models"
-        )
+        self.registry_path = registry_path or os.path.join(settings.BASE_DIR, "ml_models")
         self.models_db_path = os.path.join(self.registry_path, "models_registry.json")
         self.registry_cache = {}
         self._initialize_registry()
         self._setup_mlflow()
+
     def _initialize_registry(self):
         os.makedirs(self.registry_path, exist_ok=True)
         os.makedirs(os.path.join(self.registry_path, "production"), exist_ok=True)
@@ -30,6 +34,7 @@ class ModelRegistry:
         os.makedirs(os.path.join(self.registry_path, "development"), exist_ok=True)
         if not os.path.exists(self.models_db_path):
             self._create_models_database()
+
     def _create_models_database(self):
         initial_db = {
             "models": {},
@@ -38,6 +43,7 @@ class ModelRegistry:
             "version": "1.0",
         }
         self._save_models_database(initial_db)
+
     def _load_models_database(self) -> Dict:
         try:
             with open(self.models_db_path, "r") as f:
@@ -45,14 +51,17 @@ class ModelRegistry:
         except (FileNotFoundError, json.JSONDecodeError):
             self._create_models_database()
             return self._load_models_database()
+
     def _save_models_database(self, db_data: Dict):
         with open(self.models_db_path, "w") as f:
             json.dump(db_data, f, indent=2)
+
     def _setup_mlflow(self):
         try:
             mlflow.set_tracking_uri(f"file://{self.registry_path}/mlruns")
         except Exception as e:
             logger.warning(f"MLflow setup failed: {e}")
+
     def register_model(
         self,
         model_name: str,
@@ -98,6 +107,7 @@ class ModelRegistry:
         except Exception as e:
             logger.error(f"Model registration failed: {e}")
             return {"status": "error", "message": str(e)}
+
     def get_model(self, model_id: str, load_model: bool = True) -> Dict:
         try:
             cache_key = f"model_{model_id}"
@@ -112,11 +122,12 @@ class ModelRegistry:
             if load_model:
                 model_object = self._load_model_file(model_info["model_file"])
                 result["model_object"] = model_object
-            cache.set(cache_key, result, timeout=3600)  
+            cache.set(cache_key, result, timeout=3600)
             return result
         except Exception as e:
             logger.error(f"Model retrieval failed: {e}")
             return {"error": str(e)}
+
     def list_models(
         self,
         model_type: Optional[str] = None,
@@ -137,9 +148,8 @@ class ModelRegistry:
         except Exception as e:
             logger.error(f"Model listing failed: {e}")
             return []
-    def update_model_status(
-        self, model_id: str, status: str, deployment_info: Optional[Dict] = None
-    ) -> Dict:
+
+    def update_model_status(self, model_id: str, status: str, deployment_info: Optional[Dict] = None) -> Dict:
         try:
             registry_db = self._load_models_database()
             model_info = registry_db["models"].get(model_id)
@@ -161,6 +171,7 @@ class ModelRegistry:
         except Exception as e:
             logger.error(f"Model status update failed: {e}")
             return {"status": "error", "message": str(e)}
+
     def deploy_model(self, model_id: str, target_environment: str) -> Dict:
         try:
             if target_environment not in ["staging", "production"]:
@@ -171,10 +182,9 @@ class ModelRegistry:
             model_info = model_result["model_info"]
             target_path = os.path.join(self.registry_path, target_environment)
             os.makedirs(target_path, exist_ok=True)
-            target_file = os.path.join(
-                target_path, os.path.basename(model_info["model_file"])
-            )
+            target_file = os.path.join(target_path, os.path.basename(model_info["model_file"]))
             import shutil
+
             shutil.copy2(model_info["model_file"], target_file)
             deployment_info = {
                 "deployed_at": datetime.now().isoformat(),
@@ -182,15 +192,11 @@ class ModelRegistry:
                 "deployment_status": "active",
                 "deployment_path": target_file,
             }
-            update_result = self.update_model_status(
-                model_id, "active", deployment_info
-            )
+            update_result = self.update_model_status(model_id, "active", deployment_info)
             registry_db = self._load_models_database()
             registry_db["deployments"][model_id] = deployment_info
             self._save_models_database(registry_db)
-            logger.info(
-                f"Model deployed successfully: {model_id} -> {target_environment}"
-            )
+            logger.info(f"Model deployed successfully: {model_id} -> {target_environment}")
             return {
                 "model_id": model_id,
                 "deployment_status": "success",
@@ -200,24 +206,29 @@ class ModelRegistry:
         except Exception as e:
             logger.error(f"Model deployment failed: {e}")
             return {"status": "error", "message": str(e)}
+
     def _generate_model_id(self, model_name: str, model_version: str) -> str:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         return f"{model_name}_{model_version}_{timestamp}"
+
     def _save_model_file(self, model: Any, model_name: str, model_version: str) -> str:
         filename = f"{model_name}_{model_version}.pkl"
         filepath = os.path.join(self.registry_path, filename)
         with open(filepath, "wb") as f:
             pickle.dump(model, f)
         return filepath
+
     def _load_model_file(self, filepath: str) -> Any:
         with open(filepath, "rb") as f:
             return pickle.load(f)
+
     def _calculate_model_hash(self, filepath: str) -> str:
         sha256_hash = hashlib.sha256()
         with open(filepath, "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):
                 sha256_hash.update(chunk)
         return sha256_hash.hexdigest()
+
     def _log_to_mlflow(self, model_name: str, model_metadata: Dict):
         try:
             with mlflow.start_run(experiment_id=model_name):
@@ -233,6 +244,7 @@ class ModelRegistry:
                 mlflow.set_tag("status", model_metadata["status"])
         except Exception as e:
             logger.warning(f"MLflow logging failed: {e}")
+
     def validate_model_integrity(self, model_id: str) -> Dict:
         try:
             model_result = self.get_model(model_id, load_model=False)
@@ -258,6 +270,7 @@ class ModelRegistry:
         except Exception as e:
             logger.error(f"Model integrity validation failed: {e}")
             return {"model_id": model_id, "integrity_check": "error", "reason": str(e)}
+
     def get_deployment_history(self, model_id: str) -> List[Dict]:
         try:
             registry_db = self._load_models_database()
@@ -272,6 +285,7 @@ class ModelRegistry:
         except Exception as e:
             logger.error(f"Deployment history retrieval failed: {e}")
             return []
+
     def cleanup_old_models(self, days_old: int = 30) -> Dict:
         try:
             cutoff_date = datetime.now().timestamp() - (days_old * 24 * 3600)
@@ -279,9 +293,7 @@ class ModelRegistry:
             cleaned_models = []
             cleaned_files = []
             for model_id, model_info in list(registry_db["models"].items()):
-                model_date = datetime.fromisoformat(
-                    model_info["registered_at"]
-                ).timestamp()
+                model_date = datetime.fromisoformat(model_info["registered_at"]).timestamp()
                 if model_date < cutoff_date and model_info["status"] == "inactive":
                     if os.path.exists(model_info["model_file"]):
                         os.remove(model_info["model_file"])

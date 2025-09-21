@@ -1,20 +1,24 @@
 import random
-from appointments.models import Appointment
+
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+
+from appointments.models import Appointment
 from hospitals.models import Hospital, HospitalPlan, Plan
 from patients.models import Patient, PatientGender
+
 User = get_user_model()
+
+
 class Command(BaseCommand):
     help = "Seed demo data for HMS"
+
     def handle(self, *args, **options):
         hospital, _ = Hospital.objects.get_or_create(
             name="Demo Hospital", defaults={"code": "DEMO", "address": "123 Main St"}
         )
-        plan, _ = Plan.objects.get_or_create(
-            name="Enterprise", defaults={"max_users": 500}
-        )
+        plan, _ = Plan.objects.get_or_create(name="Enterprise", defaults={"max_users": 500})
         HospitalPlan.objects.get_or_create(hospital=hospital, defaults={"plan": plan})
         admin, created = User.objects.get_or_create(
             username="admin",
@@ -22,6 +26,7 @@ class Command(BaseCommand):
         )
         if created:
             from django.contrib.auth.password_validation import validate_password
+
             validate_password("admin123", user=admin)
             admin.set_password("admin123")
             admin.save()
@@ -29,6 +34,7 @@ class Command(BaseCommand):
             username="hadmin", defaults={"role": "HOSPITAL_ADMIN", "hospital": hospital}
         )
         from django.contrib.auth.password_validation import validate_password
+
         validate_password("admin123", user=hadmin)
         hadmin.set_password("admin123")
         hadmin.save()
@@ -42,6 +48,7 @@ class Command(BaseCommand):
             },
         )
         from django.contrib.auth.password_validation import validate_password
+
         validate_password("doctor123", user=doctor)
         doctor.set_password("doctor123")
         doctor.save()
@@ -75,7 +82,5 @@ class Command(BaseCommand):
                 defaults={"reason": "Consultation"},
             )
         self.stdout.write(
-            self.style.SUCCESS(
-                "Demo data seeded. Users: admin/admin123, hadmin/admin123, drsmith/doctor123"
-            )
+            self.style.SUCCESS("Demo data seeded. Users: admin/admin123, hadmin/admin123, drsmith/doctor123")
         )

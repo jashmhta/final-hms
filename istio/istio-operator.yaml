@@ -1,0 +1,414 @@
+# Istio Operator Configuration
+# Enterprise-grade service mesh for HMS microservices
+
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  name: hms-istio-operator
+  namespace: istio-system
+  labels:
+    app: istio
+    tier: infrastructure
+    version: 1.20.0
+spec:
+  profile: demo
+  hub: docker.io/istio
+  tag: 1.20.0
+  namespace: istio-system
+  values:
+    global:
+      meshID: hms-mesh
+      network: hms-network
+      enableTracing: true
+      defaultTTL: 7200s
+      proxy:
+        autoInject: enabled
+        clusterDomain: cluster.local
+        componentLogLevel: misc:error
+        logLevel: warning
+        accessLogEncoding: TEXT
+        accessLogFile: /dev/stdout
+        accessLogFormat: |
+          [%START_TIME%] "%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% %PROTOCOL%" %RESPONSE_CODE% %RESPONSE_FLAGS% %RESPONSE_CODE_DETAILS% %CONNECTION_TERMINATION_DETAILS% "%UPSTREAM_TRANSPORT_FAILURE_REASON%" %BYTES_RECEIVED% %BYTES_SENT% %DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% "%REQ(X-FORWARDED-FOR)%" "%REQ(USER-AGENT)%" "%REQ(X-REQUEST-ID)%" "%REQ(:AUTHORITY)%" "%UPSTREAM_HOST%" %UPSTREAM_CLUSTER% %UPSTREAM_LOCAL_ADDRESS% %DOWNSTREAM_LOCAL_ADDRESS% %DOWNSTREAM_REMOTE_ADDRESS% %REQUESTED_SERVER_NAME% %ROUTE_NAME%
+        tracer:
+          zipkin:
+            address: jaeger.istio-system.svc.cluster.local:9411
+        enableCoreDump: true
+        image:
+          image: proxyv2
+          imagePullPolicy: IfNotPresent
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 10"]
+        readinessProbe:
+          httpGet:
+            path: /stats/ready
+            port: 15020
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 30
+        livenessProbe:
+          httpGet:
+            path: /stats/ready
+            port: 15020
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 30
+        startupProbe:
+          httpGet:
+            path: /stats/ready
+            port: 15020
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 30
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 2000m
+            memory: 1024Mi
+      outboundTrafficPolicy:
+        mode: REGISTRY_ONLY
+      trustDomain: cluster.local
+      caAddress: istiod.istio-system.svc:15012
+      podDNSSearchNamespaces:
+      - "global"
+      - "hms-system"
+      - "istio-system"
+      - "kube-system"
+      omitSidecarInjectorConfigMap: true
+      multiCluster:
+        enabled: true
+        clusterName: primary
+      meshNetworks:
+        hms-network:
+          endpoints:
+          - fromRegistry: hms-system
+          gateways:
+          - registryServiceName: istio-ingressgateway.istio-system.svc.cluster.local
+            port: 443
+
+  components:
+    pilot:
+      k8s:
+        env:
+          - name: PILOT_TRACE_SAMPLING
+            value: "100"
+          - name: PILOT_ENABLE_WORKLOAD_ENTRY_AUTOREGISTRATION
+            value: "true"
+          - name: PILOT_ENABLE_INCREMENTAL_PUSH_RDS_CONFIG
+            value: "true"
+          - name: PILOT_ENABLE_INCREMENTAL_PUSH_CDS_CONFIG
+            value: "true"
+          - name: PILOT_ENABLE_INCREMENTAL_PUSH_LDS_CONFIG
+            value: "true"
+          - name: PILOT_ENABLE_INCREMENTAL_PUSH_EDS_CONFIG
+            value: "true"
+          - name: PILOT_ENABLE_INCREMENTAL_PUSH
+            value: "true"
+          - name: PILOT_ENABLE_CONFIG_DISTRIBUTION_TRACKING
+            value: "true"
+          - name: PILOT_ENABLE_ANALYSIS
+            value: "true"
+          - name: PILOT_ENABLE_METADATA_EXCHANGE
+            value: "true"
+          - name: PILOT_VALIDATE_CLUSTER_NAME
+            value: "true"
+          - name: PILOT_ENABLE_K8S_SELECT_WORKLOAD_ENTRIES
+            value: "true"
+          - name: PILOT_ENABLE_SERVICEENTRY_SELECT_PODS
+            value: "true"
+          - name: PILOT_ENABLE_HEADLESS_SERVICE_POD_LISTENER
+            value: "true"
+          - name: PILOT_ENABLE_DESTINATION_RULE_LOAD_BALANCE
+            value: "true"
+          - name: PILOT_ENABLE_POLICY_CHECK
+            value: "true"
+          - name: PILOT_ENABLE_CROSS_CLUSTER_WORKLOAD_ENTRY
+            value: "true"
+          - name: PILOT_ENABLE_XDS_MUTUAL_TLS
+            value: "true"
+          - name: PILOT_ENABLE_QUIC_LISTENERS
+            value: "true"
+          - name: PILOT_ENABLE_STATUS
+            value: "true"
+          - name: PILOT_ENABLE_TELEMETRY
+            value: "true"
+          - name: PILOT_ENABLE_WORKLOAD_GROUP_AUTOCORRECTION
+            value: "true"
+          - name: PILOT_ENABLE_WORKLOAD_GROUP_HANDLE_EMPTY_PLACEMENT
+            value: "true"
+          - name: PILOT_ENABLE_ALPHA_GATEWAY_API
+            value: "true"
+          - name: PILOT_ENABLE_ALPHA_GATEWAY_DELTA_XDS
+            value: "true"
+          - name: PILOT_ENABLE_ALPHA_GATEWAY_GROUPING
+            value: "true"
+          - name: PILOT_ENABLE_ALPHA_GATEWAY_HTTP2
+            value: "true"
+          - name: PILOT_ENABLE_ALPHA_GATEWAY_HTTP3
+            value: "true"
+          - name: PILOT_ENABLE_ALPHA_GATEWAY_WEBHOOK
+            value: "true"
+          - name: PILOT_ENABLE_ALPHA_GATEWAY_METRICS
+            value: "true"
+          - name: PILOT_ENABLE_ALPHA_GATEWAY_TRACING
+            value: "true"
+      hub: docker.io/istio
+      tag: 1.20.0
+      enabled: true
+      k8s:
+        overlays:
+          - kind: Deployment
+            name: istiod
+            patches:
+              - path: spec.template.spec.containers[0].resources.limits.memory
+                value: 2048Mi
+              - path: spec.template.spec.containers[0].resources.requests.memory
+                value: 1024Mi
+              - path: spec.template.spec.containers[0].resources.limits.cpu
+                value: 2000m
+              - path: spec.template.spec.containers[0].resources.requests.cpu
+                value: 500m
+
+    ingressGateways:
+      - name: istio-ingressgateway
+        enabled: true
+        k8s:
+          overlays:
+            - kind: Service
+              name: istio-ingressgateway
+              patches:
+                - path: spec.type
+                  value: LoadBalancer
+                - path: spec.ports
+                  value:
+                    - name: http2
+                      port: 80
+                      targetPort: 8080
+                    - name: https
+                      port: 443
+                      targetPort: 8443
+                    - name: tcp
+                      port: 31400
+                      targetPort: 31400
+                    - name: tls
+                      port: 15443
+                      targetPort: 15443
+                - path: spec.externalTrafficPolicy
+                  value: Local
+                - path: spec.loadBalancerSourceRanges
+                  value: ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+                - path: spec.healthCheckNodePort
+                  value: 32444
+                - path: spec.externalTrafficPolicy
+                  value: Local
+          serviceAnnotations:
+            service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+            service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+            service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: "/healthz/ready"
+            service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: "15021"
+            service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval: "10"
+            service.beta.kubernetes.io/aws-load-balancer-healthcheck-timeout: "5"
+            service.beta.kubernetes.io/aws-load-balancer-healthcheck-healthy-threshold: "2"
+            service.beta.kubernetes.io/aws-load-balancer-healthcheck-unhealthy-threshold: "3"
+        hub: docker.io/istio
+        tag: 1.20.0
+        label:
+          istio: ingressgateway
+        ports:
+          - name: http2
+            port: 80
+            targetPort: 8080
+          - name: https
+            port: 443
+            targetPort: 8443
+          - name: tcp
+            port: 31400
+            targetPort: 31400
+          - name: tls
+            port: 15443
+            targetPort: 15443
+
+    egressGateways:
+      - name: istio-egressgateway
+        enabled: true
+        k8s:
+          overlays:
+            - kind: Service
+              name: istio-egressgateway
+              patches:
+                - path: spec.type
+                  value: LoadBalancer
+                - path: spec.externalTrafficPolicy
+                  value: Local
+                - path: spec.healthCheckNodePort
+                  value: 32445
+                - path: spec.externalTrafficPolicy
+                  value: Local
+          serviceAnnotations:
+            service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+            service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+            service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: "/healthz/ready"
+            service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: "15021"
+            service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval: "10"
+            service.beta.kubernetes.io/aws-load-balancer-healthcheck-timeout: "5"
+            service.beta.kubernetes.io/aws-load-balancer-healthcheck-healthy-threshold: "2"
+            service.beta.kubernetes.io/aws-load-balancer-healthcheck-unhealthy-threshold: "3"
+        hub: docker.io/istio
+        tag: 1.20.0
+        label:
+          istio: egressgateway
+          app: istio-egressgateway
+        ports:
+          - name: http2
+            port: 80
+            targetPort: 8080
+          - name: https
+            port: 443
+            targetPort: 8443
+
+    cni:
+      enabled: true
+      namespace: kube-system
+      hub: docker.io/istio
+      tag: 1.20.0
+      logLevel: info
+
+    istiodRemote:
+      enabled: false
+
+  meshConfig:
+    enableTracing: true
+    defaultConfig:
+      tracing:
+        sampling: 100.0
+        custom_tags:
+          user_id:
+            literal:
+              value: "unknown"
+        zipkin:
+          address: jaeger.istio-system.svc.cluster.local:9411
+      proxyStatsMatcher:
+        inclusionRegexps:
+        - ".*circuit_breakers.*"
+        - ".*upstream_rq_retry.*"
+        - ".*upstream_cx_.*"
+        - ".*dynamodb.*"
+        - ".*ext_authz.*"
+        - ".*envoy.*"
+        - ".*grpc.*"
+        - ".*http.*"
+        - ".*kafka.*"
+        - ".*mongo.*"
+        - ".*mysql.*"
+        - ".*otel.*"
+        - ".*postgresql.*"
+        - ".*rabbitmq.*"
+        - ".*redis.*"
+        - ".*tcp.*"
+        - ".*wasm.*"
+      discoveryAddress: istiod.istio-system.svc:15012
+      connectTimeout: 10s
+      serviceCapture: true
+      meshId: hms-mesh
+      trustDomain: cluster.local
+      defaultService:
+        host: hms-system/patient-service
+        port: 8000
+      rdsRefreshDelay: 15s
+      accessLogEncoding: TEXT
+      accessLogFile: /dev/stdout
+      accessLogFormat: |
+        [%START_TIME%] "%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% %PROTOCOL%" %RESPONSE_CODE% %RESPONSE_FLAGS% %RESPONSE_CODE_DETAILS% %CONNECTION_TERMINATION_DETAILS% "%UPSTREAM_TRANSPORT_FAILURE_REASON%" %BYTES_RECEIVED% %BYTES_SENT% %DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% "%REQ(X-FORWARDED-FOR)%" "%REQ(USER-AGENT)%" "%REQ(X-REQUEST-ID)%" "%REQ(:AUTHORITY)%" "%UPSTREAM_HOST%" %UPSTREAM_CLUSTER% %UPSTREAM_LOCAL_ADDRESS% %DOWNSTREAM_LOCAL_ADDRESS% %DOWNSTREAM_REMOTE_ADDRESS% %REQUESTED_SERVER_NAME% %ROUTE_NAME%
+
+  values:
+    gateways:
+      istio-ingressgateway:
+        type: LoadBalancer
+        ports:
+          - port: 80
+            name: http2
+            targetPort: 8080
+          - port: 443
+            name: https
+            targetPort: 8443
+          - port: 31400
+            name: tcp
+            targetPort: 31400
+          - port: 15443
+            name: tls
+            targetPort: 15443
+
+    sidecarInjectorWebhook:
+      enabled: true
+      rewriteAppHTTPProbe: true
+      alwaysInjectSelector:
+        matchExpressions:
+        - key: istio-injection
+          operator: In
+          values:
+          - enabled
+      neverInjectSelector:
+        matchExpressions:
+        - key: istio-injection
+          operator: NotIn
+          values:
+          - enabled
+          - disabled
+
+    telemetry:
+      enabled: true
+      v2:
+        enabled: true
+        prometheus:
+          enabled: true
+          configOverride:
+            gateways:
+              - destination:
+                  service: "*/istio-ingressgateway"
+                  port: 15020
+                metrics:
+                  - name: istio_requests_total
+                    dimensions:
+                      destination_service: "istio-ingressgateway.istio-system.svc.cluster.local"
+                    overrides:
+                    - match:
+                        source_service: "istio-ingressgateway.istio-system.svc.cluster.local"
+                      value: 1.0
+              - destination:
+                  service: "*/istio-egressgateway"
+                  port: 15020
+                metrics:
+                  - name: istio_requests_total
+                    dimensions:
+                      destination_service: "istio-egressgateway.istio-system.svc.cluster.local"
+                    overrides:
+                    - match:
+                        source_service: "istio-egressgateway.istio-system.svc.cluster.local"
+                      value: 1.0
+        stackdriver:
+          enabled: false
+        openshift:
+          enabled: false
+
+    global:
+      proxy:
+        tracer: "zipkin"
+      meshID: hms-mesh
+      network: hms-network
+      trustDomain: cluster.local
+      outboundTrafficPolicy:
+        mode: REGISTRY_ONLY
+
+    k8sIngress:
+      enabled: false
+      gatewayName: hms-ingressgateway
+
+    base:
+      validationURL: ""

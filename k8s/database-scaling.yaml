@@ -1,0 +1,1250 @@
+# Enterprise-Grade Database Scaling Strategies
+# Author: Microservices Scaling Architect
+# Purpose: PostgreSQL scaling with read replicas, sharding, connection pooling, and high availability
+
+# ==================== POSTGRESQL PRIMARY CLUSTER ====================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-primary-config
+  namespace: hms-production
+data:
+  postgresql.conf: |
+    # CONNECTIONS AND PERFORMANCE
+    max_connections = 200
+    shared_buffers = 4GB
+    effective_cache_size = 12GB
+    work_mem = 16MB
+    maintenance_work_mem = 512MB
+    min_wal_size = 2GB
+    max_wal_size = 8GB
+
+    # LOGGING
+    log_destination = 'stderr'
+    logging_collector = on
+    log_directory = '/var/log/postgresql'
+    log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'
+    log_statement = 'all'
+    log_line_prefix = '%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+
+    # REPLICATION
+    wal_level = replica
+    max_wal_senders = 10
+    max_replication_slots = 10
+    synchronous_commit = on
+    synchronous_standby_names = 'pgstandby1,pgstandby2'
+
+    # HEALTHCARE-SPECIFIC TUNING
+    checkpoint_completion_target = 0.9
+    random_page_cost = 1.1
+    effective_io_concurrency = 200
+    parallel_tuple_cost = 0.1
+    parallel_setup_cost = 1000.0
+    min_parallel_table_scan_size = 8MB
+    min_parallel_index_scan_size = 512kB
+    max_parallel_workers_per_gather = 4
+    max_parallel_workers = 8
+    max_parallel_maintenance_workers = 4
+
+    # QUERY OPTIMIZATION
+    constraint_exclusion = on
+    from_collapse_limit = 8
+    join_collapse_limit = 8
+    geqo_threshold = 12
+
+    # HEALTHCARE AUDIT TRAIL
+    log_connections = on
+    log_disconnections = on
+    log_lock_waits = on
+    log_temp_files = 0
+    log_checkpoints = on
+
+    # SECURITY
+    ssl = on
+    ssl_cert_file = '/etc/ssl/certs/server.crt'
+    ssl_key_file = '/etc/ssl/private/server.key'
+    ssl_ca_file = '/etc/ssl/certs/ca.crt'
+
+    # PARTITIONING
+    default_with_oids = off
+    enable_partition_pruning = on
+    enable_partitionwise_aggregate = on
+    enable_partitionwise_join = on
+
+    # AUTOVACUUM TUNING FOR HEALTHCARE DATA
+    autovacuum = on
+    autovacuum_max_workers = 6
+    autovacuum_naptime = 1min
+    autovacuum_vacuum_threshold = 1000
+    autovacuum_analyze_threshold = 500
+    autovacuum_vacuum_scale_factor = 0.1
+    autovacuum_analyze_scale_factor = 0.05
+    autovacuum_freeze_max_age = 200000000
+    autovacuum_multixact_freeze_max_age = 400000000
+    autovacuum_vacuum_cost_delay = 2ms
+    autovacuum_vacuum_cost_limit = 2000
+
+  pg_hba.conf: |
+    # TYPE  DATABASE        USER            ADDRESS                 METHOD
+
+    # Local connections
+    local   all             all                                     scram-sha-256
+
+    # Internal Kubernetes connections
+    host    all             all             10.0.0.0/8             scram-sha-256
+    host    all             all             172.16.0.0/12          scram-sha-256
+    host    all             all             192.168.0.0/16         scram-sha-256
+
+    # Replication connections
+    host    replication     all             10.0.0.0/8             scram-sha-256
+    host    replication     all             172.16.0.0/12          scram-sha-256
+    host    replication     all             192.168.0.0/16         scram-sha-256
+
+    # SSL requirement for external connections
+    hostssl all             all             0.0.0.0/0              scram-sha-256
+
+    # Service-specific access
+    host    hms_patients    patient_user    10.0.0.0/8             scram-sha-256
+    host    hms_ehr         ehr_user         10.0.0.0/8             scram-sha-256
+    host    hms_billing     billing_user     10.0.0.0/8             scram-sha-256
+    host    hms_pharmacy    pharmacy_user    10.0.0.0/8             scram-sha-256
+    host    hms_lab         lab_user         10.0.0.0/8             scram-sha-256
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-primary
+  namespace: hms-production
+  labels:
+    app: postgres
+    role: primary
+    component: database
+spec:
+  serviceName: postgres-primary
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+      role: primary
+  template:
+    metadata:
+      labels:
+        app: postgres
+        role: primary
+        component: database
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - postgres
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name: postgres
+          image: postgres:15.4
+          env:
+            - name: POSTGRES_DB
+              value: hms_production
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secrets
+                  key: password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - containerPort: 5432
+              name: postgres
+          volumeMounts:
+            - name: postgres-config
+              mountPath: /etc/postgresql/postgresql.conf
+              subPath: postgresql.conf
+            - name: pg-hba-config
+              mountPath: /etc/postgresql/pg_hba.conf
+              subPath: pg_hba.conf
+            - name: postgres-ssl
+              mountPath: /etc/ssl/certs
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: postgres-logs
+              mountPath: /var/log/postgresql
+          resources:
+            requests:
+              memory: "8Gi"
+              cpu: "4000m"
+            limits:
+              memory: "16Gi"
+              cpu: "8000m"
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+                - -d
+                - hms_production
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+                - -d
+                - hms_production
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          securityContext:
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
+      volumes:
+        - name: postgres-config
+          configMap:
+            name: postgres-primary-config
+            items:
+              - key: postgresql.conf
+                path: postgresql.conf
+        - name: pg-hba-config
+          configMap:
+            name: postgres-primary-config
+            items:
+              - key: pg_hba.conf
+                path: pg_hba.conf
+        - name: postgres-ssl
+          secret:
+            secretName: postgres-ssl-secrets
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: fast-ssd
+        resources:
+          requests:
+            storage: 500Gi
+    - metadata:
+        name: postgres-logs
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: fast-ssd
+        resources:
+          requests:
+            storage: 50Gi
+
+---
+# ==================== POSTGRESQL READ REPLICAS ====================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-replica-config
+  namespace: hms-production
+data:
+  postgresql.conf: |
+    # READ REPLICA SPECIFIC CONFIGURATION
+    max_connections = 300
+    shared_buffers = 6GB
+    effective_cache_size = 18GB
+    work_mem = 24MB
+    maintenance_work_mem = 1GB
+
+    # HOT STANDBY PERFORMANCE
+    hot_standby = on
+    hot_standby_feedback = on
+    max_standby_archive_delay = 30s
+    max_standby_streaming_delay = 30s
+    wal_receiver_status_interval = 1s
+    hot_standby_feedback = on
+
+    # REPORTING AND ANALYTICS OPTIMIZATION
+    random_page_cost = 1.0
+    effective_io_concurrency = 300
+    parallel_tuple_cost = 0.05
+    parallel_setup_cost = 500.0
+    max_parallel_workers_per_gather = 8
+    max_parallel_workers = 16
+    max_parallel_maintenance_workers = 8
+
+    # CACHING FOR READ WORKLOADS
+    shared_preload_libraries = 'pg_stat_statements,pg_buffercache,pg_prewarm'
+    pg_stat_statements.max = 10000
+    pg_stat_statements.track = all
+
+    # LOGGING
+    log_destination = 'stderr'
+    logging_collector = on
+    log_directory = '/var/log/postgresql'
+    log_filename = 'replica-%Y-%m-%d_%H%M%S.log'
+    log_min_messages = warning
+    log_line_prefix = '%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-replicas
+  namespace: hms-production
+  labels:
+    app: postgres
+    role: replica
+    component: database
+spec:
+  serviceName: postgres-replicas
+  replicas: 3
+  selector:
+    matchLabels:
+      app: postgres
+      role: replica
+  template:
+    metadata:
+      labels:
+        app: postgres
+        role: replica
+        component: database
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - postgres
+                topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name: postgres
+          image: postgres:15.4
+          command:
+            - bash
+            - -c
+            - |
+              # Setup replication on first start
+              if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
+                echo "Setting up replica..."
+                pg_basebackup -h postgres-primary -U postgres -D /var/lib/postgresql/data/pgdata -R -X stream -C -S postgres_slot_$(hostname)
+                echo "primary_conninfo = 'host=postgres-primary port=5432 user=postgres password=$POSTGRES_PASSWORD'" >> /var/lib/postgresql/data/pgdata/recovery.conf
+                echo "standby_mode = 'on'" >> /var/lib/postgresql/data/pgdata/recovery.conf
+                echo "primary_slot_name = 'postgres_slot_$(hostname)'" >> /var/lib/postgresql/data/pgdata/recovery.conf
+              fi
+              exec docker-entrypoint.sh postgres
+          env:
+            - name: POSTGRES_DB
+              value: hms_production
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secrets
+                  key: password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - containerPort: 5432
+              name: postgres
+          volumeMounts:
+            - name: postgres-config
+              mountPath: /etc/postgresql/postgresql.conf
+              subPath: postgresql.conf
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: postgres-logs
+              mountPath: /var/log/postgresql
+          resources:
+            requests:
+              memory: "12Gi"
+              cpu: "6000m"
+            limits:
+              memory: "24Gi"
+              cpu: "12000m"
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+                - -d
+                - hms_production
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - "pg_isready -U postgres -d hms_production && psql -U postgres -d hms_production -c 'SELECT pg_is_in_recovery()'"
+            initialDelaySeconds: 30
+            periodSeconds: 5
+          securityContext:
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
+      volumes:
+        - name: postgres-config
+          configMap:
+            name: postgres-replica-config
+            items:
+              - key: postgresql.conf
+                path: postgresql.conf
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: fast-ssd
+        resources:
+          requests:
+            storage: 750Gi
+    - metadata:
+        name: postgres-logs
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: fast-ssd
+        resources:
+          requests:
+            storage: 50Gi
+
+---
+# ==================== PGBOUNCER CONNECTION POOLER ====================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgbouncer-config
+  namespace: hms-production
+data:
+  pgbouncer.ini: |
+    [databases]
+    hms_production = host=postgres-primary port=5432 dbname=hms_production
+
+    [pgbouncer]
+    pool_mode = transaction
+    max_client_conn = 10000
+    default_pool_size = 100
+    min_pool_size = 20
+    reserve_pool = 10
+    reserve_pool_timeout = 5
+    max_db_connections = 200
+    max_user_connections = 100
+    server_round_robin = 0
+    ignore_startup_parameters = extra_float_digits
+
+    # TIMEOUTS
+    server_lifetime = 3600
+    server_idle_timeout = 600
+    server_connect_timeout = 15
+    server_login_retry = 5
+    query_timeout = 0
+    query_wait_timeout = 120
+    client_idle_timeout = 0
+    client_login_timeout = 60
+    autodb_idle_timeout = 3600
+
+    # LOGGING
+    syslog = 0
+    syslog_facility = daemon
+    log_connections = 1
+    log_disconnections = 1
+    log_pooler_errors = 1
+
+    # SECURITY
+    auth_type = scram-sha-256
+    auth_file = /etc/pgbouncer/userlist.txt
+
+    # PERFORMANCE
+    tcp_keepalive = 1
+    tcp_keepcnt = 0
+    tcp_keepidle = 0
+    tcp_keepintvl = 0
+
+    # ADMIN
+    stats_users = stats_user
+    admin_users = admin_user
+
+  userlist.txt: |
+    "postgres" "postgres_password_hash"
+    "stats_user" "stats_password_hash"
+    "admin_user" "admin_password_hash"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer
+  namespace: hms-production
+  labels:
+    app: pgbouncer
+    component: database
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: pgbouncer
+  template:
+    metadata:
+      labels:
+        app: pgbouncer
+        component: database
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - pgbouncer
+                topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name: pgbouncer
+          image: edoburu/pgbouncer:1.18.0
+          env:
+            - name: POSTGRES_PASSWORD_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: pgbouncer-secrets
+                  key: postgres-hash
+            - name: STATS_PASSWORD_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: pgbouncer-secrets
+                  key: stats-hash
+            - name: ADMIN_PASSWORD_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: pgbouncer-secrets
+                  key: admin-hash
+          ports:
+            - containerPort: 6432
+              name: pgbouncer
+          volumeMounts:
+            - name: pgbouncer-config
+              mountPath: /etc/pgbouncer
+            - name: pgbouncer-userlist
+              mountPath: /etc/pgbouncer/userlist.txt
+              subPath: userlist.txt
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            tcpSocket:
+              port: 6432
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: 6432
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: pgbouncer-config
+          configMap:
+            name: pgbouncer-config
+            items:
+              - key: pgbouncer.ini
+                path: pgbouncer.ini
+        - name: pgbouncer-userlist
+          secret:
+            secretName: pgbouncer-secrets
+            items:
+              - key: userlist.txt
+                path: userlist.txt
+
+---
+# ==================== DATABASE SHARDING CONFIGURATION ====================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-shard-config
+  namespace: hms-production
+data:
+  shard-init.sql: |
+    -- Shard configuration for HMS data partitioning
+    -- Patient data sharding by year and region
+
+    CREATE EXTENSION IF NOT EXISTS pg_partman;
+    CREATE EXTENSION IF NOT EXISTS pg_cron;
+    CREATE EXTENSION IF NOT EXISTS timescaledb;
+
+    -- Shard groups for different data types
+    CREATE SCHEMA shard_patients;
+    CREATE SCHEMA shard_appointments;
+    CREATE SCHEMA shard_billing;
+    CREATE SCHEMA shard_analytics;
+
+    -- Patient data partitioning (by year and region)
+    CREATE TABLE shard_patients.patient_data (
+        patient_id BIGSERIAL,
+        patient_uuid UUID NOT NULL DEFAULT gen_random_uuid(),
+        first_name VARCHAR(100) NOT NULL,
+        last_name VARCHAR(100) NOT NULL,
+        date_of_birth DATE NOT NULL,
+        gender VARCHAR(20),
+        phone VARCHAR(20),
+        email VARCHAR(255),
+        address JSONB,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        shard_key INTEGER GENERATED ALWAYS AS (EXTRACT(YEAR FROM created_at) * 100 + (hashtext(patient_uuid::text) % 10)) STORED,
+        PRIMARY KEY (patient_id, shard_key)
+    ) PARTITION BY HASH (shard_key);
+
+    -- Create 10 partitions for patient data
+    DO $$
+    DECLARE
+        i INTEGER;
+    BEGIN
+        FOR i IN 0..9 LOOP
+            EXECUTE format('CREATE TABLE shard_patients.patient_data_p%s PARTITION OF shard_patients.patient_data FOR VALUES WITH (MODULUS 10, REMAINDER %s);', i, i);
+        END LOOP;
+    END $$;
+
+    -- Appointment data partitioning (by date)
+    CREATE TABLE shard_appointments.appointments (
+        appointment_id BIGSERIAL,
+        patient_id BIGINT NOT NULL,
+        appointment_type VARCHAR(50) NOT NULL,
+        scheduled_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        duration_minutes INTEGER DEFAULT 30,
+        status VARCHAR(20) DEFAULT 'scheduled',
+        provider_id BIGINT,
+        location_id BIGINT,
+        notes TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        PRIMARY KEY (appointment_id, scheduled_at)
+    ) PARTITION BY RANGE (scheduled_at);
+
+    -- Create monthly partitions for appointments
+    DO $$
+    DECLARE
+        start_date DATE := DATE_TRUNC('month', CURRENT_DATE);
+        end_date DATE := start_date + INTERVAL '12 months';
+        current_date DATE := start_date;
+    BEGIN
+        WHILE current_date < end_date LOOP
+            EXECUTE format('CREATE TABLE shard_appointments.appointments_%s PARTITION OF shard_appointments.appointments FOR VALUES FROM (%L) TO (%L);',
+                           TO_CHAR(current_date, 'YYYY_MM'), current_date, current_date + INTERVAL '1 month');
+            current_date := current_date + INTERVAL '1 month';
+        END LOOP;
+    END $$;
+
+    -- Billing data partitioning (by month and type)
+    CREATE TABLE shard_billing.billing_records (
+        billing_id BIGSERIAL,
+        patient_id BIGINT NOT NULL,
+        appointment_id BIGINT,
+        billing_type VARCHAR(50) NOT NULL,
+        amount DECIMAL(12,2) NOT NULL,
+        insurance_provider VARCHAR(100),
+        claim_number VARCHAR(100),
+        status VARCHAR(20) DEFAULT 'pending',
+        billed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        processed_at TIMESTAMP WITH TIME ZONE,
+        shard_key INTEGER GENERATED ALWAYS AS (EXTRACT(MONTH FROM billed_at) * 1000 + COALESCE(hashtext(billing_type::text) % 1000, 0)) STORED,
+        PRIMARY KEY (billing_id, shard_key)
+    ) PARTITION BY HASH (shard_key);
+
+    -- Create 24 partitions for billing (months * types)
+    DO $$
+    DECLARE
+        i INTEGER;
+    BEGIN
+        FOR i IN 0..23 LOOP
+            EXECUTE format('CREATE TABLE shard_billing.billing_records_p%s PARTITION OF shard_billing.billing_records FOR VALUES WITH (MODULUS 24, REMAINDER %s);', i, i);
+        END LOOP;
+    END $$;
+
+    -- TimescaleDB hypertable for analytics
+    CREATE TABLE shard_analytics.system_metrics (
+        time TIMESTAMP WITH TIME ZONE NOT NULL,
+        metric_name VARCHAR(100) NOT NULL,
+        metric_value DOUBLE PRECISION,
+        service_name VARCHAR(100),
+        pod_name VARCHAR(100),
+        tags JSONB
+    );
+
+    SELECT create_hypertable('shard_analytics.system_metrics', 'time');
+
+    -- Create retention policy for analytics data
+    SELECT add_retention_policy('shard_analytics.system_metrics', INTERVAL '30 days');
+
+    -- Automated partition maintenance
+    SELECT cron.schedule('create_appointment_partitions', '0 0 1 * *',
+        $$DECLARE
+            start_date DATE := DATE_TRUNC('month', CURRENT_DATE + INTERVAL '1 month');
+            end_date DATE := start_date + INTERVAL '3 months';
+            current_date DATE := start_date;
+        BEGIN
+            WHILE current_date < end_date LOOP
+                BEGIN
+                    EXECUTE format('CREATE TABLE IF NOT EXISTS shard_appointments.appointments_%s PARTITION OF shard_appointments.appointments FOR VALUES FROM (%L) TO (%L);',
+                                   TO_CHAR(current_date, 'YYYY_MM'), current_date, current_date + INTERVAL '1 month');
+                    current_date := current_date + INTERVAL '1 month';
+                EXCEPTION WHEN duplicate_table THEN
+                    -- Table already exists, skip
+                    current_date := current_date + INTERVAL '1 month';
+                END;
+            END LOOP;
+        END $$);
+
+    -- Create indexes for performance
+    CREATE INDEX idx_patients_uuid ON shard_patients.patient_data (patient_uuid);
+    CREATE INDEX idx_patients_dob ON shard_patients.patient_data (date_of_birth);
+    CREATE INDEX idx_patients_created ON shard_patients.patient_data (created_at);
+
+    CREATE INDEX idx_appointments_patient ON shard_appointments.appointments (patient_id);
+    CREATE INDEX idx_appointments_scheduled ON shard_appointments.appointments (scheduled_at);
+    CREATE INDEX idx_appointments_status ON shard_appointments.appointments (status);
+
+    CREATE INDEX idx_billing_patient ON shard_billing.billing_records (patient_id);
+    CREATE INDEX idx_billing_type ON shard_billing.billing_records (billing_type);
+    CREATE INDEX idx_billing_status ON shard_billing.billing_records (status);
+    CREATE INDEX idx_billing_billed ON shard_billing.billing_records (billed_at);
+
+    CREATE INDEX idx_metrics_time ON shard_analytics.system_metrics (time DESC);
+    CREATE INDEX idx_metrics_name ON shard_analytics.system_metrics (metric_name);
+    CREATE INDEX idx_metrics_service ON shard_analytics.system_metrics (service_name);
+
+    -- Grant permissions
+    GRANT ALL PRIVILEGES ON SCHEMA shard_patients TO patient_user;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA shard_patients TO patient_user;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA shard_patients TO patient_user;
+
+    GRANT ALL PRIVILEGES ON SCHEMA shard_appointments TO appointment_user;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA shard_appointments TO appointment_user;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA shard_appointments TO appointment_user;
+
+    GRANT ALL PRIVILEGES ON SCHEMA shard_billing TO billing_user;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA shard_billing TO billing_user;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA shard_billing TO billing_user;
+
+    GRANT SELECT ON SCHEMA shard_analytics TO analytics_user;
+    GRANT SELECT ON ALL TABLES IN SCHEMA shard_analytics TO analytics_user;
+
+---
+# ==================== DATABASE FAILOVER AND BACKUP CONFIGURATION =================---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-backup-config
+  namespace: hms-production
+data:
+  backup-script.sh: |
+    #!/bin/bash
+
+    set -euo pipefail
+
+    # Configuration
+    BACKUP_DIR="/backups"
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    RETENTION_DAYS=30
+    POSTGRES_HOST="postgres-primary"
+    POSTGRES_DB="hms_production"
+
+    # Create backup directory
+    mkdir -p "${BACKUP_DIR}/${TIMESTAMP}"
+
+    echo "Starting database backup at $(date)"
+
+    # Full database backup
+    pg_dump -h "${POSTGRES_HOST}" -U postgres -d "${POSTGRES_DB}" \
+        --format=custom \
+        --compress=9 \
+        --verbose \
+        --file="${BACKUP_DIR}/${TIMESTAMP}/hms_production.dump"
+
+    # Schema-only backup
+    pg_dump -h "${POSTGRES_HOST}" -U postgres -d "${POSTGRES_DB}" \
+        --schema-only \
+        --file="${BACKUP_DIR}/${TIMESTAMP}/schema.sql"
+
+    # Configuration backup
+    pg_dumpall -h "${POSTGRES_HOST}" -U postgres \
+        --globals-only \
+        --file="${BACKUP_DIR}/${TIMESTAMP}/globals.sql"
+
+    # Create backup manifest
+    cat > "${BACKUP_DIR}/${TIMESTAMP}/backup_manifest.json" << EOF
+    {
+      "timestamp": "$(date -Iseconds)",
+      "database": "${POSTGRES_DB}",
+      "host": "${POSTGRES_HOST}",
+      "backup_type": "full",
+      "format": "custom",
+      "compressed": true,
+      "files": [
+        "hms_production.dump",
+        "schema.sql",
+        "globals.sql"
+      ]
+    }
+    EOF
+
+    # Verify backup
+    echo "Verifying backup..."
+    if pg_restore -l "${BACKUP_DIR}/${TIMESTAMP}/hms_production.dump" > /dev/null 2>&1; then
+        echo "Backup verification successful"
+    else
+        echo "ERROR: Backup verification failed"
+        exit 1
+    fi
+
+    # Cleanup old backups
+    echo "Cleaning up old backups..."
+    find "${BACKUP_DIR}" -name "20*" -type d -mtime +${RETENTION_DAYS} -exec rm -rf {} +
+
+    # Create backup checksum
+    cd "${BACKUP_DIR}/${TIMESTAMP}"
+    sha256sum * > checksums.sha256
+
+    echo "Backup completed successfully at $(date)"
+    echo "Backup location: ${BACKUP_DIR}/${TIMESTAMP}"
+
+---
+# ==================== DATABASE HEALTH MONITORING =================---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-health-monitor
+  namespace: hms-production
+data:
+  health-check.py: |
+    #!/usr/bin/env python3
+
+    import psycopg2
+    import sys
+    import json
+    import time
+    from datetime import datetime, timedelta
+
+    def check_database_health():
+        try:
+            # Connect to primary database
+            conn = psycopg2.connect(
+                host="postgres-primary",
+                database="hms_production",
+                user="postgres",
+                password="postgres_password",
+                connect_timeout=5
+            )
+
+            cursor = conn.cursor()
+
+            # Check basic connectivity
+            cursor.execute("SELECT 1")
+            result = cursor.fetchone()
+
+            # Check replication status
+            cursor.execute("""
+                SELECT
+                    pg_is_in_recovery() as in_recovery,
+                    pg_last_wal_receive_lsn() as last_receive_lsn,
+                    pg_last_wal_replay_lsn() as last_replay_lsn,
+                    pg_wal_replay_pause() as replay_paused
+            """)
+            replication_status = cursor.fetchone()
+
+            # Check connection counts
+            cursor.execute("""
+                SELECT
+                    count(*) as total_connections,
+                    count(*) FILTER WHERE state = 'active' as active_connections,
+                    count(*) FILTER WHERE state = 'idle' as idle_connections
+                FROM pg_stat_activity
+                WHERE datname = 'hms_production'
+            """)
+            connection_stats = cursor.fetchone()
+
+            # Check database size
+            cursor.execute("""
+                SELECT
+                    pg_database_size('hms_production') as db_size,
+                    pg_size_pretty(pg_database_size('hms_production')) as db_size_pretty
+            """)
+            size_info = cursor.fetchone()
+
+            # Check longest running queries
+            cursor.execute("""
+                SELECT
+                    pid,
+                    now() - pg_stat_activity.query_start AS duration,
+                    query,
+                    state
+                FROM pg_stat_activity
+                WHERE (now() - pg_stat_activity.query_start) > interval '5 minutes'
+                AND state != 'idle'
+                AND query NOT LIKE '%pg_stat_activity%'
+                ORDER BY duration DESC
+                LIMIT 5
+            """)
+            long_queries = cursor.fetchall()
+
+            # Check table statistics
+            cursor.execute("""
+                SELECT
+                    schemaname,
+                    tablename,
+                    seq_scan,
+                    seq_tup_read,
+                    idx_scan,
+                    idx_tup_fetch,
+                    n_tup_ins,
+                    n_tup_upd,
+                    n_tup_del
+                FROM pg_stat_user_tables
+                ORDER BY seq_scan DESC
+                LIMIT 10
+            """)
+            table_stats = cursor.fetchall()
+
+            conn.close()
+
+            # Prepare health status
+            health_status = {
+                "status": "healthy",
+                "timestamp": datetime.now().isoformat(),
+                "database": "hms_production",
+                "replication": {
+                    "in_recovery": replication_status[0],
+                    "last_receive_lsn": str(replication_status[1]),
+                    "last_replay_lsn": str(replication_status[2]),
+                    "replay_paused": replication_status[3]
+                },
+                "connections": {
+                    "total": connection_stats[0],
+                    "active": connection_stats[1],
+                    "idle": connection_stats[2],
+                    "utilization": round((connection_stats[0] / 200) * 100, 2)
+                },
+                "size": {
+                    "bytes": size_info[0],
+                    "pretty": size_info[1]
+                },
+                "long_running_queries": [
+                    {
+                        "pid": q[0],
+                        "duration": str(q[1]),
+                        "query": q[2][:200] + "..." if len(q[2]) > 200 else q[2],
+                        "state": q[3]
+                    } for q in long_queries
+                ],
+                "top_tables": [
+                    {
+                        "schema": t[0],
+                        "table": t[1],
+                        "seq_scan": t[2],
+                        "seq_tup_read": t[3],
+                        "idx_scan": t[4],
+                        "idx_tup_fetch": t[5]
+                    } for t in table_stats
+                ]
+            }
+
+            # Determine overall health
+            if connection_stats[0] > 180:  # 90% of max_connections
+                health_status["status"] = "degraded"
+                health_status["warnings"] = ["High connection count"]
+
+            if long_queries:
+                health_status["status"] = "degraded"
+                health_status["warnings"] = health_status.get("warnings", []) + ["Long running queries detected"]
+
+            print(json.dumps(health_status, indent=2))
+            return 0
+
+        except Exception as e:
+            error_status = {
+                "status": "unhealthy",
+                "timestamp": datetime.now().isoformat(),
+                "error": str(e)
+            }
+            print(json.dumps(error_status, indent=2))
+            return 1
+
+    if __name__ == "__main__":
+        sys.exit(check_database_health())
+
+---
+# ==================== SERVICES ====================
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-primary
+  namespace: hms-production
+  labels:
+    app: postgres
+    role: primary
+    service: database
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+    role: primary
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-replicas
+  namespace: hms-production
+  labels:
+    app: postgres
+    role: replica
+    service: database
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: postgres
+    role: replica
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer
+  namespace: hms-production
+  labels:
+    app: pgbouncer
+    service: database
+spec:
+  type: ClusterIP
+  selector:
+    app: pgbouncer
+  ports:
+    - name: pgbouncer
+      port: 6432
+      targetPort: 6432
+
+---
+# ==================== SECRETS =================---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secrets
+  namespace: hms-production
+type: Opaque
+data:
+  password: cG9zdGdyZXNfZW50ZXJwcmlzZV9wYXNzd29yZA==  # postgres_enterprise_password
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-ssl-secrets
+  namespace: hms-production
+type: kubernetes.io/tls
+data:
+  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t  # Base64 encoded TLS certificate
+  tls.key: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0t  # Base64 encoded TLS private key
+  ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t   # Base64 encoded CA certificate
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pgbouncer-secrets
+  namespace: hms-production
+type: Opaque
+data:
+  postgres-hash: cG9zdGdyZXNfcGFzc3dvcmRfaGFzaA==  # postgres_password_hash
+  stats-hash: c3RhdHNfcGFzc3dvcmRfaGFzaA==    # stats_password_hash
+  admin-hash: YWRtaW5fcGFzc3dvcmRfaGFzaA==     # admin_password_hash
+  userlist.txt: "InBvc3RncmVzIiAicG9zdGdyZXNfcGFzc3dvcmRfaGFzaCIKInN0YXRzX3VzZXIiICJzdGF0c19wYXNzd29yZF9oYXNoIgoiYWRtaW5fdXNlciIgImFkbWluX3Bhc3N3b3JkX2hhc2giCg=="
+
+---
+# ==================== PERSISTENT VOLUME CLAIMS ====================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-backup-pvc
+  namespace: hms-production
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: fast-ssd
+  resources:
+    requests:
+      storage: 1000Gi  # 1TB for backups
+
+---
+# ==================== DATABASE MONITORING SERVICE =================---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-health-monitor
+  namespace: hms-production
+  labels:
+    app: postgres-health-monitor
+    component: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-health-monitor
+  template:
+    metadata:
+      labels:
+        app: postgres-health-monitor
+        component: monitoring
+    spec:
+      containers:
+        - name: health-monitor
+          image: python:3.11-slim
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              pip install psycopg2-binary > /dev/null 2>&1
+              while true; do
+                python /app/health-check.py > /tmp/health_status.json
+                sleep 30
+              done
+          volumeMounts:
+            - name: health-check-script
+              mountPath: /app/health-check.py
+              subPath: health-check.py
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: health-check-script
+          configMap:
+            name: postgres-health-monitor
+            items:
+              - key: health-check.py
+                path: health-check.py
+
+---
+# ==================== DATABASE AUTOMATED MAINTENANCE JOB =================---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-daily-maintenance
+  namespace: hms-production
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: maintenance
+              image: postgres:15.4
+              command: ["/bin/bash", "-c"]
+              args:
+                - |
+                  echo "Starting daily database maintenance..."
+
+                  # Run VACUUM ANALYZE on large tables
+                  psql -h postgres-primary -U postgres -d hms_production -c "VACUUM ANALYZE shard_patients.patient_data;"
+                  psql -h postgres-primary -U postgres -d hms_production -c "VACUUM ANALYZE shard_appointments.appointments;"
+                  psql -h postgres-primary -U postgres -d hms_production -c "VACUUM ANALYZE shard_billing.billing_records;"
+                  psql -h postgres-primary -U postgres -d hms_production -c "VACUUM ANALYZE shard_analytics.system_metrics;"
+
+                  # Update statistics
+                  psql -h postgres-primary -U postgres -d hms_production -c "ANALYZE;"
+
+                  # Check table bloat
+                  psql -h postgres-primary -U postgres -d hms_production -c "
+                    SELECT
+                      schemaname,
+                      tablename,
+                      pg_size_pretty(bs.bloat_size) as bloat_size,
+                      bs.bloat_ratio,
+                      pg_size_pretty(ps.table_size) as table_size
+                    FROM pg_stat_user_tables ps
+                    JOIN (
+                      SELECT
+                        schemaname,
+                        tablename,
+                        pg_total_relation_size(schemaname||'.'||tablename) as table_size,
+                        (pg_total_relation_size(schemaname||'.'||tablename) -
+                         (pg_relation_size(schemaname||'.'||tablename) +
+                          pg_indexes_size(schemaname||'.'||tablename))) as bloat_size,
+                        round(((pg_total_relation_size(schemaname||'.'||tablename) -
+                               (pg_relation_size(schemaname||'.'||tablename) +
+                                pg_indexes_size(schemaname||'.'||tablename)))::float /
+                              pg_total_relation_size(schemaname||'.'||tablename) * 100, 2) as bloat_ratio
+                      FROM pg_stat_user_tables
+                    ) bs ON ps.schemaname = bs.schemaname AND ps.tablename = bs.tablename
+                    WHERE bs.bloat_ratio > 10
+                    ORDER BY bs.bloat_ratio DESC;
+                  " > /tmp/bloat_report.txt
+
+                  echo "Database maintenance completed"
+                  cat /tmp/bloat_report.txt
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secrets
+                      key: password
+          restartPolicy: OnFailure
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: hms-production
+spec:
+  schedule: "0 1 * * *"  # Daily at 1 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: backup
+              image: postgres:15.4
+              command: ["/bin/bash", "/app/backup-script.sh"]
+              volumeMounts:
+                - name: backup-script
+                  mountPath: /app/backup-script.sh
+                  subPath: backup-script.sh
+                - name: backup-storage
+                  mountPath: /backups
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secrets
+                      key: password
+          restartPolicy: OnFailure
+          volumes:
+            - name: backup-script
+              configMap:
+                name: postgres-backup-config
+                items:
+                  - key: backup-script.sh
+                    path: backup-script.sh
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: postgres-backup-pvc

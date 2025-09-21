@@ -1,13 +1,17 @@
 import os
-import sys
 import secrets
 import string
+import sys
+
 import django
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "hms.settings")
 django.setup()
 from django.contrib.auth import get_user_model
 from django.db import transaction
+
 from hospitals.models import Hospital
+
 User = get_user_model()
 def generate_secure_password(length=12):
     alphabet = string.ascii_letters + string.digits + "!@

@@ -1,6 +1,8 @@
+import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
-import django.db.models.deletion
+
+
 class Migration(migrations.Migration):
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
@@ -543,8 +545,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="medicationbatch",
-            index=models.Index(
-                fields=["expiry_date"], name="pharmacy_me_expiry__266ee1_idx"
-            ),
+            index=models.Index(fields=["expiry_date"], name="pharmacy_me_expiry__266ee1_idx"),
         ),
     ]

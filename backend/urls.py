@@ -1,6 +1,7 @@
 from django.contrib import admin
-from django.urls import path, include
 from django.http import JsonResponse
+from django.urls import include, path
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include("rest_framework.urls")),
@@ -9,7 +10,7 @@ urlpatterns = [
         lambda request: JsonResponse({"status": "healthy", "service": "HMS Backend"}),
     ),
 ]
+
+
 def health_check(request):
-    return JsonResponse(
-        {"status": "healthy", "service": "HMS Backend", "version": "1.0.0"}
-    )
+    return JsonResponse({"status": "healthy", "service": "HMS Backend", "version": "1.0.0"})

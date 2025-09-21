@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo, useCallback } from 'react'
 import {
   Card,
   CardContent,
@@ -69,7 +69,7 @@ interface PatientCardProps {
   className?: string
 }
 
-const PatientCard: React.FC<PatientCardProps> = ({
+const PatientCard: React.FC<PatientCardProps> = React.memo(({
   patient,
   onViewDetails,
   onContact,
@@ -80,7 +80,8 @@ const PatientCard: React.FC<PatientCardProps> = ({
 }) => {
   const theme = useTheme()
 
-  const getGenderIcon = (gender: string) => {
+  // Memoized computed values
+  const getGenderIcon = useCallback((gender: string) => {
     switch (gender) {
       case 'male':
         return <Male sx={{ color: theme.palette.info.main }} />
@@ -91,9 +92,9 @@ const PatientCard: React.FC<PatientCardProps> = ({
       default:
         return <Person />
     }
-  }
+  }, [theme])
 
-  const getConditionColor = (condition: string) => {
+  const getConditionColor = useCallback((condition: string) => {
     switch (condition) {
       case 'critical':
         return theme.palette.error.main
@@ -108,9 +109,9 @@ const PatientCard: React.FC<PatientCardProps> = ({
       default:
         return theme.palette.grey[500]
     }
-  }
+  }, [theme])
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'admitted':
         return theme.palette.success.main
@@ -123,9 +124,9 @@ const PatientCard: React.FC<PatientCardProps> = ({
       default:
         return theme.palette.grey[500]
     }
-  }
+  }, [theme])
 
-  const calculateAge = (dateOfBirth: string) => {
+  const calculateAge = useCallback((dateOfBirth: string) => {
     const birthDate = new Date(dateOfBirth)
     const today = new Date()
     let age = today.getFullYear() - birthDate.getFullYear()
@@ -136,9 +137,9 @@ const PatientCard: React.FC<PatientCardProps> = ({
     }
 
     return age
-  }
+  }, [])
 
-  const formatVitalSigns = (vitals: PatientData['lastVitals']) => {
+  const formatVitalSigns = useCallback((vitals: PatientData['lastVitals']) => {
     if (!vitals) return null
 
     const vitalEntries = []
@@ -156,7 +157,15 @@ const PatientCard: React.FC<PatientCardProps> = ({
     }
 
     return vitalEntries.join(' • ')
-  }
+  }, [])
+
+  // Memoize computed values
+  const patientAge = useMemo(() => calculateAge(patient.dateOfBirth), [patient.dateOfBirth, calculateAge])
+  const conditionColor = useMemo(() => getConditionColor(patient.condition), [patient.condition, getConditionColor])
+  const statusColor = useMemo(() => getStatusColor(patient.status), [patient.status, getStatusColor])
+  const genderIcon = useMemo(() => getGenderIcon(patient.gender), [patient.gender, getGenderIcon])
+  const formattedVitals = useMemo(() => formatVitalSigns(patient.lastVitals), [patient.lastVitals, formatVitalSigns])
+  const formattedBirthDate = useMemo(() => format(new Date(patient.dateOfBirth), 'MMM dd, yyyy'), [patient.dateOfBirth])
 
   if (compact) {
     return (
@@ -204,7 +213,7 @@ const PatientCard: React.FC<PatientCardProps> = ({
               <Box display="flex" alignItems="center" gap={1} mt={0.5}>
                 {getGenderIcon(patient.gender)}
                 <Typography variant="caption" color="textSecondary">
-                  {calculateAge(patient.dateOfBirth)}y • {patient.patientId}
+                  {patientAge}y • {patient.patientId}
                 </Typography>
               </Box>
             </Box>
@@ -214,8 +223,8 @@ const PatientCard: React.FC<PatientCardProps> = ({
                 label={patient.condition}
                 size="small"
                 sx={{
-                  backgroundColor: alpha(getConditionColor(patient.condition), 0.1),
-                  color: getConditionColor(patient.condition),
+                  backgroundColor: alpha(conditionColor, 0.1),
+                  color: conditionColor,
                   fontWeight: 600,
                   fontSize: '0.75rem',
                   height: 24,
@@ -226,8 +235,8 @@ const PatientCard: React.FC<PatientCardProps> = ({
                 size="small"
                 variant="outlined"
                 sx={{
-                  borderColor: getStatusColor(patient.status),
-                  color: getStatusColor(patient.status),
+                  borderColor: statusColor,
+                  color: statusColor,
                   fontSize: '0.7rem',
                   height: 20,
                 }}
@@ -241,7 +250,7 @@ const PatientCard: React.FC<PatientCardProps> = ({
                 Last Vitals:
               </Typography>
               <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
-                {formatVitalSigns(patient.lastVitals)}
+                {formattedVitals}
               </Typography>
             </Box>
           )}
@@ -322,7 +331,7 @@ const PatientCard: React.FC<PatientCardProps> = ({
               sx={{
                 width: 64,
                 height: 64,
-                border: `3px solid ${getConditionColor(patient.condition)}`,
+                border: `3px solid ${conditionColor}`,
               }}
             >
               {patient.firstName.charAt(0)}
@@ -346,14 +355,14 @@ const PatientCard: React.FC<PatientCardProps> = ({
               <Box display="flex" alignItems="center" gap={1}>
                 {getGenderIcon(patient.gender)}
                 <Typography variant="body2" color="textSecondary">
-                  {calculateAge(patient.dateOfBirth)} years
+                  {patientAge} years
                 </Typography>
               </Box>
 
               <Box display="flex" alignItems="center" gap={1}>
                 <CalendarToday fontSize="small" />
                 <Typography variant="body2" color="textSecondary">
-                  {format(new Date(patient.dateOfBirth), 'MMM dd, yyyy')}
+                  {formattedBirthDate}
                 </Typography>
               </Box>
 
@@ -371,8 +380,8 @@ const PatientCard: React.FC<PatientCardProps> = ({
               <Chip
                 label={patient.condition}
                 sx={{
-                  backgroundColor: alpha(getConditionColor(patient.condition), 0.1),
-                  color: getConditionColor(patient.condition),
+                  backgroundColor: alpha(conditionColor, 0.1),
+                  color: conditionColor,
                   fontWeight: 600,
                 }}
               />
@@ -380,8 +389,8 @@ const PatientCard: React.FC<PatientCardProps> = ({
                 label={patient.status}
                 variant="outlined"
                 sx={{
-                  borderColor: getStatusColor(patient.status),
-                  color: getStatusColor(patient.status),
+                  borderColor: statusColor,
+                  color: statusColor,
                 }}
               />
               {patient.allergies.length > 0 && (
@@ -413,7 +422,7 @@ const PatientCard: React.FC<PatientCardProps> = ({
                 Last Vitals:
               </Typography>
               <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
-                {formatVitalSigns(patient.lastVitals)}
+                {formattedVitals}
               </Typography>
             </Box>
           )}

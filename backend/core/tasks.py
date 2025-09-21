@@ -1,9 +1,13 @@
-from appointments.models import Appointment, AppointmentStatus
 from celery import shared_task
+
 from django.core.mail import send_mail
 from django.db import models
 from django.utils import timezone
+
+from appointments.models import Appointment, AppointmentStatus
 from pharmacy.models import Medication
+
+
 @shared_task
 def send_appointment_reminders():
     now = timezone.now()
@@ -15,6 +19,8 @@ def send_appointment_reminders():
         subject = f"Appointment Reminder"
         body = f"Reminder: appointment on {appt.start_at} with doctor {appt.doctor_id}"
         send_mail(subject, body, None, ["admin@example.com"], fail_silently=True)
+
+
 @shared_task
 def check_low_stock_and_notify():
     low = Medication.objects.filter(stock_quantity__lt=models.F("min_stock_level"))

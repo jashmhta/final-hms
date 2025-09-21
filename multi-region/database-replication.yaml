@@ -1,0 +1,709 @@
+# Multi-Region Database Replication Configuration
+# Enterprise-grade cross-region database setup for HMS microservices
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-replication-config
+  namespace: hms-system
+  labels:
+    app.kubernetes.io/name: postgres-replication
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: database
+data:
+  postgresql.conf: |
+    # Primary Region (US-East-1) Configuration
+    listen_addresses = '*'
+    max_connections = 200
+    shared_buffers = 256MB
+    effective_cache_size = 1GB
+    maintenance_work_mem = 64MB
+    checkpoint_completion_target = 0.9
+    wal_buffers = 16MB
+    default_statistics_target = 100
+    random_page_cost = 1.1
+    effective_io_concurrency = 200
+    work_mem = 4MB
+    min_wal_size = 1GB
+    max_wal_size = 4GB
+
+    # Replication Configuration
+    wal_level = replica
+    max_wal_senders = 10
+    max_replication_slots = 10
+    wal_keep_size = 1GB
+    hot_standby = on
+    max_standby_streaming_delay = 30s
+    max_standby_archive_delay = 60s
+
+    # Logging
+    log_destination = 'stderr'
+    logging_collector = on
+    log_directory = 'pg_log'
+    log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'
+    log_statement = 'mod'
+    log_line_prefix = '%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+
+    # Performance Tuning
+    shared_preload_libraries = 'pg_stat_statements,pg_audit'
+    track_activity_query_size = 2048
+    pg_stat_statements.max = 10000
+    pg_stat_statements.track = all
+
+    # Security
+    ssl = on
+    ssl_cert_file = 'server.crt'
+    ssl_key_file = 'server.key'
+    ssl_ca_file = 'root.crt'
+
+    # Connection Pooling
+    max_connections = 200
+    superuser_reserved_connections = 3
+
+    # Memory Management
+    effective_cache_size = 1GB
+    work_mem = 4MB
+    maintenance_work_mem = 64MB
+
+    # Query Performance
+    random_page_cost = 1.1
+    effective_io_concurrency = 200
+
+    # Checkpoint Configuration
+    checkpoint_completion_target = 0.9
+    checkpoint_timeout = 15min
+    checkpoint_warning = 30s
+
+    # WAL Configuration
+    wal_level = replica
+    wal_buffers = 16MB
+    wal_writer_delay = 200ms
+    commit_delay = 0
+    commit_siblings = 5
+
+    # Background Writer
+    bgwriter_delay = 200ms
+    bgwriter_lru_maxpages = 100
+    bgwriter_lru_multiplier = 2.0
+
+    # Autovacuum
+    autovacuum = on
+    autovacuum_max_workers = 3
+    autovacuum_naptime = 1min
+    autovacuum_vacuum_threshold = 50
+    autovacuum_analyze_threshold = 50
+    autovacuum_vacuum_scale_factor = 0.2
+    autovacuum_analyze_scale_factor = 0.1
+    autovacuum_vacuum_cost_limit = 2000
+    autovacuum_vacuum_cost_delay = 20ms
+
+    # Statement Timeout
+    statement_timeout = 30000
+    lock_timeout = 15000
+
+    # Resource Management
+    max_parallel_workers_per_gather = 2
+    max_parallel_workers = 8
+
+    # Extensions
+    shared_preload_libraries = 'pg_stat_statements,pg_audit,pgcrypto,uuid-ossp'
+
+    # Logging
+    log_min_duration_statement = 1000
+    log_checkpoints = on
+    log_connections = on
+    log_disconnections = on
+    log_lock_waits = on
+    log_temp_files = 0
+
+    # Audit Logging
+    pgaudit.log = 'all'
+    pgaudit.log_parameter = on
+    pgaudit.log_relation = on
+    pgaudit.log_statement_once = on
+
+    # Connection Limits
+    max_connections = 200
+    superuser_reserved_connections = 3
+
+    # Resource Groups
+    max_parallel_workers_per_gather = 2
+    max_parallel_workers = 8
+
+    # Monitoring
+    track_activities = on
+    track_counts = on
+    track_io_timing = on
+    track_functions = all
+
+    # Query Performance
+    random_page_cost = 1.1
+    effective_io_concurrency = 200
+    work_mem = 4MB
+    maintenance_work_mem = 64MB
+
+    # Memory Management
+    shared_buffers = 256MB
+    effective_cache_size = 1GB
+
+    # Checkpoint Configuration
+    checkpoint_completion_target = 0.9
+    checkpoint_timeout = 15min
+    checkpoint_warning = 30s
+
+    # WAL Configuration
+    wal_level = replica
+    wal_buffers = 16MB
+    wal_writer_delay = 200ms
+    commit_delay = 0
+    commit_siblings = 5
+
+    # Background Writer
+    bgwriter_delay = 200ms
+    bgwriter_lru_maxpages = 100
+    bgwriter_lru_multiplier = 2.0
+
+    # Autovacuum
+    autovacuum = on
+    autovacuum_max_workers = 3
+    autovacuum_naptime = 1min
+    autovacuum_vacuum_threshold = 50
+    autovacuum_analyze_threshold = 50
+    autovacuum_vacuum_scale_factor = 0.2
+    autovacuum_analyze_scale_factor = 0.1
+    autovacuum_vacuum_cost_limit = 2000
+    autovacuum_vacuum_cost_delay = 20ms
+
+    # Statement Timeout
+    statement_timeout = 30000
+    lock_timeout = 15000
+
+    # Security
+    ssl = on
+    ssl_cert_file = 'server.crt'
+    ssl_key_file = 'server.key'
+    ssl_ca_file = 'root.crt'
+
+    # Connection Pooling
+    max_connections = 200
+    superuser_reserved_connections = 3
+
+    # Resource Management
+    max_parallel_workers_per_gather = 2
+    max_parallel_workers = 8
+
+    # Extensions
+    shared_preload_libraries = 'pg_stat_statements,pg_audit,pgcrypto,uuid-ossp'
+
+    # Logging
+    log_min_duration_statement = 1000
+    log_checkpoints = on
+    log_connections = on
+    log_disconnections = on
+    log_lock_waits = on
+    log_temp_files = 0
+
+    # Audit Logging
+    pgaudit.log = 'all'
+    pgaudit.log_parameter = on
+    pgaudit.log_relation = on
+    pgaudit.log_statement_once = on
+
+    # Monitoring
+    track_activities = on
+    track_counts = on
+    track_io_timing = on
+    track_functions = all
+---
+# Replication Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-replication-scripts
+  namespace: hms-system
+  labels:
+    app.kubernetes.io/name: postgres-replication
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: database
+data:
+  setup-replication.sh: |
+    #!/bin/bash
+
+    # Primary region setup
+    if [[ "$REGION" == "us-east-1" ]]; then
+      echo "Setting up primary replication..."
+
+      # Create replication user
+      psql -U postgres -d postgres -c "CREATE USER replicator WITH REPLICATION PASSWORD '${REPLICATION_PASSWORD}' ENCRYPTED;"
+
+      # Configure pg_hba.conf for replication
+      cat >> /var/lib/postgresql/data/pg_hba.conf << EOF
+    # Replication configuration
+    host replication replicator 10.0.0.0/16 scram-sha-256
+    host replication replicator 10.1.0.0/16 scram-sha-256
+    host replication replicator 10.2.0.0/16 scram-sha-256
+    EOF
+
+      # Create replication slots
+      psql -U postgres -d postgres -c "SELECT * FROM pg_create_physical_replication_slot('us_west_2_slot');"
+      psql -U postgres -d postgres -c "SELECT * FROM pg_create_physical_replication_slot('eu_west_1_slot');"
+
+      # Grant necessary permissions
+      psql -U postgres -d postgres -c "GRANT SELECT ON pg_stat_activity TO replicator;"
+
+    # Secondary region setup
+    else
+      echo "Setting up secondary replication..."
+
+      # Stop PostgreSQL
+      pg_ctl -D /var/lib/postgresql/data stop
+
+      # Create backup from primary
+      pg_basebackup -h postgres-primary.hms.enterprise.com -U replicator -D /var/lib/postgresql/data -Fp -Xs -P -R
+
+      # Create standby.signal file
+      touch /var/lib/postgresql/data/standby.signal
+
+      # Configure recovery
+      cat > /var/lib/postgresql/data/postgresql.auto.conf << EOF
+    primary_conninfo = 'host=postgres-primary.hms.enterprise.com port=5432 user=replicator password=${REPLICATION_PASSWORD} sslmode=require'
+    primary_slot_name = '${REGION}_slot'
+    restore_command = 'cp /var/lib/postgresql/wal_archive/%f %p'
+    archive_cleanup_command = 'pg_archivecleanup /var/lib/postgresql/wal_archive %r'
+    EOF
+
+      # Start PostgreSQL
+      pg_ctl -D /var/lib/postgresql/data start
+
+    fi
+
+    echo "Replication setup completed for region: $REGION"
+
+  monitor-replication.sh: |
+    #!/bin/bash
+
+    # Monitor replication status
+    echo "=== Replication Status ==="
+    psql -U postgres -d postgres -c "SELECT * FROM pg_stat_replication;"
+
+    echo "=== Replication Slots ==="
+    psql -U postgres -d postgres -c "SELECT * FROM pg_replication_slots;"
+
+    echo "=== Database Size ==="
+    psql -U postgres -d postgres -c "SELECT datname, pg_size_pretty(pg_database_size(datname)) FROM pg_database;"
+
+    echo "=== Connection Status ==="
+    psql -U postgres -d postgres -c "SELECT count(*) FROM pg_stat_activity;"
+
+    echo "=== WAL Status ==="
+    psql -U postgres -d postgres -c "SELECT * FROM pg_stat_wal;"
+
+    echo "=== Checkpoint Status ==="
+    psql -U postgres -d postgres -c "SELECT * FROM pg_stat_bgwriter;"
+
+  failover-primary.sh: |
+    #!/bin/bash
+
+    # Automated failover to secondary
+    echo "Initiating failover procedure..."
+
+    # Check current primary status
+    if ! pg_isready -h postgres-primary.hms.enterprise.com -p 5432; then
+      echo "Primary is unreachable, initiating failover..."
+
+      # Promote current secondary
+      pg_ctl promote -D /var/lib/postgresql/data
+
+      # Update DNS records
+      # This would typically be done via your DNS provider's API
+      echo "Primary failover completed. Manual DNS update required."
+
+      # Notify monitoring systems
+      curl -X POST "${SLACK_WEBHOOK}" -d '{"text": "PostgreSQL failover completed in '"$REGION"'"}'
+
+    else
+      echo "Primary is still reachable. Failover aborted."
+    fi
+
+  switchover-primary.sh: |
+    #!/bin/bash
+
+    # Planned switchover procedure
+    echo "Initiating planned switchover..."
+
+    # Put primary in maintenance mode
+    psql -U postgres -d postgres -c "SELECT pg_switch_wal();"
+
+    # Wait for replication to catch up
+    sleep 30
+
+    # Stop primary
+    pg_ctl -D /var/lib/postgresql/data stop
+
+    # Promote secondary
+    ssh postgres@postgres-secondary.hms.enterprise.com "pg_ctl promote -D /var/lib/postgresql/data"
+
+    # Update DNS records
+    echo "Switchover completed. Manual DNS update required."
+
+    # Notify monitoring systems
+    curl -X POST "${SLACK_WEBHOOK}" -d '{"text": "PostgreSQL switchover completed"}'
+---
+# PostgreSQL Primary StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-primary
+  namespace: hms-system
+  labels:
+    app.kubernetes.io/name: postgres-primary
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: database
+spec:
+  serviceName: postgres-primary
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres-primary
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-primary
+        app.kubernetes.io/part-of: hms
+        app.kubernetes.io/component: database
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                - us-east-1
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - postgres-primary
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: postgres-password
+        - name: POSTGRES_DB
+          value: hms
+        - name: POSTGRES_USER
+          value: postgres
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        - name: REGION
+          value: us-east-1
+        - name: REPLICATION_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: replication-password
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        - name: postgres-config
+          mountPath: /etc/postgresql/postgresql.conf
+          subPath: postgresql.conf
+        - name: postgres-scripts
+          mountPath: /scripts
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgres
+            - -d
+            - hms
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgres
+            - -d
+            - hms
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: postgres-config
+        configMap:
+          name: postgres-replication-config
+      - name: postgres-scripts
+        configMap:
+          name: postgres-replication-scripts
+          defaultMode: 0755
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "gp3-encrypted"
+      resources:
+        requests:
+          storage: 100Gi
+---
+# PostgreSQL Secondary StatefulSets
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-secondary-us-west
+  namespace: hms-system
+  labels:
+    app.kubernetes.io/name: postgres-secondary-us-west
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: database
+spec:
+  serviceName: postgres-secondary-us-west
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres-secondary-us-west
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-secondary-us-west
+        app.kubernetes.io/part-of: hms
+        app.kubernetes.io/component: database
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                - us-west-2
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - postgres-secondary-us-west
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: postgres-password
+        - name: POSTGRES_DB
+          value: hms
+        - name: POSTGRES_USER
+          value: postgres
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        - name: REGION
+          value: us-west-2
+        - name: REPLICATION_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: replication-password
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        - name: postgres-config
+          mountPath: /etc/postgresql/postgresql.conf
+          subPath: postgresql.conf
+        - name: postgres-scripts
+          mountPath: /scripts
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgres
+            - -d
+            - hms
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgres
+            - -d
+            - hms
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: postgres-config
+        configMap:
+          name: postgres-replication-config
+      - name: postgres-scripts
+        configMap:
+          name: postgres-replication-scripts
+          defaultMode: 0755
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "gp3-encrypted"
+      resources:
+        requests:
+          storage: 100Gi
+---
+# Services for PostgreSQL
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-primary
+  namespace: hms-system
+  labels:
+    app.kubernetes.io/name: postgres-primary
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: database
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: postgres-primary
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-secondary-us-west
+  namespace: hms-system
+  labels:
+    app.kubernetes.io/name: postgres-secondary-us-west
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: database
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: postgres-secondary-us-west
+---
+# Redis Cross-Region Replication
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-replication-config
+  namespace: hms-system
+  labels:
+    app.kubernetes.io/name: redis-replication
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: cache
+data:
+  redis.conf: |
+    # Redis configuration for cross-region replication
+    bind 0.0.0.0
+    port 6379
+    protected-mode no
+    tcp-backlog 511
+    timeout 0
+    tcp-keepalive 300
+
+    # Memory management
+    maxmemory 2gb
+    maxmemory-policy allkeys-lru
+
+    # Persistence
+    save 900 1
+    save 300 10
+    save 60 10000
+    stop-writes-on-bgsave-error yes
+    rdbcompression yes
+    rdbchecksum yes
+    dbfilename dump.rdb
+    dir /data
+
+    # Security
+    requirepass ${REDIS_PASSWORD}
+    masterauth ${REDIS_PASSWORD}
+
+    # Replication
+    replica-serve-stale-data yes
+    replica-read-only yes
+    repl-diskless-sync no
+    repl-diskless-sync-delay 5
+    repl-ping-replica-period 10
+    repl-timeout 60
+    repl-disable-tcp-nodelay no
+    repl-backlog-size 1mb
+    repl-backlog-ttl 3600
+
+    # Logging
+    loglevel notice
+    logfile ""
+    syslog-enabled no
+
+    # Client configuration
+    maxclients 10000
+
+    # Slow query log
+    slowlog-log-slower-than 10000
+    slowlog-max-len 128
+
+    # Latency monitoring
+    latency-monitor-threshold 100
+
+    # Advanced configuration
+    hash-max-ziplist-entries 512
+    hash-max-ziplist-value 64
+    list-max-ziplist-size -2
+    list-compress-depth 0
+    set-max-intset-entries 512
+    zset-max-ziplist-entries 128
+    zset-max-ziplist-value 64
+    hll-sparse-max-bytes 3000
+    stream-node-max-bytes 4096
+    stream-node-max-entries 100
+    activerehashing yes
+    client-output-buffer-limit normal 0 0 0
+    client-output-buffer-limit replica 256mb 64mb 60
+    client-output-buffer-limit pubsub 32mb 8mb 60
+    hz 10
+    dynamic-hz yes
+    aof-rewrite-incremental-fsync yes
+    rdb-save-incremental-fsync yes

@@ -1,0 +1,286 @@
+# Kubernetes ConfigMap Configuration
+# Centralized configuration for HMS microservices
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hms-config
+  namespace: hms-system
+  labels:
+    app: hms
+    tier: infrastructure
+data:
+  # Database Configuration
+  DATABASE_HOST: "postgres-service"
+  DATABASE_PORT: "5432"
+  DATABASE_SSL_MODE: "require"
+
+  # Redis Configuration
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+
+  # Kafka Configuration
+  KAFKA_BROKERS: "kafka-1:9092,kafka-2:9092,kafka-3:9092"
+  KAFKA_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+
+  # Service Discovery
+  CONSUL_HOST: "consul-service"
+  CONSUL_PORT: "8500"
+
+  # Monitoring Configuration
+  JAEGER_AGENT_HOST: "jaeger-service"
+  JAEGER_AGENT_PORT: "6831"
+  PROMETHEUS_ENDPOINT: "http://prometheus-service:9090"
+
+  # Security Configuration
+  OAUTH2_ISSUER_URL: "https://auth.hms.enterprise/oauth2"
+  MFA_ISSUER_NAME: "HMS Enterprise"
+
+  # Application Configuration
+  LOG_LEVEL: "INFO"
+  ENVIRONMENT: "production"
+  API_TIMEOUT: "30"
+  MAX_CONNECTIONS: "100"
+  WORKER_PROCESSES: "4"
+
+  # Feature Flags
+  FEATURE_HIPAA_COMPLIANCE: "true"
+  FEATURE_GDPR_COMPLIANCE: "true"
+  FEATURE_AUDIT_LOGGING: "true"
+  FEATURE_ENCRYPTION: "true"
+  FEATURE_RATE_LIMITING: "true"
+  FEATURE_HEALTH_CHECKS: "true"
+
+  # CORS Configuration
+  CORS_ORIGINS: "https://app.hms.enterprise,https://api.hms.enterprise,https://admin.hms.enterprise"
+
+  # Cache Configuration
+  CACHE_TTL: "300"
+  SESSION_TIMEOUT: "1800"
+
+  # Email Configuration
+  EMAIL_FROM: "noreply@hms.enterprise"
+  EMAIL_PROVIDER: "sendgrid"
+
+  # File Storage Configuration
+  STORAGE_PROVIDER: "s3"
+  STORAGE_BUCKET: "hms-enterprise-files"
+
+  # Backup Configuration
+  BACKUP_SCHEDULE: "0 2 * * *"
+  BACKUP_RETENTION_DAYS: "90"
+
+  # Performance Configuration
+  TARGET_RESPONSE_TIME: "100"
+  MAX_CONCURRENT_REQUESTS: "10000"
+
+---
+# Service-specific configurations
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: patient-service-config
+  namespace: hms-system
+  labels:
+    app: patient-service
+    tier: backend
+data:
+  SERVICE_NAME: "patient-service"
+  SERVICE_PORT: "8000"
+  DATABASE_NAME: "patient_db"
+  TOPICS: "patient-events,integration-events"
+  RATE_LIMIT: "1000/hour"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-service-config
+  namespace: hms-system
+  labels:
+    app: auth-service
+    tier: backend
+data:
+  SERVICE_NAME: "auth-service"
+  SERVICE_PORT: "8001"
+  DATABASE_NAME: "auth_db"
+  TOPICS: "auth-events,audit-events"
+  ACCESS_TOKEN_EXPIRE_MINUTES: "15"
+  REFRESH_TOKEN_EXPIRE_DAYS: "7"
+  MFA_TOKEN_VALIDITY: "30"
+  PASSWORD_MIN_LENGTH: "12"
+  MAX_LOGIN_ATTEMPTS: "5"
+  ACCOUNT_LOCKOUT_DURATION: "30"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: appointment-service-config
+  namespace: hms-system
+  labels:
+    app: appointment-service
+    tier: backend
+data:
+  SERVICE_NAME: "appointment-service"
+  SERVICE_PORT: "8002"
+  DATABASE_NAME: "appointment_db"
+  TOPICS: "appointment-events,notification-events"
+  SLOT_DURATION_MINUTES: "30"
+  MAX_BOOKINGS_PER_DAY: "100"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clinical-service-config
+  namespace: hms-system
+  labels:
+    app: clinical-service
+    tier: backend
+data:
+  SERVICE_NAME: "clinical-service"
+  SERVICE_PORT: "8003"
+  DATABASE_NAME: "clinical_db"
+  TOPICS: "clinical-events,audit-events"
+  MAX_RECORD_SIZE_MB: "10"
+  AUTO_SAVE_INTERVAL_MINUTES: "5"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: billing-service-config
+  namespace: hms-system
+  labels:
+    app: billing-service
+    tier: backend
+data:
+  SERVICE_NAME: "billing-service"
+  SERVICE_PORT: "8004"
+  DATABASE_NAME: "billing_db"
+  TOPICS: "billing-events,audit-events"
+  CURRENCY: "USD"
+  MAX_INVOICE_AMOUNT: "1000000"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pharmacy-service-config
+  namespace: hms-system
+  labels:
+    app: pharmacy-service
+    tier: backend
+data:
+  SERVICE_NAME: "pharmacy-service"
+  SERVICE_PORT: "8005"
+  DATABASE_NAME: "pharmacy_db"
+  TOPICS: "pharmacy-events,notification-events"
+  INVENTORY_CHECK_INTERVAL_MINUTES: "60"
+  LOW_STOCK_THRESHOLD: "10"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lab-service-config
+  namespace: hms-system
+  labels:
+    app: lab-service
+    tier: backend
+data:
+  SERVICE_NAME: "lab-service"
+  SERVICE_PORT: "8006"
+  DATABASE_NAME: "lab_db"
+  TOPICS: "lab-events,notification-events"
+  RESULT_TTL_DAYS: "365"
+  AUTO_ANNOTATION_ENABLED: "true"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: radiology-service-config
+  namespace: hms-system
+  labels:
+    app: radiology-service
+    tier: backend
+data:
+  SERVICE_NAME: "radiology-service"
+  SERVICE_PORT: "8007"
+  DATABASE_NAME: "radiology_db"
+  TOPICS: "radiology-events,notification-events"
+  DICOM_STORAGE_PATH: "/data/dicom"
+  MAX_FILE_SIZE_MB: "500"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: analytics-service-config
+  namespace: hms-system
+  labels:
+    app: analytics-service
+    tier: backend
+data:
+  SERVICE_NAME: "analytics-service"
+  SERVICE_PORT: "8008"
+  DATABASE_NAME: "analytics_db"
+  TOPICS: "analytics-events,patient-events,clinical-events"
+  REPORT_CACHE_TTL_MINUTES: "60"
+  REAL_TIME_UPDATES: "true"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notification-service-config
+  namespace: hms-system
+  labels:
+    app: notification-service
+    tier: backend
+data:
+  SERVICE_NAME: "notification-service"
+  SERVICE_PORT: "8009"
+  DATABASE_NAME: "notification_db"
+  TOPICS: "notification-events"
+  SMS_PROVIDER: "twilio"
+  EMAIL_PROVIDER: "sendgrid"
+  PUSH_PROVIDER: "firebase"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: audit-service-config
+  namespace: hms-system
+  labels:
+    app: audit-service
+    tier: backend
+data:
+  SERVICE_NAME: "audit-service"
+  SERVICE_PORT: "8010"
+  DATABASE_NAME: "audit_db"
+  TOPICS: "audit-events"
+  RETENTION_DAYS: "2555"
+  REAL_TIME_STREAMING: "true"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: file-service-config
+  namespace: hms-system
+  labels:
+    app: file-service
+    tier: backend
+data:
+  SERVICE_NAME: "file-service"
+  SERVICE_PORT: "8011"
+  DATABASE_NAME: "file_db"
+  TOPICS: "file-events"
+  MAX_FILE_SIZE_MB: "100"
+  ALLOWED_EXTENSIONS: "pdf,doc,docx,jpg,jpeg,png,gif,mp4,avi,mov"
+  STORAGE_PATH: "/data/files"

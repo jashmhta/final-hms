@@ -1,8 +1,10 @@
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("metrics/", include("django_prometheus.urls")),
@@ -30,8 +32,4 @@ urlpatterns = [
     path("api/", include("authentication.urls")),
     path("api/", include("ai_ml.urls")),
     path("", include("core.urls")),
-] + (
-    static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-    if settings.DEBUG
-    else []
-)
+] + (static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) if settings.DEBUG else [])

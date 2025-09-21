@@ -1,7 +1,10 @@
-import django.db.models.deletion
 import encrypted_model_fields.fields
+
+import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
+
+
 class Migration(migrations.Migration):
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
@@ -148,21 +151,15 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "copay_amount",
-                    models.DecimalField(
-                        blank=True, decimal_places=2, max_digits=10, null=True
-                    ),
+                    models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True),
                 ),
                 (
                     "deductible_amount",
-                    models.DecimalField(
-                        blank=True, decimal_places=2, max_digits=10, null=True
-                    ),
+                    models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True),
                 ),
                 (
                     "out_of_pocket_max",
-                    models.DecimalField(
-                        blank=True, decimal_places=2, max_digits=10, null=True
-                    ),
+                    models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True),
                 ),
                 ("is_active", models.BooleanField(default=True)),
                 ("verification_date", models.DateField(blank=True, null=True)),
@@ -355,9 +352,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="patient",
             name="external_id",
-            field=models.CharField(
-                blank=True, help_text="External system patient ID", max_length=100
-            ),
+            field=models.CharField(blank=True, help_text="External system patient ID", max_length=100),
         ),
         migrations.AddField(
             model_name="patient",
@@ -367,9 +362,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="patient",
             name="height_cm",
-            field=models.DecimalField(
-                blank=True, decimal_places=2, max_digits=6, null=True
-            ),
+            field=models.DecimalField(blank=True, decimal_places=2, max_digits=6, null=True),
         ),
         migrations.AddField(
             model_name="patient",
@@ -416,9 +409,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="patient",
             name="medical_record_number",
-            field=models.CharField(
-                db_index=True, default="TEMP", max_length=50, unique=True
-            ),
+            field=models.CharField(db_index=True, default="TEMP", max_length=50, unique=True),
         ),
         migrations.AddField(
             model_name="patient",
@@ -595,9 +586,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="patient",
             name="weight_kg",
-            field=models.DecimalField(
-                blank=True, decimal_places=2, max_digits=6, null=True
-            ),
+            field=models.DecimalField(blank=True, decimal_places=2, max_digits=6, null=True),
         ),
         migrations.AddField(
             model_name="patient",
@@ -625,15 +614,11 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="patient",
-            index=models.Index(
-                fields=["medical_record_number"], name="patients_pa_medical_ff50e5_idx"
-            ),
+            index=models.Index(fields=["medical_record_number"], name="patients_pa_medical_ff50e5_idx"),
         ),
         migrations.AddIndex(
             model_name="patient",
-            index=models.Index(
-                fields=["date_of_birth"], name="patients_pa_date_of_4302f5_idx"
-            ),
+            index=models.Index(fields=["date_of_birth"], name="patients_pa_date_of_4302f5_idx"),
         ),
         migrations.AddIndex(
             model_name="patient",
@@ -641,15 +626,11 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="patient",
-            index=models.Index(
-                fields=["primary_care_physician"], name="patients_pa_primary_b5fbf1_idx"
-            ),
+            index=models.Index(fields=["primary_care_physician"], name="patients_pa_primary_b5fbf1_idx"),
         ),
         migrations.AddIndex(
             model_name="patient",
-            index=models.Index(
-                fields=["created_at"], name="patients_pa_created_542792_idx"
-            ),
+            index=models.Index(fields=["created_at"], name="patients_pa_created_542792_idx"),
         ),
         migrations.AddField(
             model_name="patientalert",
@@ -726,9 +707,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="patientalert",
-            index=models.Index(
-                fields=["alert_type"], name="patients_pa_alert_t_fb1d65_idx"
-            ),
+            index=models.Index(fields=["alert_type"], name="patients_pa_alert_t_fb1d65_idx"),
         ),
         migrations.AddIndex(
             model_name="insuranceinformation",
@@ -739,14 +718,10 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="insuranceinformation",
-            index=models.Index(
-                fields=["verification_status"], name="patients_in_verific_84856d_idx"
-            ),
+            index=models.Index(fields=["verification_status"], name="patients_in_verific_84856d_idx"),
         ),
         migrations.AddIndex(
             model_name="emergencycontact",
-            index=models.Index(
-                fields=["patient", "is_primary"], name="patients_em_patient_c7b8c7_idx"
-            ),
+            index=models.Index(fields=["patient", "is_primary"], name="patients_em_patient_c7b8c7_idx"),
         ),
     ]

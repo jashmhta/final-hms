@@ -1,18 +1,23 @@
-import logging
-from typing import Dict, List, Optional, Any, Tuple
-from datetime import datetime, timedelta
 import json
+import logging
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from dataclasses import dataclass
-from enum import Enum
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
+from django.conf import settings
 from django.core.cache import cache
 from django.db import models
 from django.utils import timezone
-from django.conf import settings
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
+
 logger = logging.getLogger(__name__)
+
+
 class AlertCategory(Enum):
     VITAL_SIGNS = "vital_signs"
     LABORATORY = "laboratory"
@@ -23,16 +28,22 @@ class AlertCategory(Enum):
     RESPIRATORY = "respiratory"
     RENAL = "renal"
     INFECTION = "infection"
+
+
 class AlertPriority(Enum):
-    CRITICAL = "critical"  
-    HIGH = "high"  
-    MEDIUM = "medium"  
-    LOW = "low"  
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
 class AlertStatus(Enum):
-    ACTIVE = "active"  
-    ACKNOWLEDGED = "acknowledged"  
-    RESOLVED = "resolved"  
-    SUPPRESSED = "suppressed"  
+    ACTIVE = "active"
+    ACKNOWLEDGED = "acknowledged"
+    RESOLVED = "resolved"
+    SUPPRESSED = "suppressed"
+
+
 @dataclass
 class VitalSigns:
     patient_id: str
@@ -44,6 +55,8 @@ class VitalSigns:
     oxygen_saturation: Optional[float] = None
     temperature: Optional[float] = None
     blood_glucose: Optional[float] = None
+
+
 @dataclass
 class LaboratoryResult:
     patient_id: str
@@ -53,6 +66,8 @@ class LaboratoryResult:
     reference_range: Tuple[float, float]
     timestamp: datetime
     critical: bool = False
+
+
 @dataclass
 class ClinicalAlert:
     alert_id: str
@@ -70,6 +85,8 @@ class ClinicalAlert:
     acknowledged_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
     notes: Optional[str] = None
+
+
 class AlertThresholds:
     HEART_RATE_CRITICAL_LOW = 40
     HEART_RATE_CRITICAL_HIGH = 150
@@ -89,15 +106,20 @@ class AlertThresholds:
     BLOOD_GLUCOSE_CRITICAL_LOW = 50
     BLOOD_GLUCOSE_CRITICAL_HIGH = 400
     BLOOD_GLUCOSE_HIGH = 250
+
+
 class SepsisCriteria:
     RESPIRATORY_RATE_HIGH = 22
     HEART_RATE_HIGH = 90
     TEMPERATURE_HIGH = 38.0
     TEMPERATURE_LOW = 36.0
+
+
 class VitalSignsMonitor:
     def __init__(self):
         self.thresholds = AlertThresholds()
         self.alert_history = {}
+
     def monitor_vital_signs(self, vital_signs: VitalSigns) -> List[ClinicalAlert]:
         alerts = []
         if vital_signs.heart_rate:
@@ -147,10 +169,7 @@ class VitalSignsMonitor:
                     )
                 )
         if vital_signs.blood_pressure_systolic:
-            if (
-                vital_signs.blood_pressure_systolic
-                <= self.thresholds.BLOOD_PRESSURE_SYSTOLIC_CRITICAL_LOW
-            ):
+            if vital_signs.blood_pressure_systolic <= self.thresholds.BLOOD_PRESSURE_SYSTOLIC_CRITICAL_LOW:
                 alerts.append(
                     self._create_alert(
                         vital_signs.patient_id,
@@ -165,10 +184,7 @@ class VitalSignsMonitor:
                         vital_signs,
                     )
                 )
-            elif (
-                vital_signs.blood_pressure_systolic
-                >= self.thresholds.BLOOD_PRESSURE_SYSTOLIC_CRITICAL_HIGH
-            ):
+            elif vital_signs.blood_pressure_systolic >= self.thresholds.BLOOD_PRESSURE_SYSTOLIC_CRITICAL_HIGH:
                 alerts.append(
                     self._create_alert(
                         vital_signs.patient_id,
@@ -184,10 +200,7 @@ class VitalSignsMonitor:
                     )
                 )
         if vital_signs.respiratory_rate:
-            if (
-                vital_signs.respiratory_rate
-                <= self.thresholds.RESPIRATORY_RATE_CRITICAL_LOW
-            ):
+            if vital_signs.respiratory_rate <= self.thresholds.RESPIRATORY_RATE_CRITICAL_LOW:
                 alerts.append(
                     self._create_alert(
                         vital_signs.patient_id,
@@ -202,10 +215,7 @@ class VitalSignsMonitor:
                         vital_signs,
                     )
                 )
-            elif (
-                vital_signs.respiratory_rate
-                >= self.thresholds.RESPIRATORY_RATE_CRITICAL_HIGH
-            ):
+            elif vital_signs.respiratory_rate >= self.thresholds.RESPIRATORY_RATE_CRITICAL_HIGH:
                 alerts.append(
                     self._create_alert(
                         vital_signs.patient_id,
@@ -221,10 +231,7 @@ class VitalSignsMonitor:
                     )
                 )
         if vital_signs.oxygen_saturation:
-            if (
-                vital_signs.oxygen_saturation
-                <= self.thresholds.OXYGEN_SATURATION_CRITICAL_LOW
-            ):
+            if vital_signs.oxygen_saturation <= self.thresholds.OXYGEN_SATURATION_CRITICAL_LOW:
                 alerts.append(
                     self._create_alert(
                         vital_signs.patient_id,
@@ -286,6 +293,7 @@ class VitalSignsMonitor:
                     )
                 )
         return alerts
+
     def _create_alert(
         self,
         patient_id: str,
@@ -313,9 +321,12 @@ class VitalSignsMonitor:
             timestamp=vital_signs.timestamp,
             status=AlertStatus.ACTIVE,
         )
+
+
 class LaboratoryMonitor:
     def __init__(self):
         self.thresholds = AlertThresholds()
+
     def monitor_laboratory_results(
         self,
         lab_result: LaboratoryResult,
@@ -329,11 +340,7 @@ class LaboratoryMonitor:
                     lab_result,
                     "low",
                     low,
-                    (
-                        AlertPriority.HIGH
-                        if lab_result.result_value < low * 0.7
-                        else AlertPriority.MEDIUM
-                    ),
+                    (AlertPriority.HIGH if lab_result.result_value < low * 0.7 else AlertPriority.MEDIUM),
                 )
             )
         elif lab_result.result_value > high:
@@ -342,11 +349,7 @@ class LaboratoryMonitor:
                     lab_result,
                     "high",
                     high,
-                    (
-                        AlertPriority.HIGH
-                        if lab_result.result_value > high * 1.3
-                        else AlertPriority.MEDIUM
-                    ),
+                    (AlertPriority.HIGH if lab_result.result_value > high * 1.3 else AlertPriority.MEDIUM),
                 )
             )
         if lab_result.critical:
@@ -362,6 +365,7 @@ class LaboratoryMonitor:
             trend_alerts = self._check_trends(lab_result, patient_history)
             alerts.extend(trend_alerts)
         return alerts
+
     def _create_lab_alert(
         self,
         lab_result: LaboratoryResult,
@@ -385,24 +389,17 @@ class LaboratoryMonitor:
             timestamp=lab_result.timestamp,
             status=AlertStatus.ACTIVE,
         )
-    def _check_trends(
-        self, current_result: LaboratoryResult, history: List[LaboratoryResult]
-    ) -> List[ClinicalAlert]:
+
+    def _check_trends(self, current_result: LaboratoryResult, history: List[LaboratoryResult]) -> List[ClinicalAlert]:
         alerts = []
-        relevant_history = [
-            r for r in history if r.test_name == current_result.test_name
-        ]
+        relevant_history = [r for r in history if r.test_name == current_result.test_name]
         if len(relevant_history) >= 2:
-            values = [r.result_value for r in relevant_history[-3:]] + [
-                current_result.result_value
-            ]
+            values = [r.result_value for r in relevant_history[-3:]] + [current_result.result_value]
             if len(values) >= 3:
                 trend = self._calculate_trend(values)
-                if abs(trend) > 0.5:  
+                if abs(trend) > 0.5:
                     direction = "increasing" if trend > 0 else "decreasing"
-                    priority = (
-                        AlertPriority.HIGH if abs(trend) > 1.0 else AlertPriority.MEDIUM
-                    )
+                    priority = AlertPriority.HIGH if abs(trend) > 1.0 else AlertPriority.MEDIUM
                     alert_id = f"{current_result.patient_id}_{current_result.test_name}_trend_{int(timezone.now().timestamp())}"
                     alert = ClinicalAlert(
                         alert_id=alert_id,
@@ -422,6 +419,7 @@ class LaboratoryMonitor:
                     )
                     alerts.append(alert)
         return alerts
+
     def _calculate_trend(self, values: List[float]) -> float:
         if len(values) < 2:
             return 0.0
@@ -435,25 +433,22 @@ class LaboratoryMonitor:
         if denominator == 0:
             return 0.0
         return numerator / denominator
+
+
 class SepsisMonitor:
     def __init__(self):
         self.criteria = SepsisCriteria()
+
     def screen_for_sepsis(
         self, vital_signs: VitalSigns, lab_results: List[LaboratoryResult] = None
     ) -> List[ClinicalAlert]:
         alerts = []
         score = 0
         criteria_met = []
-        if (
-            vital_signs.respiratory_rate
-            and vital_signs.respiratory_rate >= self.criteria.RESPIRATORY_RATE_HIGH
-        ):
+        if vital_signs.respiratory_rate and vital_signs.respiratory_rate >= self.criteria.RESPIRATORY_RATE_HIGH:
             score += 1
             criteria_met.append("respiratory_rate")
-        if (
-            vital_signs.heart_rate
-            and vital_signs.heart_rate >= self.criteria.HEART_RATE_HIGH
-        ):
+        if vital_signs.heart_rate and vital_signs.heart_rate >= self.criteria.HEART_RATE_HIGH:
             score += 1
             criteria_met.append("heart_rate")
         if vital_signs.temperature:
@@ -464,9 +459,7 @@ class SepsisMonitor:
                 score += 1
                 criteria_met.append("temperature")
         if score >= 2:
-            alert_id = (
-                f"{vital_signs.patient_id}_sepsis_{int(timezone.now().timestamp())}"
-            )
+            alert_id = f"{vital_signs.patient_id}_sepsis_{int(timezone.now().timestamp())}"
             priority = AlertPriority.CRITICAL if score == 3 else AlertPriority.HIGH
             alert = ClinicalAlert(
                 alert_id=alert_id,
@@ -483,12 +476,15 @@ class SepsisMonitor:
             )
             alerts.append(alert)
         return alerts
+
+
 class ClinicalAlertSystem:
     def __init__(self):
         self.vital_signs_monitor = VitalSignsMonitor()
         self.laboratory_monitor = LaboratoryMonitor()
         self.sepsis_monitor = SepsisMonitor()
         self.channel_layer = get_channel_layer()
+
     def process_patient_data(
         self,
         patient_id: str,
@@ -498,23 +494,18 @@ class ClinicalAlertSystem:
     ) -> List[ClinicalAlert]:
         all_alerts = []
         if vital_signs:
-            vital_signs_alerts = self.vital_signs_monitor.monitor_vital_signs(
-                vital_signs
-            )
+            vital_signs_alerts = self.vital_signs_monitor.monitor_vital_signs(vital_signs)
             all_alerts.extend(vital_signs_alerts)
-            sepsis_alerts = self.sepsis_monitor.screen_for_sepsis(
-                vital_signs, lab_results
-            )
+            sepsis_alerts = self.sepsis_monitor.screen_for_sepsis(vital_signs, lab_results)
             all_alerts.extend(sepsis_alerts)
         if lab_results:
             for lab_result in lab_results:
-                lab_alerts = self.laboratory_monitor.monitor_laboratory_results(
-                    lab_result, lab_history
-                )
+                lab_alerts = self.laboratory_monitor.monitor_laboratory_results(lab_result, lab_history)
                 all_alerts.extend(lab_alerts)
         for alert in all_alerts:
             self._process_alert(alert)
         return all_alerts
+
     def _process_alert(self, alert: ClinicalAlert):
         try:
             self._store_alert(alert)
@@ -522,9 +513,11 @@ class ClinicalAlertSystem:
             logger.warning(f"Clinical Alert: {alert.title} - {alert.message}")
         except Exception as e:
             logger.error(f"Error processing alert {alert.alert_id}: {str(e)}")
+
     def _store_alert(self, alert: ClinicalAlert):
         cache_key = f"alert_{alert.alert_id}"
-        cache.set(cache_key, alert, timeout=86400)  
+        cache.set(cache_key, alert, timeout=86400)
+
     def _send_websocket_alert(self, alert: ClinicalAlert):
         try:
             channel_layer = get_channel_layer()
@@ -562,6 +555,7 @@ class ClinicalAlertSystem:
                 )
         except Exception as e:
             logger.error(f"Error sending WebSocket alert: {str(e)}")
+
     def acknowledge_alert(self, alert_id: str, acknowledged_by: str, notes: str = None):
         try:
             cache_key = f"alert_{alert_id}"
@@ -578,6 +572,7 @@ class ClinicalAlertSystem:
         except Exception as e:
             logger.error(f"Error acknowledging alert {alert_id}: {str(e)}")
             return False
+
     def resolve_alert(self, alert_id: str, resolved_by: str, notes: str = None):
         try:
             cache_key = f"alert_{alert_id}"
@@ -593,6 +588,7 @@ class ClinicalAlertSystem:
         except Exception as e:
             logger.error(f"Error resolving alert {alert_id}: {str(e)}")
             return False
+
     def _send_alert_update(self, alert: ClinicalAlert):
         try:
             channel_layer = get_channel_layer()
@@ -604,30 +600,29 @@ class ClinicalAlertSystem:
                         "alert_id": alert.alert_id,
                         "status": alert.status.value,
                         "acknowledged_by": alert.acknowledged_by,
-                        "acknowledged_at": (
-                            alert.acknowledged_at.isoformat()
-                            if alert.acknowledged_at
-                            else None
-                        ),
-                        "resolved_at": (
-                            alert.resolved_at.isoformat() if alert.resolved_at else None
-                        ),
+                        "acknowledged_at": (alert.acknowledged_at.isoformat() if alert.acknowledged_at else None),
+                        "resolved_at": (alert.resolved_at.isoformat() if alert.resolved_at else None),
                         "notes": alert.notes,
                     },
                 },
             )
         except Exception as e:
             logger.error(f"Error sending alert update: {str(e)}")
+
+
 def create_clinical_alerts_api():
-    from rest_framework import viewsets, status
+    from rest_framework import status, viewsets
     from rest_framework.decorators import action
-    from rest_framework.response import Response
     from rest_framework.permissions import IsAuthenticated
+    from rest_framework.response import Response
+
     class ClinicalAlertsViewSet(viewsets.ViewSet):
         permission_classes = [IsAuthenticated]
+
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
             self.alert_system = ClinicalAlertSystem()
+
         @action(detail=False, methods=["post"])
         def process_vital_signs(self, request):
             try:
@@ -637,20 +632,14 @@ def create_clinical_alerts_api():
                     patient_id=patient_id,
                     timestamp=timezone.now(),
                     heart_rate=vital_signs_data.get("heart_rate"),
-                    blood_pressure_systolic=vital_signs_data.get(
-                        "blood_pressure_systolic"
-                    ),
-                    blood_pressure_diastolic=vital_signs_data.get(
-                        "blood_pressure_diastolic"
-                    ),
+                    blood_pressure_systolic=vital_signs_data.get("blood_pressure_systolic"),
+                    blood_pressure_diastolic=vital_signs_data.get("blood_pressure_diastolic"),
                     respiratory_rate=vital_signs_data.get("respiratory_rate"),
                     oxygen_saturation=vital_signs_data.get("oxygen_saturation"),
                     temperature=vital_signs_data.get("temperature"),
                     blood_glucose=vital_signs_data.get("blood_glucose"),
                 )
-                alerts = self.alert_system.process_patient_data(
-                    patient_id=patient_id, vital_signs=vital_signs
-                )
+                alerts = self.alert_system.process_patient_data(patient_id=patient_id, vital_signs=vital_signs)
                 return Response(
                     {
                         "patient_id": patient_id,
@@ -672,15 +661,14 @@ def create_clinical_alerts_api():
                 )
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
         @action(detail=False, methods=["post"])
         def acknowledge_alert(self, request):
             try:
                 alert_id = request.data.get("alert_id")
                 acknowledged_by = request.data.get("acknowledged_by")
                 notes = request.data.get("notes")
-                success = self.alert_system.acknowledge_alert(
-                    alert_id, acknowledged_by, notes
-                )
+                success = self.alert_system.acknowledge_alert(alert_id, acknowledged_by, notes)
                 return Response(
                     {
                         "alert_id": alert_id,
@@ -691,4 +679,5 @@ def create_clinical_alerts_api():
                 )
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     return ClinicalAlertsViewSet

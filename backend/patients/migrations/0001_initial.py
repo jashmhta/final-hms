@@ -1,6 +1,9 @@
 import uuid
+
 import django.db.models.deletion
 from django.db import migrations, models
+
+
 class Migration(migrations.Migration):
     initial = True
     dependencies = [
@@ -65,9 +68,7 @@ class Migration(migrations.Migration):
                     ),
                     models.Index(fields=["uuid"], name="patients_pa_uuid_6d5db2_idx"),
                 ],
-                "unique_together": {
-                    ("hospital", "first_name", "last_name", "date_of_birth", "phone")
-                },
+                "unique_together": {("hospital", "first_name", "last_name", "date_of_birth", "phone")},
             },
         ),
     ]

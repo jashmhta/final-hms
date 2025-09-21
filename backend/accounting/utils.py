@@ -1,10 +1,13 @@
 import io
 from datetime import date, timedelta
+
 import openpyxl
 from defusedxml import ElementTree as ET
+from openpyxl.styles import Border, Font, PatternFill, Side
+
 from django.db import models, transaction
 from django.utils import timezone
-from openpyxl.styles import Border, Font, PatternFill, Side
+
 from .models import (
     AccountingInvoice,
     AccountingPayment,
@@ -16,6 +19,8 @@ from .models import (
     FixedAsset,
     LedgerEntry,
 )
+
+
 class DoubleEntryBookkeeping:
     @staticmethod
     @transaction.atomic
@@ -48,9 +53,7 @@ class DoubleEntryBookkeeping:
             )
         except ChartOfAccounts.DoesNotExist as e:
             raise ValueError(f"Account not found: {e}")
-        currency = Currency.objects.filter(
-            hospital=hospital, is_base_currency=True
-        ).first()
+        currency = Currency.objects.filter(hospital=hospital, is_base_currency=True).first()
         if not currency:
             raise ValueError("No base currency configured")
         ledger_entry = LedgerEntry.objects.create(
@@ -69,14 +72,15 @@ class DoubleEntryBookkeeping:
             payroll=source_payroll,
         )
         return ledger_entry
+
     @staticmethod
     def post_invoice_entries(invoice):
         entries = []
         entries.append(
             DoubleEntryBookkeeping.create_journal_entry(
                 hospital=invoice.hospital,
-                debit_account_code="1200",  
-                credit_account_code="4000",  
+                debit_account_code="1200",
+                credit_account_code="4000",
                 amount_cents=invoice.total_cents,
                 description=f"Sales invoice {invoice.invoice_number}",
                 reference_number=invoice.invoice_number,
@@ -89,8 +93,8 @@ class DoubleEntryBookkeeping:
             entries.append(
                 DoubleEntryBookkeeping.create_journal_entry(
                     hospital=invoice.hospital,
-                    debit_account_code="5000",  
-                    credit_account_code="1300",  
+                    debit_account_code="5000",
+                    credit_account_code="1300",
                     amount_cents=item.cost_price_cents * int(item.quantity),
                     description=f"Cost of sales for {item.description}",
                     reference_number=invoice.invoice_number,
@@ -100,15 +104,14 @@ class DoubleEntryBookkeeping:
                 )
             )
         return entries
+
     @staticmethod
     def post_payment_entries(payment):
-        bank_account_code = (
-            "1100" if payment.payment_method == "CASH" else "1150"
-        )  
+        bank_account_code = "1100" if payment.payment_method == "CASH" else "1150"
         entry = DoubleEntryBookkeeping.create_journal_entry(
             hospital=payment.hospital,
             debit_account_code=bank_account_code,
-            credit_account_code="1200",  
+            credit_account_code="1200",
             amount_cents=payment.amount_cents,
             description=f"Payment received - {payment.payment_number}",
             reference_number=payment.payment_number,
@@ -119,8 +122,8 @@ class DoubleEntryBookkeeping:
         if payment.tds_cents > 0:
             DoubleEntryBookkeeping.create_journal_entry(
                 hospital=payment.hospital,
-                debit_account_code="1400",  
-                credit_account_code="2300",  
+                debit_account_code="1400",
+                credit_account_code="2300",
                 amount_cents=payment.tds_cents,
                 description=f"TDS on payment {payment.payment_number}",
                 reference_number=payment.payment_number,
@@ -129,6 +132,7 @@ class DoubleEntryBookkeeping:
                 source_payment=payment,
             )
         return entry
+
     @staticmethod
     def post_expense_entries(expense):
         expense_account_code = {
@@ -148,7 +152,7 @@ class DoubleEntryBookkeeping:
         entry = DoubleEntryBookkeeping.create_journal_entry(
             hospital=expense.hospital,
             debit_account_code=expense_account_code,
-            credit_account_code="2100",  
+            credit_account_code="2100",
             amount_cents=expense.amount_cents,
             description=f"Expense - {expense.description}",
             reference_number=expense.expense_number,
@@ -157,14 +161,15 @@ class DoubleEntryBookkeeping:
             source_expense=expense,
         )
         return entry
+
     @staticmethod
     def post_payroll_entries(payroll):
         entries = []
         entries.append(
             DoubleEntryBookkeeping.create_journal_entry(
                 hospital=payroll.hospital,
-                debit_account_code="6300",  
-                credit_account_code="2400",  
+                debit_account_code="6300",
+                credit_account_code="2400",
                 amount_cents=payroll.net_salary_cents,
                 description=f"Salary for {payroll.employee.get_full_name()}",
                 reference_number=f"PAY-{payroll.id}",
@@ -177,10 +182,10 @@ class DoubleEntryBookkeeping:
             entries.append(
                 DoubleEntryBookkeeping.create_journal_entry(
                     hospital=payroll.hospital,
-                    debit_account_code="6310",  
-                    credit_account_code="2410",  
+                    debit_account_code="6310",
+                    credit_account_code="2410",
                     amount_cents=payroll.pf_employer_cents,
-                    description=f"Employer PF contribution for {payroll.employee.get_full_name()}",  
+                    description=f"Employer PF contribution for {payroll.employee.get_full_name()}",
                     reference_number=f"PAY-{payroll.id}",
                     transaction_date=payroll.pay_date,
                     created_by=payroll.created_by,
@@ -191,10 +196,10 @@ class DoubleEntryBookkeeping:
             entries.append(
                 DoubleEntryBookkeeping.create_journal_entry(
                     hospital=payroll.hospital,
-                    debit_account_code="6320",  
-                    credit_account_code="2420",  
+                    debit_account_code="6320",
+                    credit_account_code="2420",
                     amount_cents=payroll.esi_employer_cents,
-                    description=f"Employer ESI contribution for {payroll.employee.get_full_name()}",  
+                    description=f"Employer ESI contribution for {payroll.employee.get_full_name()}",
                     reference_number=f"PAY-{payroll.id}",
                     transaction_date=payroll.pay_date,
                     created_by=payroll.created_by,
@@ -202,11 +207,14 @@ class DoubleEntryBookkeeping:
                 )
             )
         return entries
+
+
 class DepreciationCalculator:
     @staticmethod
     def calculate_monthly_depreciation(asset):
         annual_depreciation = asset.calculate_annual_depreciation()
         return annual_depreciation // 12
+
     @staticmethod
     def generate_depreciation_schedule(asset):
         schedule = []
@@ -214,29 +222,17 @@ class DepreciationCalculator:
         accumulated_depreciation = 0
         for year in range(asset.useful_life_years):
             if asset.depreciation_method == "STRAIGHT_LINE":
-                annual_depreciation = (
-                    asset.purchase_cost_cents - asset.salvage_value_cents
-                ) // asset.useful_life_years
+                annual_depreciation = (asset.purchase_cost_cents - asset.salvage_value_cents) // asset.useful_life_years
             elif asset.depreciation_method == "REDUCING_BALANCE":
-                rate = (
-                    asset.depreciation_rate / 100
-                    if asset.depreciation_rate
-                    else (1 / asset.useful_life_years)
-                )
+                rate = asset.depreciation_rate / 100 if asset.depreciation_rate else (1 / asset.useful_life_years)
                 annual_depreciation = int(current_book_value * rate)
-            else:  
+            else:
                 rate = 2 / asset.useful_life_years
                 annual_depreciation = int(current_book_value * rate)
-            if accumulated_depreciation + annual_depreciation > (
-                asset.purchase_cost_cents - asset.salvage_value_cents
-            ):
-                annual_depreciation = (
-                    asset.purchase_cost_cents - asset.salvage_value_cents
-                ) - accumulated_depreciation
+            if accumulated_depreciation + annual_depreciation > (asset.purchase_cost_cents - asset.salvage_value_cents):
+                annual_depreciation = (asset.purchase_cost_cents - asset.salvage_value_cents) - accumulated_depreciation
             accumulated_depreciation += annual_depreciation
-            current_book_value = (
-                asset.purchase_cost_cents - accumulated_depreciation
-            )  
+            current_book_value = asset.purchase_cost_cents - accumulated_depreciation
             schedule.append(
                 {
                     "year": year + 1,
@@ -253,6 +249,7 @@ class DepreciationCalculator:
             if current_book_value <= asset.salvage_value_cents:
                 break
         return schedule
+
     @staticmethod
     @transaction.atomic
     def process_monthly_depreciation(hospital, processing_date=None):
@@ -272,14 +269,10 @@ class DepreciationCalculator:
             ).first()
             if existing_entry:
                 continue
-            monthly_depreciation = (
-                DepreciationCalculator.calculate_monthly_depreciation(asset)
-            )
+            monthly_depreciation = DepreciationCalculator.calculate_monthly_depreciation(asset)
             if monthly_depreciation <= 0:
                 continue
-            new_accumulated = (
-                asset.accumulated_depreciation_cents + monthly_depreciation
-            )
+            new_accumulated = asset.accumulated_depreciation_cents + monthly_depreciation
             new_book_value = asset.purchase_cost_cents - new_accumulated
             DepreciationSchedule.objects.create(
                 hospital=hospital,
@@ -300,15 +293,17 @@ class DepreciationCalculator:
             )
             DoubleEntryBookkeeping.create_journal_entry(
                 hospital=hospital,
-                debit_account_code="6900",  
-                credit_account_code="1500",  
+                debit_account_code="6900",
+                credit_account_code="1500",
                 amount_cents=monthly_depreciation,
                 description=f"Monthly depreciation for {asset.name}",
-                reference_number=f"DEP-{asset.asset_code}-{processing_date.strftime('%Y%m')}",  
+                reference_number=f"DEP-{asset.asset_code}-{processing_date.strftime('%Y%m')}",
                 transaction_date=processing_date,
             )
             processed_count += 1
         return processed_count
+
+
 class TaxCalculator:
     @staticmethod
     def calculate_gst(amount_cents, gst_rate, is_interstate=False):
@@ -322,20 +317,20 @@ class TaxCalculator:
             }
         else:
             cgst = gst_amount // 2
-            sgst = gst_amount - cgst  
+            sgst = gst_amount - cgst
             return {
                 "igst_cents": 0,
                 "cgst_cents": cgst,
                 "sgst_cents": sgst,
                 "total_tax_cents": cgst + sgst,
             }
+
     @staticmethod
     def calculate_tds(gross_amount_cents, tds_rate):
         return int(gross_amount_cents * tds_rate / 100)
+
     @staticmethod
-    def get_tax_liability_for_period(
-        hospital, start_date, end_date, tax_type="GST"
-    ):  
+    def get_tax_liability_for_period(hospital, start_date, end_date, tax_type="GST"):
         invoices = AccountingInvoice.objects.filter(
             hospital=hospital,
             invoice_date__gte=start_date,
@@ -353,35 +348,35 @@ class TaxCalculator:
         net_tax_liability = total_tax_collected - input_tax_credit
         return {
             "total_sales_cents": total_sales,
-            "taxable_sales_cents": total_sales,  
+            "taxable_sales_cents": total_sales,
             "tax_collected_cents": total_tax_collected,
             "input_tax_credit_cents": input_tax_credit,
             "net_tax_liability_cents": net_tax_liability,
         }
+
+
 class ReportGenerator:
     @staticmethod
     def generate_trial_balance(hospital, as_of_date):
-        accounts = ChartOfAccounts.objects.filter(
-            hospital=hospital, is_active=True
-        )  
+        accounts = ChartOfAccounts.objects.filter(hospital=hospital, is_active=True)
         trial_balance = []
         total_debits = 0
         total_credits = 0
         for account in accounts:
             debit_sum = (
-                account.debit_entries.filter(
-                    transaction_date__lte=as_of_date
-                ).aggregate(total=models.Sum("amount_cents"))["total"]
+                account.debit_entries.filter(transaction_date__lte=as_of_date).aggregate(
+                    total=models.Sum("amount_cents")
+                )["total"]
                 or 0
             )
             credit_sum = (
-                account.credit_entries.filter(
-                    transaction_date__lte=as_of_date
-                ).aggregate(total=models.Sum("amount_cents"))["total"]
+                account.credit_entries.filter(transaction_date__lte=as_of_date).aggregate(
+                    total=models.Sum("amount_cents")
+                )["total"]
                 or 0
             )
             balance = debit_sum - credit_sum
-            if balance != 0:  
+            if balance != 0:
                 if balance > 0:
                     debit_balance = balance
                     credit_balance = 0
@@ -405,11 +400,10 @@ class ReportGenerator:
             "total_credits": total_credits,
             "is_balanced": total_debits == total_credits,
         }
+
     @staticmethod
     def generate_profit_loss(hospital, start_date, end_date):
-        income_accounts = ChartOfAccounts.objects.filter(
-            hospital=hospital, account_type="INCOME", is_active=True
-        )
+        income_accounts = ChartOfAccounts.objects.filter(hospital=hospital, account_type="INCOME", is_active=True)
         total_income = 0
         income_details = []
         for account in income_accounts:
@@ -437,9 +431,7 @@ class ReportGenerator:
                         "amount_cents": net_income,
                     }
                 )
-        expense_accounts = ChartOfAccounts.objects.filter(
-            hospital=hospital, account_type="EXPENSES", is_active=True
-        )
+        expense_accounts = ChartOfAccounts.objects.filter(hospital=hospital, account_type="EXPENSES", is_active=True)
         total_expenses = 0
         expense_details = []
         for account in expense_accounts:
@@ -476,6 +468,7 @@ class ReportGenerator:
             "total_expenses_cents": total_expenses,
             "net_profit_cents": net_profit,
         }
+
     @staticmethod
     def generate_balance_sheet(hospital, as_of_date):
         balance_sheet = {
@@ -492,9 +485,7 @@ class ReportGenerator:
             },
             "equity": {"equity_accounts": [], "total_equity_cents": 0},
         }
-        asset_accounts = ChartOfAccounts.objects.filter(
-            hospital=hospital, account_type="ASSETS", is_active=True
-        )
+        asset_accounts = ChartOfAccounts.objects.filter(hospital=hospital, account_type="ASSETS", is_active=True)
         for account in asset_accounts:
             balance = account.balance
             if balance > 0:
@@ -504,9 +495,7 @@ class ReportGenerator:
                     "amount_cents": balance,
                 }
                 if account.account_subtype == "CURRENT_ASSETS":
-                    balance_sheet["assets"]["current_assets"].append(
-                        asset_data
-                    )  
+                    balance_sheet["assets"]["current_assets"].append(asset_data)
                 else:
                     balance_sheet["assets"]["fixed_assets"].append(asset_data)
                 balance_sheet["assets"]["total_assets_cents"] += balance
@@ -522,21 +511,11 @@ class ReportGenerator:
                     "amount_cents": balance,
                 }
                 if account.account_subtype == "CURRENT_LIABILITIES":
-                    balance_sheet["liabilities"]["current_liabilities"].append(
-                        liability_data
-                    )
+                    balance_sheet["liabilities"]["current_liabilities"].append(liability_data)
                 else:
-                    balance_sheet["liabilities"][
-                        "long_term_liabilities"
-                    ].append(  
-                        liability_data
-                    )
-                balance_sheet["liabilities"][
-                    "total_liabilities_cents"
-                ] += balance  
-        equity_accounts = ChartOfAccounts.objects.filter(
-            hospital=hospital, account_type="EQUITY", is_active=True
-        )
+                    balance_sheet["liabilities"]["long_term_liabilities"].append(liability_data)
+                balance_sheet["liabilities"]["total_liabilities_cents"] += balance
+        equity_accounts = ChartOfAccounts.objects.filter(hospital=hospital, account_type="EQUITY", is_active=True)
         for account in equity_accounts:
             balance = account.balance
             if balance != 0:
@@ -549,15 +528,15 @@ class ReportGenerator:
                 )
                 balance_sheet["equity"]["total_equity_cents"] += balance
         return balance_sheet
+
+
 class ExportEngine:
     @staticmethod
     def export_to_excel(data, headers, filename):
         workbook = openpyxl.Workbook()
         worksheet = workbook.active
         header_font = Font(bold=True, color="FFFFFF")
-        header_fill = PatternFill(
-            start_color="366092", end_color="366092", fill_type="solid"
-        )
+        header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
         border = Border(
             left=Side(border_style="thin"),
             right=Side(border_style="thin"),
@@ -588,6 +567,7 @@ class ExportEngine:
         workbook.save(excel_buffer)
         excel_buffer.seek(0)
         return excel_buffer
+
     @staticmethod
     def export_to_tally_xml(transactions, export_type="SALES"):
         root = ET.Element("ENVELOPE")
@@ -603,24 +583,15 @@ class ExportEngine:
             voucher_data = ET.SubElement(voucher, "VOUCHER")
             if export_type == "SALES":
                 ET.SubElement(voucher_data, "VOUCHERTYPENAME").text = "Sales"
-                ET.SubElement(voucher_data, "PARTYLEDGERNAME").text = transaction.get(
-                    "party_name", ""
-                )  
-                ET.SubElement(voucher_data, "DATE").text = transaction.get(
-                    "date", ""
-                ).strftime("%Y%m%d")
-                ET.SubElement(voucher_data, "AMOUNT").text = str(
-                    transaction.get("amount_cents", 0) / 100
-                )
+                ET.SubElement(voucher_data, "PARTYLEDGERNAME").text = transaction.get("party_name", "")
+                ET.SubElement(voucher_data, "DATE").text = transaction.get("date", "").strftime("%Y%m%d")
+                ET.SubElement(voucher_data, "AMOUNT").text = str(transaction.get("amount_cents", 0) / 100)
             elif export_type == "PURCHASE":
-                ET.SubElement(voucher_data, "VOUCHERTYPENAME").text = (
-                    "Purchase"  
-                )
+                ET.SubElement(voucher_data, "VOUCHERTYPENAME").text = "Purchase"
         return ET.tostring(root, encoding="unicode")
+
     @staticmethod
-    def export_gst_returns(
-        hospital, start_date, end_date, return_type="GSTR1"
-    ):  
+    def export_gst_returns(hospital, start_date, end_date, return_type="GSTR1"):
         if return_type == "GSTR1":
             b2b_supplies = []
             invoices = AccountingInvoice.objects.filter(
@@ -637,11 +608,9 @@ class ExportEngine:
                             "inv": [
                                 {
                                     "inum": invoice.invoice_number,
-                                    "idt": invoice.invoice_date.strftime(
-                                        "%d-%m-%Y"
-                                    ),  
+                                    "idt": invoice.invoice_date.strftime("%d-%m-%Y"),
                                     "val": invoice.total_cents / 100,
-                                    "pos": "07",  
+                                    "pos": "07",
                                     "rchrg": "N",
                                     "inv_typ": "R",
                                     "itms": [],
@@ -650,11 +619,13 @@ class ExportEngine:
                         }
                     )
             return {
-                "gstin": "",  
+                "gstin": "",
                 "ret_period": start_date.strftime("%m%Y"),
                 "b2b": b2b_supplies,
             }
         return {}
+
+
 class AgeingReportGenerator:
     @staticmethod
     def generate_receivables_ageing(hospital, as_of_date):
@@ -685,21 +656,19 @@ class AgeingReportGenerator:
                 ageing_buckets["90+"].append(ageing_data)
         bucket_totals = {}
         for bucket, invoices in ageing_buckets.items():
-            bucket_totals[bucket] = sum(
-                inv["balance_cents"] for inv in invoices
-            )  
+            bucket_totals[bucket] = sum(inv["balance_cents"] for inv in invoices)
         return {
             "as_of_date": as_of_date,
             "ageing_buckets": ageing_buckets,
             "bucket_totals": bucket_totals,
             "grand_total": sum(bucket_totals.values()),
         }
+
+
 class BankReconciliationHelper:
     @staticmethod
     def auto_match_transactions(bank_account, tolerance_cents=100):
-        unreconciled_bank_txns = BankTransaction.objects.filter(
-            bank_account=bank_account, is_reconciled=False
-        )
+        unreconciled_bank_txns = BankTransaction.objects.filter(bank_account=bank_account, is_reconciled=False)
         matched_count = 0
         for bank_txn in unreconciled_bank_txns:
             if bank_txn.transaction_type == "CREDIT":
@@ -717,13 +686,11 @@ class BankReconciliationHelper:
                     bank_txn.reconciled_at = timezone.now()
                     bank_txn.save()
                     matched_count += 1
-            else:  
+            else:
                 matching_expenses = Expense.objects.filter(
                     payment_date=bank_txn.transaction_date,
-                    net_amount_cents__gte=bank_txn.amount_cents
-                    - tolerance_cents,  
-                    net_amount_cents__lte=bank_txn.amount_cents
-                    + tolerance_cents,  
+                    net_amount_cents__gte=bank_txn.amount_cents - tolerance_cents,
+                    net_amount_cents__lte=bank_txn.amount_cents + tolerance_cents,
                     is_paid=True,
                 ).exclude(banktransaction__isnull=False)
                 if matching_expenses.count() == 1:
@@ -734,27 +701,26 @@ class BankReconciliationHelper:
                     bank_txn.save()
                     matched_count += 1
         return matched_count
+
+
 class ComplianceReporter:
     @staticmethod
     def generate_tds_return(hospital, quarter, financial_year):
         from .models import TDSEntry
+
         quarter_months = {
-            "Q1": (4, 6),  
-            "Q2": (7, 9),  
-            "Q3": (10, 12),  
-            "Q4": (1, 3),  
+            "Q1": (4, 6),
+            "Q2": (7, 9),
+            "Q3": (10, 12),
+            "Q4": (1, 3),
         }
         start_month, end_month = quarter_months[quarter]
         if quarter == "Q4":
             start_date = date(financial_year + 1, start_month, 1)
-            end_date = date(financial_year + 1, end_month + 1, 1) - timedelta(
-                days=1
-            )  
+            end_date = date(financial_year + 1, end_month + 1, 1) - timedelta(days=1)
         else:
             start_date = date(financial_year, start_month, 1)
-            end_date = date(financial_year, end_month + 1, 1) - timedelta(
-                days=1
-            )  
+            end_date = date(financial_year, end_month + 1, 1) - timedelta(days=1)
         tds_entries = TDSEntry.objects.filter(
             hospital=hospital,
             deduction_date__gte=start_date,
@@ -767,8 +733,7 @@ class ComplianceReporter:
                 tds_summary[key] = {
                     "section": entry.section,
                     "deductee": str(entry.vendor or entry.employee),
-                    "pan": getattr(entry.vendor, "pan", "")
-                    or getattr(entry.employee, "profile", {}).get("pan", ""),
+                    "pan": getattr(entry.vendor, "pan", "") or getattr(entry.employee, "profile", {}).get("pan", ""),
                     "gross_amount_cents": 0,
                     "tds_amount_cents": 0,
                 }
@@ -780,7 +745,5 @@ class ComplianceReporter:
             "start_date": start_date,
             "end_date": end_date,
             "tds_entries": list(tds_summary.values()),
-            "total_tds_cents": sum(
-                entry["tds_amount_cents"] for entry in tds_summary.values()
-            ),
+            "total_tds_cents": sum(entry["tds_amount_cents"] for entry in tds_summary.values()),
         }

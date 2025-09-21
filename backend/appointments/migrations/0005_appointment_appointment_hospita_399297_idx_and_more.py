@@ -1,4 +1,6 @@
 from django.db import migrations, models
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("appointments", "0004_surgerytype_otslot_otbooking_and_more"),
@@ -48,9 +50,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="appointment",
-            index=models.Index(
-                fields=["hospital", "created_at"], name="appointment_hospita_d3f55e_idx"
-            ),
+            index=models.Index(fields=["hospital", "created_at"], name="appointment_hospita_d3f55e_idx"),
         ),
         migrations.AddIndex(
             model_name="appointment",

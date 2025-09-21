@@ -1,0 +1,293 @@
+# HMS Enterprise-Grade Security Scanner Configuration
+
+scanners:
+  sast:
+    enabled: true
+    tools:
+      - bandit
+      - semgrep
+      - codeql
+    excludes:
+      - "tests/*"
+      - "migrations/*"
+      - "venv/*"
+      - "node_modules/*"
+      - "*.pyc"
+      - "__pycache__/*"
+    rules:
+      custom_rules_path: "devops/security/custom-sast-rules/"
+      strict_mode: true
+      fail_on_critical: true
+
+  dast:
+    enabled: true
+    tools:
+      - owasp_zap
+      - nuclei
+      - burp_suite
+    target_url: "${TARGET_URL:-http://localhost:8000}"
+    test_environment: true
+    authentication:
+      enabled: false
+      type: "bearer_token"
+      token: "${TEST_TOKEN}"
+    scan_options:
+      active_scan: true
+      ajax_spider: true
+      scan_all_urls: false
+
+  dependency:
+    enabled: true
+    tools:
+      - safety
+      - snyk
+      - npm_audit
+      - pip_audit
+    auto_update: true
+    license_check: true
+    ignore_dev_dependencies: false
+    package_managers:
+      - "pip"
+      - "npm"
+      - "yarn"
+
+  secrets:
+    enabled: true
+    tools:
+      - gitleaks
+      - trufflehog
+      - detect_secrets
+    historical_scan: true
+    include_patterns:
+      - "*.py"
+      - "*.js"
+      - "*.jsx"
+      - "*.ts"
+      - "*.tsx"
+      - "*.yaml"
+      - "*.yml"
+      - "*.json"
+      - "*.env"
+      - "*.conf"
+      - "*.config"
+    custom_patterns:
+      - "AWS_ACCESS_KEY"
+      - "AWS_SECRET_KEY"
+      - "DATABASE_URL"
+      - "SECRET_KEY"
+      - "API_KEY"
+
+  container:
+    enabled: true
+    tools:
+      - trivy
+      - clair
+      - grype
+    images:
+      - "hms-backend:latest"
+      - "hms-frontend:latest"
+      - "postgres:15"
+      - "redis:7-alpine"
+    scan_options:
+      scan_base_images: true
+      include_vulnerabilities: true
+      include_misconfigurations: true
+      severity_levels:
+        - "CRITICAL"
+        - "HIGH"
+        - "MEDIUM"
+
+  compliance:
+    enabled: true
+    frameworks:
+      - "HIPAA"
+      - "GDPR"
+      - "PCI_DSS"
+      - "SOC2"
+    strict_mode: true
+    healthcare_specific: true
+    data_classification:
+      phi_data: true
+      pii_data: true
+      financial_data: true
+
+  infrastructure:
+    enabled: true
+    cloud_providers:
+      - "aws"
+    services:
+      - "ec2"
+      - "s3"
+      - "rds"
+      - "eks"
+      - "iam"
+    cis_benchmark: true
+    logging_enabled: true
+    monitoring_enabled: true
+
+thresholds:
+  critical: 0
+  high: 0
+  medium: 5
+  low: 10
+  info: 50
+
+reporting:
+  format:
+    - "json"
+    - "html"
+    - "pdf"
+    - "sarif"
+  include_remediation: true
+  executive_summary: true
+  technical_details: true
+  compliance_details: true
+  export_to:
+    - "security_hub"
+    - "s3"
+    - "slack"
+
+notifications:
+  enabled: true
+  channels:
+    slack:
+      webhook_url: "${SLACK_SECURITY_WEBHOOK}"
+      channel: "#security-alerts"
+    email:
+      recipients:
+        - "security-team@hms-enterprise.com"
+        - "devops-team@hms-enterprise.com"
+    pagerduty:
+      service_key: "${PAGERDUTY_SECURITY_KEY}"
+  alert_levels:
+    - "critical"
+    - "high"
+
+security_gate:
+  enabled: true
+  fail_build: true
+  thresholds:
+    critical: 0
+    high: 0
+    medium: 10
+    low: 25
+  exceptions:
+    - pattern: ".*test.*"
+      reason: "Test code exceptions"
+    - pattern: ".*example.*"
+      reason: "Example code exceptions"
+
+remediation:
+  auto_fix:
+    enabled: false
+    tools:
+      - "pre-commit"
+      - "autopep8"
+      - "black"
+  recommendations:
+    enabled: true
+    priority:
+      - "critical"
+      - "high"
+      - "medium"
+      - "low"
+    templates_path: "devops/security/remediation-templates/"
+
+integration:
+  github:
+    enabled: true
+    code_scanning: true
+    dependency_graph: true
+    advanced_security: true
+  jira:
+    enabled: true
+    project_key: "SEC"
+    assignee: "security-team"
+  siem:
+    enabled: true
+    endpoint: "${SIEM_ENDPOINT}"
+    format: "cef"
+
+healthcare_compliance:
+  hipaa:
+    enabled: true
+    phi_detection: true
+    audit_trail: true
+    encryption_required: true
+    access_control: true
+    data_retention: true
+    breach_notification: true
+
+  gdpr:
+    enabled: true
+    data_subject_rights: true
+    consent_management: true
+    data_portability: true
+    right_to_be_forgotten: true
+    breach_reporting: true
+
+  pci_dss:
+    enabled: true
+    cardholder_data: false
+    encryption_transmission: true
+    encryption_storage: true
+    access_control: true
+    vulnerability_management: true
+    monitoring: true
+
+  fhir:
+    enabled: true
+    api_security: true
+    data_validation: true
+    audit_logging: true
+    authentication: true
+    authorization: true
+
+schedule:
+  enabled: true
+  scans:
+    - type: "comprehensive"
+      frequency: "daily"
+      time: "02:00"
+    - type: "sast"
+      frequency: "on_push"
+    - type: "dependency"
+      frequency: "daily"
+      time: "04:00"
+    - type: "compliance"
+      frequency: "weekly"
+      day: "sunday"
+      time: "03:00"
+
+logging:
+  level: "INFO"
+  file: "/var/log/hms/security-scanner.log"
+  rotate: true
+  max_size: "100MB"
+  backup_count: 10
+  structured_logging: true
+  include_sensitive_data: false
+
+performance:
+  max_concurrent_scans: 5
+  timeout_seconds: 1800
+  memory_limit: "4GB"
+  cpu_limit: "2"
+  cache_results: true
+  cache_duration_hours: 24
+
+storage:
+  local_path: "/tmp/security-scanner"
+  s3_bucket: "hms-security-scans"
+  retention_days: 365
+  compression: true
+  encryption: true
+
+api:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8080
+  auth_required: true
+  rate_limit: 100
+  cors_enabled: true
+  documentation_enabled: true

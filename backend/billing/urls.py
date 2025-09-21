@@ -1,4 +1,5 @@
 from rest_framework.routers import DefaultRouter
+
 from .views import (
     AccountingViewSet,
     BillLineItemViewSet,
@@ -7,6 +8,7 @@ from .views import (
     PaymentViewSet,
     ServiceCatalogViewSet,
 )
+
 router = DefaultRouter()
 router.register(r"bills", BillViewSet, basename="bill")
 router.register(r"bill-items", BillLineItemViewSet, basename="billitem")

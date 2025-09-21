@@ -1,7 +1,10 @@
 import re
 from typing import Any, Dict
+
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
+
+
 def validate_no_injection(value):
     if not isinstance(value, str):
         return

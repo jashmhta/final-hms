@@ -1,0 +1,654 @@
+# Enterprise-Grade Event-Driven Architecture Configuration
+# Author: Microservices Scaling Architect
+# Purpose: Message queues, event streaming, and async processing for HMS
+
+# ==================== KAFKA CLUSTER CONFIGURATION ====================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka-broker
+  namespace: hms-production
+  labels:
+    app: kafka
+    component: messaging
+spec:
+  serviceName: kafka-broker
+  replicas: 3
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+        component: messaging
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9404"
+        prometheus.io/path: "/metrics"
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - kafka
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name: kafka
+          image: confluentinc/cp-kafka:7.4.0
+          ports:
+            - containerPort: 9092
+              name: internal
+            - containerPort: 9094
+              name: external
+            - containerPort: 9404
+              name: metrics
+          env:
+            - name: KAFKA_BROKER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: KAFKA_ZOOKEEPER_CONNECT
+              value: "zookeeper:2181"
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "INTERNAL://kafka-broker-0.kafka-broker.hms-production.svc.cluster.local:9092,EXTERNAL://kafka-broker-0.kafka-broker.hms-production.svc.cluster.local:9094"
+            - name: KAFKA_INTER_BROKER_LISTENER_NAME
+              value: "INTERNAL"
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "3"
+            - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+              value: "3"
+            - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+              value: "2"
+            - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+              value: "true"
+            - name: KAFKA_DELETE_TOPIC_ENABLE
+              value: "true"
+            - name: KAFKA_LOG_RETENTION_HOURS
+              value: "168"
+            - name: KAFKA_MESSAGE_MAX_BYTES
+              value: "10485760"
+            - name: KAFKA_SOCKET_SEND_BUFFER_BYTES
+              value: "1024000"
+            - name: KAFKA_SOCKET_RECEIVE_BUFFER_BYTES
+              value: "1024000"
+            - name: KAFKA_NUM_NETWORK_THREADS
+              value: "10"
+            - name: KAFKA_NUM_IO_THREADS
+              value: "20"
+            - name: KAFKA_SOCKET_REQUEST_MAX_BYTES
+              value: "104857600"
+            - name: KAFKA_LOG_FLUSH_INTERVAL_MESSAGES
+              value: "10000"
+            - name: KAFKA_LOG_FLUSH_INTERVAL_MS
+              value: "1000"
+            - name: KAFKA_NUM_RECOVERY_THREADS_PER_DATA_DIR
+              value: "4"
+            - name: KAFKA_AUTO_LEADER_REBALANCE_ENABLE
+              value: "false"
+            - name: KAFKA_MIN_INSYNC_REPLICAS
+              value: "2"
+            - name: KAFKA_DEFAULT_REPLICATION_FACTOR
+              value: "3"
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "1000m"
+            limits:
+              memory: "4Gi"
+              cpu: "2000m"
+          livenessProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "kafka-broker-api-versions --bootstrap-server localhost:9092"
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          volumeMounts:
+            - name: kafka-data
+              mountPath: /var/lib/kafka/data
+      volumes:
+        - name: kafka-data
+          persistentVolumeClaim:
+            claimName: kafka-data-pvc
+
+# ==================== ZOOKEEPER CONFIGURATION ====================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zookeeper
+  namespace: hms-production
+  labels:
+    app: zookeeper
+    component: coordination
+spec:
+  serviceName: zookeeper
+  replicas: 3
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+        component: coordination
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - zookeeper
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name: zookeeper
+          image: confluentinc/cp-zookeeper:7.4.0
+          ports:
+            - containerPort: 2181
+              name: client
+            - containerPort: 2888
+              name: server
+            - containerPort: 3888
+              name: leader-election
+          env:
+            - name: ZOOKEEPER_CLIENT_PORT
+              value: "2181"
+            - name: ZOOKEEPER_TICK_TIME
+              value: "2000"
+            - name: ZOOKEEPER_INIT_LIMIT
+              value: "10"
+            - name: ZOOKEEPER_SYNC_LIMIT
+              value: "5"
+            - name: ZOOKEEPER_SERVER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: ZOOKEEPER_SERVERS
+              value: "zookeeper:2888:3888"
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          volumeMounts:
+            - name: zookeeper-data
+              mountPath: /var/lib/zookeeper/data
+            - name: zookeeper-logs
+              mountPath: /var/lib/zookeeper/log
+      volumes:
+        - name: zookeeper-data
+          persistentVolumeClaim:
+            claimName: zookeeper-data-pvc
+        - name: zookeeper-logs
+          persistentVolumeClaim:
+            claimName: zookeeper-logs-pvc
+
+# ==================== KAFKA TOPICS CONFIGURATION =================---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-topics-config
+  namespace: hms-production
+data:
+  create-topics.sh: |
+    #!/bin/bash
+
+    # Wait for Kafka to be ready
+    until kafka-topics --bootstrap-server kafka-broker:9092 --list > /dev/null 2>&1; do
+      echo "Waiting for Kafka to be ready..."
+      sleep 5
+    done
+
+    # Create HMS topics with optimal configurations
+    kafka-topics --bootstrap-server kafka-broker:9092 --create --if-not-exists \
+      --topic patient-events \
+      --partitions 6 \
+      --replication-factor 3 \
+      --config cleanup.policy=compact \
+      --config retention.ms=604800000 \
+      --config segment.ms=86400000 \
+      --config compression.type=zstd
+
+    kafka-topics --bootstrap-server kafka-broker:9092 --create --if-not-exists \
+      --topic appointment-events \
+      --partitions 8 \
+      --replication-factor 3 \
+      --config retention.ms=2592000000 \
+      --config segment.ms=86400000 \
+      --config compression.type=zstd
+
+    kafka-topics --bootstrap-server kafka-broker:9092 --create --if-not-exists \
+      --topic medication-events \
+      --partitions 6 \
+      --replication-factor 3 \
+      --config cleanup.policy=compact \
+      --config retention.ms=31536000000 \
+      --config compression.type=zstd
+
+    kafka-topics --bootstrap-server kafka-broker:9092 --create --if-not-exists \
+      --topic lab-result-events \
+      --partitions 10 \
+      --replication-factor 3 \
+      --config retention.ms=7776000000 \
+      --config compression.type=zstd
+
+    kafka-topics --bootstrap-server kafka-broker:9092 --create --if-not-exists \
+      --topic billing-events \
+      --partitions 8 \
+      --replication-factor 3 \
+      --config retention.ms=31536000000 \
+      --config compression.type=zstd
+
+    kafka-topics --bootstrap-server kafka-broker:9092 --create --if-not-exists \
+      --topic er-alert-events \
+      --partitions 12 \
+      --replication-factor 3 \
+      --config retention.ms=604800000 \
+      --config cleanup.policy=delete \
+      --config compression.type=zstd
+
+    kafka-topics --bootstrap-server kafka-broker:9092 --create --if-not-exists \
+      --topic audit-events \
+      --partitions 4 \
+      --replication-factor 3 \
+      --config retention.ms=31536000000 \
+      --config cleanup.policy=compact \
+      --config compression.type=zstd
+
+    kafka-topics --bootstrap-server kafka-broker:9092 --create --if-not-exists \
+      --topic notification-events \
+      --partitions 6 \
+      --replication-factor 3 \
+      --config retention.ms=604800000 \
+      --config cleanup.policy=delete \
+      --config compression.type=zstd
+
+    echo "Topics created successfully"
+
+# ==================== KAFKA CONNECT CONFIGURATION =================---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-connect
+  namespace: hms-production
+  labels:
+    app: kafka-connect
+    component: integration
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kafka-connect
+  template:
+    metadata:
+      labels:
+        app: kafka-connect
+        component: integration
+    spec:
+      containers:
+        - name: kafka-connect
+          image: confluentinc/cp-kafka-connect:7.4.0
+          ports:
+            - containerPort: 8083
+              name: rest
+            - containerPort: 9404
+              name: metrics
+          env:
+            - name: CONNECT_BOOTSTRAP_SERVERS
+              value: "kafka-broker:9092"
+            - name: CONNECT_REST_ADVERTISED_HOST_NAME
+              value: "kafka-connect"
+            - name: CONNECT_GROUP_ID
+              value: "hms-connect-cluster"
+            - name: CONNECT_CONFIG_STORAGE_TOPIC
+              value: "hms-connect-configs"
+            - name: CONNECT_OFFSET_STORAGE_TOPIC
+              value: "hms-connect-offsets"
+            - name: CONNECT_STATUS_STORAGE_TOPIC
+              value: "hms-connect-status"
+            - name: CONNECT_KEY_CONVERTER
+              value: "org.apache.kafka.connect.json.JsonConverter"
+            - name: CONNECT_VALUE_CONVERTER
+              value: "org.apache.kafka.connect.json.JsonConverter"
+            - name: CONNECT_INTERNAL_KEY_CONVERTER
+              value: "org.apache.kafka.connect.json.JsonConverter"
+            - name: CONNECT_INTERNAL_VALUE_CONVERTER
+              value: "org.apache.kafka.connect.json.JsonConverter"
+            - name: CONNECT_REST_PORT
+              value: "8083"
+            - name: CONNECT_PLUGIN_PATH
+              value: "/usr/share/java,/usr/share/confluent-hub-components,/data/connect-jars"
+            - name: CONNECT_LOG4J_LOGGERS
+              value: "org.reflections=ERROR"
+            - name: KAFKA_HEAP_OPTS
+              value: "-Xms1G -Xmx2G"
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "1000m"
+            limits:
+              memory: "4Gi"
+              cpu: "2000m"
+          volumeMounts:
+            - name: connect-plugins
+              mountPath: /usr/share/confluent-hub-components
+            - name: connect-config
+              mountPath: /etc/kafka-connect
+      volumes:
+        - name: connect-plugins
+          persistentVolumeClaim:
+            claimName: kafka-connect-plugins-pvc
+        - name: connect-config
+          configMap:
+            name: kafka-connect-config
+
+# ==================== EVENT PROCESSING SERVICES =================---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: event-processor
+  namespace: hms-production
+  labels:
+    app: event-processor
+    component: event-processing
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: event-processor
+  template:
+    metadata:
+      labels:
+        app: event-processor
+        component: event-processing
+    spec:
+      containers:
+        - name: event-processor
+          image: hms/event-processor:latest
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 9404
+              name: metrics
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka-broker:9092"
+            - name: EVENT_TOPICS
+              value: "patient-events,appointment-events,medication-events,lab-result-events,billing-events,er-alert-events,audit-events,notification-events"
+            - name: CONSUMER_GROUP
+              value: "hms-event-processor-group"
+            - name: REDIS_URL
+              value: "redis://redis-cluster:6379"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: hms-secrets
+                  key: database-url
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+
+# ==================== EVENT STREAMING ANALYTICS =================---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ksql-server
+  namespace: hms-production
+  labels:
+    app: ksql-server
+    component: streaming-analytics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ksql-server
+  template:
+    metadata:
+      labels:
+        app: ksql-server
+        component: streaming-analytics
+    spec:
+      containers:
+        - name: ksql-server
+          image: confluentinc/cp-ksqldb-server:7.4.0
+          ports:
+            - containerPort: 8088
+              name: ksql
+          env:
+            - name: KSQL_BOOTSTRAP_SERVERS
+              value: "kafka-broker:9092"
+            - name: KSQL_LISTENERS
+              value: "http://0.0.0.0:8088"
+            - name: KSQL_KSQL_SERVICE_ID
+              value: "hms-ksql-service_"
+            - name: KSQL_KSQL_STREAMING_AUTO_CREATE=true
+            - name: KSQL_KSQL_STREAMING_AUTO_DROP=true
+            - name: KSQL_CACHE_MAX_BYTES_BUFFERING
+              value: "10000000"
+            - name: KSQL_KSQL_SINK_REPLICAS
+              value: "3"
+            - name: KSQL_KSQL_STREAMING_TABLE_REPLICATION_FACTOR
+              value: "3"
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "1000m"
+            limits:
+              memory: "4Gi"
+              cpu: "2000m"
+
+# ==================== SCHEMA REGISTRY ====================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: schema-registry
+  namespace: hms-production
+  labels:
+    app: schema-registry
+    component: schema-management
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: schema-registry
+  template:
+    metadata:
+      labels:
+        app: schema-registry
+        component: schema-management
+    spec:
+      containers:
+        - name: schema-registry
+          image: confluentinc/cp-schema-registry:7.4.0
+          ports:
+            - containerPort: 8081
+              name: schema-registry
+          env:
+            - name: SCHEMA_REGISTRY_HOST_NAME
+              value: "schema-registry"
+            - name: SCHEMA_REGISTRY_KAFKA_BROKERS
+              value: "kafka-broker:9092"
+            - name: SCHEMA_REGISTRY_LISTENERS
+              value: "http://0.0.0.0:8081"
+            - name: SCHEMA_REGISTRY_AVRO_COMPATIBILITY_LEVEL
+              value: "backward_transitive"
+            - name: SCHEMA_REGISTRY_SCHEMA_COMPATIBILITY_LEVEL
+              value: "backward_transitive"
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+
+# ==================== MESSAGE QUEUE SERVICES ====================
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-broker
+  namespace: hms-production
+  labels:
+    app: kafka
+    service: messaging
+spec:
+  type: ClusterIP
+  selector:
+    app: kafka
+  ports:
+    - name: internal
+      port: 9092
+      targetPort: 9092
+    - name: external
+      port: 9094
+      targetPort: 9094
+    - name: metrics
+      port: 9404
+      targetPort: 9404
+  clusterIP: None
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper
+  namespace: hms-production
+  labels:
+    app: zookeeper
+    service: coordination
+spec:
+  type: ClusterIP
+  selector:
+    app: zookeeper
+  ports:
+    - name: client
+      port: 2181
+      targetPort: 2181
+  clusterIP: None
+
+# ==================== EVENT CONSUMER EXAMPLES =================---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patient-event-consumer
+  namespace: hms-production
+  labels:
+    app: patient-event-consumer
+    component: event-consumer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: patient-event-consumer
+  template:
+    metadata:
+      labels:
+        app: patient-event-consumer
+        component: event-consumer
+    spec:
+      containers:
+        - name: patient-event-consumer
+          image: hms/patient-event-consumer:latest
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka-broker:9092"
+            - name: TOPIC_NAME
+              value: "patient-events"
+            - name: CONSUMER_GROUP
+              value: "patient-consumer-group"
+            - name: AUTO_OFFSET_RESET
+              value: "earliest"
+            - name: ENABLE_AUTO_COMMIT
+              value: "false"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+
+# ==================== PERSISTENT VOLUME CLAIMS =================---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kafka-data-pvc
+  namespace: hms-production
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: fast-ssd
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zookeeper-data-pvc
+  namespace: hms-production
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: fast-ssd
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zookeeper-logs-pvc
+  namespace: hms-production
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: fast-ssd
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kafka-connect-plugins-pvc
+  namespace: hms-production
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: fast-ssd
+  resources:
+    requests:
+      storage: 5Gi

@@ -1,13 +1,17 @@
 import json
 from datetime import timedelta
-from django.db.models import Q, Sum
-from django.http import HttpResponse
-from django.utils import timezone
+
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from django.db.models import Q, Sum
+from django.http import HttpResponse
+from django.utils import timezone
+
 from users.models import UserRole
+
 from .models import (
     AccountingAuditLog,
     AccountingInvoice,
@@ -74,11 +78,16 @@ from .utils import (
     ReportGenerator,
     TaxCalculator,
 )
+
+
 class HospitalFilterMixin:
     def get_queryset(self):
         return super().get_queryset().filter(hospital=self.request.user.hospital)
+
     def perform_create(self, serializer):
         serializer.save(hospital=self.request.user.hospital)
+
+
 class AccountingPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
@@ -94,16 +103,22 @@ class AccountingPermission(permissions.BasePermission):
         if request.user.role == UserRole.DOCTOR:
             return view.action in ["list", "retrieve"] and "report" in view.basename
         return False
+
+
 class CurrencyViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = Currency.objects.all()
     serializer_class = CurrencySerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["is_active", "is_base_currency"]
+
+
 class TaxConfigurationViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = TaxConfiguration.objects.all()
     serializer_class = TaxConfigurationSerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["tax_type", "is_active"]
+
+
 class ChartOfAccountsViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = ChartOfAccounts.objects.all()
     serializer_class = ChartOfAccountsSerializer
@@ -111,11 +126,13 @@ class ChartOfAccountsViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     filterset_fields = ["account_type", "account_subtype", "is_active"]
     search_fields = ["account_code", "account_name"]
     ordering_fields = ["account_code", "account_name"]
+
     @action(detail=False, methods=["get"])
     def hierarchy(self, request):
         root_accounts = self.get_queryset().filter(parent_account=None)
         serializer = self.get_serializer(root_accounts, many=True)
         return Response(serializer.data)
+
     @action(detail=True, methods=["get"])
     def ledger(self, request, pk=None):
         account = self.get_object()
@@ -126,9 +143,7 @@ class ChartOfAccountsViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
             entries_filter &= Q(transaction_date__gte=start_date)
         if end_date:
             entries_filter &= Q(transaction_date__lte=end_date)
-        entries = LedgerEntry.objects.filter(entries_filter).order_by(
-            "transaction_date"
-        )
+        entries = LedgerEntry.objects.filter(entries_filter).order_by("transaction_date")
         serializer = LedgerEntrySerializer(entries, many=True)
         return Response(
             {
@@ -138,17 +153,18 @@ class ChartOfAccountsViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
                 "closing_balance": account.balance,
             }
         )
+
+
 class CostCenterViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = CostCenter.objects.all()
     serializer_class = CostCenterSerializer
     permission_classes = [AccountingPermission]
     search_fields = ["code", "name"]
+
     @action(detail=True, methods=["get"])
     def profitability(self, request, pk=None):
         cost_center = self.get_object()
-        start_date = request.query_params.get(
-            "start_date", timezone.now().date().replace(day=1)
-        )
+        start_date = request.query_params.get("start_date", timezone.now().date().replace(day=1))
         end_date = request.query_params.get("end_date", timezone.now().date())
         revenue = (
             AccountingInvoice.objects.filter(
@@ -180,32 +196,37 @@ class CostCenterViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
                 "profit_margin": round(margin, 2),
             }
         )
+
+
 class ServicePackageViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = ServicePackage.objects.all()
     serializer_class = ServicePackageSerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["is_active"]
     search_fields = ["package_code", "name"]
+
+
 class PricingTierViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = PricingTier.objects.all()
     serializer_class = PricingTierSerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["is_active"]
     search_fields = ["tier_code", "name"]
+
+
 class VendorViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = Vendor.objects.all()
     serializer_class = VendorSerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["is_active", "tds_category"]
     search_fields = ["vendor_code", "name", "gstin", "pan"]
+
     @action(detail=True, methods=["get"])
     def outstanding_payables(self, request, pk=None):
         vendor = self.get_object()
         expenses = Expense.objects.filter(vendor=vendor, is_paid=False)
         serializer = ExpenseSerializer(expenses, many=True)
-        total_outstanding = (
-            expenses.aggregate(total=Sum("net_amount_cents"))["total"] or 0
-        )
+        total_outstanding = expenses.aggregate(total=Sum("net_amount_cents"))["total"] or 0
         return Response(
             {
                 "vendor": VendorSerializer(vendor).data,
@@ -213,12 +234,16 @@ class VendorViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
                 "total_outstanding_cents": total_outstanding,
             }
         )
+
+
 class CustomerViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["customer_type", "is_active"]
     search_fields = ["customer_code", "name", "gstin"]
+
+
 class AccountingInvoiceViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = AccountingInvoice.objects.all()
     serializer_class = AccountingInvoiceSerializer
@@ -226,10 +251,10 @@ class AccountingInvoiceViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     filterset_fields = ["invoice_type", "status", "cost_center"]
     search_fields = ["invoice_number"]
     ordering_fields = ["invoice_date", "due_date", "total_cents"]
+
     def perform_create(self, serializer):
-        serializer.save(
-            hospital=self.request.user.hospital, created_by=self.request.user
-        )
+        serializer.save(hospital=self.request.user.hospital, created_by=self.request.user)
+
     @action(detail=True, methods=["post"])
     def send_invoice(self, request, pk=None):
         invoice = self.get_object()
@@ -242,6 +267,7 @@ class AccountingInvoiceViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
             {"error": "Invoice cannot be sent in current status"},
             status=status.HTTP_400_BAD_REQUEST,
         )
+
     @action(detail=True, methods=["post"])
     def cancel_invoice(self, request, pk=None):
         invoice = self.get_object()
@@ -253,33 +279,35 @@ class AccountingInvoiceViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
             {"error": "Invoice cannot be cancelled in current status"},
             status=status.HTTP_400_BAD_REQUEST,
         )
+
     @action(detail=False, methods=["get"])
     def overdue(self, request):
-        overdue_invoices = self.get_queryset().filter(
-            status="OVERDUE", balance_cents__gt=0
-        )
+        overdue_invoices = self.get_queryset().filter(status="OVERDUE", balance_cents__gt=0)
         serializer = self.get_serializer(overdue_invoices, many=True)
         return Response(serializer.data)
+
+
 class AccountingPaymentViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = AccountingPayment.objects.all()
     serializer_class = AccountingPaymentSerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["payment_method", "status"]
     search_fields = ["payment_number", "reference_number"]
+
     def perform_create(self, serializer):
-        serializer.save(
-            hospital=self.request.user.hospital, received_by=self.request.user
-        )
+        serializer.save(hospital=self.request.user.hospital, received_by=self.request.user)
+
+
 class ExpenseViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = Expense.objects.all()
     serializer_class = ExpenseSerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["category", "is_approved", "is_paid", "cost_center"]
     search_fields = ["expense_number", "description"]
+
     def perform_create(self, serializer):
-        serializer.save(
-            hospital=self.request.user.hospital, created_by=self.request.user
-        )
+        serializer.save(hospital=self.request.user.hospital, created_by=self.request.user)
+
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
         expense = self.get_object()
@@ -292,21 +320,24 @@ class ExpenseViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
             {"error": "Expense already approved"},
             status=status.HTTP_400_BAD_REQUEST,
         )
+
     @action(detail=False, methods=["get"])
     def pending_approval(self, request):
         pending_expenses = self.get_queryset().filter(is_approved=False)
         serializer = self.get_serializer(pending_expenses, many=True)
         return Response(serializer.data)
+
+
 class PayrollEntryViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = PayrollEntry.objects.all()
     serializer_class = PayrollEntrySerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["status", "cost_center"]
     search_fields = ["employee__first_name", "employee__last_name"]
+
     def perform_create(self, serializer):
-        serializer.save(
-            hospital=self.request.user.hospital, created_by=self.request.user
-        )
+        serializer.save(hospital=self.request.user.hospital, created_by=self.request.user)
+
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
         payroll = self.get_object()
@@ -319,6 +350,7 @@ class PayrollEntryViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
             {"error": "Payroll cannot be approved in current status"},
             status=status.HTTP_400_BAD_REQUEST,
         )
+
     @action(detail=True, methods=["get"])
     def salary_slip(self, request, pk=None):
         payroll = self.get_object()
@@ -333,8 +365,7 @@ class PayrollEntryViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
                 "medical_allowance": payroll.medical_allowance_cents / 100,
                 "transport_allowance": payroll.transport_allowance_cents / 100,
                 "other_allowances": payroll.other_allowances_cents / 100,
-                "overtime": (payroll.overtime_hours * payroll.overtime_rate_cents)
-                / 100,
+                "overtime": (payroll.overtime_hours * payroll.overtime_rate_cents) / 100,
                 "bonus": payroll.bonus_cents / 100,
                 "incentive": payroll.incentive_cents / 100,
             },
@@ -353,21 +384,26 @@ class PayrollEntryViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
             },
         }
         return Response(salary_slip_data)
+
+
 class FixedAssetViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = FixedAsset.objects.all()
     serializer_class = FixedAssetSerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["category", "cost_center", "is_active"]
     search_fields = ["asset_code", "name"]
+
     def perform_create(self, serializer):
         asset = serializer.save(hospital=self.request.user.hospital)
         asset.current_book_value_cents = asset.purchase_cost_cents
         asset.save()
+
     @action(detail=True, methods=["get"])
     def depreciation_schedule(self, request, pk=None):
         asset = self.get_object()
         schedule = DepreciationCalculator.generate_depreciation_schedule(asset)
         return Response(schedule)
+
     @action(detail=True, methods=["post"])
     def dispose(self, request, pk=None):
         asset = self.get_object()
@@ -378,28 +414,29 @@ class FixedAssetViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
         asset.is_active = False
         asset.save()
         return Response({"status": "Asset disposed successfully"})
+
+
 class BankAccountViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = BankAccount.objects.all()
     serializer_class = BankAccountSerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["account_type", "is_active"]
     search_fields = ["account_name", "account_number"]
+
+
 class BankTransactionViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = BankTransaction.objects.all()
     serializer_class = BankTransactionSerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["bank_account", "transaction_type", "is_reconciled"]
+
     @action(detail=False, methods=["post"])
     def auto_reconcile(self, request):
-        serializer = BankReconciliationSerializer(
-            data=request.data, context={"request": request}
-        )
+        serializer = BankReconciliationSerializer(data=request.data, context={"request": request})
         if serializer.is_valid():
             bank_account = serializer.validated_data["bank_account"]
             tolerance = serializer.validated_data["tolerance_cents"]
-            matched_count = BankReconciliationHelper.auto_match_transactions(
-                bank_account, tolerance
-            )
+            matched_count = BankReconciliationHelper.auto_match_transactions(bank_account, tolerance)
             return Response(
                 {
                     "status": "Auto reconciliation completed",
@@ -407,6 +444,7 @@ class BankTransactionViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
                 }
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     @action(detail=True, methods=["post"])
     def manual_reconcile(self, request, pk=None):
         bank_txn = self.get_object()
@@ -422,12 +460,15 @@ class BankTransactionViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
         bank_txn.reconciled_at = timezone.now()
         bank_txn.save()
         return Response({"status": "Transaction reconciled successfully"})
+
+
 class InsuranceClaimViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = InsuranceClaim.objects.all()
     serializer_class = InsuranceClaimSerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["status", "insurance_company"]
     search_fields = ["claim_number", "policy_number"]
+
     @action(detail=True, methods=["post"])
     def submit_claim(self, request, pk=None):
         claim = self.get_object()
@@ -440,16 +481,12 @@ class InsuranceClaimViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
             {"error": "Claim cannot be submitted in current status"},
             status=status.HTTP_400_BAD_REQUEST,
         )
+
     @action(detail=False, methods=["get"])
     def pending_claims(self, request):
-        pending_claims = self.get_queryset().filter(
-            status__in=["SUBMITTED", "UNDER_REVIEW"]
-        )
+        pending_claims = self.get_queryset().filter(status__in=["SUBMITTED", "UNDER_REVIEW"])
         serializer = self.get_serializer(pending_claims, many=True)
-        total_pending = (
-            pending_claims.aggregate(total=Sum("claim_amount_cents"))["total"]
-            or 0
-        )
+        total_pending = pending_claims.aggregate(total=Sum("claim_amount_cents"))["total"] or 0
         return Response(
             {
                 "claims": serializer.data,
@@ -457,25 +494,30 @@ class InsuranceClaimViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
                 "count": pending_claims.count(),
             }
         )
+
+
 class TDSEntryViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = TDSEntry.objects.all()
     serializer_class = TDSEntrySerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["section"]
+
     def perform_create(self, serializer):
-        serializer.save(
-            hospital=self.request.user.hospital, created_by=self.request.user
-        )
+        serializer.save(hospital=self.request.user.hospital, created_by=self.request.user)
+
+
 class BookLockViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = BookLock.objects.all()
     serializer_class = BookLockSerializer
     permission_classes = [AccountingPermission]
+
     def perform_create(self, serializer):
-        serializer.save(
-            hospital=self.request.user.hospital, locked_by=self.request.user
-        )
+        serializer.save(hospital=self.request.user.hospital, locked_by=self.request.user)
+
+
 class ReportsAPIView(APIView):
     permission_classes = [AccountingPermission]
+
     def get(self, request):
         reports = [
             {"name": "trial_balance", "title": "Trial Balance"},
@@ -493,6 +535,7 @@ class ReportsAPIView(APIView):
             },
         ]
         return Response(reports)
+
     def post(self, request):
         report_type = request.data.get("report_type")
         hospital = request.user.hospital
@@ -508,9 +551,7 @@ class ReportsAPIView(APIView):
                     {"error": "start_date and end_date are required"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            report_data = ReportGenerator.generate_profit_loss(
-                hospital, start_date, end_date
-            )
+            report_data = ReportGenerator.generate_profit_loss(hospital, start_date, end_date)
             return Response(report_data)
         elif report_type == "balance_sheet":
             as_of_date = request.data.get("as_of_date", timezone.now().date())
@@ -518,17 +559,18 @@ class ReportsAPIView(APIView):
             return Response(report_data)
         elif report_type == "aging_report":
             as_of_date = request.data.get("as_of_date", timezone.now().date())
-            report_data = AgeingReportGenerator.generate_receivables_ageing(
-                hospital, as_of_date
-            )
+            report_data = AgeingReportGenerator.generate_receivables_ageing(hospital, as_of_date)
             return Response(report_data)
         else:
             return Response(
                 {"error": "Invalid report type"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
 class DashboardAPIView(APIView):
     permission_classes = [AccountingPermission]
+
     def get(self, request):
         hospital = request.user.hospital
         current_month_start = timezone.now().date().replace(day=1)
@@ -560,23 +602,17 @@ class DashboardAPIView(APIView):
             or 0
         )
         outstanding_payables = (
-            Expense.objects.filter(hospital=hospital, is_paid=False).aggregate(
-                total=Sum("net_amount_cents")
-            )["total"]
+            Expense.objects.filter(hospital=hospital, is_paid=False).aggregate(total=Sum("net_amount_cents"))["total"]
             or 0
         )
         cash_balance = (
-            BankAccount.objects.filter(hospital=hospital, is_active=True).aggregate(
-                total=Sum("current_balance_cents")
-            )["total"]
+            BankAccount.objects.filter(hospital=hospital, is_active=True).aggregate(total=Sum("current_balance_cents"))[
+                "total"
+            ]
             or 0
         )
-        overdue_invoices_count = AccountingInvoice.objects.filter(
-            hospital=hospital, status="OVERDUE"
-        ).count()
-        pending_expense_approvals_count = Expense.objects.filter(
-            hospital=hospital, is_approved=False
-        ).count()
+        overdue_invoices_count = AccountingInvoice.objects.filter(hospital=hospital, status="OVERDUE").count()
+        pending_expense_approvals_count = Expense.objects.filter(hospital=hospital, is_approved=False).count()
         unreconciled_transactions_count = BankTransaction.objects.filter(
             bank_account__hospital=hospital, is_reconciled=False
         ).count()
@@ -600,8 +636,11 @@ class DashboardAPIView(APIView):
         }
         serializer = DashboardSummarySerializer(dashboard_data)
         return Response(serializer.data)
+
+
 class ExportAPIView(APIView):
     permission_classes = [AccountingPermission]
+
     def post(self, request):
         serializer = ExportRequestSerializer(data=request.data)
         if not serializer.is_valid():
@@ -610,19 +649,13 @@ class ExportAPIView(APIView):
         hospital = request.user.hospital
         try:
             if data["report_type"] == "TRIAL_BALANCE":
-                report_data = ReportGenerator.generate_trial_balance(
-                    hospital, data["as_of_date"]
-                )
+                report_data = ReportGenerator.generate_trial_balance(hospital, data["as_of_date"])
                 filename = f"trial_balance_{data['as_of_date']}"
             elif data["report_type"] == "PROFIT_LOSS":
-                report_data = ReportGenerator.generate_profit_loss(
-                    hospital, data["start_date"], data["end_date"]
-                )
+                report_data = ReportGenerator.generate_profit_loss(hospital, data["start_date"], data["end_date"])
                 filename = f"profit_loss_{data['start_date']}_to_{data['end_date']}"
             elif data["report_type"] == "BALANCE_SHEET":
-                report_data = ReportGenerator.generate_balance_sheet(
-                    hospital, data["as_of_date"]
-                )
+                report_data = ReportGenerator.generate_balance_sheet(hospital, data["as_of_date"])
                 filename = f"balance_sheet_{data['as_of_date']}"
             elif data["report_type"] == "INVOICES":
                 invoices = AccountingInvoice.objects.filter(
@@ -633,9 +666,7 @@ class ExportAPIView(APIView):
                 report_data = AccountingInvoiceSerializer(invoices, many=True).data
                 filename = f"invoices_{data['start_date']}_to_{data['end_date']}"
             elif data["report_type"] == "GST_RETURN":
-                report_data = ExportEngine.export_gst_returns(
-                    hospital, data["start_date"], data["end_date"], "GSTR1"
-                )
+                report_data = ExportEngine.export_gst_returns(hospital, data["start_date"], data["end_date"], "GSTR1")
                 filename = f"gst_return_{data['start_date']}_to_{data['end_date']}"
             else:
                 return Response(
@@ -647,37 +678,24 @@ class ExportAPIView(APIView):
                     json.dumps(report_data, indent=2, default=str),
                     content_type="application/json",
                 )
-                response["Content-Disposition"] = (
-                    f'attachment; filename="{filename}.json"'
-                )
+                response["Content-Disposition"] = f'attachment; filename="{filename}.json"'
             elif data["export_format"] == "EXCEL":
                 if isinstance(report_data, list):
                     headers = list(report_data[0].keys()) if report_data else []
                     rows = [list(row.values()) for row in report_data]
                 else:
                     headers = ["Field", "Value"]
-                    rows = [
-                        [k, v]
-                        for k, v in report_data.items()
-                        if not isinstance(v, (dict, list))
-                    ]
+                    rows = [[k, v] for k, v in report_data.items() if not isinstance(v, (dict, list))]
                 excel_buffer = ExportEngine.export_to_excel(rows, headers, filename)
                 response = HttpResponse(
                     excel_buffer.getvalue(),
-                    content_type=(
-                        "application/vnd.openxmlformats-officedocument."
-                        "spreadsheetml.sheet",
-                    ),
+                    content_type=("application/vnd.openxmlformats-officedocument." "spreadsheetml.sheet",),
                 )
-                response["Content-Disposition"] = (
-                    f'attachment; filename="{filename}.xlsx"'
-                )
+                response["Content-Disposition"] = f'attachment; filename="{filename}.xlsx"'
             elif data["export_format"] == "TALLY_XML":
                 xml_data = ExportEngine.export_to_tally_xml(report_data, "SALES")
                 response = HttpResponse(xml_data, content_type="application/xml")
-                response["Content-Disposition"] = (
-                    f'attachment; filename="{filename}.xml"'
-                )
+                response["Content-Disposition"] = f'attachment; filename="{filename}.xml"'
             else:
                 return Response(
                     {"error": "Export format not supported"},
@@ -689,8 +707,11 @@ class ExportAPIView(APIView):
                 {"error": f"Export failed: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
 class DepreciationProcessingAPIView(APIView):
     permission_classes = [AccountingPermission]
+
     def post(self, request):
         hospital = request.user.hospital
         processing_date = request.data.get("processing_date", timezone.now().date())
@@ -711,8 +732,11 @@ class DepreciationProcessingAPIView(APIView):
                 {"error": f"Depreciation processing failed: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
 class TaxLiabilityAPIView(APIView):
     permission_classes = [AccountingPermission]
+
     def post(self, request):
         hospital = request.user.hospital
         start_date = request.data.get("start_date")
@@ -724,38 +748,41 @@ class TaxLiabilityAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            liability_data = TaxCalculator.get_tax_liability_for_period(
-                hospital, start_date, end_date, tax_type
-            )
+            liability_data = TaxCalculator.get_tax_liability_for_period(hospital, start_date, end_date, tax_type)
             return Response(liability_data)
         except Exception as e:
             return Response(
                 {"error": f"Tax calculation failed: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
 class VendorPayoutViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = VendorPayout.objects.all()
     serializer_class = VendorPayoutSerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["vendor", "status"]
+
     def perform_create(self, serializer):
-        serializer.save(
-            hospital=self.request.user.hospital, created_by=self.request.user
-        )
+        serializer.save(hospital=self.request.user.hospital, created_by=self.request.user)
+
+
 class RecurringInvoiceViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = RecurringInvoice.objects.all()
     serializer_class = RecurringInvoiceSerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["frequency", "is_active"]
+
     def perform_create(self, serializer):
-        serializer.save(
-            hospital=self.request.user.hospital, created_by=self.request.user
-        )
+        serializer.save(hospital=self.request.user.hospital, created_by=self.request.user)
+
+
 class ComplianceDocumentViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = ComplianceDocument.objects.all()
     serializer_class = ComplianceDocumentSerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["document_type", "is_active"]
+
     @action(detail=False, methods=["get"])
     def expiring_soon(self, request):
         expiring_docs = self.get_queryset().filter(
@@ -765,10 +792,13 @@ class ComplianceDocumentViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(expiring_docs, many=True)
         return Response(serializer.data)
+
+
 class FinancialYearViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = FinancialYear.objects.all()
     serializer_class = FinancialYearSerializer
     permission_classes = [AccountingPermission]
+
     @action(detail=False, methods=["get"])
     def current(self, request):
         current_fy = self.get_queryset().filter(is_current=True).first()
@@ -779,15 +809,17 @@ class FinancialYearViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
             {"error": "No current financial year configured"},
             status=status.HTTP_404_NOT_FOUND,
         )
+
+
 class BudgetViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
     queryset = Budget.objects.all()
     serializer_class = BudgetSerializer
     permission_classes = [AccountingPermission]
     filterset_fields = ["financial_year", "cost_center"]
+
     def perform_create(self, serializer):
-        serializer.save(
-            hospital=self.request.user.hospital, created_by=self.request.user
-        )
+        serializer.save(hospital=self.request.user.hospital, created_by=self.request.user)
+
     @action(detail=False, methods=["post"])
     def update_actuals(self, request):
         financial_year = request.data.get("financial_year")
@@ -805,10 +837,7 @@ class BudgetViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
                     transaction_date__gte=budget.financial_year.start_date,
                     transaction_date__lte=budget.financial_year.end_date,
                 )
-                .filter(
-                    Q(debit_account=budget.account)
-                    | Q(credit_account=budget.account)
-                )
+                .filter(Q(debit_account=budget.account) | Q(credit_account=budget.account))
                 .aggregate(total=Sum("amount_cents"))["total"]
                 or 0
             )
@@ -821,6 +850,8 @@ class BudgetViewSet(HospitalFilterMixin, viewsets.ModelViewSet):
                 "updated_count": updated_count,
             }
         )
+
+
 class LedgerEntryViewSet(HospitalFilterMixin, viewsets.ReadOnlyModelViewSet):
     queryset = LedgerEntry.objects.all()
     serializer_class = LedgerEntrySerializer
@@ -828,6 +859,8 @@ class LedgerEntryViewSet(HospitalFilterMixin, viewsets.ReadOnlyModelViewSet):
     filterset_fields = ["transaction_date", "debit_account", "credit_account"]
     search_fields = ["description", "reference_number"]
     ordering_fields = ["transaction_date"]
+
+
 class AccountingAuditLogViewSet(HospitalFilterMixin, viewsets.ReadOnlyModelViewSet):
     queryset = AccountingAuditLog.objects.all()
     serializer_class = AccountingAuditLogSerializer

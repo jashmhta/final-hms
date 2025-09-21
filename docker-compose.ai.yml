@@ -1,0 +1,122 @@
+# AI/ML Infrastructure for HMS
+
+version: '3.8'
+
+services:
+  # MLflow Model Registry and Tracking
+  mlflow:
+    image: mlflow/mlflow:latest
+    ports:
+      - "5000:5000"
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=postgresql://postgres:password@postgres:5432/mlflow
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=s3://mlflow-artifacts/
+    command: >
+      bash -c "mlflow server
+      --backend-store-uri postgresql://postgres:password@postgres:5432/mlflow
+      --default-artifact-root s3://mlflow-artifacts/
+      --host 0.0.0.0
+      --port 5000"
+    depends_on:
+      - postgres
+      - minio
+
+  # Kubeflow Pipelines
+  kubeflow-pipelines:
+    image: kubeflow/pipelines:latest
+    ports:
+      - "8888:8888"
+    environment:
+      - KFP_NAMESPACE=kubeflow
+    volumes:
+      - ./k8s/kubeflow:/config
+
+  # Feature Store with Feast
+  feast:
+    image: feast/feast-serving:latest
+    ports:
+      - "6566:6566"
+    volumes:
+      - ./ai/feature_store:/feature_store
+    command: feast serve
+
+  # PostgreSQL for ML metadata
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=mlflow
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  # MinIO for artifact storage
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=mlflow
+      - MINIO_ROOT_PASSWORD=password
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+
+  # Redis for real-time features
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  # Prometheus for AI monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./ai/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+
+  # Grafana for AI dashboards
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./ai/monitoring/grafana:/etc/grafana/provisioning
+
+  # AI Model Serving
+  torchserve:
+    image: pytorch/torchserve:latest
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    volumes:
+      - ./ai/models:/models
+      - ./ai/model_config:/config
+    environment:
+      - TS_CONFIG_FILE=/config/config.properties
+
+  # TensorFlow Serving
+  tf-serving:
+    image: tensorflow/serving:latest
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./ai/models/tf_models:/models
+
+volumes:
+  postgres_data:
+  minio_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    name: hms-ai-network

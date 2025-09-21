@@ -1,15 +1,21 @@
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, List
+
 from django.core.cache import cache
 from django.db.models import Count, Q
 from django.utils import timezone
-from .compliance import compliance_checker
+
 from .anomaly_detection import security_monitor
+from .compliance import compliance_checker
+
 logger = logging.getLogger(__name__)
+
+
 class SecurityDashboard:
     def __init__(self):
-        self.cache_timeout = 300  
+        self.cache_timeout = 300
+
     def get_dashboard_data(self) -> Dict:
         cache_key = "security_dashboard_data"
         data = cache.get(cache_key)
@@ -17,6 +23,7 @@ class SecurityDashboard:
             data = self._generate_dashboard_data()
             cache.set(cache_key, data, self.cache_timeout)
         return data
+
     def _generate_dashboard_data(self) -> Dict:
         now = timezone.now()
         last_24h = now - timedelta(hours=24)
@@ -32,31 +39,26 @@ class SecurityDashboard:
             "recent_incidents": self._get_recent_incidents(last_7d),
             "recommendations": self._get_security_recommendations(),
         }
+
     def _get_threat_overview(self, last_24h, last_7d) -> Dict:
         from authentication.models import SecurityEvent
+
         events_24h = SecurityEvent.objects.filter(created_at__gte=last_24h)
         events_7d = SecurityEvent.objects.filter(created_at__gte=last_7d)
-        severity_counts_24h = events_24h.values("severity").annotate(
-            count=Count("severity")
-        )
-        severity_counts_7d = events_7d.values("severity").annotate(
-            count=Count("severity")
-        )
+        severity_counts_24h = events_24h.values("severity").annotate(count=Count("severity"))
+        severity_counts_7d = events_7d.values("severity").annotate(count=Count("severity"))
         return {
             "last_24h": {
                 "total_events": events_24h.count(),
-                "by_severity": {
-                    item["severity"]: item["count"] for item in severity_counts_24h
-                },
+                "by_severity": {item["severity"]: item["count"] for item in severity_counts_24h},
             },
             "last_7d": {
                 "total_events": events_7d.count(),
-                "by_severity": {
-                    item["severity"]: item["count"] for item in severity_counts_7d
-                },
+                "by_severity": {item["severity"]: item["count"] for item in severity_counts_7d},
             },
             "trend": self._calculate_trend(events_24h.count(), events_7d.count() / 7),
         }
+
     def _get_compliance_status(self) -> Dict:
         try:
             compliance_results = compliance_checker.run_compliance_check()
@@ -78,32 +80,25 @@ class SecurityDashboard:
                 "critical_issues": 0,
                 "error": str(e),
             }
+
     def _get_access_patterns(self, last_24h) -> Dict:
         from authentication.models import LoginSession
+
         sessions = LoginSession.objects.filter(created_at__gte=last_24h)
-        geo_data = (
-            sessions.values("ip_address")
-            .annotate(count=Count("ip_address"))
-            .order_by("-count")[:10]
-        )
-        device_data = (
-            sessions.values("device_info")
-            .annotate(count=Count("device_info"))
-            .order_by("-count")[:5]
-        )
+        geo_data = sessions.values("ip_address").annotate(count=Count("ip_address")).order_by("-count")[:10]
+        device_data = sessions.values("device_info").annotate(count=Count("device_info")).order_by("-count")[:5]
         failed_logins = sessions.filter(is_active=False).count()
         return {
             "total_sessions": sessions.count(),
             "unique_ips": sessions.values("ip_address").distinct().count(),
             "failed_logins": failed_logins,
             "success_rate": (
-                ((sessions.count() - failed_logins) / sessions.count() * 100)
-                if sessions.count() > 0
-                else 100
+                ((sessions.count() - failed_logins) / sessions.count() * 100) if sessions.count() > 0 else 100
             ),
             "top_locations": list(geo_data),
             "device_types": list(device_data),
         }
+
     def _get_anomaly_alerts(self, last_24h) -> List[Dict]:
         return [
             {
@@ -123,6 +118,7 @@ class SecurityDashboard:
                 "status": "INVESTIGATING",
             },
         ]
+
     def _get_system_health(self) -> Dict:
         return {
             "encryption_status": "HEALTHY",
@@ -132,11 +128,13 @@ class SecurityDashboard:
             "disk_usage": "68%",
             "memory_usage": "72%",
         }
+
     def _get_recent_incidents(self, last_7d) -> List[Dict]:
         from authentication.models import SecurityEvent
-        incidents = SecurityEvent.objects.filter(
-            created_at__gte=last_7d, severity__in=["HIGH", "CRITICAL"]
-        ).order_by("-created_at")[:10]
+
+        incidents = SecurityEvent.objects.filter(created_at__gte=last_7d, severity__in=["HIGH", "CRITICAL"]).order_by(
+            "-created_at"
+        )[:10]
         return [
             {
                 "id": incident.id,
@@ -148,6 +146,7 @@ class SecurityDashboard:
             }
             for incident in incidents
         ]
+
     def _get_security_recommendations(self) -> List[str]:
         return [
             "Enable multi-factor authentication for all administrative accounts",
@@ -157,6 +156,7 @@ class SecurityDashboard:
             "Perform penetration testing every 6 months",
             "Ensure all sensitive data is encrypted at rest and in transit",
         ]
+
     def _calculate_trend(self, recent_count: int, avg_daily: float) -> str:
         if recent_count > avg_daily * 1.2:
             return "INCREASING"
@@ -164,30 +164,31 @@ class SecurityDashboard:
             return "DECREASING"
         else:
             return "STABLE"
+
+
 class ComplianceDashboard:
     def get_compliance_dashboard(self) -> Dict:
         cache_key = "compliance_dashboard_data"
         data = cache.get(cache_key)
         if data is None:
             data = self._generate_compliance_dashboard()
-            cache.set(cache_key, data, 3600)  
+            cache.set(cache_key, data, 3600)
         return data
+
     def _generate_compliance_dashboard(self) -> Dict:
         from core.compliance import compliance_reporter
+
         report = compliance_reporter.generate_compliance_report()
         return {
             "overall_score": report["detailed_findings"]["overall_score"],
-            "hipaa_compliance": self._format_compliance_data(
-                report["detailed_findings"].get("hipaa", {})
-            ),
-            "gdpr_compliance": self._format_compliance_data(
-                report["detailed_findings"].get("gdpr", {})
-            ),
+            "hipaa_compliance": self._format_compliance_data(report["detailed_findings"].get("hipaa", {})),
+            "gdpr_compliance": self._format_compliance_data(report["detailed_findings"].get("gdpr", {})),
             "critical_issues": report["detailed_findings"]["critical_issues"],
             "action_items": report["action_items"],
             "last_updated": report["generated_at"],
             "next_audit_due": timezone.now() + timedelta(days=90),
         }
+
     def _format_compliance_data(self, compliance_dict: Dict) -> List[Dict]:
         return [
             {
@@ -198,6 +199,7 @@ class ComplianceDashboard:
             }
             for req, score in compliance_dict.items()
         ]
+
     def _get_status_from_score(self, score: float) -> str:
         if score >= 0.9:
             return "Excellent"
@@ -209,6 +211,7 @@ class ComplianceDashboard:
             return "Needs Improvement"
         else:
             return "Critical"
+
     def _get_color_from_score(self, score: float) -> str:
         if score >= 0.9:
             return "green"

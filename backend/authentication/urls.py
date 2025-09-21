@@ -1,16 +1,19 @@
-from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
+
+from django.urls import include, path
+
 from .views import (
     CustomTokenObtainPairView,
+    LogoutView,
     MFAAuthenticationView,
     MFASetupViewSet,
     PasswordChangeView,
-    LogoutView,
-    TrustedDeviceViewSet,
     SecurityEventViewSet,
     SessionManagementView,
+    TrustedDeviceViewSet,
 )
+
 router = DefaultRouter()
 router.register(r"mfa-setup", MFASetupViewSet, basename="mfa-setup")
 router.register(r"trusted-devices", TrustedDeviceViewSet, basename="trusted-devices")

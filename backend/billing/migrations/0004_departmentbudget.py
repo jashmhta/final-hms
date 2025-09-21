@@ -1,5 +1,7 @@
 import django.db.models.deletion
 from django.db import migrations, models
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("billing", "0003_bill_discount_cents_bill_net_cents_and_more"),

@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from .models import (
     Allergy,
     Assessment,
@@ -8,6 +9,8 @@ from .models import (
     PlanOfCare,
     VitalSigns,
 )
+
+
 @admin.register(Encounter)
 class EncounterAdmin(admin.ModelAdmin):
     list_display = (
@@ -39,6 +42,8 @@ class EncounterAdmin(admin.ModelAdmin):
     )
     readonly_fields = ("encounter_number", "created_at", "updated_at")
     filter_horizontal = ("consulting_physicians",)
+
+
 @admin.register(VitalSigns)
 class VitalSignsAdmin(admin.ModelAdmin):
     list_display = (
@@ -56,6 +61,8 @@ class VitalSignsAdmin(admin.ModelAdmin):
         "encounter__patient__last_name",
     )
     autocomplete_fields = ("encounter", "recorded_by")
+
+
 @admin.register(Assessment)
 class AssessmentAdmin(admin.ModelAdmin):
     list_display = (
@@ -79,6 +86,8 @@ class AssessmentAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ("encounter", "diagnosed_by")
     readonly_fields = ("created_at", "updated_at")
+
+
 @admin.register(PlanOfCare)
 class PlanOfCareAdmin(admin.ModelAdmin):
     list_display = ("encounter", "plan_type", "title", "status", "ordered_by")
@@ -91,6 +100,8 @@ class PlanOfCareAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ("encounter", "ordered_by")
     readonly_fields = ("created_at", "updated_at")
+
+
 @admin.register(ClinicalNote)
 class ClinicalNoteAdmin(admin.ModelAdmin):
     list_display = (
@@ -118,6 +129,8 @@ class ClinicalNoteAdmin(admin.ModelAdmin):
         "original_note",
     )
     readonly_fields = ("created_at", "updated_at", "signed_at")
+
+
 @admin.register(Allergy)
 class AllergyAdmin(admin.ModelAdmin):
     list_display = (
@@ -136,6 +149,8 @@ class AllergyAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ("patient", "reported_by", "verified_by")
     readonly_fields = ("created_at", "updated_at")
+
+
 @admin.register(EncounterAttachment)
 class EncounterAttachmentAdmin(admin.ModelAdmin):
     list_display = (

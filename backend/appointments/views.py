@@ -1,15 +1,22 @@
 from datetime import datetime, time, timedelta
-from core.permissions import ModuleEnabledPermission, RolePermission
-from django.conf import settings
-from django.db.models import Count, Q
-from django.shortcuts import get_object_or_404, render
-from django.utils import timezone
+
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
+from django.conf import settings
+from django.db.models import Count, Q
+from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
+
+from core.permissions import ModuleEnabledPermission, RolePermission
+from core.utils import PerformanceTracker, optimize_queryset
+from patients.models import Patient
+from users.models import User
+
 from .models import (
     Appointment,
     AppointmentHistory,
@@ -19,9 +26,6 @@ from .models import (
     Resource,
     WaitList,
 )
-from patients.models import Patient
-from users.models import User
-from core.utils import PerformanceTracker, optimize_queryset
 from .serializers import (
     AppointmentBasicSerializer,
     AppointmentHistorySerializer,
@@ -31,6 +35,8 @@ from .serializers import (
     ResourceSerializer,
     WaitListSerializer,
 )
+
+
 class AppointmentTemplateViewSet(viewsets.ModelViewSet):
     serializer_class = AppointmentTemplateSerializer
     permission_classes = [IsAuthenticated, ModuleEnabledPermission]
@@ -43,6 +49,7 @@ class AppointmentTemplateViewSet(viewsets.ModelViewSet):
     filterset_fields = ["appointment_type", "is_active", "allows_online_booking"]
     search_fields = ["name", "description", "specialty_required"]
     ordering_fields = ["name", "appointment_type", "duration_minutes"]
+
     def get_queryset(self):
         user = self.request.user
         qs = AppointmentTemplate.objects.all()
@@ -51,6 +58,8 @@ class AppointmentTemplateViewSet(viewsets.ModelViewSet):
         if getattr(user, "hospital_id", None) is None:
             return qs.none()
         return qs.filter(hospital_id=user.hospital_id)
+
+
 class ResourceViewSet(viewsets.ModelViewSet):
     serializer_class = ResourceSerializer
     permission_classes = [IsAuthenticated, ModuleEnabledPermission]
@@ -68,6 +77,7 @@ class ResourceViewSet(viewsets.ModelViewSet):
     ]
     search_fields = ["name", "description", "location"]
     ordering_fields = ["name", "resource_type", "capacity"]
+
     def get_queryset(self):
         user = self.request.user
         qs = Resource.objects.all()
@@ -76,6 +86,7 @@ class ResourceViewSet(viewsets.ModelViewSet):
         if getattr(user, "hospital_id", None) is None:
             return qs.none()
         return qs.filter(hospital_id=user.hospital_id)
+
     @action(detail=True, methods=["get"])
     def availability(self, request, pk=None):
         resource = self.get_object()
@@ -102,6 +113,8 @@ class ResourceViewSet(viewsets.ModelViewSet):
             ],
         }
         return Response(availability_data)
+
+
 class AppointmentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, ModuleEnabledPermission]
     required_module = "enable_opd"
@@ -129,13 +142,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         "appointment_number",
     ]
     ordering_fields = ["start_at", "created_at", "priority", "status"]
+
     def get_serializer_class(self):
         if self.action == "list":
             return AppointmentBasicSerializer
         return AppointmentSerializer
+
     def get_queryset(self):
         from django.core.cache import cache
         from django.db.models import Prefetch
+
         user = self.request.user
         with PerformanceTracker("appointment_queryset") as tracker:
             cache_key = f"appointment_queryset_filters:{user.id}:{user.hospital_id}"
@@ -154,9 +170,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     prefetch_related=[
                         Prefetch(
                             "patient",
-                            queryset=Patient.objects.only(
-                                "id", "first_name", "last_name", "medical_record_number"
-                            ),
+                            queryset=Patient.objects.only("id", "first_name", "last_name", "medical_record_number"),
                         ),
                         Prefetch(
                             "primary_provider",
@@ -170,17 +184,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     queryset = qs.none()
                 else:
                     queryset = qs.filter(hospital_id=user.hospital_id)
-                if not (
-                    user.is_superuser
-                    or getattr(user, "role", None)
-                    in ["SUPER_ADMIN", "HOSPITAL_ADMIN", "ADMIN"]
-                ):
+                if not (user.is_superuser or getattr(user, "role", None) in ["SUPER_ADMIN", "HOSPITAL_ADMIN", "ADMIN"]):
                     if hasattr(user, "patient_profile"):
                         queryset = queryset.filter(patient=user.patient_profile)
                     elif user.role in ["DOCTOR", "NURSE"]:
-                        queryset = queryset.filter(
-                            Q(primary_provider=user) | Q(additional_providers=user)
-                        ).distinct()
+                        queryset = queryset.filter(Q(primary_provider=user) | Q(additional_providers=user)).distinct()
                     else:
                         queryset = queryset.none()
                 cache.set(cache_key, queryset.query.where, timeout=300, version=1)
@@ -191,17 +199,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             if end_date:
                 queryset = queryset.filter(start_at__date__lte=end_date)
             return queryset
+
     def perform_create(self, serializer):
         user = self.request.user
         provided_hospital = serializer.validated_data.get("hospital")
         if not (
-            user.is_superuser
-            or getattr(user, "hospital_id", None)
-            or getattr(user, "role", None) == "SUPER_ADMIN"
+            user.is_superuser or getattr(user, "hospital_id", None) or getattr(user, "role", None) == "SUPER_ADMIN"
         ):
-            raise PermissionDenied(
-                "User must belong to a hospital to create appointments"
-            )
+            raise PermissionDenied("User must belong to a hospital to create appointments")
         if (
             provided_hospital
             and not (user.is_superuser or user.role == "SUPER_ADMIN")
@@ -209,21 +214,21 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         ):
             raise PermissionDenied("Cannot create appointment for another hospital")
         serializer.save(
-            hospital_id=(
-                provided_hospital.id if provided_hospital else user.hospital_id
-            ),
+            hospital_id=(provided_hospital.id if provided_hospital else user.hospital_id),
             scheduled_by=user,
         )
+
     @action(detail=False, methods=["get"])
     def today(self, request):
         today = timezone.now().date()
         appointments = self.get_queryset().filter(start_at__date=today)
         serializer = self.get_serializer(appointments, many=True)
         return Response(serializer.data)
+
     @action(detail=False, methods=["get"])
     def upcoming(self, request):
         now = timezone.now()
-        days = int(request.query_params.get("days", 7))  
+        days = int(request.query_params.get("days", 7))
         end_date = now + timedelta(days=days)
         appointments = (
             self.get_queryset()
@@ -236,41 +241,29 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(appointments, many=True)
         return Response(serializer.data)
+
     @action(detail=False, methods=["get"])
     def statistics(self, request):
         queryset = self.get_queryset()
-        start_date = request.query_params.get(
-            "start_date", timezone.now().date() - timedelta(days=30)
-        )
+        start_date = request.query_params.get("start_date", timezone.now().date() - timedelta(days=30))
         end_date = request.query_params.get("end_date", timezone.now().date())
-        stats_queryset = queryset.filter(
-            start_at__date__gte=start_date, start_at__date__lte=end_date
-        )
+        stats_queryset = queryset.filter(start_at__date__gte=start_date, start_at__date__lte=end_date)
         stats = {
             "total_appointments": stats_queryset.count(),
-            "completed": stats_queryset.filter(
-                status=AppointmentStatus.COMPLETED
-            ).count(),
-            "cancelled": stats_queryset.filter(
-                status=AppointmentStatus.CANCELLED
-            ).count(),
+            "completed": stats_queryset.filter(status=AppointmentStatus.COMPLETED).count(),
+            "cancelled": stats_queryset.filter(status=AppointmentStatus.CANCELLED).count(),
             "no_shows": stats_queryset.filter(status=AppointmentStatus.NO_SHOW).count(),
-            "scheduled": stats_queryset.filter(
-                status=AppointmentStatus.SCHEDULED
-            ).count(),
-            "confirmed": stats_queryset.filter(
-                status=AppointmentStatus.CONFIRMED
-            ).count(),
-            "by_type": list(
-                stats_queryset.values("appointment_type").annotate(count=Count("id"))
-            ),
+            "scheduled": stats_queryset.filter(status=AppointmentStatus.SCHEDULED).count(),
+            "confirmed": stats_queryset.filter(status=AppointmentStatus.CONFIRMED).count(),
+            "by_type": list(stats_queryset.values("appointment_type").annotate(count=Count("id"))),
             "by_provider": list(
-                stats_queryset.values(
-                    "primary_provider__first_name", "primary_provider__last_name"
-                ).annotate(count=Count("id"))[:10]
+                stats_queryset.values("primary_provider__first_name", "primary_provider__last_name").annotate(
+                    count=Count("id")
+                )[:10]
             ),
         }
         return Response(stats)
+
     @action(detail=True, methods=["post"])
     def confirm(self, request, pk=None):
         appointment = self.get_object()
@@ -291,6 +284,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
+
     @action(detail=True, methods=["post"])
     def check_in(self, request, pk=None):
         appointment = self.get_object()
@@ -311,6 +305,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
+
     @action(detail=True, methods=["post"])
     def start(self, request, pk=None):
         appointment = self.get_object()
@@ -329,6 +324,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
+
     @action(
         detail=True,
         methods=["post"],
@@ -349,6 +345,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment.save()
         try:
             from billing.models import Bill, BillLineItem, ServiceCatalog
+
             bill = Bill.objects.filter(appointment=appointment).first()
             if bill is None:
                 bill = Bill.objects.create(
@@ -377,6 +374,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
+
     @action(
         detail=True,
         methods=["post"],
@@ -404,6 +402,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
+
     @action(detail=True, methods=["post"])
     def reschedule(self, request, pk=None):
         appointment = self.get_object()
@@ -431,6 +430,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
+
     @action(detail=True, methods=["post"])
     def mark_no_show(self, request, pk=None):
         appointment = self.get_object()
@@ -443,6 +443,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
+
     @action(detail=False, methods=["get"])
     def available_slots(self, request):
         self.throttle_scope = "slots"
@@ -456,11 +457,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Invalid date"}, status=400)
         slot_minutes = settings.DEFAULT_APPOINTMENT_SLOT_MINUTES
         from hr.models import DutyRoster
-        roster = (
-            DutyRoster.objects.filter(user_id=doctor_id, date=target_date)
-            .select_related("shift")
-            .first()
-        )
+
+        roster = DutyRoster.objects.filter(user_id=doctor_id, date=target_date).select_related("shift").first()
         if roster and roster.shift:
             start_t: time = roster.shift.start_time
             end_t: time = roster.shift.end_time
@@ -489,11 +487,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     overlap = True
                     break
             if not overlap and current > timezone.now():
-                slots.append(
-                    {"start_at": current.isoformat(), "end_at": next_dt.isoformat()}
-                )
+                slots.append({"start_at": current.isoformat(), "end_at": next_dt.isoformat()})
             current = next_dt
         return Response({"doctor": int(doctor_id), "date": date_str, "slots": slots})
+
+
 class WaitListViewSet(viewsets.ModelViewSet):
     serializer_class = WaitListSerializer
     permission_classes = [IsAuthenticated, ModuleEnabledPermission]
@@ -506,6 +504,7 @@ class WaitListViewSet(viewsets.ModelViewSet):
     filterset_fields = ["provider", "appointment_type", "priority", "is_active"]
     search_fields = ["patient__first_name", "patient__last_name", "reason"]
     ordering_fields = ["priority", "created_at"]
+
     def get_queryset(self):
         user = self.request.user
         qs = WaitList.objects.all()
@@ -514,6 +513,7 @@ class WaitListViewSet(viewsets.ModelViewSet):
         if getattr(user, "hospital_id", None) is None:
             return qs.none()
         return qs.filter(hospital_id=user.hospital_id)
+
     @action(detail=True, methods=["post"])
     def notify(self, request, pk=None):
         waitlist_entry = self.get_object()
@@ -526,6 +526,8 @@ class WaitListViewSet(viewsets.ModelViewSet):
                 "notified_count": waitlist_entry.notified_count,
             }
         )
+
+
 class AppointmentReminderViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AppointmentReminderSerializer
     permission_classes = [IsAuthenticated, ModuleEnabledPermission]
@@ -533,6 +535,7 @@ class AppointmentReminderViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["appointment", "reminder_type", "status"]
     ordering_fields = ["scheduled_for", "sent_at"]
+
     def get_queryset(self):
         user = self.request.user
         qs = AppointmentReminder.objects.select_related("appointment").all()
@@ -541,6 +544,8 @@ class AppointmentReminderViewSet(viewsets.ReadOnlyModelViewSet):
         if getattr(user, "hospital_id", None) is None:
             return qs.none()
         return qs.filter(appointment__hospital_id=user.hospital_id)
+
+
 class AppointmentHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AppointmentHistorySerializer
     permission_classes = [IsAuthenticated, ModuleEnabledPermission]
@@ -548,11 +553,10 @@ class AppointmentHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["appointment", "action", "changed_by"]
     ordering_fields = ["-timestamp"]
+
     def get_queryset(self):
         user = self.request.user
-        qs = AppointmentHistory.objects.select_related(
-            "appointment", "changed_by"
-        ).all()
+        qs = AppointmentHistory.objects.select_related("appointment", "changed_by").all()
         if user.is_superuser or getattr(user, "role", None) == "SUPER_ADMIN":
             return qs
         if getattr(user, "hospital_id", None) is None:

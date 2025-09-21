@@ -1,12 +1,15 @@
-from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+
+from django.urls import include, path
+
 from .views import (
-    OverviewStatsView,
-    PredictionViewSet,
     AnomalyViewSet,
     EquipmentPredictionViewSet,
+    OverviewStatsView,
+    PredictionViewSet,
     ReadmissionPredictionView,
 )
+
 router = DefaultRouter()
 router.register(r"predictions", PredictionViewSet)
 router.register(r"anomalies", AnomalyViewSet)

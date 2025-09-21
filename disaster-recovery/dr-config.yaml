@@ -1,0 +1,387 @@
+# Disaster Recovery Configuration for HMS
+# Multi-region deployment with automatic failover
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hms-dr
+  labels:
+    app: hms-disaster-recovery
+---
+# Primary Region Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dr-primary-config
+  namespace: hms-dr
+data:
+  REGION: "us-east-1"
+  BACKUP_SCHEDULE: "0 2 * * *"  # Daily at 2 AM
+  RETENTION_DAYS: "30"
+  REPLICATION_DELAY: "5"
+  SYNC_MODE: "semi-synchronous"
+---
+# Secondary Region Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dr-secondary-config
+  namespace: hms-dr
+data:
+  REGION: "us-west-2"
+  BACKUP_SCHEDULE: "0 3 * * *"  # Daily at 3 AM
+  RETENTION_DAYS: "30"
+  REPLICATION_DELAY: "5"
+  SYNC_MODE: "asynchronous"
+---
+# Database Replication
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-primary-dr
+  namespace: hms-dr
+spec:
+  serviceName: postgres-primary-dr
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-primary-dr
+  template:
+    metadata:
+      labels:
+        app: postgres-primary-dr
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15
+        env:
+        - name: POSTGRES_DB
+          value: hms_enterprise
+        - name: POSTGRES_USER
+          value: hms_user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hms-secrets
+              key: DB_PASSWORD
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        - name: postgres-backups
+          mountPath: /backups
+        ports:
+        - containerPort: 5432
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - hms_user
+            - -d
+            - hms_enterprise
+          initialDelaySeconds: 30
+          periodSeconds: 10
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 100Gi
+  - metadata:
+      name: postgres-backups
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 200Gi
+---
+# Database Standby (Secondary Region)
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-standby-dr
+  namespace: hms-dr
+spec:
+  serviceName: postgres-standby-dr
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-standby-dr
+  template:
+    metadata:
+      labels:
+        app: postgres-standby-dr
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15
+        command:
+        - bash
+        - -c
+        - |
+          until pg_basebackup --pgdata=/var/lib/postgresql/data -R --slot=replication_slot --host=postgres-primary-dr --port=5432
+          do
+            echo 'Waiting for primary to connect...'
+            sleep 1s
+          done
+          echo 'Backup done, starting standby...'
+          chmod 0700 /var/lib/postgresql/data
+          postgres
+          -c hot_standby=on
+          -c max_connections=200
+        env:
+        - name: POSTGRES_DB
+          value: hms_enterprise
+        - name: POSTGRES_USER
+          value: hms_user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hms-secrets
+              key: DB_PASSWORD
+        - name: PGUSER
+          value: hms_user
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        ports:
+        - containerPort: 5432
+---
+# Redis Cluster with Cross-Region Replication
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-cluster-dr
+  namespace: hms-dr
+spec:
+  serviceName: redis-cluster-dr
+  replicas: 6
+  selector:
+    matchLabels:
+      app: redis-cluster-dr
+  template:
+    metadata:
+      labels:
+        app: redis-cluster-dr
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        command:
+        - /conf/redis.conf
+        ports:
+        - containerPort: 6379
+          name: client
+        - containerPort: 16379
+          name: gossip
+        volumeMounts:
+        - name: conf
+          mountPath: /conf
+        - name: data
+          mountPath: /data
+        env:
+        - name: REDIS_REPLICATION_MODE
+          value: "master"
+        - name: REDIS_MASTER_HOST
+          value: "redis-cluster-dr-0.redis-cluster-dr"
+      volumes:
+      - name: conf
+        configMap:
+          name: redis-cluster-config
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+---
+# Backup Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backup-service
+  namespace: hms-dr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backup-service
+  template:
+    metadata:
+      labels:
+        app: backup-service
+    spec:
+      containers:
+      - name: backup
+        image: postgres:15
+        command:
+        - /bin/sh
+        - -c
+        - |
+          while true; do
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            pg_dump -h postgres-primary-dr -U hms_user hms_enterprise > /backups/hms_backup_$TIMESTAMP.sql
+            # Compress backup
+            gzip /backups/hms_backup_$TIMESTAMP.sql
+            # Upload to S3 (or other cloud storage)
+            aws s3 cp /backups/hms_backup_$TIMESTAMP.sql.gz s3://hms-backups/$TIMESTAMP.sql.gz
+            # Clean old backups
+            find /backups -name "*.sql.gz" -mtime +30 -delete
+            sleep 86400  # Daily backup
+          done
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hms-secrets
+              key: DB_PASSWORD
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: access_key_id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: secret_access_key
+        - name: AWS_DEFAULT_REGION
+          value: "us-east-1"
+        volumeMounts:
+        - name: backups
+          mountPath: /backups
+      volumes:
+      - name: backups
+        persistentVolumeClaim:
+          claimName: backup-storage
+---
+# Health Check Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: health-check
+  namespace: hms-dr
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+spec:
+  selector:
+    app: backend-api
+  ports:
+  - port: 80
+    targetPort: 8000
+    name: health
+  type: LoadBalancer
+---
+# Failover Controller
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: failover-controller
+  namespace: hms-dr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: failover-controller
+  template:
+    metadata:
+      labels:
+        app: failover-controller
+    spec:
+      containers:
+      - name: failover
+        image: alpine:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          # Install curl
+          apk add --no-cache curl
+
+          while true; do
+            # Check primary region health
+            if ! curl -f http://backend-api-primary:8000/health/ > /dev/null 2>&1; then
+              echo "Primary region unhealthy, initiating failover..."
+
+              # Update DNS to point to secondary
+              # This would typically integrate with your DNS provider's API
+              curl -X POST "https://api.dnsprovider.com/records/update" \
+                -H "Authorization: Bearer $DNS_API_TOKEN" \
+                -d '{"record": "api.hms.local", "value": "secondary-region.hms.local"}'
+
+              # Send notification
+              curl -X POST "https://hooks.slack.com/services/SLACK_WEBHOOK" \
+                -H "Content-Type: application/json" \
+                -d '{"text": "🚨 HMS Primary Region Failover Initiated"}'
+
+              # Wait for manual intervention or automated recovery
+              sleep 3600
+            fi
+
+            sleep 30
+          done
+        env:
+        - name: DNS_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: dns-credentials
+              key: api_token
+---
+# Metrics Collection
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: hms-monitor
+  namespace: hms-dr
+  labels:
+    app: hms-monitor
+spec:
+  selector:
+    matchLabels:
+      app: backend-api
+  endpoints:
+  - port: metrics
+    interval: 15s
+---
+# Alert Rules
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: hms-alerts
+  namespace: hms-dr
+  labels:
+    app: hms-alerts
+spec:
+  groups:
+  - name: dr.alerts
+    rules:
+    - alert: PrimaryRegionDown
+      expr: up{job="backend-api-primary"} == 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Primary region is down"
+        description: "Primary region has been down for more than 5 minutes"
+
+    - alert: ReplicationLagHigh
+      expr: pg_stat_replication_replication_lag{job="postgres-primary"} > 30
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Database replication lag is high"
+        description: "Database replication lag is {{ $value }} seconds"
+
+    - alert: BackupFailed
+      expr: backup_success == 0
+      for: 24h
+      labels:
+        severity: critical
+      annotations:
+        summary: "Backup failed"
+        description: "Database backup has failed for 24 hours"

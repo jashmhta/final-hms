@@ -1,0 +1,481 @@
+# HMS Root Application
+# Enterprise-grade GitOps application management
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hms-root
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: hms-root
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/component: gitops
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-options: Prune=true,Replace=true
+    argocd.argoproj.io/health-check: "true"
+spec:
+  project: hms-system
+  source:
+    repoURL: https://github.com/hms-enterprise/hms-microservices.git
+    targetRevision: HEAD
+    path: gitops/argocd/applications
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hms-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - Replace=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: ""
+      kind: Service
+      jsonPointers:
+        - /spec/clusterIP
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+      jsonPointers:
+        - /spec/minReplicas
+        - /spec/maxReplicas
+  revisionHistoryLimit: 3
+  info:
+    - name: "Documentation"
+      value: "https://docs.hms.enterprise.com/gitops"
+    - name: "Support"
+      value: "hms-ops@hms.enterprise.com"
+    - name: "Slack"
+      value: "#hms-gitops"
+---
+# HMS Infrastructure Application
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hms-infrastructure
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: hms-infrastructure
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/component: infrastructure
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: Prune=true,Replace=true
+    argocd.argoproj.io/health-check: "true"
+spec:
+  project: hms-system
+  source:
+    repoURL: https://github.com/hms-enterprise/hms-infrastructure.git
+    targetRevision: HEAD
+    path: kubernetes/infrastructure
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hms-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - Replace=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    - group: ""
+      kind: ConfigMap
+      jsonPointers:
+        - /data/last-applied
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+    - group: ""
+      kind: ServiceAccount
+      jsonPointers:
+        - /secrets
+---
+# HMS Services Application
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hms-services
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: hms-services
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/component: services
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: Prune=true,Replace=true
+    argocd.argoproj.io/health-check: "true"
+spec:
+  project: hms-system
+  source:
+    repoURL: https://github.com/hms-enterprise/hms-microservices.git
+    targetRevision: HEAD
+    path: k8s/deployments
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hms-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - Replace=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+        - /spec/template/spec/containers/0/image
+    - group: ""
+      kind: Service
+      jsonPointers:
+        - /spec/clusterIP
+    - group: ""
+      kind: ConfigMap
+      jsonPointers:
+        - /data/last-applied
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+---
+# HMS Monitoring Application
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hms-monitoring
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: hms-monitoring
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: Prune=true,Replace=true
+    argocd.argoproj.io/health-check: "true"
+spec:
+  project: hms-system
+  source:
+    repoURL: https://github.com/hms-enterprise/hms-microservices.git
+    targetRevision: HEAD
+    path: monitoring
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - Replace=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    - group: ""
+      kind: ConfigMap
+      jsonPointers:
+        - /data/last-applied
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+---
+# HMS Istio Application
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hms-istio
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: hms-istio
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/component: networking
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: Prune=true,Replace=true
+    argocd.argoproj.io/health-check: "true"
+spec:
+  project: hms-system
+  source:
+    repoURL: https://github.com/hms-enterprise/hms-microservices.git
+    targetRevision: HEAD
+    path: istio
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - Replace=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 10m
+  ignoreDifferences:
+    - group: ""
+      kind: ConfigMap
+      jsonPointers:
+        - /data/last-applied
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+---
+# HMS CQRS Application
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hms-cqrs
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: hms-cqrs
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/component: cqrs
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: Prune=true,Replace=true
+    argocd.argoproj.io/health-check: "true"
+spec:
+  project: hms-system
+  source:
+    repoURL: https://github.com/hms-enterprise/hms-microservices.git
+    targetRevision: HEAD
+    path: cqrs
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hms-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - Replace=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    - group: ""
+      kind: ConfigMap
+      jsonPointers:
+        - /data/last-applied
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+---
+# HMS Config Application
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hms-config
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: hms-config
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/component: config
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+    argocd.argoproj.io/sync-options: Prune=true,Replace=true
+    argocd.argoproj.io/health-check: "true"
+spec:
+  project: hms-system
+  source:
+    repoURL: https://github.com/hms-enterprise/hms-config.git
+    targetRevision: HEAD
+    path: config
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hms-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - Replace=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    - group: ""
+      kind: ConfigMap
+      jsonPointers:
+        - /data/last-applied
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+---
+# HMS Security Application
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hms-security
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: hms-security
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/component: security
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/sync-options: Prune=true,Replace=true
+    argocd.argoproj.io/health-check: "true"
+spec:
+  project: hms-system
+  source:
+    repoURL: https://github.com/hms-enterprise/hms-microservices.git
+    targetRevision: HEAD
+    path: security
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hms-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - Replace=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    - group: ""
+      kind: ConfigMap
+      jsonPointers:
+        - /data/last-applied
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+---
+# HMS Backups Application
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hms-backups
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: hms-backups
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/sync-options: Prune=true,Replace=true
+    argocd.argoproj.io/health-check: "true"
+spec:
+  project: hms-system
+  source:
+    repoURL: https://github.com/hms-enterprise/hms-backups.git
+    targetRevision: HEAD
+    path: kubernetes
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hms-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - Replace=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    - group: ""
+      kind: ConfigMap
+      jsonPointers:
+        - /data/last-applied
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data

@@ -7,46 +7,50 @@ import asyncio
 import json
 import logging
 import time
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Union
-from dataclasses import dataclass, asdict
 from enum import Enum
 from functools import wraps
-import asyncio
-from fastapi import FastAPI, HTTPException, Depends, Request, Response
+from typing import Any, Dict, List, Optional, Union
+
+import aiohttp
+import aioredis
+import graphene
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 from fastapi_cache.decorator import cache
-from fastapi_pagination import Page, add_pagination, paginate
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
+from fastapi_pagination import Page, add_pagination, paginate
 from fastapi_socketio import SocketManager
-from starlette.middleware.gzip import GZipMiddleware
-from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
-import graphene
-from graphene import ObjectType, Schema, String, Int, List, Field, Argument
+from graphene import Argument, Field, Int, List, ObjectType, Schema, String
 from graphene_federation import build_schema, extend, external, key
 from graphql import GraphQLResolveInfo
-from redis import asyncio as aioredis
 from prometheus_fastapi_instrumentator import Instrumentator
-import aioredis
-import aiohttp
+from redis import asyncio as aioredis
+from starlette.middleware.gzip import GZipMiddleware
+from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+
 from django.conf import settings
 from django.core.cache import cache
 from django.db import connections
 from django.utils import timezone
 
+
 class APIType(Enum):
     """API types supported"""
+
     REST = "rest"
     GRAPHQL = "graphql"
     GRPC = "grpc"
     WEBSOCKET = "websocket"
     SSE = "sse"
+
 
 class APIMetrics:
     """API performance metrics tracking"""
@@ -95,8 +99,9 @@ class APIMetrics:
             "error_rate": self.get_error_rate(),
             "cache_hit_rate": self.get_cache_hit_rate(),
             "active_connections": self.active_connections,
-            "rate_limited_requests": self.rate_limited_requests
+            "rate_limited_requests": self.rate_limited_requests,
         }
+
 
 class APIRateLimiter:
     """Advanced rate limiting for APIs"""
@@ -105,9 +110,9 @@ class APIRateLimiter:
         self.redis_client = redis_client
         self.rate_limits = {
             "default": {"requests": 100, "window": 60},  # 100 requests per minute
-            "auth": {"requests": 5, "window": 60},      # 5 auth requests per minute
-            "sensitive": {"requests": 10, "window": 60}, # 10 sensitive requests per minute
-            "admin": {"requests": 1000, "window": 60}    # 1000 admin requests per minute
+            "auth": {"requests": 5, "window": 60},  # 5 auth requests per minute
+            "sensitive": {"requests": 10, "window": 60},  # 10 sensitive requests per minute
+            "admin": {"requests": 1000, "window": 60},  # 1000 admin requests per minute
         }
 
     async def check_rate_limit(self, key: str, rate_type: str = "default") -> bool:
@@ -148,6 +153,7 @@ class APIRateLimiter:
         current_count = await self.redis_client.zcard(redis_key)
         return max(0, limit["requests"] - current_count)
 
+
 class APICacheManager:
     """Advanced API caching strategies"""
 
@@ -158,7 +164,7 @@ class APICacheManager:
             "appointment_data": {"ttl": 60, "prefix": "appointment"},
             "clinical_data": {"ttl": 180, "prefix": "clinical"},
             "billing_data": {"ttl": 300, "prefix": "billing"},
-            "admin_data": {"ttl": 600, "prefix": "admin"}
+            "admin_data": {"ttl": 600, "prefix": "admin"},
         }
 
     async def get_cache_key(self, request: Request, user_id: Optional[int] = None) -> str:
@@ -188,11 +194,7 @@ class APICacheManager:
     async def cache_response(self, cache_key: str, response_data: Dict, ttl: int = 300):
         """Cache API response"""
         try:
-            await self.redis_client.setex(
-                cache_key,
-                ttl,
-                json.dumps(response_data, default=str)
-            )
+            await self.redis_client.setex(cache_key, ttl, json.dumps(response_data, default=str))
         except Exception as e:
             logging.error(f"Cache set error: {e}")
 
@@ -205,6 +207,7 @@ class APICacheManager:
         except Exception as e:
             logging.error(f"Cache invalidation error: {e}")
 
+
 class APIResponseOptimizer:
     """Optimize API responses for performance"""
 
@@ -214,18 +217,18 @@ class APIResponseOptimizer:
         optimized = {
             "success": True,
             "timestamp": datetime.now().isoformat(),
-            "request_id": getattr(request.state, 'request_id', None),
-            "data": data
+            "request_id": getattr(request.state, "request_id", None),
+            "data": data,
         }
 
         # Add pagination info if present
-        if hasattr(data, '__dict__') and hasattr(data, 'items'):
-            if hasattr(data, 'page') and hasattr(data, 'total_pages'):
+        if hasattr(data, "__dict__") and hasattr(data, "items"):
+            if hasattr(data, "page") and hasattr(data, "total_pages"):
                 optimized["pagination"] = {
                     "page": data.page,
                     "page_size": data.page_size,
                     "total_pages": data.total_pages,
-                    "total_items": data.total
+                    "total_items": data.total,
                 }
 
         return optimized
@@ -233,6 +236,7 @@ class APIResponseOptimizer:
     @staticmethod
     def compress_response(response_data: Dict) -> Dict:
         """Compress response data for better performance"""
+
         # Remove None values to reduce payload size
         def remove_none(obj):
             if isinstance(obj, dict):
@@ -243,6 +247,7 @@ class APIResponseOptimizer:
                 return obj
 
         return remove_none(response_data)
+
 
 class RESTAPIOptimizer:
     """REST API optimization and best practices"""
@@ -262,7 +267,7 @@ class RESTAPIOptimizer:
         # CORS middleware
         self.app.add_middleware(
             CORSMiddleware,
-            allow_origins=settings.CORS_ALLOWED_ORIGINS if hasattr(settings, 'CORS_ALLOWED_ORIGINS') else ["*"],
+            allow_origins=settings.CORS_ALLOWED_ORIGINS if hasattr(settings, "CORS_ALLOWED_ORIGINS") else ["*"],
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
@@ -278,6 +283,7 @@ class RESTAPIOptimizer:
         @self.app.middleware("http")
         async def add_request_id(request: Request, call_next):
             import uuid
+
             request_id = str(uuid.uuid4())
             request.state.request_id = request_id
             response = await call_next(request)
@@ -286,6 +292,7 @@ class RESTAPIOptimizer:
 
     def _setup_error_handling(self):
         """Setup centralized error handling"""
+
         @self.app.exception_handler(HTTPException)
         async def http_exception_handler(request: Request, exc: HTTPException):
             self.metrics.record_request(0, is_error=True)
@@ -294,9 +301,9 @@ class RESTAPIOptimizer:
                 content={
                     "success": False,
                     "error": exc.detail,
-                    "request_id": getattr(request.state, 'request_id', None),
-                    "timestamp": datetime.now().isoformat()
-                }
+                    "request_id": getattr(request.state, "request_id", None),
+                    "timestamp": datetime.now().isoformat(),
+                },
             )
 
         @self.app.exception_handler(Exception)
@@ -308,9 +315,9 @@ class RESTAPIOptimizer:
                 content={
                     "success": False,
                     "error": "Internal server error",
-                    "request_id": getattr(request.state, 'request_id', None),
-                    "timestamp": datetime.now().isoformat()
-                }
+                    "request_id": getattr(request.state, "request_id", None),
+                    "timestamp": datetime.now().isoformat(),
+                },
             )
 
     def _setup_documentation(self):
@@ -321,9 +328,9 @@ class RESTAPIOptimizer:
         self.app.docs_url = "/docs"
         self.app.redoc_url = "/redoc"
 
-    def create_endpoint(self, path: str, methods: List[str], cache_ttl: int = 0,
-                       rate_limit_type: str = "default"):
+    def create_endpoint(self, path: str, methods: List[str], cache_ttl: int = 0, rate_limit_type: str = "default"):
         """Decorator for optimized REST endpoints"""
+
         def decorator(func):
             @self.app.route(path, methods=methods)
             @wraps(func)
@@ -376,7 +383,9 @@ class RESTAPIOptimizer:
                     self.metrics.active_connections -= 1
 
             return wrapper
+
         return decorator
+
 
 class GraphQLAPIOptimizer:
     """GraphQL API optimization and federation"""
@@ -388,6 +397,7 @@ class GraphQLAPIOptimizer:
 
     def create_schema(self) -> Schema:
         """Create optimized GraphQL schema"""
+
         class Query(ObjectType):
             # Patient queries
             patients = List(PatientType)
@@ -431,6 +441,7 @@ class GraphQLAPIOptimizer:
 
     def optimize_resolver(self, resolver_name: str, cache_ttl: int = 0):
         """Decorator for optimized GraphQL resolvers"""
+
         def decorator(func):
             @wraps(func)
             async def wrapper(root, info: GraphQLResolveInfo, **kwargs):
@@ -455,6 +466,7 @@ class GraphQLAPIOptimizer:
                     self.metrics.active_connections -= 1
 
             return wrapper
+
         return decorator
 
     def setup_federation(self):
@@ -462,6 +474,7 @@ class GraphQLAPIOptimizer:
         # This would set up Apollo Federation for microservices
         # Each service would extend the base schema with its own types
         pass
+
 
 # GraphQL Type Definitions (simplified)
 class PatientType(ObjectType):
@@ -474,6 +487,7 @@ class PatientType(ObjectType):
     email = String()
     phone = String()
 
+
 class AppointmentType(ObjectType):
     id = Int(required=True)
     patient_id = Int(required=True)
@@ -483,6 +497,7 @@ class AppointmentType(ObjectType):
     status = String()
     appointment_type = String()
 
+
 class MedicalRecordType(ObjectType):
     id = Int(required=True)
     patient_id = Int(required=True)
@@ -490,6 +505,7 @@ class MedicalRecordType(ObjectType):
     title = String(required=True)
     description = String()
     created_at = String()
+
 
 class LabResultType(ObjectType):
     id = Int(required=True)
@@ -499,6 +515,7 @@ class LabResultType(ObjectType):
     reference_range = String()
     test_date = String()
 
+
 class BillType(ObjectType):
     id = Int(required=True)
     patient_id = Int(required=True)
@@ -506,12 +523,14 @@ class BillType(ObjectType):
     status = String()
     created_at = String()
 
+
 class PaymentType(ObjectType):
     id = Int(required=True)
     bill_id = Int(required=True)
     amount = String(required=True)
     payment_method = String()
     payment_date = String()
+
 
 class RealTimeCommunicationManager:
     """Real-time communication with WebSockets and SSE"""
@@ -524,6 +543,7 @@ class RealTimeCommunicationManager:
 
     def setup_websockets(self):
         """Setup WebSocket endpoints"""
+
         @self.app.websocket("/ws/{client_id}")
         async def websocket_endpoint(websocket, client_id: str):
             await self.socket_manager.connect(websocket, client_id)
@@ -541,15 +561,13 @@ class RealTimeCommunicationManager:
 
     def setup_sse(self):
         """Setup Server-Sent Events endpoint"""
+
         @self.app.get("/sse/{client_id}")
         async def sse_endpoint(client_id: str):
             async def event_generator():
                 while client_id in self.active_connections:
                     # Send heartbeat
-                    yield {
-                        "event": "heartbeat",
-                        "data": json.dumps({"timestamp": datetime.now().isoformat()})
-                    }
+                    yield {"event": "heartbeat", "data": json.dumps({"timestamp": datetime.now().isoformat()})}
                     await asyncio.sleep(30)
 
             return EventSourceResponse(event_generator())
@@ -581,11 +599,7 @@ class RealTimeCommunicationManager:
     async def broadcast_event(self, event_type: str, data: Dict):
         """Broadcast event to subscribed clients"""
         if event_type in self.event_subscribers:
-            message = {
-                "type": event_type,
-                "data": data,
-                "timestamp": datetime.now().isoformat()
-            }
+            message = {"type": event_type, "data": data, "timestamp": datetime.now().isoformat()}
 
             for client_id in self.event_subscribers[event_type]:
                 if client_id in self.active_connections:
@@ -593,6 +607,7 @@ class RealTimeCommunicationManager:
                         await self.active_connections[client_id].send_text(json.dumps(message))
                     except Exception as e:
                         logging.error(f"Failed to send message to {client_id}: {e}")
+
 
 class APIGateway:
     """API Gateway for unified access to all API types"""
@@ -606,7 +621,7 @@ class APIGateway:
     async def initialize(self, app: FastAPI):
         """Initialize API Gateway"""
         # Initialize Redis
-        if hasattr(settings, 'REDIS_URL'):
+        if hasattr(settings, "REDIS_URL"):
             self.redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
 
             # Initialize REST optimizer
@@ -628,7 +643,7 @@ class APIGateway:
             "total_requests": 0,
             "total_errors": 0,
             "average_response_time": 0,
-            "cache_hit_rate": 0
+            "cache_hit_rate": 0,
         }
 
         # Calculate combined metrics
@@ -641,14 +656,23 @@ class APIGateway:
 
         if metrics["total_requests"] > 0:
             metrics["average_response_time"] = (
-                (self.rest_optimizer.metrics.get_average_response_time() * self.rest_optimizer.metrics.request_count if self.rest_optimizer else 0) +
-                (self.graphql_optimizer.metrics.get_average_response_time() * self.graphql_optimizer.metrics.request_count)
+                (
+                    self.rest_optimizer.metrics.get_average_response_time() * self.rest_optimizer.metrics.request_count
+                    if self.rest_optimizer
+                    else 0
+                )
+                + (
+                    self.graphql_optimizer.metrics.get_average_response_time()
+                    * self.graphql_optimizer.metrics.request_count
+                )
             ) / metrics["total_requests"]
 
         return metrics
 
+
 # Global API Gateway instance
 api_gateway = APIGateway()
+
 
 # API monitoring and observability
 class APIMonitor:
@@ -666,17 +690,14 @@ class APIMonitor:
 
     def setup_health_checks(self):
         """Setup health check endpoints"""
+
         @self.app.get("/health")
         async def health_check():
             return {
                 "status": "healthy",
                 "timestamp": datetime.now().isoformat(),
                 "version": "1.0.0",
-                "services": {
-                    "database": "healthy",
-                    "redis": "healthy",
-                    "api": "healthy"
-                }
+                "services": {"database": "healthy", "redis": "healthy", "api": "healthy"},
             }
 
         @self.app.get("/health/detailed")
@@ -689,12 +710,14 @@ class APIMonitor:
                     "python_version": "3.9",
                     "framework": "FastAPI",
                     "database": "PostgreSQL",
-                    "cache": "Redis"
-                }
+                    "cache": "Redis",
+                },
             }
+
 
 # Global API monitor instance
 api_monitor = None
+
 
 def initialize_api_optimization(app: FastAPI):
     """Initialize API optimization framework"""
@@ -708,20 +731,25 @@ def initialize_api_optimization(app: FastAPI):
 
     logging.info("API optimization framework initialized")
 
+
 # Decorators for easy use
-def optimized_rest_endpoint(path: str, methods: List[str] = ["GET"],
-                          cache_ttl: int = 0, rate_limit_type: str = "default"):
+def optimized_rest_endpoint(
+    path: str, methods: List[str] = ["GET"], cache_ttl: int = 0, rate_limit_type: str = "default"
+):
     """Decorator for optimized REST endpoints"""
+
     def decorator(func):
         if api_gateway.rest_optimizer:
-            return api_gateway.rest_optimizer.create_endpoint(
-                path, methods, cache_ttl, rate_limit_type
-            )(func)
+            return api_gateway.rest_optimizer.create_endpoint(path, methods, cache_ttl, rate_limit_type)(func)
         return func
+
     return decorator
+
 
 def optimized_graphql_resolver(cache_ttl: int = 0):
     """Decorator for optimized GraphQL resolvers"""
+
     def decorator(func):
         return api_gateway.graphql_optimizer.optimize_resolver(func.__name__, cache_ttl)(func)
+
     return decorator

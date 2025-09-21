@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from .models import (
     Appointment,
     AppointmentHistory,
@@ -7,6 +8,8 @@ from .models import (
     Resource,
     WaitList,
 )
+
+
 @admin.register(Appointment)
 class AppointmentAdmin(admin.ModelAdmin):
     list_display = (
@@ -85,6 +88,8 @@ class AppointmentAdmin(admin.ModelAdmin):
             {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
         ),
     )
+
+
 @admin.register(AppointmentTemplate)
 class AppointmentTemplateAdmin(admin.ModelAdmin):
     list_display = (
@@ -97,6 +102,8 @@ class AppointmentTemplateAdmin(admin.ModelAdmin):
     list_filter = ("hospital", "appointment_type", "is_active", "allows_online_booking")
     search_fields = ("name", "description", "specialty_required")
     autocomplete_fields = ("hospital",)
+
+
 @admin.register(Resource)
 class ResourceAdmin(admin.ModelAdmin):
     list_display = (
@@ -110,6 +117,8 @@ class ResourceAdmin(admin.ModelAdmin):
     list_filter = ("hospital", "resource_type", "is_active", "is_bookable")
     search_fields = ("name", "description", "location")
     autocomplete_fields = ("hospital",)
+
+
 @admin.register(WaitList)
 class WaitListAdmin(admin.ModelAdmin):
     list_display = (
@@ -129,6 +138,8 @@ class WaitListAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
+
+
 @admin.register(AppointmentReminder)
 class AppointmentReminderAdmin(admin.ModelAdmin):
     list_display = (
@@ -146,6 +157,8 @@ class AppointmentReminderAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ("appointment",)
     readonly_fields = ("sent_at", "delivered_at", "created_at", "updated_at")
+
+
 @admin.register(AppointmentHistory)
 class AppointmentHistoryAdmin(admin.ModelAdmin):
     list_display = ("appointment", "action", "changed_by", "timestamp")
@@ -157,7 +170,9 @@ class AppointmentHistoryAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ("appointment", "changed_by")
     readonly_fields = ("timestamp",)
+
     def has_add_permission(self, request):
-        return False  
+        return False
+
     def has_change_permission(self, request, obj=None):
-        return False  
+        return False

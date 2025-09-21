@@ -1,14 +1,19 @@
 from django.core.management.base import BaseCommand
+
 from accounting.models import AccountSubType, AccountType, ChartOfAccounts, Currency
 from hospitals.models import Hospital
+
+
 class Command(BaseCommand):
     help = "Initialize Chart of Accounts for hospitals"
+
     def add_arguments(self, parser):
         parser.add_argument(
             "--hospital-id",
             type=int,
-            help="Hospital ID to initialize accounts for (optional - if not provided, initializes for all)",  
+            help="Hospital ID to initialize accounts for (optional - if not provided, initializes for all)",
         )
+
     def handle(self, *args, **options):
         hospital_id = options.get("hospital_id")
         if hospital_id:
@@ -16,15 +21,10 @@ class Command(BaseCommand):
         else:
             hospitals = Hospital.objects.all()
         for hospital in hospitals:
-            self.stdout.write(
-                f"Initializing Chart of Accounts for {hospital.name}..."
-            )  
+            self.stdout.write(f"Initializing Chart of Accounts for {hospital.name}...")
             self.initialize_accounts_for_hospital(hospital)
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"Successfully initialized accounts for {hospital.name}"
-                )
-            )
+            self.stdout.write(self.style.SUCCESS(f"Successfully initialized accounts for {hospital.name}"))
+
     def initialize_accounts_for_hospital(self, hospital):
         base_currency, created = Currency.objects.get_or_create(
             hospital=hospital,
@@ -637,15 +637,9 @@ class Command(BaseCommand):
             parent_account = None
             if parent_code:
                 try:
-                    parent_account = ChartOfAccounts.objects.get(
-                        hospital=hospital, account_code=parent_code
-                    )
+                    parent_account = ChartOfAccounts.objects.get(hospital=hospital, account_code=parent_code)
                 except ChartOfAccounts.DoesNotExist:
-                    self.stdout.write(
-                        self.style.WARNING(
-                            f"Parent account {parent_code} not found for {account_code}"  
-                        )
-                    )
+                    self.stdout.write(self.style.WARNING(f"Parent account {parent_code} not found for {account_code}"))
                     continue
             account, created = ChartOfAccounts.objects.get_or_create(
                 hospital=hospital,
@@ -662,11 +656,5 @@ class Command(BaseCommand):
             )
             if created:
                 created_count += 1
-                self.stdout.write(
-                    f"  Created account: {account_code} - {account_name}"
-                )  
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"Created {created_count} accounts for {hospital.name}"
-            )  
-        )
+                self.stdout.write(f"  Created account: {account_code} - {account_name}")
+        self.stdout.write(self.style.SUCCESS(f"Created {created_count} accounts for {hospital.name}"))

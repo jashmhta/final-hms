@@ -1,38 +1,50 @@
+import json
 import logging
-from typing import Dict, List, Optional, Union, Any, Tuple
+from dataclasses import dataclass
 from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 import pandas as pd
-from dataclasses import dataclass
-from enum import Enum
-import json
+
+from django.conf import settings
+from django.core.cache import cache
 from django.db import models
 from django.utils import timezone
-from django.core.cache import cache
-from django.conf import settings
-from ..core.inference_engine import InferenceEngine, InferencePriority
-from ..core.model_registry import ModelRegistry
+
 from ..core.feature_engineering import FeatureEngineeringPipeline, FeatureType
+from ..core.inference_engine import InferenceEngine, InferencePriority
 from ..core.model_monitoring import ModelMonitoring
+from ..core.model_registry import ModelRegistry
+
 logger = logging.getLogger(__name__)
+
+
 class ClinicalPriority(Enum):
-    EMERGENCY = "emergency"  
-    URGENT = "urgent"  
-    HIGH = "high"  
-    MEDIUM = "medium"  
-    LOW = "low"  
+    EMERGENCY = "emergency"
+    URGENT = "urgent"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
 class DecisionType(Enum):
-    DIAGNOSTIC = "diagnostic"  
-    TREATMENT = "treatment"  
-    MONITORING = "monitoring"  
-    PREVENTION = "prevention"  
-    DRUG_INTERACTION = "drug_interaction"  
-    CLINICAL_PATHWAY = "clinical_pathway"  
+    DIAGNOSTIC = "diagnostic"
+    TREATMENT = "treatment"
+    MONITORING = "monitoring"
+    PREVENTION = "prevention"
+    DRUG_INTERACTION = "drug_interaction"
+    CLINICAL_PATHWAY = "clinical_pathway"
+
+
 class AlertSeverity(Enum):
-    CRITICAL = "critical"  
-    HIGH = "high"  
-    MEDIUM = "medium"  
-    LOW = "low"  
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
 @dataclass
 class ClinicalData:
     patient_id: str
@@ -45,6 +57,7 @@ class ClinicalData:
     symptoms: List[Dict[str, Any]]
     imaging_studies: List[Dict[str, Any]]
     social_determinants: Optional[Dict[str, Any]] = None
+
     def to_feature_dict(self) -> Dict[str, Any]:
         return {
             "demographics": self.demographics,
@@ -57,6 +70,8 @@ class ClinicalData:
             "imaging_studies": self.imaging_studies,
             "social_determinants": self.social_determinants or {},
         }
+
+
 @dataclass
 class ClinicalDecision:
     decision_id: str
@@ -69,6 +84,7 @@ class ClinicalDecision:
     risks: List[Dict[str, Any]]
     contraindications: List[Dict[str, Any]]
     timestamp: datetime
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "decision_id": self.decision_id,
@@ -82,6 +98,8 @@ class ClinicalDecision:
             "contraindications": self.contraindications,
             "timestamp": self.timestamp.isoformat(),
         }
+
+
 @dataclass
 class ClinicalAlert:
     alert_id: str
@@ -92,6 +110,7 @@ class ClinicalAlert:
     action_required: str
     evidence: List[Dict[str, Any]]
     timestamp: datetime
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "alert_id": self.alert_id,
@@ -103,12 +122,15 @@ class ClinicalAlert:
             "evidence": self.evidence,
             "timestamp": self.timestamp.isoformat(),
         }
+
+
 class DiagnosticAssistanceSystem:
     def __init__(self):
         self.inference_engine = InferenceEngine()
         self.model_registry = ModelRegistry()
         self.feature_engineering = FeatureEngineeringPipeline()
         self.model_monitoring = ModelMonitoring()
+
     def analyze_symptoms(self, clinical_data: ClinicalData) -> List[ClinicalDecision]:
         try:
             features = self.feature_engineering.engineer_features(
@@ -121,17 +143,13 @@ class DiagnosticAssistanceSystem:
                 ],
             )
             diagnosis_model_id = "differential_diagnosis_v2"
-            predictions = self.inference_engine.predict(
-                diagnosis_model_id, features, priority=InferencePriority.HIGH
-            )
+            predictions = self.inference_engine.predict(diagnosis_model_id, features, priority=InferencePriority.HIGH)
             decisions = []
             for i, prediction in enumerate(predictions.get("predictions", [])):
                 decision = ClinicalDecision(
                     decision_id=f"diag_{clinical_data.patient_id}_{i}",
                     decision_type=DecisionType.DIAGNOSTIC,
-                    priority=self._determine_diagnosis_priority(
-                        prediction["probability"]
-                    ),
+                    priority=self._determine_diagnosis_priority(prediction["probability"]),
                     recommendation=prediction.get("condition", "Unknown condition"),
                     confidence=prediction.get("probability", 0.0),
                     evidence=prediction.get("evidence", []),
@@ -145,12 +163,13 @@ class DiagnosticAssistanceSystem:
                     diagnosis_model_id,
                     features,
                     prediction,
-                    None,  
+                    None,
                 )
             return decisions
         except Exception as e:
             logger.error(f"Error in symptom analysis: {str(e)}")
             return []
+
     def _determine_diagnosis_priority(self, probability: float) -> ClinicalPriority:
         if probability >= 0.9:
             return ClinicalPriority.HIGH
@@ -158,11 +177,14 @@ class DiagnosticAssistanceSystem:
             return ClinicalPriority.MEDIUM
         else:
             return ClinicalPriority.LOW
+
+
 class TreatmentOptimizationEngine:
     def __init__(self):
         self.inference_engine = InferenceEngine()
         self.model_registry = ModelRegistry()
         self.feature_engineering = FeatureEngineeringPipeline()
+
     def recommend_treatment(
         self,
         clinical_data: ClinicalData,
@@ -182,18 +204,14 @@ class TreatmentOptimizationEngine:
             features["diagnosis"] = diagnosis
             features["comorbidities"] = comorbidities or []
             treatment_model_id = "treatment_optimization_v1"
-            predictions = self.inference_engine.predict(
-                treatment_model_id, features, priority=InferencePriority.HIGH
-            )
+            predictions = self.inference_engine.predict(treatment_model_id, features, priority=InferencePriority.HIGH)
             decisions = []
             for i, prediction in enumerate(predictions.get("treatments", [])):
                 decision = ClinicalDecision(
                     decision_id=f"tx_{clinical_data.patient_id}_{i}",
                     decision_type=DecisionType.TREATMENT,
                     priority=ClinicalPriority.HIGH,
-                    recommendation=prediction.get(
-                        "treatment_plan", "Standard treatment"
-                    ),
+                    recommendation=prediction.get("treatment_plan", "Standard treatment"),
                     confidence=prediction.get("efficacy_score", 0.0),
                     evidence=prediction.get("evidence", []),
                     alternatives=prediction.get("alternatives", []),
@@ -206,9 +224,12 @@ class TreatmentOptimizationEngine:
         except Exception as e:
             logger.error(f"Error in treatment recommendation: {str(e)}")
             return []
+
+
 class DrugInteractionChecker:
     def __init__(self):
         self.interaction_database = self._load_interaction_database()
+
     def _load_interaction_database(self) -> Dict[str, List[Dict]]:
         return {
             "warfarin": [
@@ -241,6 +262,7 @@ class DrugInteractionChecker:
                 },
             ],
         }
+
     def check_interactions(
         self, medications: List[Dict[str, Any]], patient_data: Dict[str, Any] = None
     ) -> List[ClinicalAlert]:
@@ -253,11 +275,7 @@ class DrugInteractionChecker:
                         severity = self._map_severity(interaction["severity"])
                         alert = ClinicalAlert(
                             alert_id=f"drug_interaction_{hash(med1 + interaction['drug'])}",
-                            patient_id=(
-                                patient_data.get("patient_id", "unknown")
-                                if patient_data
-                                else "unknown"
-                            ),
+                            patient_id=(patient_data.get("patient_id", "unknown") if patient_data else "unknown"),
                             severity=severity,
                             alert_type="drug_interaction",
                             message=f"Potential interaction between {med1} and {interaction['drug']}: {interaction['effect']}",
@@ -267,6 +285,7 @@ class DrugInteractionChecker:
                         )
                         alerts.append(alert)
         return alerts
+
     def _map_severity(self, severity_str: str) -> AlertSeverity:
         mapping = {
             "high": AlertSeverity.HIGH,
@@ -275,6 +294,7 @@ class DrugInteractionChecker:
             "critical": AlertSeverity.CRITICAL,
         }
         return mapping.get(severity_str.lower(), AlertSeverity.MEDIUM)
+
     def _get_action_recommendation(self, severity: AlertSeverity) -> str:
         recommendations = {
             AlertSeverity.CRITICAL: "Immediate medical attention required",
@@ -283,10 +303,13 @@ class DrugInteractionChecker:
             AlertSeverity.LOW: "Consider alternative medications",
         }
         return recommendations.get(severity, "Monitor patient")
+
+
 class ClinicalPathwayOptimizer:
     def __init__(self):
         self.inference_engine = InferenceEngine()
         self.feature_engineering = FeatureEngineeringPipeline()
+
     def optimize_pathway(
         self, patient_data: ClinicalData, condition: str, current_pathway: str = None
     ) -> List[ClinicalDecision]:
@@ -303,18 +326,14 @@ class ClinicalPathwayOptimizer:
             features["condition"] = condition
             features["current_pathway"] = current_pathway
             pathway_model_id = "pathway_optimization_v1"
-            predictions = self.inference_engine.predict(
-                pathway_model_id, features, priority=InferencePriority.MEDIUM
-            )
+            predictions = self.inference_engine.predict(pathway_model_id, features, priority=InferencePriority.MEDIUM)
             decisions = []
             for i, prediction in enumerate(predictions.get("pathways", [])):
                 decision = ClinicalDecision(
                     decision_id=f"pathway_{patient_data.patient_id}_{i}",
                     decision_type=DecisionType.CLINICAL_PATHWAY,
                     priority=ClinicalPriority.MEDIUM,
-                    recommendation=prediction.get(
-                        "optimized_pathway", "Standard pathway"
-                    ),
+                    recommendation=prediction.get("optimized_pathway", "Standard pathway"),
                     confidence=prediction.get("optimization_score", 0.0),
                     evidence=prediction.get("evidence", []),
                     alternatives=prediction.get("alternative_pathways", []),
@@ -327,12 +346,15 @@ class ClinicalPathwayOptimizer:
         except Exception as e:
             logger.error(f"Error in pathway optimization: {str(e)}")
             return []
+
+
 class ClinicalDecisionSupportSystem:
     def __init__(self):
         self.diagnostic_system = DiagnosticAssistanceSystem()
         self.treatment_engine = TreatmentOptimizationEngine()
         self.drug_checker = DrugInteractionChecker()
         self.pathway_optimizer = ClinicalPathwayOptimizer()
+
     def analyze_patient(self, clinical_data: ClinicalData) -> Dict[str, Any]:
         try:
             results = {
@@ -351,50 +373,46 @@ class ClinicalDecisionSupportSystem:
             )
             results["alerts"] = [a.to_dict() for a in alerts]
             if diagnoses:
-                for diagnosis in diagnoses[:3]:  
+                for diagnosis in diagnoses[:3]:
                     treatments = self.treatment_engine.recommend_treatment(
                         clinical_data,
                         diagnosis.recommendation,
-                        [
-                            d.recommendation for d in diagnoses[1:]
-                        ],  
+                        [d.recommendation for d in diagnoses[1:]],
                     )
                     results["treatments"].extend([t.to_dict() for t in treatments])
             if diagnoses:
-                pathway_recs = self.pathway_optimizer.optimize_pathway(
-                    clinical_data, diagnoses[0].recommendation
-                )
+                pathway_recs = self.pathway_optimizer.optimize_pathway(clinical_data, diagnoses[0].recommendation)
                 results["pathway_recommendations"] = [p.to_dict() for p in pathway_recs]
             results["summary"] = self._generate_summary(results)
             return results
         except Exception as e:
             logger.error(f"Error in comprehensive patient analysis: {str(e)}")
             return {"error": str(e), "timestamp": timezone.now().isoformat()}
+
     def _generate_summary(self, results: Dict[str, Any]) -> Dict[str, Any]:
         summary = {
-            "critical_alerts": len(
-                [a for a in results.get("alerts", []) if a["severity"] == "critical"]
-            ),
-            "high_alerts": len(
-                [a for a in results.get("alerts", []) if a["severity"] == "high"]
-            ),
-            "top_diagnosis": results.get("diagnoses", [{}])[0].get(
-                "recommendation", "Unknown"
-            ),
+            "critical_alerts": len([a for a in results.get("alerts", []) if a["severity"] == "critical"]),
+            "high_alerts": len([a for a in results.get("alerts", []) if a["severity"] == "high"]),
+            "top_diagnosis": results.get("diagnoses", [{}])[0].get("recommendation", "Unknown"),
             "treatment_recommendations": len(results.get("treatments", [])),
             "pathway_optimizations": len(results.get("pathway_recommendations", [])),
         }
         return summary
+
+
 def create_clinical_decision_support_api():
-    from rest_framework import viewsets, status
+    from rest_framework import status, viewsets
     from rest_framework.decorators import action
-    from rest_framework.response import Response
     from rest_framework.permissions import IsAuthenticated
+    from rest_framework.response import Response
+
     class ClinicalDecisionSupportViewSet(viewsets.ViewSet):
         permission_classes = [IsAuthenticated]
+
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
             self.cdss = ClinicalDecisionSupportSystem()
+
         @action(detail=False, methods=["post"])
         def analyze_patient(self, request):
             try:
@@ -414,14 +432,13 @@ def create_clinical_decision_support_api():
                 return Response(results, status=status.HTTP_200_OK)
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
         @action(detail=False, methods=["post"])
         def check_drug_interactions(self, request):
             try:
                 medications = request.data.get("medications", [])
                 patient_id = request.data.get("patient_id")
-                alerts = self.cdss.drug_checker.check_interactions(
-                    medications, {"patient_id": patient_id}
-                )
+                alerts = self.cdss.drug_checker.check_interactions(medications, {"patient_id": patient_id})
                 return Response(
                     {
                         "alerts": [a.to_dict() for a in alerts],
@@ -432,4 +449,5 @@ def create_clinical_decision_support_api():
                 )
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     return ClinicalDecisionSupportViewSet

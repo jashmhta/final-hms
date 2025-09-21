@@ -4,7 +4,10 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+
 import requests
+
+
 class SecurityAuditor:
     def __init__(self, base_path: str):
         self.base_path = Path(base_path)
@@ -13,6 +16,7 @@ class SecurityAuditor:
             "checks": {},
             "summary": {},
         }
+
     def run_all_checks(self):
         print("🔒 Starting Enterprise Security Audit...")
         checks = [
@@ -44,6 +48,7 @@ class SecurityAuditor:
                 }
         self.generate_summary()
         return self.results
+
     def check_dependencies(self):
         print("📦 Checking dependencies...")
         try:
@@ -57,13 +62,14 @@ class SecurityAuditor:
             self.results["checks"]["dependencies"] = {
                 "status": "pass" if not vulnerabilities else "fail",
                 "vulnerabilities_found": len(vulnerabilities),
-                "details": vulnerabilities[:10],  
+                "details": vulnerabilities[:10],
             }
         except FileNotFoundError:
             self.results["checks"]["dependencies"] = {
                 "status": "warning",
                 "message": "Safety tool not installed",
             }
+
     def check_secrets(self):
         print("🔑 Checking for exposed secrets...")
         secret_patterns = [
@@ -79,6 +85,7 @@ class SecurityAuditor:
                     content = f.read()
                 for pattern in secret_patterns:
                     import re
+
                     matches = re.findall(pattern, content, re.IGNORECASE)
                     if matches:
                         findings.append(
@@ -94,6 +101,7 @@ class SecurityAuditor:
             "status": "pass" if not findings else "fail",
             "findings": findings,
         }
+
     def check_permissions(self):
         print("🔒 Checking file permissions...")
         sensitive_files = ["settings.py", ".env", "secrets.json", "*.key", "*.pem"]
@@ -114,6 +122,7 @@ class SecurityAuditor:
             "status": "pass" if not issues else "fail",
             "issues": issues,
         }
+
     def check_ssl_tls(self):
         print("🔐 Checking SSL/TLS configuration...")
         settings_file = self.base_path / "backend" / "hms" / "settings.py"
@@ -127,12 +136,14 @@ class SecurityAuditor:
             "status": "pass" if ssl_configured else "fail",
             "ssl_redirect_enabled": ssl_configured,
         }
+
     def check_firewall_rules(self):
         print("🛡️ Checking firewall rules...")
         self.results["checks"]["firewall"] = {
             "status": "warning",
             "message": "Firewall check requires deployment-specific implementation",
         }
+
     def check_container_security(self):
         print("🐳 Checking container security...")
         dockerfile = self.base_path / "backend" / "Dockerfile"
@@ -148,6 +159,7 @@ class SecurityAuditor:
             "status": "pass" if not issues else "fail",
             "issues": issues,
         }
+
     def check_database_security(self):
         print("🗄️ Checking database security...")
         settings_file = self.base_path / "backend" / "hms" / "settings.py"
@@ -164,6 +176,7 @@ class SecurityAuditor:
             "status": "pass" if not issues else "fail",
             "issues": issues,
         }
+
     def check_api_security(self):
         print("🌐 Checking API security...")
         issues = []
@@ -179,6 +192,7 @@ class SecurityAuditor:
             "status": "pass" if not issues else "fail",
             "issues": issues,
         }
+
     def check_authentication_security(self):
         print("🔐 Checking authentication security...")
         auth_features = []
@@ -189,9 +203,7 @@ class SecurityAuditor:
         else:
             issues.append("MFA not implemented")
         if (self.base_path / "backend" / "authentication" / "models.py").exists():
-            with open(
-                self.base_path / "backend" / "authentication" / "models.py", "r"
-            ) as f:
+            with open(self.base_path / "backend" / "authentication" / "models.py", "r") as f:
                 content = f.read()
                 if "PasswordPolicy" in content:
                     auth_features.append("Password policies implemented")
@@ -202,6 +214,7 @@ class SecurityAuditor:
             "features": auth_features,
             "issues": issues,
         }
+
     def check_authorization_security(self):
         print("🛡️ Checking authorization security...")
         issues = []
@@ -210,13 +223,14 @@ class SecurityAuditor:
             with open(permissions_file, "r") as f:
                 content = f.read()
                 if "RolePermission" in content:
-                    pass  
+                    pass
                 else:
                     issues.append("Role-based permissions not implemented")
         self.results["checks"]["authorization"] = {
             "status": "pass" if not issues else "fail",
             "issues": issues,
         }
+
     def check_data_encryption(self):
         print("🔒 Checking data encryption...")
         encryption_features = []
@@ -228,13 +242,12 @@ class SecurityAuditor:
             "status": "pass" if encryption_features else "fail",
             "features": encryption_features,
         }
+
     def check_audit_logging(self):
         print("📝 Checking audit logging...")
         audit_features = []
         if (self.base_path / "backend" / "authentication" / "models.py").exists():
-            with open(
-                self.base_path / "backend" / "authentication" / "models.py", "r"
-            ) as f:
+            with open(self.base_path / "backend" / "authentication" / "models.py", "r") as f:
                 content = f.read()
                 if "SecurityEvent" in content:
                     audit_features.append("Security event logging implemented")
@@ -242,6 +255,7 @@ class SecurityAuditor:
             "status": "pass" if audit_features else "fail",
             "features": audit_features,
         }
+
     def check_rate_limiting(self):
         print("⏱️ Checking rate limiting...")
         rate_limiting_configured = False
@@ -255,6 +269,7 @@ class SecurityAuditor:
             "status": "pass" if rate_limiting_configured else "fail",
             "configured": rate_limiting_configured,
         }
+
     def check_input_validation(self):
         print("✅ Checking input validation...")
         validation_features = []
@@ -264,6 +279,7 @@ class SecurityAuditor:
             "status": "pass" if validation_features else "warning",
             "features": validation_features,
         }
+
     def check_error_handling(self):
         print("🚨 Checking error handling...")
         error_handling_configured = False
@@ -277,14 +293,13 @@ class SecurityAuditor:
             "status": "pass" if error_handling_configured else "warning",
             "configured": error_handling_configured,
         }
+
     def generate_summary(self):
         checks = self.results["checks"]
         total_checks = len(checks)
         passed = sum(1 for check in checks.values() if check.get("status") == "pass")
         failed = sum(1 for check in checks.values() if check.get("status") == "fail")
-        warnings = sum(
-            1 for check in checks.values() if check.get("status") == "warning"
-        )
+        warnings = sum(1 for check in checks.values() if check.get("status") == "warning")
         self.results["summary"] = {
             "total_checks": total_checks,
             "passed": passed,
@@ -293,6 +308,7 @@ class SecurityAuditor:
             "pass_rate": (passed / total_checks * 100) if total_checks > 0 else 0,
             "overall_status": "pass" if failed == 0 else "fail",
         }
+
     def generate_report(self):
         print("📊 Generating security audit report...")
         report_file = self.base_path / "security_audit_report.json"
@@ -306,14 +322,16 @@ class SecurityAuditor:
         print(f"   Failed: {summary['failed']}")
         print(f"   Warnings: {summary['warnings']}")
         print(".1f")
-        print(
-            f"   Overall Status: {'✅ PASS' if summary['overall_status'] == 'pass' else '❌ FAIL'}"
-        )
+        print(f"   Overall Status: {'✅ PASS' if summary['overall_status'] == 'pass' else '❌ FAIL'}")
+
+
 def main():
     base_path = Path(__file__).parent.parent
     auditor = SecurityAuditor(str(base_path))
     results = auditor.run_all_checks()
     if results["summary"]["overall_status"] == "fail":
         sys.exit(1)
+
+
 if __name__ == "__main__":
     main()

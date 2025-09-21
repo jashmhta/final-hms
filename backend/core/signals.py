@@ -1,26 +1,33 @@
 import json
 import os
-from appointments.models import Appointment
-from billing.models import Bill, Payment
+from datetime import date, datetime
+
 from django.contrib.contenttypes.models import ContentType
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
-from datetime import date, datetime
 from django.forms.models import model_to_dict
+
+from appointments.models import Appointment
+from billing.models import Bill, Payment
 from patients.models import Patient
 from pharmacy.models import Prescription
+
 from .audit import send_audit_event
 from .models import AuditLog
+
 KAFKA_BROKER = os.getenv("KAFKA_BROKER", "kafka:9092")
 KAFKA_TOPIC_APPT = os.getenv("KAFKA_TOPIC_APPOINTMENTS", "appointments_events")
 try:
     from kafka import KafkaProducer
+
     _producer = KafkaProducer(
         bootstrap_servers=KAFKA_BROKER,
         value_serializer=lambda v: json.dumps(v).encode("utf-8"),
     )
 except Exception:
     _producer = None
+
+
 def log_action(instance, action, user=None):
     hospital = getattr(instance, "hospital", None)
     model = instance.__class__.__name__
@@ -45,6 +52,8 @@ def log_action(instance, action, user=None):
         send_audit_event("backend", action.lower(), model.lower(), object_id)
     except Exception:
         pass
+
+
 @receiver(post_save, sender=Patient)
 @receiver(post_save, sender=Appointment)
 @receiver(post_save, sender=Prescription)
@@ -68,6 +77,8 @@ def on_save(sender, instance, created, **kwargs):
             )
         except Exception:
             pass
+
+
 @receiver(post_delete, sender=Patient)
 @receiver(post_delete, sender=Appointment)
 @receiver(post_delete, sender=Prescription)

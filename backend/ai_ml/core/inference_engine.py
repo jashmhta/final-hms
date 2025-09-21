@@ -1,34 +1,45 @@
 import asyncio
+import json
 import logging
-import time
+import queue
 import threading
+import time
+import weakref
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Dict, List, Any, Optional, Union, Callable
+from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional, Union
+
 import numpy as np
 import pandas as pd
-import queue
-from dataclasses import dataclass
-from enum import Enum
-import json
 import psutil
 import redis
+
 from django.conf import settings
 from django.core.cache import cache
-from .model_registry import ModelRegistry
+
 from .feature_engineering import FeatureEngineeringPipeline
+from .model_registry import ModelRegistry
+
 logger = logging.getLogger(__name__)
+
+
 class InferencePriority(Enum):
-    CRITICAL = "critical"  
-    HIGH = "high"  
-    NORMAL = "normal"  
-    LOW = "low"  
-    BACKGROUND = "background"  
+    CRITICAL = "critical"
+    HIGH = "high"
+    NORMAL = "normal"
+    LOW = "low"
+    BACKGROUND = "background"
+
+
 class InferenceMode(Enum):
-    REAL_TIME = "real_time"  
-    BATCH = "batch"  
-    STREAMING = "streaming"  
-    ASYNC = "async"  
+    REAL_TIME = "real_time"
+    BATCH = "batch"
+    STREAMING = "streaming"
+    ASYNC = "async"
+
+
 @dataclass
 class InferenceRequest:
     request_id: str
@@ -40,9 +51,12 @@ class InferenceRequest:
     metadata: Optional[Dict] = None
     callback: Optional[Callable] = None
     created_at: datetime = None
+
     def __post_init__(self):
         if self.created_at is None:
             self.created_at = datetime.now()
+
+
 @dataclass
 class InferenceResponse:
     request_id: str
@@ -52,7 +66,17 @@ class InferenceResponse:
     processing_time_ms: float
     metadata: Optional[Dict] = None
     error: Optional[str] = None
+
+
 class InferenceEngine:
+    _instances = weakref.WeakSet()
+
+    def __new__(cls, *args, **kwargs):
+        # Singleton pattern with weak references
+        instance = super().__new__(cls)
+        cls._instances.add(instance)
+        return instance
+
     def __init__(
         self,
         max_workers: int = 10,
@@ -81,55 +105,71 @@ class InferenceEngine:
             "cache_misses": 0,
         }
         self.redis_client = None
+        self._redis_pool = None
         if redis_host:
             try:
-                self.redis_client = redis.Redis(
-                    host=redis_host, port=6379, decode_responses=True
+                self._redis_pool = redis.ConnectionPool(
+                    host=redis_host,
+                    port=6379,
+                    decode_responses=True,
+                    max_connections=5
                 )
+                self.redis_client = redis.Redis(connection_pool=self._redis_pool)
             except Exception as e:
                 logger.warning(f"Redis connection failed: {e}")
+                self._redis_pool = None
         self.enable_gpu = enable_gpu and self._check_gpu_availability()
         self.running = True
         self.workers = []
+        self._shutdown_event = threading.Event()
+        self._cache_lock = threading.RLock()
         self._start_workers()
-        self.monitor_thread = threading.Thread(
-            target=self._monitor_performance, daemon=True
-        )
+        self.monitor_thread = threading.Thread(target=self._monitor_performance, daemon=True)
         self.monitor_thread.start()
+
     def _check_gpu_availability(self) -> bool:
         try:
             import torch
+
             return torch.cuda.is_available()
         except ImportError:
             return False
         except Exception:
             return False
+
     def _start_workers(self):
         for priority in InferencePriority:
-            worker = threading.Thread(
-                target=self._worker_loop, args=(priority,), daemon=True
-            )
+            worker = threading.Thread(target=self._worker_loop, args=(priority,), daemon=True)
             worker.start()
             self.workers.append(worker)
+
     def _worker_loop(self, priority: InferencePriority):
-        while self.running:
+        while self.running and not self._shutdown_event.is_set():
             try:
-                request = self.queues[priority].get(timeout=1.0)
-                if request is None:
+                try:
+                    request = self.queues[priority].get(timeout=1.0)
+                except queue.Empty:
                     continue
+
+                if request is None or isinstance(request, tuple) and request[1] is None:
+                    continue
+
+                # Unpack timestamp and request
+                if isinstance(request, tuple):
+                    _, request = request
+
                 response = self._process_request(request)
                 if request.callback:
                     try:
                         request.callback(response)
                     except Exception as e:
-                        logger.error(
-                            f"Callback failed for request {request.request_id}: {e}"
-                        )
+                        logger.error(f"Callback failed for request {request.request_id}: {e}")
                 self._update_metrics(response)
-            except queue.Empty:
-                continue
+
             except Exception as e:
-                logger.error(f"Worker error for priority {priority}: {e}")
+                if not self._shutdown_event.is_set():
+                    logger.error(f"Worker error for priority {priority}: {e}")
+
     def predict(
         self,
         model_id: str,
@@ -141,9 +181,7 @@ class InferenceEngine:
         async_callback: Optional[Callable] = None,
     ) -> Union[InferenceResponse, str]:
         try:
-            request_id = (
-                f"req_{int(time.time() * 1000000)}_{hash(str(input_data)) % 10000}"
-            )
+            request_id = f"req_{int(time.time() * 1000000)}_{hash(str(input_data)) % 10000}"
             request = InferenceRequest(
                 request_id=request_id,
                 model_id=model_id,
@@ -172,7 +210,19 @@ class InferenceEngine:
                 if not response.error:
                     self._cache_prediction(cache_key, response)
                 return response
-            self.queues[priority].put((time.time(), request))
+            # Prevent queue overflow
+            try:
+                self.queues[priority].put_nowait((time.time(), request))
+            except queue.Full:
+                logger.warning(f"Queue {priority} is full, dropping request")
+                return InferenceResponse(
+                    request_id=request.request_id,
+                    model_id=model_id,
+                    predictions=None,
+                    confidence=0.0,
+                    processing_time_ms=0,
+                    error="Queue full - server overloaded"
+                )
             if async_callback:
                 return request_id
             else:
@@ -187,6 +237,7 @@ class InferenceEngine:
                 processing_time_ms=0,
                 error=str(e),
             )
+
     def predict_batch(
         self,
         model_id: str,
@@ -237,6 +288,7 @@ class InferenceEngine:
                     error=str(e),
                 )
             ]
+
     def predict_stream(
         self,
         model_id: str,
@@ -245,6 +297,7 @@ class InferenceEngine:
         callback: Optional[Callable] = None,
     ) -> str:
         stream_id = f"stream_{int(time.time() * 1000000)}"
+
         def stream_processor():
             try:
                 for input_data in data_generator():
@@ -258,9 +311,11 @@ class InferenceEngine:
                     yield response
             except Exception as e:
                 logger.error(f"Stream processing error for {stream_id}: {e}")
+
         stream_thread = threading.Thread(target=stream_processor, daemon=True)
         stream_thread.start()
         return stream_id
+
     def _process_request(self, request: InferenceRequest) -> InferenceResponse:
         start_time = time.time()
         try:
@@ -269,9 +324,7 @@ class InferenceEngine:
                 raise ValueError(f"Model not found: {request.model_id}")
             model = model_info["model_object"]
             if isinstance(request.input_data, dict):
-                features_result = self.feature_pipeline.engineer_features(
-                    request.input_data
-                )
+                features_result = self.feature_pipeline.engineer_features(request.input_data)
                 if "error" in features_result:
                     raise ValueError(features_result["error"])
                 features_df = features_result["features"]
@@ -302,6 +355,7 @@ class InferenceEngine:
                 processing_time_ms=processing_time,
                 error=str(e),
             )
+
     def _make_prediction(self, model: Any, features: np.ndarray) -> tuple:
         try:
             if hasattr(model, "predict_proba"):
@@ -310,7 +364,7 @@ class InferenceEngine:
                 confidence = float(np.max(probabilities))
             elif hasattr(model, "predict"):
                 predictions = model.predict(features)
-                confidence = 1.0  
+                confidence = 1.0
             elif hasattr(model, "__call__"):
                 result = model(features)
                 if isinstance(result, tuple):
@@ -324,6 +378,7 @@ class InferenceEngine:
         except Exception as e:
             logger.error(f"Prediction failed: {e}")
             raise
+
     def _get_cached_model(self, model_id: str) -> Optional[Dict]:
         try:
             if model_id in self.model_cache:
@@ -339,10 +394,10 @@ class InferenceEngine:
         except Exception as e:
             logger.error(f"Model loading failed: {e}")
             return None
-    def _generate_cache_key(
-        self, model_id: str, input_data: Union[Dict, pd.DataFrame]
-    ) -> str:
+
+    def _generate_cache_key(self, model_id: str, input_data: Union[Dict, pd.DataFrame]) -> str:
         import hashlib
+
         if isinstance(input_data, dict):
             data_str = json.dumps(input_data, sort_keys=True)
         elif isinstance(input_data, pd.DataFrame):
@@ -351,6 +406,7 @@ class InferenceEngine:
             data_str = str(input_data)
         hash_input = f"{model_id}:{data_str}"
         return hashlib.md5(hash_input.encode()).hexdigest()
+
     def _get_cached_prediction(self, cache_key: str) -> Optional[InferenceResponse]:
         try:
             cached_data = cache.get(f"prediction_{cache_key}")
@@ -364,6 +420,7 @@ class InferenceEngine:
         except Exception as e:
             logger.error(f"Cache retrieval failed: {e}")
             return None
+
     def _cache_prediction(self, cache_key: str, response: InferenceResponse):
         try:
             cache_timeout = 300
@@ -385,9 +442,8 @@ class InferenceEngine:
                 )
         except Exception as e:
             logger.error(f"Cache storage failed: {e}")
-    def _wait_for_completion(
-        self, request_id: str, timeout_ms: int
-    ) -> InferenceResponse:
+
+    def _wait_for_completion(self, request_id: str, timeout_ms: int) -> InferenceResponse:
         start_time = time.time()
         timeout_seconds = timeout_ms / 1000.0
         while time.time() - start_time < timeout_seconds:
@@ -400,6 +456,7 @@ class InferenceEngine:
             processing_time_ms=timeout_ms,
             error="Timeout reached",
         )
+
     def _update_metrics(self, response: InferenceResponse):
         self.performance_metrics["total_requests"] += 1
         if response.error:
@@ -412,6 +469,7 @@ class InferenceEngine:
         self.performance_metrics["average_response_time"] = (
             current_avg * (total_requests - 1) + new_time
         ) / total_requests
+
     def _monitor_performance(self):
         while self.running:
             try:
@@ -430,10 +488,11 @@ class InferenceEngine:
                 if cpu_percent > 90 or memory_percent > 90:
                     logger.warning("High resource usage detected")
                     self._handle_performance_degradation()
-                time.sleep(60)  
+                time.sleep(60)
             except Exception as e:
                 logger.error(f"Performance monitoring error: {e}")
                 time.sleep(60)
+
     def _handle_performance_degradation(self):
         logger.info("Handling performance degradation")
         if psutil.virtual_memory().percent > 90:
@@ -443,9 +502,8 @@ class InferenceEngine:
                 self.redis_client.flushdb()
         for priority, queue in self.queues.items():
             if queue.qsize() > queue.maxsize * 0.8:
-                logger.warning(
-                    f"Queue size high for priority {priority}: {queue.qsize()}"
-                )
+                logger.warning(f"Queue size high for priority {priority}: {queue.qsize()}")
+
     def get_performance_metrics(self) -> Dict:
         return {
             **self.performance_metrics,
@@ -454,34 +512,101 @@ class InferenceEngine:
                 "memory_percent": psutil.virtual_memory().percent,
                 "disk_percent": psutil.disk_usage("/").percent,
                 "active_workers": len([w for w in self.workers if w.is_alive()]),
-                "queue_sizes": {
-                    priority.name: queue.qsize()
-                    for priority, queue in self.queues.items()
-                },
+                "queue_sizes": {priority.name: queue.qsize() for priority, queue in self.queues.items()},
                 "model_cache_size": len(self.model_cache),
                 "gpu_available": self.enable_gpu,
             },
             "timestamp": datetime.now().isoformat(),
         }
+
     def clear_cache(self):
-        self.model_cache.clear()
-        cache.clear()
-        if self.redis_client:
-            self.redis_client.flushdb()
+        """Safely clear all caches with proper cleanup."""
+        with self._cache_lock:
+            self.model_cache.clear()
+            cache.clear()
+            if self.redis_client:
+                try:
+                    self.redis_client.flushdb()
+                except Exception as e:
+                    logger.error(f"Redis flush failed: {e}")
         logger.info("Cache cleared")
+
     def shutdown(self):
+        """Graceful shutdown with proper resource cleanup."""
         logger.info("Shutting down inference engine")
+
+        # Signal shutdown to all threads
         self.running = False
+        self._shutdown_event.set()
+
+        # Clear queues to unblock workers
+        for priority_queue in self.queues.values():
+            try:
+                while not priority_queue.empty():
+                    priority_queue.get_nowait()
+            except queue.Empty:
+                pass
+
+        # Send shutdown signals to workers
+        for priority in InferencePriority:
+            try:
+                self.queues[priority].put_nowait((time.time(), None))
+            except queue.Full:
+                pass
+
+        # Wait for workers to finish
         for worker in self.workers:
-            worker.join(timeout=5.0)
-        self.executor.shutdown(wait=True)
+            try:
+                worker.join(timeout=5.0)
+                if worker.is_alive():
+                    logger.warning(f"Worker thread {worker.name} did not shutdown gracefully")
+            except Exception as e:
+                logger.error(f"Error joining worker thread: {e}")
+
+        # Shutdown executor
+        try:
+            self.executor.shutdown(wait=True, cancel_futures=True)
+        except Exception as e:
+            logger.error(f"Executor shutdown failed: {e}")
+            try:
+                self.executor.shutdown(wait=False)
+            except:
+                pass
+
+        # Cleanup Redis connections
+        if self._redis_pool:
+            try:
+                self._redis_pool.disconnect()
+            except Exception as e:
+                logger.error(f"Redis pool disconnect failed: {e}")
+
+        # Clear caches
+        self.clear_cache()
+
+        # Clear worker list
+        self.workers.clear()
+
         logger.info("Inference engine shutdown complete")
+
+    def __del__(self):
+        """Destructor to ensure cleanup."""
+        try:
+            if hasattr(self, 'running') and self.running:
+                self.shutdown()
+        except:
+            pass  # Ignore errors during destruction
+
+
 inference_engine = None
+
+
 def get_inference_engine() -> InferenceEngine:
     global inference_engine
     if inference_engine is None:
         inference_engine = InferenceEngine()
     return inference_engine
+
+
 def initialize_inference_engine(**kwargs):
     global inference_engine
     inference_engine = InferenceEngine(**kwargs)

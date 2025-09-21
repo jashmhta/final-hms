@@ -1,0 +1,189 @@
+# Multi-Region Cluster Configuration
+# Enterprise-grade multi-region deployment for HMS microservices
+
+---
+# Primary Cluster (US-East-1)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-config-primary
+  namespace: kube-system
+  labels:
+    region: us-east-1
+    cluster-role: primary
+    cluster-name: hms-primary
+data:
+  region: "us-east-1"
+  cluster-role: "primary"
+  cluster-name: "hms-primary"
+  external-dns: "primary.hms.enterprise.com"
+  api-endpoint: "api-primary.hms.enterprise.com"
+  monitoring-endpoint: "monitoring-primary.hms.enterprise.com"
+  kibana-endpoint: "kibana-primary.hms.enterprise.com"
+  grafana-endpoint: "grafana-primary.hms.enterprise.com"
+  jaeger-endpoint: "jaeger-primary.hms.enterprise.com"
+  argocd-endpoint: "argocd-primary.hms.enterprise.com"
+  vault-endpoint: "vault-primary.hms.enterprise.com"
+  keycloak-endpoint: "auth-primary.hms.enterprise.com"
+
+  # Database configuration
+  postgres-primary: "postgres-primary.hms.enterprise.com"
+  postgres-replica: "postgres-replica-primary.hms.enterprise.com"
+  redis-primary: "redis-primary.hms.enterprise.com"
+
+  # Message queue configuration
+  kafka-bootstrap: "kafka-primary.hms.enterprise.com:9092,kafka-primary2.hms.enterprise.com:9092,kafka-primary3.hms.enterprise.com:9092"
+  zookeeper: "zookeeper-primary.hms.enterprise.com:2181"
+
+  # Storage configuration
+  storage-class: "gp3-encrypted"
+  backup-storage-class: "standard-ia"
+  log-storage-class: "gp2"
+
+  # Network configuration
+  vpc-cidr: "10.0.0.0/16"
+  subnet-cidr: "10.0.1.0/24,10.0.2.0/24,10.0.3.0/24"
+  load-balancer-type: "nlb"
+
+  # Security configuration
+  encryption-key-arn: "arn:aws:kms:us-east-1:123456789012:key/primary-encryption-key"
+  ssl-certificate-arn: "arn:aws:acm:us-east-1:123456789012:certificate/primary-cert"
+
+  # Monitoring configuration
+  alertmanager-webhook: "https://alerts-primary.hms.enterprise.com/webhook"
+  slack-webhook: "https://hooks.slack.com/services/primary-webhook"
+
+  # Backup configuration
+  backup-bucket: "s3://hms-backups-primary"
+  backup-retention: "30d"
+  backup-schedule: "0 2 * * *"
+
+  # Disaster recovery configuration
+  dr-enabled: "true"
+  dr-secondary-region: "us-west-2"
+  dr-replication-interval: "5m"
+  dr-failover-threshold: "10m"
+---
+# Secondary Cluster (US-West-2)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-config-secondary
+  namespace: kube-system
+  labels:
+    region: us-west-2
+    cluster-role: secondary
+    cluster-name: hms-secondary
+data:
+  region: "us-west-2"
+  cluster-role: "secondary"
+  cluster-name: "hms-secondary"
+  external-dns: "secondary.hms.enterprise.com"
+  api-endpoint: "api-secondary.hms.enterprise.com"
+  monitoring-endpoint: "monitoring-secondary.hms.enterprise.com"
+  kibana-endpoint: "kibana-secondary.hms.enterprise.com"
+  grafana-endpoint: "grafana-secondary.hms.enterprise.com"
+  jaeger-endpoint: "jaeger-secondary.hms.enterprise.com"
+  argocd-endpoint: "argocd-secondary.hms.enterprise.com"
+  vault-endpoint: "vault-secondary.hms.enterprise.com"
+  keycloak-endpoint: "auth-secondary.hms.enterprise.com"
+
+  # Database configuration
+  postgres-primary: "postgres-secondary.hms.enterprise.com"
+  postgres-replica: "postgres-replica-secondary.hms.enterprise.com"
+  redis-primary: "redis-secondary.hms.enterprise.com"
+
+  # Message queue configuration
+  kafka-bootstrap: "kafka-secondary.hms.enterprise.com:9092,kafka-secondary2.hms.enterprise.com:9092,kafka-secondary3.hms.enterprise.com:9092"
+  zookeeper: "zookeeper-secondary.hms.enterprise.com:2181"
+
+  # Storage configuration
+  storage-class: "gp3-encrypted"
+  backup-storage-class: "standard-ia"
+  log-storage-class: "gp2"
+
+  # Network configuration
+  vpc-cidr: "10.1.0.0/16"
+  subnet-cidr: "10.1.1.0/24,10.1.2.0/24,10.1.3.0/24"
+  load-balancer-type: "nlb"
+
+  # Security configuration
+  encryption-key-arn: "arn:aws:kms:us-west-2:123456789012:key/secondary-encryption-key"
+  ssl-certificate-arn: "arn:aws:acm:us-west-2:123456789012:certificate/secondary-cert"
+
+  # Monitoring configuration
+  alertmanager-webhook: "https://alerts-secondary.hms.enterprise.com/webhook"
+  slack-webhook: "https://hooks.slack.com/services/secondary-webhook"
+
+  # Backup configuration
+  backup-bucket: "s3://hms-backups-secondary"
+  backup-retention: "30d"
+  backup-schedule: "0 2 * * *"
+
+  # Disaster recovery configuration
+  dr-enabled: "true"
+  dr-primary-region: "us-east-1"
+  dr-replication-interval: "5m"
+  dr-failover-threshold: "10m"
+---
+# Tertiary Cluster (EU-West-1)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-config-tertiary
+  namespace: kube-system
+  labels:
+    region: eu-west-1
+    cluster-role: tertiary
+    cluster-name: hms-tertiary
+data:
+  region: "eu-west-1"
+  cluster-role: "tertiary"
+  cluster-name: "hms-tertiary"
+  external-dns: "tertiary.hms.enterprise.com"
+  api-endpoint: "api-tertiary.hms.enterprise.com"
+  monitoring-endpoint: "monitoring-tertiary.hms.enterprise.com"
+  kibana-endpoint: "kibana-tertiary.hms.enterprise.com"
+  grafana-endpoint: "grafana-tertiary.hms.enterprise.com"
+  jaeger-endpoint: "jaeger-tertiary.hms.enterprise.com"
+  argocd-endpoint: "argocd-tertiary.hms.enterprise.com"
+  vault-endpoint: "vault-tertiary.hms.enterprise.com"
+  keycloak-endpoint: "auth-tertiary.hms.enterprise.com"
+
+  # Database configuration
+  postgres-primary: "postgres-tertiary.hms.enterprise.com"
+  postgres-replica: "postgres-replica-tertiary.hms.enterprise.com"
+  redis-primary: "redis-tertiary.hms.enterprise.com"
+
+  # Message queue configuration
+  kafka-bootstrap: "kafka-tertiary.hms.enterprise.com:9092,kafka-tertiary2.hms.enterprise.com:9092,kafka-tertiary3.hms.enterprise.com:9092"
+  zookeeper: "zookeeper-tertiary.hms.enterprise.com:2181"
+
+  # Storage configuration
+  storage-class: "gp3-encrypted"
+  backup-storage-class: "standard-ia"
+  log-storage-class: "gp2"
+
+  # Network configuration
+  vpc-cidr: "10.2.0.0/16"
+  subnet-cidr: "10.2.1.0/24,10.2.2.0/24,10.2.3.0/24"
+  load-balancer-type: "nlb"
+
+  # Security configuration
+  encryption-key-arn: "arn:aws:kms:eu-west-1:123456789012:key/tertiary-encryption-key"
+  ssl-certificate-arn: "arn:aws:acm:eu-west-1:123456789012:certificate/tertiary-cert"
+
+  # Monitoring configuration
+  alertmanager-webhook: "https://alerts-tertiary.hms.enterprise.com/webhook"
+  slack-webhook: "https://hooks.slack.com/services/tertiary-webhook"
+
+  # Backup configuration
+  backup-bucket: "s3://hms-backups-tertiary"
+  backup-retention: "30d"
+  backup-schedule: "0 2 * * *"
+
+  # Disaster recovery configuration
+  dr-enabled: "true"
+  dr-primary-region: "us-east-1"
+  dr-replication-interval: "5m"
+  dr-failover-threshold: "10m"

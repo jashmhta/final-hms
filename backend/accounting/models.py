@@ -1,18 +1,25 @@
 import uuid
 from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Sum
 from django.utils import timezone
+
 from core.models import TenantModel
+
 User = get_user_model()
+
+
 class AccountType(models.TextChoices):
     ASSETS = "ASSETS", "Assets"
     LIABILITIES = "LIABILITIES", "Liabilities"
     EQUITY = "EQUITY", "Equity"
     INCOME = "INCOME", "Income"
     EXPENSES = "EXPENSES", "Expenses"
+
+
 class AccountSubType(models.TextChoices):
     CURRENT_ASSETS = "CURRENT_ASSETS", "Current Assets"
     FIXED_ASSETS = "FIXED_ASSETS", "Fixed Assets"
@@ -28,23 +35,25 @@ class AccountSubType(models.TextChoices):
         "Administrative Expenses",
     )
     FINANCIAL_EXPENSES = "FINANCIAL_EXPENSES", "Financial Expenses"
+
+
 class Currency(TenantModel):
-    code = models.CharField(
-        max_length=3, help_text="ISO 4217 currency code (e.g., INR, USD)"
-    )
+    code = models.CharField(max_length=3, help_text="ISO 4217 currency code (e.g., INR, USD)")
     name = models.CharField(max_length=100)
     symbol = models.CharField(max_length=10, default="₹")
-    exchange_rate = models.DecimalField(
-        max_digits=10, decimal_places=4, default=1.0000
-    )  
+    exchange_rate = models.DecimalField(max_digits=10, decimal_places=4, default=1.0000)
     is_base_currency = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+
     class Meta:
         app_label = "accounting"
         unique_together = ("hospital", "code")
         ordering = ["code"]
+
     def __str__(self):
         return f"{self.code} - {self.name}"
+
+
 class TaxType(models.TextChoices):
     GST = "GST", "Goods and Services Tax"
     CGST = "CGST", "Central GST"
@@ -54,6 +63,8 @@ class TaxType(models.TextChoices):
     SERVICE_TAX = "SERVICE_TAX", "Service Tax"
     TDS = "TDS", "Tax Deducted at Source"
     TCS = "TCS", "Tax Collected at Source"
+
+
 class TaxConfiguration(TenantModel):
     tax_type = models.CharField(max_length=32, choices=TaxType.choices)
     rate = models.DecimalField(
@@ -65,20 +76,20 @@ class TaxConfiguration(TenantModel):
     is_active = models.BooleanField(default=True)
     effective_from = models.DateField()
     effective_to = models.DateField(null=True, blank=True)
+
     class Meta:
         app_label = "accounting"
         ordering = ["-effective_from", "tax_type"]
+
     def __str__(self):
         return f"{self.tax_type} - {self.rate}%"
+
+
 class ChartOfAccounts(TenantModel):
-    account_code = models.CharField(
-        max_length=20, help_text="Unique account code (e.g., 1001)"
-    )
+    account_code = models.CharField(max_length=20, help_text="Unique account code (e.g., 1001)")
     account_name = models.CharField(max_length=255)
     account_type = models.CharField(max_length=32, choices=AccountType.choices)
-    account_subtype = models.CharField(
-        max_length=32, choices=AccountSubType.choices
-    )  
+    account_subtype = models.CharField(max_length=32, choices=AccountSubType.choices)
     parent_account = models.ForeignKey(
         "self",
         on_delete=models.CASCADE,
@@ -88,43 +99,42 @@ class ChartOfAccounts(TenantModel):
     )
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
-    is_system_account = models.BooleanField(
-        default=False
-    )  
+    is_system_account = models.BooleanField(default=False)
+
     class Meta:
         app_label = "accounting"
         unique_together = ("hospital", "account_code")
         ordering = ["account_code"]
+
     def __str__(self):
         return f"{self.account_code} - {self.account_name}"
+
     @property
     def balance(self):
-        credit_sum = (
-            self.credit_entries.aggregate(total=Sum("amount_cents"))["total"]
-            or 0  
-        )
-        debit_sum = (
-            self.debit_entries.aggregate(total=Sum("amount_cents"))["total"]
-            or 0  
-        )
+        credit_sum = self.credit_entries.aggregate(total=Sum("amount_cents"))["total"] or 0
+        debit_sum = self.debit_entries.aggregate(total=Sum("amount_cents"))["total"] or 0
         if self.account_type in [AccountType.ASSETS, AccountType.EXPENSES]:
-            return debit_sum - credit_sum  
+            return debit_sum - credit_sum
         else:
-            return credit_sum - debit_sum  
+            return credit_sum - debit_sum
+
+
 class CostCenter(TenantModel):
     code = models.CharField(max_length=20)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    manager = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True
-    )  
+    manager = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     is_active = models.BooleanField(default=True)
+
     class Meta:
         app_label = "accounting"
         unique_together = ("hospital", "code")
         ordering = ["code"]
+
     def __str__(self):
         return f"{self.code} - {self.name}"
+
+
 class Vendor(TenantModel):
     vendor_code = models.CharField(max_length=50)
     name = models.CharField(max_length=255)
@@ -132,22 +142,22 @@ class Vendor(TenantModel):
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=20, blank=True)
     address = models.TextField(blank=True)
-    gstin = models.CharField(
-        max_length=15, blank=True, help_text="GST Identification Number"
-    )
+    gstin = models.CharField(max_length=15, blank=True, help_text="GST Identification Number")
     pan = models.CharField(max_length=10, blank=True, help_text="PAN Number")
     tds_category = models.CharField(max_length=50, blank=True)
-    tds_rate = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0.00
-    )  
+    tds_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     payment_terms_days = models.IntegerField(default=30)
     is_active = models.BooleanField(default=True)
+
     class Meta:
         app_label = "accounting"
         unique_together = ("hospital", "vendor_code")
         ordering = ["name"]
+
     def __str__(self):
         return f"{self.vendor_code} - {self.name}"
+
+
 class Customer(TenantModel):
     customer_code = models.CharField(max_length=50)
     name = models.CharField(max_length=255)
@@ -169,12 +179,16 @@ class Customer(TenantModel):
     credit_limit_cents = models.BigIntegerField(default=0)
     credit_days = models.IntegerField(default=30)
     is_active = models.BooleanField(default=True)
+
     class Meta:
         app_label = "accounting"
         unique_together = ("hospital", "customer_code")
         ordering = ["name"]
+
     def __str__(self):
         return f"{self.customer_code} - {self.name}"
+
+
 class ServicePackage(TenantModel):
     package_code = models.CharField(max_length=50)
     name = models.CharField(max_length=255)
@@ -190,28 +204,29 @@ class ServicePackage(TenantModel):
         ],
     )
     base_price_cents = models.BigIntegerField()
-    cost_price_cents = models.BigIntegerField(
-        help_text="Internal cost for profitability analysis"
-    )
+    cost_price_cents = models.BigIntegerField(help_text="Internal cost for profitability analysis")
     is_active = models.BooleanField(default=True)
+
     class Meta:
         app_label = "accounting"
         unique_together = ("hospital", "package_code")
         ordering = ["package_code"]
+
     def __str__(self):
         return f"{self.package_code} - {self.name}"
+
+
 class ServicePackageItem(TenantModel):
-    package = models.ForeignKey(
-        ServicePackage, on_delete=models.CASCADE, related_name="items"
-    )
-    service = models.ForeignKey(
-        "billing.ServiceCatalog", on_delete=models.CASCADE
-    )  
+    package = models.ForeignKey(ServicePackage, on_delete=models.CASCADE, related_name="items")
+    service = models.ForeignKey("billing.ServiceCatalog", on_delete=models.CASCADE)
     quantity = models.IntegerField(default=1)
     override_price_cents = models.BigIntegerField(null=True, blank=True)
+
     class Meta:
         app_label = "accounting"
         unique_together = ("package", "service")
+
+
 class PricingTier(TenantModel):
     tier_code = models.CharField(max_length=50)
     name = models.CharField(max_length=255)
@@ -222,29 +237,25 @@ class PricingTier(TenantModel):
             ("B2C", "Business to Consumer"),
         ],
     )
-    discount_percentage = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0.00
-    )
-    markup_percentage = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0.00
-    )
+    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    markup_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     is_active = models.BooleanField(default=True)
+
     class Meta:
         app_label = "accounting"
         unique_together = ("hospital", "tier_code")
         ordering = ["tier_code"]
+
     def __str__(self):
         return f"{self.tier_code} - {self.name} ({self.tier_type})"
+
+
 class LedgerEntry(TenantModel):
-    entry_id = models.UUIDField(
-        default=uuid.uuid4, unique=True, editable=False
-    )  
+    entry_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     transaction_date = models.DateField()
     reference_number = models.CharField(max_length=100)
     description = models.CharField(max_length=255)
-    debit_account = models.ForeignKey(
-        ChartOfAccounts, on_delete=models.CASCADE, related_name="debit_entries"
-    )
+    debit_account = models.ForeignKey(ChartOfAccounts, on_delete=models.CASCADE, related_name="debit_entries")
     credit_account = models.ForeignKey(
         ChartOfAccounts,
         on_delete=models.CASCADE,
@@ -252,26 +263,15 @@ class LedgerEntry(TenantModel):
     )
     amount_cents = models.BigIntegerField()
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
-    exchange_rate = models.DecimalField(
-        max_digits=10, decimal_places=4, default=1.0000
-    )  
-    invoice = models.ForeignKey(
-        "AccountingInvoice", on_delete=models.SET_NULL, null=True, blank=True
-    )
-    payment = models.ForeignKey(
-        "AccountingPayment", on_delete=models.SET_NULL, null=True, blank=True
-    )
-    expense = models.ForeignKey(
-        "Expense", on_delete=models.SET_NULL, null=True, blank=True
-    )
-    payroll = models.ForeignKey(
-        "PayrollEntry", on_delete=models.SET_NULL, null=True, blank=True
-    )
+    exchange_rate = models.DecimalField(max_digits=10, decimal_places=4, default=1.0000)
+    invoice = models.ForeignKey("AccountingInvoice", on_delete=models.SET_NULL, null=True, blank=True)
+    payment = models.ForeignKey("AccountingPayment", on_delete=models.SET_NULL, null=True, blank=True)
+    expense = models.ForeignKey("Expense", on_delete=models.SET_NULL, null=True, blank=True)
+    payroll = models.ForeignKey("PayrollEntry", on_delete=models.SET_NULL, null=True, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     is_reversed = models.BooleanField(default=False)
-    reversal_entry = models.ForeignKey(
-        "self", on_delete=models.SET_NULL, null=True, blank=True
-    )
+    reversal_entry = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True)
+
     class Meta:
         app_label = "accounting"
         ordering = ["-transaction_date", "-created_at"]
@@ -280,11 +280,15 @@ class LedgerEntry(TenantModel):
             models.Index(fields=["debit_account", "transaction_date"]),
             models.Index(fields=["credit_account", "transaction_date"]),
         ]
+
     def __str__(self):
         return f"LE-{self.entry_id.hex[:8]} - {self.description}"
+
     @property
     def amount_currency(self):
         return Decimal(self.amount_cents) / 100
+
+
 class AccountingInvoice(TenantModel):
     INVOICE_TYPES = [
         ("PATIENT", "Patient Invoice"),
@@ -304,15 +308,9 @@ class AccountingInvoice(TenantModel):
     invoice_type = models.CharField(max_length=20, choices=INVOICE_TYPES)
     invoice_date = models.DateField()
     due_date = models.DateField()
-    patient = models.ForeignKey(
-        "patients.Patient", on_delete=models.CASCADE, null=True, blank=True
-    )
-    customer = models.ForeignKey(
-        Customer, on_delete=models.CASCADE, null=True, blank=True
-    )
-    vendor = models.ForeignKey(
-        Vendor, on_delete=models.CASCADE, null=True, blank=True
-    )  
+    patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, null=True, blank=True)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=True, blank=True)
+    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, null=True, blank=True)
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
     subtotal_cents = models.BigIntegerField(default=0)
     tax_cents = models.BigIntegerField(default=0)
@@ -320,27 +318,16 @@ class AccountingInvoice(TenantModel):
     total_cents = models.BigIntegerField(default=0)
     paid_cents = models.BigIntegerField(default=0)
     balance_cents = models.BigIntegerField(default=0)
-    bill = models.ForeignKey(
-        "billing.Bill", on_delete=models.SET_NULL, null=True, blank=True
-    )
-    cost_center = models.ForeignKey(
-        CostCenter, on_delete=models.SET_NULL, null=True, blank=True
-    )
-    status = models.CharField(
-        max_length=20, choices=INVOICE_STATUS, default="DRAFT"
-    )  
+    bill = models.ForeignKey("billing.Bill", on_delete=models.SET_NULL, null=True, blank=True)
+    cost_center = models.ForeignKey(CostCenter, on_delete=models.SET_NULL, null=True, blank=True)
+    status = models.CharField(max_length=20, choices=INVOICE_STATUS, default="DRAFT")
     terms_and_conditions = models.TextField(blank=True)
     notes = models.TextField(blank=True)
-    insurance_percentage = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0.00
-    )
-    employer_percentage = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0.00
-    )
-    patient_percentage = models.DecimalField(
-        max_digits=5, decimal_places=2, default=100.00
-    )
+    insurance_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    employer_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    patient_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=100.00)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
     class Meta:
         app_label = "accounting"
         ordering = ["-invoice_date"]
@@ -351,19 +338,20 @@ class AccountingInvoice(TenantModel):
             models.Index(fields=["patient"]),
             models.Index(fields=["customer"]),
         ]
+
     def __str__(self):
         return f"{self.invoice_number} - {self.get_invoice_type_display()}"
+
     def save(self, *args, **kwargs):
         if not self.invoice_number:
             self.generate_invoice_number()
         super().save(*args, **kwargs)
+
     def generate_invoice_number(self):
         current_year = timezone.now().year
         prefix = f"INV-{current_year}-"
         last_invoice = (
-            AccountingInvoice.objects.filter(
-                hospital=self.hospital, invoice_number__startswith=prefix
-            )
+            AccountingInvoice.objects.filter(hospital=self.hospital, invoice_number__startswith=prefix)
             .order_by("-invoice_number")
             .first()
         )
@@ -376,14 +364,13 @@ class AccountingInvoice(TenantModel):
         else:
             new_number = 1
         self.invoice_number = f"{prefix}{new_number:06d}"
+
     def calculate_totals(self):
         items = self.items.all()
         if items.exists():
             self.subtotal_cents = sum(item.subtotal_cents for item in items)
             self.tax_cents = sum(item.tax_cents for item in items)
-            self.total_cents = (
-                self.subtotal_cents + self.tax_cents - self.discount_cents
-            )
+            self.total_cents = self.subtotal_cents + self.tax_cents - self.discount_cents
         self.balance_cents = self.total_cents - self.paid_cents
         if self.total_cents > 0 and self.paid_cents >= self.total_cents:
             self.status = "PAID"
@@ -393,69 +380,55 @@ class AccountingInvoice(TenantModel):
             self.status = "OVERDUE"
         update_fields = ["balance_cents", "status"]
         if items.exists():
-            update_fields.extend(
-                ["subtotal_cents", "tax_cents", "total_cents"]
-            )  
+            update_fields.extend(["subtotal_cents", "tax_cents", "total_cents"])
         self.save(update_fields=update_fields)
+
+
 class InvoiceLineItem(TenantModel):
-    invoice = models.ForeignKey(
-        AccountingInvoice, on_delete=models.CASCADE, related_name="items"
-    )
+    invoice = models.ForeignKey(AccountingInvoice, on_delete=models.CASCADE, related_name="items")
     service = models.ForeignKey(
         "billing.ServiceCatalog",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    package = models.ForeignKey(
-        ServicePackage, on_delete=models.SET_NULL, null=True, blank=True
-    )
+    package = models.ForeignKey(ServicePackage, on_delete=models.SET_NULL, null=True, blank=True)
     description = models.CharField(max_length=255)
     quantity = models.DecimalField(max_digits=10, decimal_places=2, default=1)
     unit_price_cents = models.BigIntegerField()
-    cost_price_cents = models.BigIntegerField(
-        default=0
-    )  
-    subtotal_cents = models.BigIntegerField()  
-    discount_percentage = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0.00
-    )
+    cost_price_cents = models.BigIntegerField(default=0)
+    subtotal_cents = models.BigIntegerField()
+    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     discount_cents = models.BigIntegerField(default=0)
-    taxable_cents = models.BigIntegerField()  
+    taxable_cents = models.BigIntegerField()
     tax_cents = models.BigIntegerField(default=0)
-    cgst_rate = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0.00
-    )  
+    cgst_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     cgst_cents = models.BigIntegerField(default=0)
-    sgst_rate = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0.00
-    )  
+    sgst_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     sgst_cents = models.BigIntegerField(default=0)
-    igst_rate = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0.00
-    )  
+    igst_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     igst_cents = models.BigIntegerField(default=0)
-    total_cents = models.BigIntegerField()  
+    total_cents = models.BigIntegerField()
     is_outsourced = models.BooleanField(default=False)
-    outsource_vendor = models.ForeignKey(
-        Vendor, on_delete=models.SET_NULL, null=True, blank=True
-    )
+    outsource_vendor = models.ForeignKey(Vendor, on_delete=models.SET_NULL, null=True, blank=True)
     vendor_payout_cents = models.BigIntegerField(default=0)
+
     def save(self, *args, **kwargs):
         self.calculate_amounts()
         super().save(*args, **kwargs)
         self.invoice.calculate_totals()
+
     def calculate_amounts(self):
         self.subtotal_cents = int(self.quantity * self.unit_price_cents)
-        self.discount_cents = int(
-            self.subtotal_cents * self.discount_percentage / 100
-        )  
+        self.discount_cents = int(self.subtotal_cents * self.discount_percentage / 100)
         self.taxable_cents = self.subtotal_cents - self.discount_cents
         self.cgst_cents = int(self.taxable_cents * self.cgst_rate / 100)
         self.sgst_cents = int(self.taxable_cents * self.sgst_rate / 100)
         self.igst_cents = int(self.taxable_cents * self.igst_rate / 100)
         self.tax_cents = self.cgst_cents + self.sgst_cents + self.igst_cents
         self.total_cents = self.taxable_cents + self.tax_cents
+
+
 class AccountingPayment(TenantModel):
     PAYMENT_METHODS = [
         ("CASH", "Cash"),
@@ -478,48 +451,36 @@ class AccountingPayment(TenantModel):
     ]
     payment_number = models.CharField(max_length=50, unique=True)
     payment_date = models.DateField()
-    invoice = models.ForeignKey(
-        AccountingInvoice, on_delete=models.CASCADE, related_name="payments"
-    )
+    invoice = models.ForeignKey(AccountingInvoice, on_delete=models.CASCADE, related_name="payments")
     amount_cents = models.BigIntegerField()
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
-    exchange_rate = models.DecimalField(
-        max_digits=10, decimal_places=4, default=1.0000
-    )  
+    exchange_rate = models.DecimalField(max_digits=10, decimal_places=4, default=1.0000)
     payment_method = models.CharField(max_length=32, choices=PAYMENT_METHODS)
     reference_number = models.CharField(max_length=100, blank=True)
-    bank_account = models.ForeignKey(
-        "BankAccount", on_delete=models.SET_NULL, null=True, blank=True
-    )
+    bank_account = models.ForeignKey("BankAccount", on_delete=models.SET_NULL, null=True, blank=True)
     tds_cents = models.BigIntegerField(default=0)
-    tds_rate = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0.00
-    )  
-    status = models.CharField(
-        max_length=20, choices=PAYMENT_STATUS, default="PENDING"
-    )  
+    tds_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    status = models.CharField(max_length=20, choices=PAYMENT_STATUS, default="PENDING")
     notes = models.TextField(blank=True)
     received_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
     class Meta:
         app_label = "accounting"
         ordering = ["-payment_date"]
+
     def save(self, *args, **kwargs):
         if not self.payment_number:
             self.generate_payment_number()
         super().save(*args, **kwargs)
-        self.invoice.paid_cents = (
-            self.invoice.payments.aggregate(total=Sum("amount_cents"))["total"]
-            or 0  
-        )
+        self.invoice.paid_cents = self.invoice.payments.aggregate(total=Sum("amount_cents"))["total"] or 0
         self.invoice.save(update_fields=["paid_cents"])
         self.invoice.calculate_totals()
+
     def generate_payment_number(self):
         current_year = timezone.now().year
         prefix = f"PMT-{current_year}-"
         last_payment = (
-            AccountingPayment.objects.filter(
-                hospital=self.hospital, payment_number__startswith=prefix
-            )
+            AccountingPayment.objects.filter(hospital=self.hospital, payment_number__startswith=prefix)
             .order_by("-payment_number")
             .first()
         )
@@ -532,6 +493,8 @@ class AccountingPayment(TenantModel):
         else:
             new_number = 1
         self.payment_number = f"{prefix}{new_number:06d}"
+
+
 class Expense(TenantModel):
     EXPENSE_CATEGORIES = [
         ("MEDICAL_SUPPLIES", "Medical Supplies"),
@@ -557,7 +520,7 @@ class Expense(TenantModel):
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
     tax_cents = models.BigIntegerField(default=0)
     tds_cents = models.BigIntegerField(default=0)
-    net_amount_cents = models.BigIntegerField()  
+    net_amount_cents = models.BigIntegerField()
     invoice_number = models.CharField(max_length=100, blank=True)
     purchase_order_number = models.CharField(max_length=100, blank=True)
     is_approved = models.BooleanField(default=False)
@@ -571,23 +534,22 @@ class Expense(TenantModel):
         blank=True,
         related_name="approved_expenses",
     )
+
     class Meta:
         app_label = "accounting"
         ordering = ["-expense_date"]
+
     def save(self, *args, **kwargs):
         if not self.expense_number:
             self.generate_expense_number()
-        self.net_amount_cents = (
-            self.amount_cents + self.tax_cents - self.tds_cents
-        )  
+        self.net_amount_cents = self.amount_cents + self.tax_cents - self.tds_cents
         super().save(*args, **kwargs)
+
     def generate_expense_number(self):
         current_year = timezone.now().year
         prefix = f"EXP-{current_year}-"
         last_expense = (
-            Expense.objects.filter(
-                hospital=self.hospital, expense_number__startswith=prefix
-            )
+            Expense.objects.filter(hospital=self.hospital, expense_number__startswith=prefix)
             .order_by("-expense_number")
             .first()
         )
@@ -600,6 +562,8 @@ class Expense(TenantModel):
         else:
             new_number = 1
         self.expense_number = f"{prefix}{new_number:06d}"
+
+
 class BankAccount(TenantModel):
     account_name = models.CharField(max_length=255)
     account_number = models.CharField(max_length=50)
@@ -620,57 +584,42 @@ class BankAccount(TenantModel):
     opening_balance_cents = models.BigIntegerField(default=0)
     current_balance_cents = models.BigIntegerField(default=0)
     is_active = models.BooleanField(default=True)
+
     class Meta:
         app_label = "accounting"
         unique_together = ("hospital", "account_number", "ifsc_code")
+
     def __str__(self):
         return f"{self.account_name} - {self.account_number}"
+
     def update_balance(self):
-        total_credits = (
-            self.credit_transactions.aggregate(total=Sum("amount_cents"))[
-                "total"
-            ]  
-            or 0  
-        )
-        total_debits = (
-            self.debit_transactions.aggregate(total=Sum("amount_cents"))[
-                "total"
-            ]  
-            or 0  
-        )
-        self.current_balance_cents = (
-            self.opening_balance_cents + total_credits - total_debits
-        )
+        total_credits = self.credit_transactions.aggregate(total=Sum("amount_cents"))["total"] or 0
+        total_debits = self.debit_transactions.aggregate(total=Sum("amount_cents"))["total"] or 0
+        self.current_balance_cents = self.opening_balance_cents + total_credits - total_debits
         self.save(update_fields=["current_balance_cents"])
+
+
 class BankTransaction(TenantModel):
     TRANSACTION_TYPES = [
         ("CREDIT", "Credit"),
         ("DEBIT", "Debit"),
     ]
-    bank_account = models.ForeignKey(
-        BankAccount, on_delete=models.CASCADE, related_name="transactions"
-    )
+    bank_account = models.ForeignKey(BankAccount, on_delete=models.CASCADE, related_name="transactions")
     transaction_date = models.DateField()
-    transaction_type = models.CharField(
-        max_length=10, choices=TRANSACTION_TYPES
-    )  
+    transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)
     amount_cents = models.BigIntegerField()
     description = models.CharField(max_length=255)
     reference_number = models.CharField(max_length=100, blank=True)
     is_reconciled = models.BooleanField(default=False)
-    reconciled_payment = models.ForeignKey(
-        AccountingPayment, on_delete=models.SET_NULL, null=True, blank=True
-    )
-    reconciled_expense = models.ForeignKey(
-        Expense, on_delete=models.SET_NULL, null=True, blank=True
-    )
-    reconciled_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True
-    )
+    reconciled_payment = models.ForeignKey(AccountingPayment, on_delete=models.SET_NULL, null=True, blank=True)
+    reconciled_expense = models.ForeignKey(Expense, on_delete=models.SET_NULL, null=True, blank=True)
+    reconciled_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     reconciled_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         app_label = "accounting"
         ordering = ["-transaction_date"]
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if self.transaction_type == "CREDIT":
@@ -678,6 +627,8 @@ class BankTransaction(TenantModel):
         else:
             self.bank_account.current_balance_cents -= self.amount_cents
         self.bank_account.save(update_fields=["current_balance_cents"])
+
+
 class FixedAsset(TenantModel):
     ASSET_CATEGORIES = [
         ("MEDICAL_EQUIPMENT", "Medical Equipment"),
@@ -700,46 +651,39 @@ class FixedAsset(TenantModel):
     cost_center = models.ForeignKey(CostCenter, on_delete=models.CASCADE)
     purchase_date = models.DateField()
     purchase_cost_cents = models.BigIntegerField()
-    vendor = models.ForeignKey(
-        Vendor, on_delete=models.SET_NULL, null=True, blank=True
-    )  
+    vendor = models.ForeignKey(Vendor, on_delete=models.SET_NULL, null=True, blank=True)
     invoice_reference = models.CharField(max_length=100, blank=True)
-    depreciation_method = models.CharField(
-        max_length=32, choices=DEPRECIATION_METHODS, default="STRAIGHT_LINE"
-    )
+    depreciation_method = models.CharField(max_length=32, choices=DEPRECIATION_METHODS, default="STRAIGHT_LINE")
     useful_life_years = models.IntegerField()
     salvage_value_cents = models.BigIntegerField(default=0)
-    depreciation_rate = models.DecimalField(
-        max_digits=5, decimal_places=2, null=True, blank=True
-    )
+    depreciation_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     current_book_value_cents = models.BigIntegerField()
     accumulated_depreciation_cents = models.BigIntegerField(default=0)
     disposal_date = models.DateField(null=True, blank=True)
     disposal_amount_cents = models.BigIntegerField(null=True, blank=True)
     disposal_method = models.CharField(max_length=100, blank=True)
     is_active = models.BooleanField(default=True)
+
     class Meta:
         app_label = "accounting"
         unique_together = ("hospital", "asset_code")
         ordering = ["asset_code"]
+
     def __str__(self):
         return f"{self.asset_code} - {self.name}"
+
     def calculate_annual_depreciation(self):
         if self.depreciation_method == "STRAIGHT_LINE":
-            return (
-                self.purchase_cost_cents - self.salvage_value_cents
-            ) // self.useful_life_years
+            return (self.purchase_cost_cents - self.salvage_value_cents) // self.useful_life_years
         elif self.depreciation_method == "REDUCING_BALANCE":
-            rate = (
-                self.depreciation_rate / 100
-                if self.depreciation_rate
-                else (1 / self.useful_life_years)
-            )
+            rate = self.depreciation_rate / 100 if self.depreciation_rate else (1 / self.useful_life_years)
             return int(self.current_book_value_cents * rate)
         elif self.depreciation_method == "DOUBLE_DECLINING":
             rate = 2 / self.useful_life_years
             return int(self.current_book_value_cents * rate)
         return 0
+
+
 class DepreciationSchedule(TenantModel):
     asset = models.ForeignKey(
         FixedAsset,
@@ -751,14 +695,15 @@ class DepreciationSchedule(TenantModel):
     accumulated_depreciation_cents = models.BigIntegerField()
     book_value_cents = models.BigIntegerField()
     is_processed = models.BooleanField(default=False)
-    processed_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True
-    )
+    processed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     processed_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         app_label = "accounting"
         unique_together = ("asset", "depreciation_date")
         ordering = ["depreciation_date"]
+
+
 class PayrollEntry(TenantModel):
     PAYROLL_STATUS = [
         ("DRAFT", "Draft"),
@@ -766,9 +711,7 @@ class PayrollEntry(TenantModel):
         ("PAID", "Paid"),
         ("CANCELLED", "Cancelled"),
     ]
-    employee = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="payroll_entries"
-    )
+    employee = models.ForeignKey(User, on_delete=models.CASCADE, related_name="payroll_entries")
     pay_period_start = models.DateField()
     pay_period_end = models.DateField()
     pay_date = models.DateField()
@@ -777,20 +720,14 @@ class PayrollEntry(TenantModel):
     medical_allowance_cents = models.BigIntegerField(default=0)
     transport_allowance_cents = models.BigIntegerField(default=0)
     other_allowances_cents = models.BigIntegerField(default=0)
-    overtime_hours = models.DecimalField(
-        max_digits=6, decimal_places=2, default=0
-    )  
+    overtime_hours = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     overtime_rate_cents = models.BigIntegerField(default=0)
     bonus_cents = models.BigIntegerField(default=0)
     incentive_cents = models.BigIntegerField(default=0)
     pf_employee_cents = models.BigIntegerField(default=0)
-    pf_employer_cents = models.BigIntegerField(
-        default=0
-    )  
+    pf_employer_cents = models.BigIntegerField(default=0)
     esi_employee_cents = models.BigIntegerField(default=0)
-    esi_employer_cents = models.BigIntegerField(
-        default=0
-    )  
+    esi_employer_cents = models.BigIntegerField(default=0)
     professional_tax_cents = models.BigIntegerField(default=0)
     tds_cents = models.BigIntegerField(default=0)
     advance_deduction_cents = models.BigIntegerField(default=0)
@@ -798,16 +735,10 @@ class PayrollEntry(TenantModel):
     gross_salary_cents = models.BigIntegerField()
     total_deductions_cents = models.BigIntegerField()
     net_salary_cents = models.BigIntegerField()
-    employer_cost_cents = (
-        models.BigIntegerField()
-    )  
-    status = models.CharField(
-        max_length=20, choices=PAYROLL_STATUS, default="DRAFT"
-    )  
+    employer_cost_cents = models.BigIntegerField()
+    status = models.CharField(max_length=20, choices=PAYROLL_STATUS, default="DRAFT")
     cost_center = models.ForeignKey(CostCenter, on_delete=models.CASCADE)
-    created_by = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="created_payrolls"
-    )
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_payrolls")
     approved_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -815,13 +746,16 @@ class PayrollEntry(TenantModel):
         blank=True,
         related_name="approved_payrolls",
     )
+
     class Meta:
         app_label = "accounting"
         unique_together = ("employee", "pay_period_start", "pay_period_end")
         ordering = ["-pay_date"]
+
     def save(self, *args, **kwargs):
         self.calculate_totals()
         super().save(*args, **kwargs)
+
     def calculate_totals(self):
         self.gross_salary_cents = (
             self.basic_salary_cents
@@ -841,14 +775,10 @@ class PayrollEntry(TenantModel):
             + self.advance_deduction_cents
             + self.other_deductions_cents
         )
-        self.net_salary_cents = (
-            self.gross_salary_cents - self.total_deductions_cents
-        )  
-        self.employer_cost_cents = (
-            self.gross_salary_cents
-            + self.pf_employer_cents
-            + self.esi_employer_cents  
-        )
+        self.net_salary_cents = self.gross_salary_cents - self.total_deductions_cents
+        self.employer_cost_cents = self.gross_salary_cents + self.pf_employer_cents + self.esi_employer_cents
+
+
 class InsuranceClaim(TenantModel):
     CLAIM_STATUS = [
         ("DRAFT", "Draft"),
@@ -869,28 +799,27 @@ class InsuranceClaim(TenantModel):
     submission_date = models.DateField(null=True, blank=True)
     approval_date = models.DateField(null=True, blank=True)
     payment_date = models.DateField(null=True, blank=True)
-    status = models.CharField(
-        max_length=32, choices=CLAIM_STATUS, default="DRAFT"
-    )  
+    status = models.CharField(max_length=32, choices=CLAIM_STATUS, default="DRAFT")
     rejection_reason = models.TextField(blank=True)
     insurance_ref_number = models.CharField(max_length=100, blank=True)
     policy_number = models.CharField(max_length=100, blank=True)
     authorization_number = models.CharField(max_length=100, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
     class Meta:
         app_label = "accounting"
         ordering = ["-submission_date"]
+
     def save(self, *args, **kwargs):
         if not self.claim_number:
             self.generate_claim_number()
         super().save(*args, **kwargs)
+
     def generate_claim_number(self):
         current_year = timezone.now().year
         prefix = f"CLM-{current_year}-"
         last_claim = (
-            InsuranceClaim.objects.filter(
-                hospital=self.hospital, claim_number__startswith=prefix
-            )
+            InsuranceClaim.objects.filter(hospital=self.hospital, claim_number__startswith=prefix)
             .order_by("-claim_number")
             .first()
         )
@@ -903,6 +832,8 @@ class InsuranceClaim(TenantModel):
         else:
             new_number = 1
         self.claim_number = f"{prefix}{new_number:06d}"
+
+
 class TDSEntry(TenantModel):
     TDS_SECTIONS = [
         ("194A", "Interest other than on Securities - 194A"),
@@ -916,9 +847,7 @@ class TDSEntry(TenantModel):
     tds_entry_number = models.CharField(max_length=50, unique=True)
     deduction_date = models.DateField()
     section = models.CharField(max_length=10, choices=TDS_SECTIONS)
-    vendor = models.ForeignKey(
-        Vendor, on_delete=models.CASCADE, null=True, blank=True
-    )  
+    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, null=True, blank=True)
     employee = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -929,31 +858,26 @@ class TDSEntry(TenantModel):
     gross_amount_cents = models.BigIntegerField()
     tds_rate = models.DecimalField(max_digits=5, decimal_places=2)
     tds_amount_cents = models.BigIntegerField()
-    expense = models.ForeignKey(
-        Expense, on_delete=models.SET_NULL, null=True, blank=True
-    )
-    payroll = models.ForeignKey(
-        PayrollEntry, on_delete=models.SET_NULL, null=True, blank=True
-    )
+    expense = models.ForeignKey(Expense, on_delete=models.SET_NULL, null=True, blank=True)
+    payroll = models.ForeignKey(PayrollEntry, on_delete=models.SET_NULL, null=True, blank=True)
     certificate_number = models.CharField(max_length=100, blank=True)
     certificate_date = models.DateField(null=True, blank=True)
-    created_by = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="created_tds_entries"
-    )
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_tds_entries")
+
     class Meta:
         app_label = "accounting"
         ordering = ["-deduction_date"]
+
     def save(self, *args, **kwargs):
         if not self.tds_entry_number:
             self.generate_tds_number()
         super().save(*args, **kwargs)
+
     def generate_tds_number(self):
         current_year = timezone.now().year
         prefix = f"TDS-{current_year}-"
         last_tds = (
-            TDSEntry.objects.filter(
-                hospital=self.hospital, tds_entry_number__startswith=prefix
-            )
+            TDSEntry.objects.filter(hospital=self.hospital, tds_entry_number__startswith=prefix)
             .order_by("-tds_entry_number")
             .first()
         )
@@ -966,6 +890,8 @@ class TDSEntry(TenantModel):
         else:
             new_number = 1
         self.tds_entry_number = f"{prefix}{new_number:06d}"
+
+
 class BookLock(TenantModel):
     lock_date = models.DateField()
     lock_type = models.CharField(
@@ -978,27 +904,33 @@ class BookLock(TenantModel):
     )
     locked_by = models.ForeignKey(User, on_delete=models.CASCADE)
     reason = models.TextField()
+
     class Meta:
         app_label = "accounting"
         unique_together = ("hospital", "lock_date", "lock_type")
         ordering = ["-lock_date"]
+
     def __str__(self):
         return f"{self.lock_type} lock for {self.lock_date}"
+
+
 class AccountingPeriod(TenantModel):
     period_name = models.CharField(max_length=100)
     start_date = models.DateField()
     end_date = models.DateField()
     is_closed = models.BooleanField(default=False)
-    closed_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True
-    )
+    closed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     closed_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         app_label = "accounting"
         unique_together = ("hospital", "start_date", "end_date")
         ordering = ["-start_date"]
+
     def __str__(self):
         return f"{self.period_name} ({self.start_date} to {self.end_date})"
+
+
 class VendorPayout(TenantModel):
     PAYOUT_STATUS = [
         ("PENDING", "Pending"),
@@ -1010,44 +942,33 @@ class VendorPayout(TenantModel):
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE)
     payout_date = models.DateField()
     total_services_cents = models.BigIntegerField()
-    commission_rate = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0.00
-    )  
+    commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     commission_cents = models.BigIntegerField(default=0)
     gross_payout_cents = models.BigIntegerField()
     tds_cents = models.BigIntegerField(default=0)
     other_deductions_cents = models.BigIntegerField(default=0)
     net_payout_cents = models.BigIntegerField()
-    status = models.CharField(
-        max_length=20, choices=PAYOUT_STATUS, default="PENDING"
-    )  
+    status = models.CharField(max_length=20, choices=PAYOUT_STATUS, default="PENDING")
     payment_reference = models.CharField(max_length=100, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
     class Meta:
         app_label = "accounting"
         ordering = ["-payout_date"]
+
     def save(self, *args, **kwargs):
         if not self.payout_number:
             self.generate_payout_number()
-        self.commission_cents = int(
-            self.total_services_cents * self.commission_rate / 100
-        )
-        self.gross_payout_cents = (
-            self.total_services_cents - self.commission_cents
-        )  
-        self.net_payout_cents = (
-            self.gross_payout_cents
-            - self.tds_cents
-            - self.other_deductions_cents  
-        )
+        self.commission_cents = int(self.total_services_cents * self.commission_rate / 100)
+        self.gross_payout_cents = self.total_services_cents - self.commission_cents
+        self.net_payout_cents = self.gross_payout_cents - self.tds_cents - self.other_deductions_cents
         super().save(*args, **kwargs)
+
     def generate_payout_number(self):
         current_year = timezone.now().year
         prefix = f"PAY-{current_year}-"
         last_payout = (
-            VendorPayout.objects.filter(
-                hospital=self.hospital, payout_number__startswith=prefix
-            )
+            VendorPayout.objects.filter(hospital=self.hospital, payout_number__startswith=prefix)
             .order_by("-payout_number")
             .first()
         )
@@ -1060,16 +981,16 @@ class VendorPayout(TenantModel):
         else:
             new_number = 1
         self.payout_number = f"{prefix}{new_number:06d}"
+
+
 class VendorPayoutItem(TenantModel):
-    payout = models.ForeignKey(
-        VendorPayout, on_delete=models.CASCADE, related_name="items"
-    )
-    invoice_line_item = models.ForeignKey(
-        InvoiceLineItem, on_delete=models.CASCADE
-    )  
+    payout = models.ForeignKey(VendorPayout, on_delete=models.CASCADE, related_name="items")
+    invoice_line_item = models.ForeignKey(InvoiceLineItem, on_delete=models.CASCADE)
     service_date = models.DateField()
     amount_cents = models.BigIntegerField()
     patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE)
+
+
 class RecurringInvoice(TenantModel):
     FREQUENCY_CHOICES = [
         ("MONTHLY", "Monthly"),
@@ -1077,9 +998,7 @@ class RecurringInvoice(TenantModel):
         ("HALF_YEARLY", "Half Yearly"),
         ("YEARLY", "Yearly"),
     ]
-    template_invoice = models.ForeignKey(
-        AccountingInvoice, on_delete=models.CASCADE
-    )  
+    template_invoice = models.ForeignKey(AccountingInvoice, on_delete=models.CASCADE)
     frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES)
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
@@ -1087,9 +1006,12 @@ class RecurringInvoice(TenantModel):
     last_generated_date = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
     class Meta:
         app_label = "accounting"
         ordering = ["next_billing_date"]
+
+
 class TaxLiability(TenantModel):
     period_start = models.DateField()
     period_end = models.DateField()
@@ -1103,6 +1025,7 @@ class TaxLiability(TenantModel):
     return_filed = models.BooleanField(default=False)
     filing_date = models.DateField(null=True, blank=True)
     acknowledgment_number = models.CharField(max_length=100, blank=True)
+
     class Meta:
         app_label = "accounting"
         unique_together = (
@@ -1112,6 +1035,8 @@ class TaxLiability(TenantModel):
             "tax_type",
         )
         ordering = ["-period_start"]
+
+
 class ComplianceDocument(TenantModel):
     DOCUMENT_TYPES = [
         ("GST_CERTIFICATE", "GST Certificate"),
@@ -1131,39 +1056,45 @@ class ComplianceDocument(TenantModel):
     issue_date = models.DateField()
     expiry_date = models.DateField(null=True, blank=True)
     renewal_date = models.DateField(null=True, blank=True)
-    document_file = models.FileField(
-        upload_to="compliance_documents/", null=True, blank=True
-    )
+    document_file = models.FileField(upload_to="compliance_documents/", null=True, blank=True)
     is_active = models.BooleanField(default=True)
+
     class Meta:
         app_label = "accounting"
         unique_together = ("hospital", "document_type", "document_number")
         ordering = ["expiry_date"]
+
     def __str__(self):
         return f"{self.get_document_type_display()} - {self.document_number}"
+
     @property
     def is_expiring_soon(self):
         if self.expiry_date:
             return (self.expiry_date - timezone.now().date()).days <= 30
         return False
+
+
 class FinancialYear(TenantModel):
     name = models.CharField(max_length=20, help_text="e.g., 2024-25")
     start_date = models.DateField()
     end_date = models.DateField()
     is_current = models.BooleanField(default=False)
     is_locked = models.BooleanField(default=False)
+
     class Meta:
         app_label = "accounting"
         unique_together = ("hospital", "name")
         ordering = ["-start_date"]
+
     def save(self, *args, **kwargs):
         if self.is_current:
-            FinancialYear.objects.filter(
-                hospital=self.hospital, is_current=True
-            ).update(is_current=False)
+            FinancialYear.objects.filter(hospital=self.hospital, is_current=True).update(is_current=False)
         super().save(*args, **kwargs)
+
     def __str__(self):
         return f"FY {self.name}"
+
+
 class Budget(TenantModel):
     financial_year = models.ForeignKey(FinancialYear, on_delete=models.CASCADE)
     cost_center = models.ForeignKey(CostCenter, on_delete=models.CASCADE)
@@ -1171,31 +1102,27 @@ class Budget(TenantModel):
     budgeted_amount_cents = models.BigIntegerField()
     actual_amount_cents = models.BigIntegerField(default=0)
     variance_cents = models.BigIntegerField(default=0)
-    variance_percentage = models.DecimalField(
-        max_digits=6, decimal_places=2, default=0.00
-    )
+    variance_percentage = models.DecimalField(max_digits=6, decimal_places=2, default=0.00)
     notes = models.TextField(blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
     class Meta:
         app_label = "accounting"
         unique_together = ("financial_year", "cost_center", "account")
         ordering = ["cost_center", "account"]
+
     def calculate_variance(self):
-        self.variance_cents = (
-            self.actual_amount_cents - self.budgeted_amount_cents
-        )  
+        self.variance_cents = self.actual_amount_cents - self.budgeted_amount_cents
         if self.budgeted_amount_cents != 0:
-            self.variance_percentage = (
-                self.variance_cents / self.budgeted_amount_cents
-            ) * 100
+            self.variance_percentage = (self.variance_cents / self.budgeted_amount_cents) * 100
         else:
             self.variance_percentage = 0
         self.save(update_fields=["variance_cents", "variance_percentage"])
+
+
 class ProviderCommissionStructure(TenantModel):
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE)
-    service = models.ForeignKey(
-        "billing.ServiceCatalog", on_delete=models.CASCADE
-    )  
+    service = models.ForeignKey("billing.ServiceCatalog", on_delete=models.CASCADE)
     commission_type = models.CharField(
         max_length=20,
         choices=[
@@ -1204,16 +1131,17 @@ class ProviderCommissionStructure(TenantModel):
             ("TIER", "Tier Based"),
         ],
     )
-    commission_rate = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0.00
-    )  
+    commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     fixed_amount_cents = models.BigIntegerField(default=0)
     effective_from = models.DateField()
     effective_to = models.DateField(null=True, blank=True)
+
     class Meta:
         app_label = "accounting"
         unique_together = ("vendor", "service", "effective_from")
         ordering = ["-effective_from"]
+
+
 class ReportSchedule(TenantModel):
     REPORT_TYPES = [
         ("PROFIT_LOSS", "Profit & Loss Statement"),
@@ -1235,16 +1163,17 @@ class ReportSchedule(TenantModel):
     report_name = models.CharField(max_length=255)
     report_type = models.CharField(max_length=32, choices=REPORT_TYPES)
     frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES)
-    recipients = models.TextField(
-        help_text="Email addresses separated by commas"
-    )  
+    recipients = models.TextField(help_text="Email addresses separated by commas")
     last_generated = models.DateTimeField(null=True, blank=True)
     next_generation = models.DateTimeField()
     is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
     class Meta:
         app_label = "accounting"
         ordering = ["next_generation"]
+
+
 class AccountingAuditLog(TenantModel):
     ACTION_TYPES = [
         ("CREATE", "Create"),
@@ -1255,9 +1184,7 @@ class AccountingAuditLog(TenantModel):
         ("REVERSE", "Reverse"),
         ("RECONCILE", "Reconcile"),
     ]
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, null=True, blank=True
-    )  
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     action_type = models.CharField(max_length=20, choices=ACTION_TYPES)
     table_name = models.CharField(max_length=100)
     record_id = models.CharField(max_length=100)
@@ -1266,6 +1193,7 @@ class AccountingAuditLog(TenantModel):
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         app_label = "accounting"
         ordering = ["-timestamp"]
@@ -1273,6 +1201,8 @@ class AccountingAuditLog(TenantModel):
             models.Index(fields=["table_name", "record_id"]),
             models.Index(fields=["user", "timestamp"]),
         ]
+
+
 class ImportBatch(TenantModel):
     IMPORT_TYPES = [
         ("BANK_STATEMENT", "Bank Statement"),
@@ -1298,9 +1228,12 @@ class ImportBatch(TenantModel):
     )
     error_log = models.TextField(blank=True)
     imported_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
     class Meta:
         app_label = "accounting"
         ordering = ["-created_at"]
+
+
 class ExportLog(TenantModel):
     EXPORT_TYPES = [
         ("EXCEL", "Excel Export"),
@@ -1315,6 +1248,7 @@ class ExportLog(TenantModel):
     file_path = models.CharField(max_length=500)
     file_size_bytes = models.BigIntegerField(default=0)
     exported_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
     class Meta:
         app_label = "accounting"
         ordering = ["-created_at"]

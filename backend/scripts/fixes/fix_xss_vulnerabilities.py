@@ -1,13 +1,11 @@
 import ast
 import re
 from pathlib import Path
+
+
 class XSSFixer(ast.NodeTransformer):
     def visit_Call(self, node):
-        if (
-            isinstance(node.func, ast.Name)
-            and node.func.id == "format_html"
-            and len(node.args) > 0
-        ):
+        if isinstance(node.func, ast.Name) and node.func.id == "format_html" and len(node.args) > 0:
             new_args = []
             for arg in node.args:
                 if isinstance(arg, ast.Str):
@@ -26,6 +24,8 @@ class XSSFixer(ast.NodeTransformer):
             ast.fix_missing_locations(node)
         self.generic_visit(node)
         return node
+
+
 def fix_file(filepath):
     try:
         with open(filepath, "r") as f:
@@ -61,6 +61,8 @@ def fix_file(filepath):
         print(f"Fixed {filepath} (backup: {backup_path})")
     except Exception as e:
         print(f"Error fixing {filepath}: {e}")
+
+
 def main():
     backend_path = Path(__file__).parent.parent.parent / "backend"
     for py_file in backend_path.rglob("*.py"):
@@ -72,5 +74,7 @@ def main():
         except Exception:
             pass
     print("XSS vulnerability fixes complete")
+
+
 if __name__ == "__main__":
     main()

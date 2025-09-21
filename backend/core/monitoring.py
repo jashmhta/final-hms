@@ -6,42 +6,49 @@ Enterprise-grade monitoring for healthcare systems with real-time alerts and ana
 import asyncio
 import json
 import logging
-import time
-import psutil
 import threading
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Union
-from dataclasses import dataclass, asdict
-from enum import Enum
+import time
 from collections import defaultdict, deque
-import asyncio
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional, Union
+
+import aiohttp
+import psutil
+import redis.asyncio as aioredis
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 from prometheus_client.core import REGISTRY
-import redis.asyncio as aioredis
-import aiohttp
+
 from django.conf import settings
 from django.core.cache import cache
 from django.db import connections
 from django.utils import timezone
 
+
 class MonitoringLevel(Enum):
     """Monitoring levels for different components"""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
     INFO = "info"
+
 
 class AlertSeverity(Enum):
     """Alert severity levels"""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
     INFO = "info"
 
+
 class ComponentType(Enum):
     """Component types being monitored"""
+
     API = "api"
     DATABASE = "database"
     CACHE = "cache"
@@ -50,9 +57,11 @@ class ComponentType(Enum):
     EXTERNAL_SERVICE = "external_service"
     SYSTEM = "system"
 
+
 @dataclass
 class SystemMetrics:
     """System-level metrics"""
+
     cpu_percent: float
     memory_percent: float
     disk_usage_percent: float
@@ -62,9 +71,11 @@ class SystemMetrics:
     load_average: float
     timestamp: datetime
 
+
 @dataclass
 class ApplicationMetrics:
     """Application-level metrics"""
+
     request_count: int
     response_time_avg: float
     error_rate: float
@@ -73,9 +84,11 @@ class ApplicationMetrics:
     database_connections: int
     timestamp: datetime
 
+
 @dataclass
 class Alert:
     """Alert structure"""
+
     id: str
     component: str
     component_type: ComponentType
@@ -86,6 +99,7 @@ class Alert:
     resolved: bool = False
     resolved_at: Optional[datetime] = None
     metadata: Dict = None
+
 
 class MetricsCollector:
     """Collect metrics from various sources"""
@@ -100,14 +114,14 @@ class MetricsCollector:
         try:
             # CPU metrics
             cpu_percent = psutil.cpu_percent(interval=1)
-            load_avg = psutil.getloadavg()[0] if hasattr(psutil, 'getloadavg') else 0.0
+            load_avg = psutil.getloadavg()[0] if hasattr(psutil, "getloadavg") else 0.0
 
             # Memory metrics
             memory = psutil.virtual_memory()
             memory_percent = memory.percent
 
             # Disk metrics
-            disk = psutil.disk_usage('/')
+            disk = psutil.disk_usage("/")
             disk_usage_percent = disk.percent
 
             # Network metrics
@@ -126,7 +140,7 @@ class MetricsCollector:
                 network_io_bytes_recv=network_io_bytes_recv,
                 process_count=process_count,
                 load_average=load_avg,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
 
             self.system_metrics_history.append(metrics)
@@ -151,10 +165,10 @@ class MetricsCollector:
 
             # Cache metrics
             cache_hit_rate = 0.0
-            if hasattr(cache, 'get_stats'):
+            if hasattr(cache, "get_stats"):
                 stats = cache.get_stats()
-                hits = stats.get('hits', 0)
-                misses = stats.get('misses', 0)
+                hits = stats.get("hits", 0)
+                misses = stats.get("misses", 0)
                 total = hits + misses
                 if total > 0:
                     cache_hit_rate = (hits / total) * 100
@@ -166,7 +180,7 @@ class MetricsCollector:
                 active_connections=0,  # Would be tracked by connection tracking
                 cache_hit_rate=cache_hit_rate,
                 database_connections=db_connections,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
 
             self.app_metrics_history.append(metrics)
@@ -178,12 +192,7 @@ class MetricsCollector:
 
     def add_custom_metric(self, name: str, value: float, tags: Dict = None):
         """Add custom metric"""
-        metric = {
-            "name": name,
-            "value": value,
-            "timestamp": datetime.now(),
-            "tags": tags or {}
-        }
+        metric = {"name": name, "value": value, "timestamp": datetime.now(), "tags": tags or {}}
         self.custom_metrics[name].append(metric)
 
     def get_metrics_summary(self) -> Dict:
@@ -191,14 +200,15 @@ class MetricsCollector:
         return {
             "system": {
                 "current": self.system_metrics_history[-1] if self.system_metrics_history else None,
-                "history_size": len(self.system_metrics_history)
+                "history_size": len(self.system_metrics_history),
             },
             "application": {
                 "current": self.app_metrics_history[-1] if self.app_metrics_history else None,
-                "history_size": len(self.app_metrics_history)
+                "history_size": len(self.app_metrics_history),
             },
-            "custom": {name: len(metrics) for name, metrics in self.custom_metrics.items()}
+            "custom": {name: len(metrics) for name, metrics in self.custom_metrics.items()},
         }
+
 
 class AlertManager:
     """Manage alerts and notifications"""
@@ -209,9 +219,15 @@ class AlertManager:
         self.notification_channels: List[Dict] = []
         self.alert_history = deque(maxlen=10000)
 
-    def add_alert_rule(self, name: str, condition: str, severity: AlertSeverity,
-                      component: str, component_type: ComponentType,
-                      description: str = None):
+    def add_alert_rule(
+        self,
+        name: str,
+        condition: str,
+        severity: AlertSeverity,
+        component: str,
+        component_type: ComponentType,
+        description: str = None,
+    ):
         """Add alert rule"""
         rule = {
             "name": name,
@@ -221,20 +237,14 @@ class AlertManager:
             "component_type": component_type,
             "description": description or f"Alert rule: {name}",
             "enabled": True,
-            "created_at": datetime.now()
+            "created_at": datetime.now(),
         }
         self.alert_rules.append(rule)
         logging.info(f"Added alert rule: {name}")
 
-    def add_notification_channel(self, name: str, channel_type: str,
-                                config: Dict):
+    def add_notification_channel(self, name: str, channel_type: str, config: Dict):
         """Add notification channel"""
-        channel = {
-            "name": name,
-            "type": channel_type,
-            "config": config,
-            "enabled": True
-        }
+        channel = {"name": name, "type": channel_type, "config": config, "enabled": True}
         self.notification_channels.append(channel)
         logging.info(f"Added notification channel: {name}")
 
@@ -262,7 +272,7 @@ class AlertManager:
                             severity=rule["severity"],
                             title=rule["name"],
                             description=rule["description"],
-                            timestamp=datetime.now()
+                            timestamp=datetime.now(),
                         )
                         self.alerts.append(alert)
                         self.alert_history.append(alert)
@@ -300,8 +310,11 @@ class AlertManager:
     def _find_existing_alert(self, rule_name: str) -> Optional[Alert]:
         """Find existing unresolved alert for rule"""
         for alert in self.alerts:
-            if (alert.title == rule_name and not alert.resolved and
-                alert.timestamp > datetime.now() - timedelta(hours=1)):
+            if (
+                alert.title == rule_name
+                and not alert.resolved
+                and alert.timestamp > datetime.now() - timedelta(hours=1)
+            ):
                 return alert
         return None
 
@@ -330,13 +343,11 @@ class AlertManager:
                 "description": alert.description,
                 "severity": alert.severity.value,
                 "component": alert.component,
-                "timestamp": alert.timestamp.isoformat()
+                "timestamp": alert.timestamp.isoformat(),
             }
 
             async with session.post(
-                channel["config"]["url"],
-                json=payload,
-                headers=channel["config"].get("headers", {})
+                channel["config"]["url"], json=payload, headers=channel["config"].get("headers", {})
             ) as response:
                 if response.status == 200:
                     logging.info(f"Webhook notification sent for alert {alert.id}")
@@ -356,21 +367,23 @@ class AlertManager:
             AlertSeverity.HIGH: "warning",
             AlertSeverity.MEDIUM: "warning",
             AlertSeverity.LOW: "good",
-            AlertSeverity.INFO: "good"
+            AlertSeverity.INFO: "good",
         }[alert.severity]
 
         payload = {
             "text": f"Alert: {alert.title}",
-            "attachments": [{
-                "color": color,
-                "title": alert.title,
-                "text": alert.description,
-                "fields": [
-                    {"title": "Severity", "value": alert.severity.value, "short": True},
-                    {"title": "Component", "value": alert.component, "short": True},
-                    {"title": "Time", "value": alert.timestamp.strftime("%Y-%m-%d %H:%M:%S"), "short": True}
-                ]
-            }]
+            "attachments": [
+                {
+                    "color": color,
+                    "title": alert.title,
+                    "text": alert.description,
+                    "fields": [
+                        {"title": "Severity", "value": alert.severity.value, "short": True},
+                        {"title": "Component", "value": alert.component, "short": True},
+                        {"title": "Time", "value": alert.timestamp.strftime("%Y-%m-%d %H:%M:%S"), "short": True},
+                    ],
+                }
+            ],
         }
 
         async with aiohttp.ClientSession() as session:
@@ -390,6 +403,7 @@ class AlertManager:
                 return True
         return False
 
+
 class HealthChecker:
     """Health check for various components"""
 
@@ -397,15 +411,14 @@ class HealthChecker:
         self.health_checks: Dict[str, Dict] = {}
         self.health_history = deque(maxlen=1000)
 
-    def add_health_check(self, name: str, check_func: callable,
-                        component_type: ComponentType, timeout: int = 30):
+    def add_health_check(self, name: str, check_func: callable, component_type: ComponentType, timeout: int = 30):
         """Add health check"""
         self.health_checks[name] = {
             "function": check_func,
             "component_type": component_type,
             "timeout": timeout,
             "last_check": None,
-            "last_status": None
+            "last_status": None,
         }
 
     async def run_health_checks(self) -> Dict[str, Dict]:
@@ -415,10 +428,7 @@ class HealthChecker:
         for name, check_config in self.health_checks.items():
             try:
                 # Run health check with timeout
-                result = await asyncio.wait_for(
-                    check_config["function"](),
-                    timeout=check_config["timeout"]
-                )
+                result = await asyncio.wait_for(check_config["function"](), timeout=check_config["timeout"])
 
                 health_result = {
                     "name": name,
@@ -426,7 +436,7 @@ class HealthChecker:
                     "status": "healthy" if result.get("healthy", False) else "unhealthy",
                     "details": result.get("details", {}),
                     "timestamp": datetime.now(),
-                    "response_time": result.get("response_time", 0)
+                    "response_time": result.get("response_time", 0),
                 }
 
                 # Update health check config
@@ -443,7 +453,7 @@ class HealthChecker:
                     "status": "timeout",
                     "details": {"error": "Health check timed out"},
                     "timestamp": datetime.now(),
-                    "response_time": check_config["timeout"]
+                    "response_time": check_config["timeout"],
                 }
             except Exception as e:
                 results[name] = {
@@ -452,7 +462,7 @@ class HealthChecker:
                     "status": "error",
                     "details": {"error": str(e)},
                     "timestamp": datetime.now(),
-                    "response_time": 0
+                    "response_time": 0,
                 }
 
         return results
@@ -463,8 +473,7 @@ class HealthChecker:
             return {"status": "unknown", "checks": 0}
 
         recent_checks = [
-            check for check in self.health_history
-            if check["timestamp"] > datetime.now() - timedelta(minutes=5)
+            check for check in self.health_history if check["timestamp"] > datetime.now() - timedelta(minutes=5)
         ]
 
         if not recent_checks:
@@ -484,8 +493,9 @@ class HealthChecker:
             "status": status,
             "healthy_checks": healthy_count,
             "total_checks": total_count,
-            "percentage": (healthy_count / total_count * 100) if total_count > 0 else 0
+            "percentage": (healthy_count / total_count * 100) if total_count > 0 else 0,
         }
+
 
 class MetricsExporter:
     """Export metrics to external systems"""
@@ -497,36 +507,24 @@ class MetricsExporter:
     def _setup_prometheus_metrics(self):
         """Setup Prometheus metrics"""
         # System metrics
-        self.prometheus_metrics["system_cpu_percent"] = Gauge(
-            "system_cpu_percent", "System CPU usage percentage"
-        )
+        self.prometheus_metrics["system_cpu_percent"] = Gauge("system_cpu_percent", "System CPU usage percentage")
         self.prometheus_metrics["system_memory_percent"] = Gauge(
             "system_memory_percent", "System memory usage percentage"
         )
-        self.prometheus_metrics["system_disk_percent"] = Gauge(
-            "system_disk_percent", "System disk usage percentage"
-        )
+        self.prometheus_metrics["system_disk_percent"] = Gauge("system_disk_percent", "System disk usage percentage")
 
         # Application metrics
-        self.prometheus_metrics["app_requests_total"] = Counter(
-            "app_requests_total", "Total number of requests"
-        )
+        self.prometheus_metrics["app_requests_total"] = Counter("app_requests_total", "Total number of requests")
         self.prometheus_metrics["app_response_time_seconds"] = Histogram(
             "app_response_time_seconds", "Response time in seconds"
         )
-        self.prometheus_metrics["app_errors_total"] = Counter(
-            "app_errors_total", "Total number of errors"
-        )
+        self.prometheus_metrics["app_errors_total"] = Counter("app_errors_total", "Total number of errors")
 
         # Database metrics
-        self.prometheus_metrics["db_connections_active"] = Gauge(
-            "db_connections_active", "Active database connections"
-        )
+        self.prometheus_metrics["db_connections_active"] = Gauge("db_connections_active", "Active database connections")
 
         # Custom metrics
-        self.prometheus_metrics["custom_metric"] = Gauge(
-            "custom_metric", "Custom metric", ["name", "tag"]
-        )
+        self.prometheus_metrics["custom_metric"] = Gauge("custom_metric", "Custom metric", ["name", "tag"])
 
     def update_prometheus_metrics(self, metrics: Dict):
         """Update Prometheus metrics"""
@@ -554,11 +552,11 @@ class MetricsExporter:
         except Exception as e:
             logging.error(f"Failed to start Prometheus server: {e}")
 
+
 class MonitoringDashboard:
     """Generate monitoring dashboard data"""
 
-    def __init__(self, metrics_collector: MetricsCollector, alert_manager: AlertManager,
-                 health_checker: HealthChecker):
+    def __init__(self, metrics_collector: MetricsCollector, alert_manager: AlertManager, health_checker: HealthChecker):
         self.metrics_collector = metrics_collector
         self.alert_manager = alert_manager
         self.health_checker = health_checker
@@ -572,29 +570,27 @@ class MonitoringDashboard:
                 "active": len([a for a in self.alert_manager.alerts if not a.resolved]),
                 "total": len(self.alert_manager.alerts),
                 "recent": [
-                    asdict(alert) for alert in sorted(
-                        self.alert_manager.alerts,
-                        key=lambda x: x.timestamp,
-                        reverse=True
-                    )[:10]
-                ]
+                    asdict(alert)
+                    for alert in sorted(self.alert_manager.alerts, key=lambda x: x.timestamp, reverse=True)[:10]
+                ],
             },
             "health": {
                 "overall": self.health_checker.get_overall_health(),
                 "checks": {
                     name: {
                         "status": check["last_status"],
-                        "last_check": check["last_check"].isoformat() if check["last_check"] else None
+                        "last_check": check["last_check"].isoformat() if check["last_check"] else None,
                     }
                     for name, check in self.health_checker.health_checks.items()
-                }
+                },
             },
             "system": {
                 "uptime": time.time() - psutil.boot_time(),
                 "platform": platform.platform(),
-                "python_version": platform.python_version()
-            }
+                "python_version": platform.python_version(),
+            },
         }
+
 
 class MonitoringService:
     """Main monitoring service"""
@@ -604,9 +600,7 @@ class MonitoringService:
         self.alert_manager = AlertManager()
         self.health_checker = HealthChecker()
         self.metrics_exporter = MetricsExporter()
-        self.dashboard = MonitoringDashboard(
-            self.metrics_collector, self.alert_manager, self.health_checker
-        )
+        self.dashboard = MonitoringDashboard(self.metrics_collector, self.alert_manager, self.health_checker)
         self.is_running = False
         self.monitoring_tasks = []
 
@@ -631,7 +625,7 @@ class MonitoringService:
         self.monitoring_tasks = [
             asyncio.create_task(self._metrics_collection_loop()),
             asyncio.create_task(self._health_check_loop()),
-            asyncio.create_task(self._alert_evaluation_loop())
+            asyncio.create_task(self._alert_evaluation_loop()),
         ]
 
         logging.info("Monitoring service started successfully")
@@ -662,7 +656,7 @@ class MonitoringService:
             AlertSeverity.HIGH,
             "system",
             ComponentType.SYSTEM,
-            "CPU usage is above 80%"
+            "CPU usage is above 80%",
         )
 
         self.alert_manager.add_alert_rule(
@@ -671,7 +665,7 @@ class MonitoringService:
             AlertSeverity.HIGH,
             "system",
             ComponentType.SYSTEM,
-            "Memory usage is above 85%"
+            "Memory usage is above 85%",
         )
 
         self.alert_manager.add_alert_rule(
@@ -680,7 +674,7 @@ class MonitoringService:
             AlertSeverity.CRITICAL,
             "system",
             ComponentType.SYSTEM,
-            "Disk usage is above 90%"
+            "Disk usage is above 90%",
         )
 
         # Application alerts
@@ -690,11 +684,12 @@ class MonitoringService:
             AlertSeverity.HIGH,
             "api",
             ComponentType.API,
-            "API error rate is above 5%"
+            "API error rate is above 5%",
         )
 
     async def _setup_default_health_checks(self):
         """Setup default health checks"""
+
         # Database health check
         async def check_database():
             try:
@@ -703,23 +698,11 @@ class MonitoringService:
                     cursor.execute("SELECT 1")
                     cursor.fetchone()
                 response_time = time.time() - start_time
-                return {
-                    "healthy": True,
-                    "details": {"response_time": response_time},
-                    "response_time": response_time
-                }
+                return {"healthy": True, "details": {"response_time": response_time}, "response_time": response_time}
             except Exception as e:
-                return {
-                    "healthy": False,
-                    "details": {"error": str(e)},
-                    "response_time": 0
-                }
+                return {"healthy": False, "details": {"error": str(e)}, "response_time": 0}
 
-        self.health_checker.add_health_check(
-            "database",
-            check_database,
-            ComponentType.DATABASE
-        )
+        self.health_checker.add_health_check("database", check_database, ComponentType.DATABASE)
 
         # Cache health check
         async def check_cache():
@@ -731,20 +714,12 @@ class MonitoringService:
                 return {
                     "healthy": result == "test",
                     "details": {"response_time": response_time},
-                    "response_time": response_time
+                    "response_time": response_time,
                 }
             except Exception as e:
-                return {
-                    "healthy": False,
-                    "details": {"error": str(e)},
-                    "response_time": 0
-                }
+                return {"healthy": False, "details": {"error": str(e)}, "response_time": 0}
 
-        self.health_checker.add_health_check(
-            "cache",
-            check_cache,
-            ComponentType.CACHE
-        )
+        self.health_checker.add_health_check("cache", check_cache, ComponentType.CACHE)
 
         # API health check
         async def check_api():
@@ -752,23 +727,11 @@ class MonitoringService:
                 start_time = time.time()
                 # This would check actual API endpoints
                 response_time = time.time() - start_time
-                return {
-                    "healthy": True,
-                    "details": {"response_time": response_time},
-                    "response_time": response_time
-                }
+                return {"healthy": True, "details": {"response_time": response_time}, "response_time": response_time}
             except Exception as e:
-                return {
-                    "healthy": False,
-                    "details": {"error": str(e)},
-                    "response_time": 0
-                }
+                return {"healthy": False, "details": {"error": str(e)}, "response_time": 0}
 
-        self.health_checker.add_health_check(
-            "api",
-            check_api,
-            ComponentType.API
-        )
+        self.health_checker.add_health_check("api", check_api, ComponentType.API)
 
     async def _metrics_collection_loop(self):
         """Metrics collection loop"""
@@ -777,12 +740,8 @@ class MonitoringService:
                 # Collect system metrics
                 system_metrics = self.metrics_collector.collect_system_metrics()
                 if system_metrics:
-                    self.metrics_collector.add_custom_metric(
-                        "system.cpu_percent", system_metrics.cpu_percent
-                    )
-                    self.metrics_collector.add_custom_metric(
-                        "system.memory_percent", system_metrics.memory_percent
-                    )
+                    self.metrics_collector.add_custom_metric("system.cpu_percent", system_metrics.cpu_percent)
+                    self.metrics_collector.add_custom_metric("system.memory_percent", system_metrics.memory_percent)
 
                 # Collect application metrics
                 app_metrics = self.metrics_collector.collect_application_metrics()
@@ -836,17 +795,21 @@ class MonitoringService:
         """Add custom metric"""
         self.metrics_collector.add_custom_metric(name, value, tags)
 
+
 # Global monitoring service instance
 monitoring_service = MonitoringService()
+
 
 # Convenience functions for use in other modules
 def record_metric(name: str, value: float, tags: Dict = None):
     """Record a custom metric"""
     monitoring_service.add_custom_metric(name, value, tags)
 
+
 async def start_monitoring():
     """Start the monitoring service"""
     await monitoring_service.start()
+
 
 async def stop_monitoring():
     """Stop the monitoring service"""

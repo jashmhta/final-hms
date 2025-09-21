@@ -1,4 +1,6 @@
 from django.db import migrations, models
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("ehr", "0003_allergy_assessment_clinicalnote_planofcare_and_more"),

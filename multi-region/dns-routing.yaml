@@ -1,0 +1,341 @@
+# Multi-Region DNS and Traffic Routing Configuration
+# Enterprise-grade global routing for HMS microservices
+
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: hms-global-gateway
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/name: hms-global-gateway
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: networking
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*.hms.enterprise.com"
+    tls:
+      httpsRedirect: true
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    hosts:
+    - "*.hms.enterprise.com"
+    tls:
+      mode: SIMPLE
+      credentialName: hms-wildcard-tls-secret
+---
+# Global Virtual Service with Regional Failover
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: hms-global-vs
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/name: hms-global-vs
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: networking
+spec:
+  hosts:
+  - "api.hms.enterprise.com"
+  gateways:
+  - hms-global-gateway
+  http:
+  - match:
+    - headers:
+        x-region:
+          exact: us-east-1
+    route:
+    - destination:
+        host: hms-api-gateway
+        subset: us-east-1
+      weight: 100
+  - match:
+    - headers:
+        x-region:
+          exact: us-west-2
+    route:
+    - destination:
+        host: hms-api-gateway
+        subset: us-west-2
+      weight: 100
+  - match:
+    - headers:
+        x-region:
+          exact: eu-west-1
+    route:
+    - destination:
+        host: hms-api-gateway
+        subset: eu-west-1
+      weight: 100
+  - route:
+    - destination:
+        host: hms-api-gateway
+        subset: us-east-1
+      weight: 70
+    - destination:
+        host: hms-api-gateway
+        subset: us-west-2
+      weight: 20
+    - destination:
+        host: hms-api-gateway
+        subset: eu-west-1
+      weight: 10
+  fault:
+    delay:
+      percentage:
+        value: 0.001
+      fixedDelay: 5s
+    abort:
+      percentage:
+        value: 0.001
+      httpStatus: 503
+---
+# Regional Destination Rules
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: hms-destination-rules
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/name: hms-destination-rules
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: networking
+spec:
+  host: "*.hms.enterprise.com"
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 30s
+        tcpKeepalive:
+          time: 7200s
+          interval: 75s
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 10
+        maxRetries: 3
+        idleTimeout: 90s
+        h2UpgradePolicy: UPGRADE
+    outlierDetection:
+      consecutiveGatewayErrors: 5
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 50
+      splitExternalLocalOriginErrors: true
+  subsets:
+  - name: us-east-1
+    labels:
+      region: us-east-1
+    trafficPolicy:
+      tls:
+        mode: ISTIO_MUTUAL
+      connectionPool:
+        tcp:
+          maxConnections: 200
+          connectTimeout: 15s
+      loadBalancer:
+        simple: LEAST_REQUEST
+  - name: us-west-2
+    labels:
+      region: us-west-2
+    trafficPolicy:
+      tls:
+        mode: ISTIO_MUTUAL
+      connectionPool:
+        tcp:
+          maxConnections: 150
+          connectTimeout: 20s
+      loadBalancer:
+        simple: LEAST_REQUEST
+  - name: eu-west-1
+    labels:
+      region: eu-west-1
+    trafficPolicy:
+      tls:
+        mode: ISTIO_MUTUAL
+      connectionPool:
+        tcp:
+          maxConnections: 100
+          connectTimeout: 30s
+      loadBalancer:
+        simple: LEAST_REQUEST
+---
+# Global Service Entry for External Services
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: hms-external-services
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/name: hms-external-services
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: networking
+spec:
+  hosts:
+  - "external-lab-service.com"
+  - "external-pharmacy-service.com"
+  - "external-billing-service.com"
+  - "external-insurance-service.com"
+  ports:
+  - number: 443
+    name: https
+    protocol: HTTPS
+  resolution: DNS
+  location: MESH_EXTERNAL
+---
+# Regional Health Checks
+apiVersion: networking.istio.io/v1beta1
+kind: WorkloadEntry
+metadata:
+  name: hms-health-checker
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/name: hms-health-checker
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: networking
+spec:
+  address: health-checker.hms-system.svc.cluster.local
+  ports:
+    http: 8080
+  labels:
+    app: health-checker
+    version: v1
+  serviceAccount: health-checker
+---
+# Global Circuit Breaker Configuration
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: hms-circuit-breaker
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/name: hms-circuit-breaker
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: networking
+spec:
+  host: "hms-api-gateway.hms-system.svc.cluster.local"
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 50
+        connectTimeout: 30s
+        tcpKeepalive:
+          time: 7200s
+          interval: 75s
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 10
+        maxRetries: 3
+        idleTimeout: 90s
+        h2UpgradePolicy: UPGRADE
+    outlierDetection:
+      consecutiveGatewayErrors: 5
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 50
+      splitExternalLocalOriginErrors: true
+---
+# Regional Load Balancing Policies
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: hms-regional-lb
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/name: hms-regional-lb
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: networking
+spec:
+  host: "*.hms-system.svc.cluster.local"
+  trafficPolicy:
+    loadBalancer:
+      localityLbSetting:
+        enabled: true
+        distribute:
+        - from: us-east-1/*
+          to:
+            "us-east-1/*": 80
+            "us-west-2/*": 15
+            "eu-west-1/*": 5
+        - from: us-west-2/*
+          to:
+            "us-west-2/*": 80
+            "us-east-1/*": 15
+            "eu-west-1/*": 5
+        - from: eu-west-1/*
+          to:
+            "eu-west-1/*": 80
+            "us-east-1/*": 15
+            "us-west-2/*": 5
+      outlierDetection:
+        consecutiveGatewayErrors: 10
+        consecutive5xxErrors: 10
+        interval: 60s
+        baseEjectionTime: 60s
+        maxEjectionPercent: 30
+        minHealthPercent: 70
+---
+# Global Timeout and Retry Configuration
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: hms-timeout-config
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/name: hms-timeout-config
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: networking
+spec:
+  hosts:
+  - "*"
+  http:
+  - timeout: 30s
+    retries:
+      attempts: 3
+      perTryTimeout: 10s
+      retryOn: gateway-error,connect-failure,refused-stream
+    fault:
+      delay:
+        percentage:
+          value: 0.1
+        fixedDelay: 2s
+---
+# Regional TLS Configuration
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: hms-tls-config
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/name: hms-tls-config
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: networking
+spec:
+  host: "*.hms.enterprise.com"
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+      clientCertificate: /etc/certs/cert-chain.pem
+      privateKey: /etc/certs/key.pem
+      caCertificates: /etc/certs/root-cert.pem
+      sni: "*.hms.enterprise.com"
+    portLevelSettings:
+    - port:
+        number: 443
+      tls:
+        mode: SIMPLE
+        credentialName: hms-https-credential

@@ -1,9 +1,14 @@
 import uuid
+
+from encrypted_model_fields.fields import EncryptedTextField
+
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
-from encrypted_model_fields.fields import EncryptedTextField
+
 from core.models import TenantModel, TimeStampedModel
+
+
 class EncounterType(models.TextChoices):
     INPATIENT = "INPATIENT", "Inpatient"
     OUTPATIENT = "OUTPATIENT", "Outpatient"
@@ -19,6 +24,8 @@ class EncounterType(models.TextChoices):
     SURGICAL = "SURGICAL", "Surgical Procedure"
     DIAGNOSTIC = "DIAGNOSTIC", "Diagnostic Procedure"
     THERAPY = "THERAPY", "Therapy Session"
+
+
 class EncounterStatus(models.TextChoices):
     SCHEDULED = "SCHEDULED", "Scheduled"
     IN_PROGRESS = "IN_PROGRESS", "In Progress"
@@ -26,6 +33,8 @@ class EncounterStatus(models.TextChoices):
     CANCELLED = "CANCELLED", "Cancelled"
     NO_SHOW = "NO_SHOW", "No Show"
     RESCHEDULED = "RESCHEDULED", "Rescheduled"
+
+
 class DispositionType(models.TextChoices):
     DISCHARGED_HOME = "DISCHARGED_HOME", "Discharged Home"
     ADMITTED = "ADMITTED", "Admitted"
@@ -35,11 +44,11 @@ class DispositionType(models.TextChoices):
     OBSERVATION = "OBSERVATION", "Observation"
     LEFT_AMA = "LEFT_AMA", "Left Against Medical Advice"
     DECEASED = "DECEASED", "Deceased"
+
+
 class Encounter(TenantModel):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    patient = models.ForeignKey(
-        "patients.Patient", on_delete=models.CASCADE, related_name="encounters"
-    )
+    patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="encounters")
     primary_physician = models.ForeignKey(
         "users.User",
         on_delete=models.CASCADE,
@@ -53,9 +62,7 @@ class Encounter(TenantModel):
         blank=True,
         related_name="attending_encounters",
     )
-    consulting_physicians = models.ManyToManyField(
-        "users.User", blank=True, related_name="consulting_encounters"
-    )
+    consulting_physicians = models.ManyToManyField("users.User", blank=True, related_name="consulting_encounters")
     appointment = models.OneToOneField(
         "appointments.Appointment",
         on_delete=models.SET_NULL,
@@ -82,15 +89,11 @@ class Encounter(TenantModel):
     bed = models.CharField(max_length=50, blank=True)
     chief_complaint = EncryptedTextField(blank=True)
     history_of_present_illness = EncryptedTextField(blank=True)
-    diagnosis = EncryptedTextField(blank=True)  
-    treatment = EncryptedTextField(blank=True)  
-    prescription_text = EncryptedTextField(
-        blank=True
-    )  
-    is_finalized = models.BooleanField(default=False)  
-    disposition = models.CharField(
-        max_length=20, choices=DispositionType.choices, blank=True
-    )
+    diagnosis = EncryptedTextField(blank=True)
+    treatment = EncryptedTextField(blank=True)
+    prescription_text = EncryptedTextField(blank=True)
+    is_finalized = models.BooleanField(default=False)
+    disposition = models.CharField(max_length=20, choices=DispositionType.choices, blank=True)
     disposition_notes = EncryptedTextField(blank=True)
     discharge_instructions = EncryptedTextField(blank=True)
     priority_level = models.CharField(
@@ -119,6 +122,7 @@ class Encounter(TenantModel):
         related_name="created_encounters",
     )
     is_confidential = models.BooleanField(default=False)
+
     class Meta:
         ordering = ["-scheduled_start"]
         indexes = [
@@ -134,9 +138,7 @@ class Encounter(TenantModel):
             models.Index(fields=["hospital", "scheduled_start", "actual_start"]),
             models.Index(fields=["hospital", "priority_level"]),
             models.Index(fields=["hospital", "is_confidential"]),
-            models.Index(
-                fields=["hospital", "patient", "scheduled_start", "encounter_status"]
-            ),
+            models.Index(fields=["hospital", "patient", "scheduled_start", "encounter_status"]),
             models.Index(
                 fields=[
                     "hospital",
@@ -146,12 +148,15 @@ class Encounter(TenantModel):
                 ]
             ),
         ]
+
     def __str__(self) -> str:
         date_str = self.scheduled_start.date() if self.scheduled_start else "TBD"
         return f"{self.patient} - {self.encounter_type} on {date_str}"
+
     def save(self, *args, **kwargs):
         if not self.encounter_number:
             import time
+
             timestamp = str(int(time.time()))
             self.encounter_number = f"ENC{timestamp[-8:]}"
         if not self.scheduled_start and self.appointment:
@@ -159,10 +164,10 @@ class Encounter(TenantModel):
         if not self.scheduled_end and self.appointment:
             self.scheduled_end = self.appointment.end_at
         super().save(*args, **kwargs)
+
+
 class VitalSigns(models.Model):
-    encounter = models.ForeignKey(
-        Encounter, on_delete=models.CASCADE, related_name="vital_signs"
-    )
+    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name="vital_signs")
     systolic_bp = models.PositiveIntegerField(
         null=True,
         blank=True,
@@ -242,25 +247,26 @@ class VitalSigns(models.Model):
     recorded_by = models.ForeignKey("users.User", on_delete=models.CASCADE)
     device_used = models.CharField(max_length=100, blank=True)
     notes = models.TextField(blank=True)
+
     class Meta:
         ordering = ["-recorded_at"]
         indexes = [
             models.Index(fields=["encounter", "-recorded_at"]),
         ]
+
     def __str__(self):
         return f"{self.encounter} - Vitals {self.recorded_at}"
+
     def save(self, *args, **kwargs):
         if self.height_cm and self.weight_kg:
             height_m = self.height_cm / 100
             self.bmi = self.weight_kg / (height_m * height_m)
         super().save(*args, **kwargs)
+
+
 class Assessment(models.Model):
-    encounter = models.ForeignKey(
-        Encounter, on_delete=models.CASCADE, related_name="assessments"
-    )
-    diagnosis_code = models.CharField(
-        max_length=20, blank=True, help_text="ICD-10 code"
-    )
+    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name="assessments")
+    diagnosis_code = models.CharField(max_length=20, blank=True, help_text="ICD-10 code")
     diagnosis_description = models.CharField(max_length=500, default="Unknown")
     diagnosis_type = models.CharField(
         max_length=15,
@@ -311,18 +317,20 @@ class Assessment(models.Model):
     notes = EncryptedTextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["encounter", "diagnosis_type"]),
             models.Index(fields=["diagnosis_code"]),
         ]
+
     def __str__(self):
         return f"{self.encounter} - {self.diagnosis_description}"
+
+
 class PlanOfCare(models.Model):
-    encounter = models.ForeignKey(
-        Encounter, on_delete=models.CASCADE, related_name="plans"
-    )
+    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name="plans")
     plan_type = models.CharField(
         max_length=20,
         choices=[
@@ -367,18 +375,20 @@ class PlanOfCare(models.Model):
     ordered_by = models.ForeignKey("users.User", on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         ordering = ["-priority", "-created_at"]
         indexes = [
             models.Index(fields=["encounter", "status"]),
             models.Index(fields=["plan_type"]),
         ]
+
     def __str__(self):
         return f"{self.encounter} - {self.title}"
+
+
 class ClinicalNote(models.Model):
-    encounter = models.ForeignKey(
-        Encounter, on_delete=models.CASCADE, related_name="clinical_notes"
-    )
+    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name="clinical_notes")
     note_type = models.CharField(
         max_length=20,
         choices=[
@@ -396,20 +406,12 @@ class ClinicalNote(models.Model):
         ],
         default="PROGRESS",
     )
-    subjective = EncryptedTextField(
-        blank=True, help_text="Patient's subjective complaints"
-    )
-    objective = EncryptedTextField(
-        blank=True, help_text="Objective findings and observations"
-    )
-    assessment = EncryptedTextField(
-        blank=True, help_text="Clinical assessment and diagnosis"
-    )
+    subjective = EncryptedTextField(blank=True, help_text="Patient's subjective complaints")
+    objective = EncryptedTextField(blank=True, help_text="Objective findings and observations")
+    assessment = EncryptedTextField(blank=True, help_text="Clinical assessment and diagnosis")
     plan = EncryptedTextField(blank=True, help_text="Treatment plan and next steps")
     content = EncryptedTextField(blank=True, help_text="Free-form note content")
-    author = models.ForeignKey(
-        "users.User", on_delete=models.CASCADE, related_name="authored_notes"
-    )
+    author = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="authored_notes")
     co_signed_by = models.ForeignKey(
         "users.User",
         on_delete=models.SET_NULL,
@@ -421,11 +423,10 @@ class ClinicalNote(models.Model):
     signed_at = models.DateTimeField(null=True, blank=True)
     is_amended = models.BooleanField(default=False)
     amendment_reason = models.TextField(blank=True)
-    original_note = models.ForeignKey(
-        "self", on_delete=models.CASCADE, null=True, blank=True
-    )
+    original_note = models.ForeignKey("self", on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         ordering = ["-created_at"]
         indexes = [
@@ -433,18 +434,20 @@ class ClinicalNote(models.Model):
             models.Index(fields=["author"]),
             models.Index(fields=["note_type"]),
         ]
+
     def __str__(self):
         return f"{self.encounter} - {self.note_type} by {self.author}"
+
     def sign_note(self, user):
         if not self.is_signed:
             self.is_signed = True
             self.signed_at = timezone.now()
             self.co_signed_by = user
             self.save()
+
+
 class Allergy(models.Model):
-    patient = models.ForeignKey(
-        "patients.Patient", on_delete=models.CASCADE, related_name="allergies"
-    )
+    patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="allergies")
     allergen = models.CharField(max_length=200)
     allergen_type = models.CharField(
         max_length=20,
@@ -478,9 +481,7 @@ class Allergy(models.Model):
         ],
         default="ACTIVE",
     )
-    reported_by = models.ForeignKey(
-        "users.User", on_delete=models.SET_NULL, null=True, blank=True
-    )
+    reported_by = models.ForeignKey("users.User", on_delete=models.SET_NULL, null=True, blank=True)
     verified_by = models.ForeignKey(
         "users.User",
         on_delete=models.SET_NULL,
@@ -491,6 +492,7 @@ class Allergy(models.Model):
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         ordering = ["-severity", "allergen"]
         indexes = [
@@ -498,17 +500,22 @@ class Allergy(models.Model):
             models.Index(fields=["allergen_type"]),
         ]
         unique_together = ["patient", "allergen", "allergen_type"]
+
     def __str__(self):
         return f"{self.patient} - {self.allergen} ({self.severity})"
+
+
 class EncounterNote(ClinicalNote):
     class Meta:
         proxy = True
+
+
 def encounter_attachment_upload_to(instance, filename: str) -> str:
     return f"encounters/{instance.encounter_id}/{filename}"
+
+
 class EncounterAttachment(TimeStampedModel):
-    encounter = models.ForeignKey(
-        Encounter, on_delete=models.CASCADE, related_name="attachments"
-    )
+    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name="attachments")
     file = models.FileField(upload_to=encounter_attachment_upload_to)
     file_type = models.CharField(
         max_length=20,
@@ -528,12 +535,13 @@ class EncounterAttachment(TimeStampedModel):
     description = models.CharField(max_length=255, blank=True)
     is_confidential = models.BooleanField(default=False)
     uploaded_by = models.ForeignKey("users.User", on_delete=models.SET_NULL, null=True)
+
     def __str__(self) -> str:
         return f"{self.encounter} - {self.description or self.file.name}"
+
+
 class ERTriage(TenantModel):
-    encounter = models.OneToOneField(
-        Encounter, on_delete=models.CASCADE, related_name="triage"
-    )
+    encounter = models.OneToOneField(Encounter, on_delete=models.CASCADE, related_name="triage")
     triage_level = models.CharField(
         max_length=10,
         choices=[
@@ -550,9 +558,7 @@ class ERTriage(TenantModel):
     pain_scale = models.PositiveIntegerField(
         null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(10)]
     )
-    initial_vitals = models.ForeignKey(
-        VitalSigns, on_delete=models.SET_NULL, null=True, blank=True
-    )
+    initial_vitals = models.ForeignKey(VitalSigns, on_delete=models.SET_NULL, null=True, blank=True)
     mechanism_of_injury = models.TextField(blank=True)
     associated_symptoms = models.JSONField(default=dict, blank=True)
     past_medical_history_relevant = EncryptedTextField(blank=True)
@@ -570,18 +576,20 @@ class ERTriage(TenantModel):
     bed_assigned = models.CharField(max_length=50, blank=True)
     reassessment_due_at = models.DateTimeField(null=True, blank=True)
     last_reassessed_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         ordering = ["-triage_time"]
         indexes = [
             models.Index(fields=["encounter", "triage_level"]),
             models.Index(fields=["triage_time"]),
         ]
+
     def __str__(self):
         return f"Triage {self.triage_level} for {self.encounter.patient} at {self.triage_time}"
+
+
 class NotificationModel(models.Model):
-    encounter = models.ForeignKey(
-        Encounter, on_delete=models.CASCADE, related_name="notifications"
-    )
+    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name="notifications")
     notification_type = models.CharField(
         max_length=50,
         choices=[
@@ -604,24 +612,24 @@ class NotificationModel(models.Model):
         ],
         default="NORMAL",
     )
-    recipient_user = models.ForeignKey(
-        "users.User", on_delete=models.CASCADE, related_name="notifications"
-    )
+    recipient_user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="notifications")
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["encounter", "-created_at"]),
             models.Index(fields=["recipient_user", "is_read", "-created_at"]),
         ]
+
     def __str__(self):
         return f"{self.notification_type} for {self.encounter.patient}"
+
+
 class QualityMetric(models.Model):
-    hospital = models.ForeignKey(
-        "hospitals.Hospital", on_delete=models.CASCADE, related_name="quality_metrics"
-    )
+    hospital = models.ForeignKey("hospitals.Hospital", on_delete=models.CASCADE, related_name="quality_metrics")
     metric_type = models.CharField(
         max_length=50,
         choices=[
@@ -634,16 +642,16 @@ class QualityMetric(models.Model):
         ],
     )
     value = models.DecimalField(max_digits=10, decimal_places=2)
-    target_value = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
+    target_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     period_start = models.DateField()
     period_end = models.DateField()
     calculated_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         ordering = ["-period_end"]
         indexes = [
             models.Index(fields=["hospital", "metric_type", "-period_end"]),
         ]
+
     def __str__(self):
         return f"{self.metric_type} for {self.hospital} ({self.period_start} - {self.period_end})"

@@ -1,0 +1,38 @@
+# SPARC Development Modes Configuration
+# Enterprise-Grade HMS Transformation
+
+[specification]
+description = "Enterprise-grade HMS requirements analysis and specification"
+agents = ["specification", "planner", "researcher"]
+tools = ["Read", "Write", "Grep", "Glob"]
+focus = "requirements gathering, stakeholder analysis, technical specifications"
+
+[pseudocode]
+description = "Enterprise architecture design and algorithm planning"
+agents = ["pseudocode", "system-architect", "cloud-architect"]
+tools = ["Read", "Write", "Edit"]
+focus = "system design, architecture patterns, algorithm development"
+
+[architecture]
+description = "Enterprise-grade system architecture implementation"
+agents = ["architecture", "backend-dev", "frontend-developer", "database-optimizer"]
+tools = ["Read", "Write", "Edit", "MultiEdit"]
+focus = "microservices, APIs, database design, frontend architecture"
+
+[refinement]
+description = "Continuous improvement and optimization"
+agents = ["refinement", "performance-engineer", "security-auditor", "tester"]
+tools = ["Read", "Write", "Edit", "Bash"]
+focus = "performance optimization, security hardening, quality assurance"
+
+[tdd]
+description = "Test-driven development for enterprise features"
+agents = ["tdd-orchestrator", "tester", "coder", "reviewer"]
+tools = ["Read", "Write", "Edit", "Bash"]
+focus = "test-driven development, unit tests, integration tests"
+
+[enterprise]
+description = "Enterprise-grade deployment and operations"
+agents = ["deployment-engineer", "kubernetes-architect", "devops-troubleshooter"]
+tools = ["Read", "Write", "Edit", "Bash"]
+focus = "deployment, monitoring, scaling, operations"

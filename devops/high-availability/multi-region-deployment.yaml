@@ -1,0 +1,737 @@
+# HMS Enterprise-Grade Multi-Region Deployment Configuration
+# Multi-region active-passive deployment with automatic failover
+
+---
+# Primary Region (us-east-1) Configuration
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hms-primary
+  labels:
+    region: us-east-1
+    environment: production
+    role: primary
+    compliance: hipaa
+    geo-replication: enabled
+
+---
+# Secondary Region (us-west-2) Configuration
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hms-secondary
+  labels:
+    region: us-west-2
+    environment: production
+    role: secondary
+    compliance: hipaa
+    geo-replication: enabled
+
+---
+# Disaster Recovery Region (eu-central-1) Configuration
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hms-dr
+  labels:
+    region: eu-central-1
+    environment: disaster-recovery
+    role: tertiary
+    compliance: hipaa
+    geo-replication: enabled
+
+---
+# Multi-Region Service Configuration
+apiVersion: v1
+kind: Service
+metadata:
+  name: hms-multi-region-service
+  namespace: hms-primary
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: "HTTP"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: "8080"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: "/health"
+spec:
+  type: LoadBalancer
+  selector:
+    app: hms-api
+    tier: backend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+      protocol: TCP
+    - name: https
+      port: 443
+      targetPort: 8000
+      protocol: TCP
+  externalTrafficPolicy: Local
+
+---
+# Multi-Region Database Cluster Configuration
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-primary
+  namespace: hms-primary
+  labels:
+    app: postgres
+    role: primary
+    region: us-east-1
+    component: database
+    compliance: hipaa
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: postgres
+      role: primary
+  template:
+    metadata:
+      labels:
+        app: postgres
+        role: primary
+        region: us-east-1
+        component: database
+        compliance: hipaa
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
+                  - key: topology.kubernetes.io/zone
+                    operator: In
+                    values:
+                      - us-east-1a
+                      - us-east-1b
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: "hms_enterprise"
+            - name: POSTGRES_USER
+              value: "hms_user"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            - name: POSTGRES_REPLICATION_USER
+              value: "replicator"
+            - name: POSTGRES_REPLICATION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: replication_password
+            - name: PGDATA
+              value: "/var/lib/postgresql/data/pgdata"
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: postgres-config
+              mountPath: /etc/postgresql/postgresql.conf
+              subPath: postgresql.conf
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "1000m"
+            limits:
+              memory: "4Gi"
+              cpu: "2000m"
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - hms_user
+                - -d
+                - hms_enterprise
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - hms_user
+                - -d
+                - hms_enterprise
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 1
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-primary-pvc
+        - name: postgres-config
+          configMap:
+            name: postgres-primary-config
+
+---
+# Secondary Region Database (Read Replica)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-secondary
+  namespace: hms-secondary
+  labels:
+    app: postgres
+    role: secondary
+    region: us-west-2
+    component: database
+    compliance: hipaa
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: postgres
+      role: secondary
+  template:
+    metadata:
+      labels:
+        app: postgres
+        role: secondary
+        region: us-west-2
+        component: database
+        compliance: hipaa
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
+                  - key: topology.kubernetes.io/zone
+                    operator: In
+                    values:
+                      - us-west-2a
+                      - us-west-2b
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: "hms_enterprise"
+            - name: POSTGRES_USER
+              value: "hms_user"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            - name: POSTGRES_REPLICATION_USER
+              value: "replicator"
+            - name: POSTGRES_REPLICATION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: replication_password
+            - name: PGDATA
+              value: "/var/lib/postgresql/data/pgdata"
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: postgres-config
+              mountPath: /etc/postgresql/postgresql.conf
+              subPath: postgresql.conf
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "1000m"
+            limits:
+              memory: "4Gi"
+              cpu: "2000m"
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - hms_user
+                - -d
+                - hms_enterprise
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - hms_user
+                - -d
+                - hms_enterprise
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 1
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-secondary-pvc
+        - name: postgres-config
+          configMap:
+            name: postgres-secondary-config
+
+---
+# Multi-Region Redis Cluster
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-cluster
+  namespace: hms-primary
+  labels:
+    app: redis
+    component: cache
+    role: cluster
+    region: us-east-1
+    compliance: hipaa
+spec:
+  serviceName: redis-cluster
+  replicas: 6
+  selector:
+    matchLabels:
+      app: redis
+      component: cache
+      role: cluster
+  template:
+    metadata:
+      labels:
+        app: redis
+        component: cache
+        role: cluster
+        region: us-east-1
+        compliance: hipaa
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - redis
+              topologyKey: "kubernetes.io/hostname"
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - name: redis
+              containerPort: 6379
+            - name: cluster-bus
+              containerPort: 16379
+          command:
+            - redis-server
+            - /etc/redis/redis.conf
+            - --cluster-enabled
+            - --cluster-config-file
+            - /data/nodes.conf
+            - --cluster-node-timeout
+            - "5000"
+            - --appendonly
+            - "yes"
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+            - name: redis-config
+              mountPath: /etc/redis
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          livenessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: redis-config
+          configMap:
+            name: redis-cluster-config
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+        labels:
+          app: redis
+          component: cache
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+        storageClassName: gp2
+
+---
+# Multi-Region Application Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hms-api-primary
+  namespace: hms-primary
+  labels:
+    app: hms-api
+    role: primary
+    region: us-east-1
+    component: api
+    compliance: hipaa
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: hms-api
+      role: primary
+      region: us-east-1
+  template:
+    metadata:
+      labels:
+        app: hms-api
+        role: primary
+        region: us-east-1
+        component: api
+        compliance: hipaa
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - hms-api
+                topologyKey: "kubernetes.io/hostname"
+            - weight: 50
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - hms-api
+                topologyKey: "topology.kubernetes.io/zone"
+        topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: topology.kubernetes.io/zone
+            whenUnsatisfiable: ScheduleAnyway
+            labelSelector:
+              matchLabels:
+                app: hms-api
+                role: primary
+      containers:
+        - name: hms-api
+          image: hms-enterprise/hms-api:latest
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: REGION
+              value: "us-east-1"
+            - name: ROLE
+              value: "primary"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secret
+                  key: url
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secret
+                  key: secret
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 1
+
+---
+# Secondary Region Application (Standby)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hms-api-secondary
+  namespace: hms-secondary
+  labels:
+    app: hms-api
+    role: secondary
+    region: us-west-2
+    component: api
+    compliance: hipaa
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: hms-api
+      role: secondary
+      region: us-west-2
+  template:
+    metadata:
+      labels:
+        app: hms-api
+        role: secondary
+        region: us-west-2
+        component: api
+        compliance: hipaa
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - hms-api
+                topologyKey: "kubernetes.io/hostname"
+        topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: topology.kubernetes.io/zone
+            whenUnsatisfiable: ScheduleAnyway
+            labelSelector:
+              matchLabels:
+                app: hms-api
+                role: secondary
+      containers:
+        - name: hms-api
+          image: hms-enterprise/hms-api:latest
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: REGION
+              value: "us-west-2"
+            - name: ROLE
+              value: "secondary"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: url-secondary
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secret
+                  key: url-secondary
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secret
+                  key: secret
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 1
+
+---
+# Global DNS Service Configuration
+apiVersion: v1
+kind: Service
+metadata:
+  name: hms-global-dns
+  namespace: hms-primary
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: "hms-enterprise.com"
+    external-dns.alpha.kubernetes.io/ttl: "60"
+spec:
+  type: ExternalName
+  externalName: "hms-api-primary.hms-primary.svc.cluster.local"
+
+---
+# Multi-Region Ingress Configuration
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hms-multi-region-ingress
+  namespace: hms-primary
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "route"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+    - hosts:
+        - "api.hms-enterprise.com"
+        - "*.hms-enterprise.com"
+      secretName: hms-tls-secret
+  rules:
+    - host: "api.hms-enterprise.com"
+      http:
+        paths:
+          - path: /(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: hms-api-primary
+                port:
+                  number: 8000
+
+---
+# Health Check Service for Multi-Region Monitoring
+apiVersion: v1
+kind: Service
+metadata:
+  name: hms-health-check
+  namespace: hms-primary
+  labels:
+    app: hms-health
+    component: monitoring
+    compliance: hipaa
+spec:
+  selector:
+    app: hms-api
+  ports:
+    - name: health
+      port: 8080
+      targetPort: 8000
+      protocol: TCP
+
+---
+# Multi-Region Network Policies
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: hms-multi-region-network-policy
+  namespace: hms-primary
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: hms-primary
+      - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: hms-primary
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80

@@ -1,0 +1,510 @@
+# Enterprise-Grade Istio Service Mesh Configuration
+# Author: Microservices Scaling Architect
+# Purpose: Complete service mesh deployment for HMS with advanced traffic management
+
+# ==================== ISTIO OPERATOR ====================
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  name: hms-istio-operator
+  namespace: istio-system
+spec:
+  profile: demo
+  hub: docker.io/istio
+  tag: 1.20.0
+  meshConfig:
+    accessLogFile: /dev/stdout
+    defaultConfig:
+      discoveryAddress: istiod.istio-system.svc:15012
+      meshId: hms-mesh
+      tracing:
+        zipkin:
+          address: jaeger-collector.monitoring.svc.cluster.local:9411
+      enablePrometheusMerge: true
+      trustDomain: cluster.local
+      outboundTrafficPolicy:
+        mode: REGISTRY_ONLY
+  components:
+    pilot:
+      k8s:
+        env:
+          - name: PILOT_ENABLE_WORKLOAD_ENTRY_AUTOREGISTRATION
+            value: "true"
+          - name: PILOT_ENABLE_SERVICEENTRY_SELECT_PODS
+            value: "true"
+          - name: PILOT_VALIDATE_CLUSTER_NAME
+            value: "true"
+    ingressGateways:
+      - name: istio-ingressgateway
+        enabled: true
+        k8s:
+          env:
+            - name: ISTIO_META_ROUTER_MODE
+              value: "standard"
+          service:
+            type: LoadBalancer
+            ports:
+              - port: 80
+                targetPort: 8080
+                name: http2
+              - port: 443
+                targetPort: 8443
+                name: https
+              - port: 15021
+                targetPort: 15021
+                name: status-port
+    egressGateways:
+      - name: istio-egressgateway
+        enabled: true
+        k8s:
+          service:
+            type: ClusterIP
+
+# ==================== ISTIO GATEWAY CONFIGURATION ====================
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: hms-internal-gateway
+  namespace: hms-production
+  labels:
+    app: istio-gateway
+    gateway: internal
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "*.hms.internal"
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        credentialName: hms-internal-tls
+      hosts:
+        - "*.hms.internal"
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: hms-external-gateway
+  namespace: hms-production
+  labels:
+    app: istio-gateway
+    gateway: external
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "api.hms.enterprise"
+        - "www.hms.enterprise"
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        credentialName: hms-external-tls
+      hosts:
+        - "api.hms.enterprise"
+        - "www.hms.enterprise"
+
+# ==================== TRAFFIC MANAGEMENT POLICIES ====================
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: hms-api-routing
+  namespace: hms-production
+spec:
+  hosts:
+    - "api.hms.enterprise"
+  gateways:
+    - hms-external-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /api/v1/patients/
+      route:
+        - destination:
+            host: patient-service.hms-production.svc.cluster.local
+            subset: v1
+          weight: 100
+    - match:
+        - uri:
+            prefix: /api/v1/appointments/
+      route:
+        - destination:
+            host: appointment-service.hms-production.svc.cluster.local
+            subset: v1
+          weight: 100
+    - match:
+        - uri:
+            prefix: /api/v1/pharmacy/
+      route:
+        - destination:
+            host: pharmacy-service.hms-production.svc.cluster.local
+            subset: v1
+          weight: 100
+    - match:
+        - uri:
+            prefix: /api/v1/lab/
+      route:
+        - destination:
+            host: lab-service.hms-production.svc.cluster.local
+            subset: v1
+          weight: 100
+    - match:
+        - uri:
+            prefix: /api/v1/billing/
+      route:
+        - destination:
+            host: billing-service.hms-production.svc.cluster.local
+            subset: v1
+          weight: 100
+    - match:
+        - uri:
+            prefix: /api/v1/er/
+      route:
+        - destination:
+            host: er-alerts.hms-production.svc.cluster.local
+            subset: v1
+          weight: 100
+      fault:
+        delay:
+          percentage:
+            value: 0.1
+          fixedDelay: 2s
+    - route:
+        - destination:
+            host: hms-backend-service.hms-production.svc.cluster.local
+            subset: v1
+          weight: 100
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: hms-service-subsets
+  namespace: hms-production
+spec:
+  host: "*.hms-production.svc.cluster.local"
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 30s
+        tcpKeepalive:
+          time: 7200s
+          interval: 75s
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 10
+        maxRetries: 3
+        idleTimeout: 90s
+        h2UpgradePolicy: UPGRADE
+    outlierDetection:
+      consecutiveGatewayErrors: 5
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 50
+      splitExternalLocalOriginErrors: true
+  subsets:
+    - name: v1
+      labels:
+        version: v1
+    - name: v2
+      labels:
+        version: v2
+
+# ==================== CANARY DEPLOYMENT CONFIGURATION =================---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: patient-service-canary
+  namespace: hms-production
+spec:
+  hosts:
+    - "patient-service.hms-production.svc.cluster.local"
+  http:
+    - match:
+        - headers:
+            x-canary:
+              exact: "true"
+      route:
+        - destination:
+            host: patient-service.hms-production.svc.cluster.local
+            subset: v2
+          weight: 100
+    - route:
+        - destination:
+            host: patient-service.hms-production.svc.cluster.local
+            subset: v1
+          weight: 90
+        - destination:
+            host: patient-service.hms-production.svc.cluster.local
+            subset: v2
+          weight: 10
+
+# ==================== MIRRORING CONFIGURATION =================---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: billing-service-mirror
+  namespace: hms-production
+spec:
+  hosts:
+    - "billing-service.hms-production.svc.cluster.local"
+  http:
+    - route:
+        - destination:
+            host: billing-service.hms-production.svc.cluster.local
+            subset: v1
+      mirror:
+        host: billing-service.hms-production.svc.cluster.local
+        subset: v2
+      mirrorPercentage:
+        value: 10.0
+
+# ==================== SECURITY POLICIES =================---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: hms-deny-all
+  namespace: hms-production
+spec:
+  selector:
+    matchLabels:
+      app: hms-backend
+  action: DENY
+  rules:
+    - from:
+        - source:
+            notNamespace: "hms-production"
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: hms-allow-internal
+  namespace: hms-production
+spec:
+  selector:
+    matchLabels:
+      app: hms-backend
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            namespaces: ["hms-production"]
+    - to:
+        - operation:
+            methods: ["GET", "POST", "PUT", "DELETE"]
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: hms-allow-external-api
+  namespace: hms-production
+spec:
+  selector:
+    matchLabels:
+      app: hms-backend
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            requestPrincipals: ["*"]
+      to:
+        - operation:
+            methods: ["GET"]
+            paths: ["/api/*"]
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: hms-mtls
+  namespace: hms-production
+spec:
+  mtls:
+    mode: STRICT
+
+# ==================== RATE LIMITING =================---
+apiVersion: networking.istio.io/v1beta1
+kind: EnvoyFilter
+metadata:
+  name: hms-rate-limit
+  namespace: hms-production
+spec:
+  configPatches:
+    - applyTo: HTTP_FILTER
+      match:
+        context: SIDECAR_INBOUND
+        listener:
+          filterChain:
+            filter:
+              name: envoy.filters.network.http_connection_manager
+              subFilter:
+                name: envoy.filters.http.router
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: envoy.filters.http.ratelimit
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.filters.http.ratelimit.v3.RateLimit
+            domain: hms-ratelimit
+            rate_limit_service:
+              grpc_service:
+                envoy_grpc:
+                  cluster_name: rate_limit_cluster
+              transport_api_version: V3
+    - applyTo: CLUSTER
+      match:
+        cluster:
+          service: ratelimit.example.com
+      patch:
+        operation: ADD
+        value:
+          name: rate_limit_cluster
+          type: STRICT_DNS
+          connect_timeout: 10s
+          lb_policy: ROUND_ROBIN
+          http2_protocol_options: {}
+          load_assignment:
+            cluster_name: rate_limit_cluster
+            endpoints:
+              - lb_endpoints:
+                  - endpoint:
+                      address:
+                        socket_address:
+                          address: ratelimit.example.com
+                          port_value: 8081
+
+# ==================== OBSERVABILITY CONFIGURATION =================---
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: hms-telemetry
+  namespace: hms-production
+spec:
+  metrics:
+    - overrides:
+        - match:
+            metric: ALL_METRICS
+          tagOverrides:
+            destination_service_name:
+              operation: UPSERT
+              value: destination_service_name | "unknown"
+    providers:
+      - name: prometheus
+  tracing:
+    - providers:
+        - name: jaeger
+      randomSamplingPercentage: 100
+  accessLogging:
+    - providers:
+        - name: istio-access-log
+      disabled: false
+
+# ==================== SERVICE ENTRIES FOR EXTERNAL SERVICES =================---
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: external-database
+  namespace: hms-production
+spec:
+  hosts:
+    - external-db.hms.enterprise
+  addresses:
+    - 192.168.1.100
+  ports:
+    - number: 5432
+      name: postgres
+      protocol: TCP
+  resolution: STATIC
+  location: MESH_EXTERNAL
+  endpoints:
+    - address: 192.168.1.100
+
+# ==================== WORKLOAD ENTRY FOR VM INTEGRATION =================---
+apiVersion: networking.istio.io/v1beta1
+kind: WorkloadEntry
+metadata:
+  name: legacy-hms-vm
+  namespace: hms-production
+spec:
+  serviceAccount: hms-vm-service-account
+  address: 192.168.1.200
+  labels:
+    app: legacy-hms-vm
+    class: vm
+  ports:
+    - name: http
+      protocol: TCP
+      number: 8080
+
+# ==================== GATEWAY HEALTH CHECKS =================---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: hms-health-check-gateway
+  namespace: hms-production
+  labels:
+    app: istio-gateway
+    gateway: health-check
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 15020
+        name: http-health-check
+        protocol: HTTP
+      hosts:
+        - "*"
+
+# ==================== TRAFFIC SPLITTING FOR BLUE-GREEN DEPLOYMENTS =================---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: hms-blue-green
+  namespace: hms-production
+spec:
+  hosts:
+    - "hms-backend-service.hms-production.svc.cluster.local"
+  gateways:
+    - hms-internal-gateway
+  http:
+    - match:
+        - headers:
+            x-deployment:
+              exact: "blue"
+      route:
+        - destination:
+            host: hms-backend-service.hms-production.svc.cluster.local
+            subset: blue
+          weight: 100
+    - match:
+        - headers:
+            x-deployment:
+              exact: "green"
+      route:
+        - destination:
+            host: hms-backend-service.hms-production.svc.cluster.local
+            subset: green
+          weight: 100
+    - route:
+        - destination:
+            host: hms-backend-service.hms-production.svc.cluster.local
+            subset: blue
+          weight: 100

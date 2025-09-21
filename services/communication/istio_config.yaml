@@ -1,0 +1,576 @@
+# Istio Service Mesh Configuration for HMS Microservices
+# Optimized for low latency and high throughput
+
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  name: hms-istio-operator
+  namespace: istio-system
+spec:
+  profile: production
+  components:
+    pilot:
+      k8s:
+        env:
+          - name: PILOT_FILTER_GATEWAY_CLUSTER_CONFIG
+            value: "true"
+          - name: PILOT_ENABLE_WORKLOAD_ENTRY_AUTOREGISTRATION
+            value: "true"
+          - name: PILOT_ENABLE_PROTOCOL_SNIFFING_FOR_OUTBOUND
+            value: "true"
+          - name: PILOT_ENABLE_PROTOCOL_SNIFFING_FOR_INBOUND
+            value: "true"
+    ingressGateways:
+    - name: istio-ingressgateway
+      enabled: true
+      k8s:
+        env:
+          - name: ISTIO_META_ROUTER_MODE
+            value: "sni-dnat"
+        serviceAnnotations:
+          service.beta.kubernetes.io/aws-load-balancer-type: nlb
+        overlays:
+          - apiVersion: apps/v1
+            kind: Deployment
+            name: istio-ingressgateway
+            patches:
+              - path: spec.template.spec.containers[0].ports
+                value:
+                  - containerPort: 8080
+                    name: http2
+                  - containerPort: 8443
+                    name: https
+                  - containerPort: 15443
+                    name: tls
+    egressGateways:
+    - name: istio-egressgateway
+      enabled: true
+  values:
+    global:
+      meshID: hms-mesh
+      network: hms-network
+      trustDomain: hms.local
+      # Enable mTLS strictly
+      mtls:
+        enabled: true
+        auto: true
+      # Control plane optimization
+      defaultConfig:
+        discoveryAddress: istiod.istio-system.svc:15012
+        proxyStatusFreq: 1s
+        tracer:
+          zipkin:
+            address: jaeger-collector.observability.svc.cluster.local:9411
+        # Enable RDS (Route Discovery Service) for efficient route distribution
+        rdsRefreshDelay: 1s
+        # Configure proxy for optimal performance
+        proxyStatsMatcher:
+          inclusionRegexps:
+            - ".*circuit_breaker.*"
+            - ".*upstream_rq_pending.*"
+            - ".*upstream_cx.*"
+            - ".*connection_terminate.*"
+          inclusionPrefixes:
+            - "envoy_cluster_"
+            - "envoy_tcp_"
+    gateways:
+      istio-ingressgateway:
+        type: LoadBalancer
+        ports:
+          - port: 80
+            targetPort: 8080
+            name: http2
+          - port: 443
+            targetPort: 8443
+            name: https
+    sidecarInjectorWebhook:
+      # Optimized sidecar injection
+      rewriteAppHTTPProbe: true
+    tracing:
+      # Enable distributed tracing
+      sampling: 10.0
+    # Performance optimizations
+    pilot:
+      env:
+        ENABLE_WORKLOAD_ENTRY_AUTOREGISTRATION: true
+    meshConfig:
+      # Connection pool optimization
+      connectTimeout: 30s
+      # Traffic policies for optimal performance
+      defaultHttpRetryPolicy:
+        retryOn: gateway-error,connect-failure,refused-stream
+        attempts: 3
+        perTryTimeout: 2s
+      # Enable HTTP/2
+      protocolDetectionTimeout: 100ms
+      # Configure service discovery
+      discoverySelectors:
+        - match:
+            labels:
+              service.istio.io/canonical-name: "*"
+---
+# Gateway Configuration
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: hms-gateway
+  namespace: hms
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"
+    tls:
+      httpsRedirect: true
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: hms-tls-secret
+    hosts:
+    - "api.hms.local"
+    - "hms.local"
+---
+# Virtual Service for API Routing
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: hms-api
+  namespace: hms
+spec:
+  hosts:
+  - "api.hms.local"
+  gateways:
+  - hms-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /api/patients/
+    route:
+    - destination:
+        host: patients-service
+        port:
+          number: 8000
+      weight: 90
+    - destination:
+        host: patients-service-v2
+        port:
+          number: 8000
+      weight: 10
+    timeout: 30s
+    retries:
+      attempts: 3
+      perTryTimeout: 10s
+      retryOn: gateway-error,connect-failure,refused-stream
+    fault:
+      delay:
+        percentage:
+          value: 0.001
+        fixedDelay: 5s
+      abort:
+        percentage:
+          value: 0.001
+        httpStatus: 500
+  - match:
+    - uri:
+        prefix: /api/appointments/
+    route:
+    - destination:
+        host: appointments-service
+        port:
+          number: 8000
+    timeout: 30s
+    corsPolicy:
+      allowOrigin:
+        - "*"
+      allowMethods:
+        - POST
+        - GET
+        - OPTIONS
+        - PUT
+        - DELETE
+      allowHeaders:
+        - "*"
+      maxAge: "24h"
+  - match:
+    - uri:
+        prefix: /api/billing/
+    route:
+    - destination:
+        host: billing-service
+        port:
+          number: 8000
+    mirror:
+      host: billing-service-shadow
+      port:
+        number: 8000
+    mirrorPercentage:
+      value: 1.0
+---
+# Destination Rules for Service Optimization
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: patients-service
+  namespace: hms
+spec:
+  host: patients-service
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 30s
+        tcpKeepalive:
+          time: 7200s
+          interval: 75s
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
+        maxRetries: 3
+        idleTimeout: 90s
+        h2UpgradePolicy: UPGRADE
+    outlierDetection:
+      consecutiveGatewayErrors: 5
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 50
+      splitExternalLocalOriginErrors: true
+    tls:
+      mode: ISTIO_MUTUAL
+    portLevelSettings:
+    - port:
+        number: 8000
+      connectionPool:
+        tcp:
+          maxConnections: 50
+          maxPendingRequests: 100
+        http:
+          maxRequestsPerConnection: 10
+          h2UpgradePolicy: UPGRADE
+---
+# Service Entry for External Services
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: external-payment-gateway
+  namespace: hms
+spec:
+  hosts:
+  - "payment-gateway.external.com"
+  ports:
+  - number: 443
+    name: https
+    protocol: HTTPS
+  resolution: DNS
+  location: MESH_EXTERNAL
+---
+# Authorization Policy
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: hms-authz
+  namespace: hms
+spec:
+  selector:
+    matchLabels:
+      app: patients-service
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local//ns/default/sa/frontend"]
+    to:
+    - operation:
+        methods: ["GET", "POST"]
+        paths: ["/api/patients/*"]
+  - from:
+    - source:
+        principals: ["cluster.local//ns/hms/sa/admin-service"]
+    to:
+    - operation:
+        methods: ["*"]
+---
+# Peer Authentication
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: istio-system
+spec:
+  mtls:
+    mode: STRICT
+---
+# Request Authentication
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: hms-jwt-authn
+  namespace: hms
+spec:
+  selector:
+    matchLabels:
+      app: patients-service
+  jwtRules:
+  - issuer: "https://auth.hms.local"
+    jwksUri: "https://auth.hms.local/.well-known/jwks.json"
+    forwardOriginalToken: true
+    outputClaimToHeaders:
+    - name: x-jwt-claims
+      header: "x-jwt-claims"
+---
+# Telemetry Configuration
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: hms-telemetry
+  namespace: hms
+spec:
+  metrics:
+    - providers:
+      - name: prometheus
+      overrides:
+      - match:
+          metric: ALL_METRICS
+        tagOverrides:
+          destination_service_name:
+            value: "destination_service_name | 'unknown'"
+    - overrides:
+      - match:
+          metric: REQUEST_COUNT
+          mode: CLIENT_AND_SERVER
+      - match:
+          metric: REQUEST_DURATION
+          mode: CLIENT_AND_SERVER
+      - match:
+          metric: RESPONSE_SIZES
+          mode: CLIENT_AND_SERVER
+      - match:
+          metric: TCP_BYTES_SENT
+          mode: CLIENT_AND_SERVER
+      - match:
+          metric: TCP_BYTES_RECEIVED
+          mode: CLIENT_AND_SERVER
+  tracing:
+    - providers:
+      - name: jaeger
+    randomSamplingPercentage: 10
+    disableSpanReporting: false
+    customTags:
+      request_id:
+        literal:
+          value: "request-id"
+  accessLogging:
+    - providers:
+      - name: stdio
+    disabled: false
+    filter:
+      expression: "response.code >= 400 || request.path matches '/health'"
+---
+# Workload Entry for VM Services
+apiVersion: networking.istio.io/v1alpha3
+kind: WorkloadEntry
+metadata:
+  name: postgres-db
+  namespace: hms
+spec:
+  serviceAccount: postgres-sa
+  address: 10.0.0.100
+  labels:
+    app: postgres
+    version: "13.4"
+  ports:
+    tcp:
+    - number: 5432
+      protocol: TCP
+---
+# Envoy Filter for Custom Metrics
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: custom-metrics-filter
+  namespace: hms
+spec:
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: ANY
+    patch:
+      operation: INSERT_BEFORE
+      value:
+        name: envoy.filters.http.lua
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
+          inline_code: |
+            function envoy_on_request(request_handle)
+              -- Start timing
+              request_handle:streamInfo():dynamicMetadata():set("timing", "start", os.time())
+            end
+
+            function envoy_on_response(response_handle)
+              -- Calculate latency
+              local start_time = response_handle:streamInfo():dynamicMetadata():get("timing")["start"]
+              local latency = os.time() - start_time
+
+              -- Add custom header
+              response_handle:headers():add("X-Service-Latency", latency)
+            end
+---
+# Rate Limit Configuration
+apiVersion: config.istio.io/v1alpha2
+kind: handler
+metadata:
+  name: ratelimit-handler
+  namespace: hms
+spec:
+  compiledAdapter: envoy.rate_limit
+  params:
+    descriptor:
+      entries:
+        - key: generic_key
+          value: quota
+---
+# Service Mesh Policies
+apiVersion: config.istio.io/v1alpha2
+kind: instance
+metadata:
+  name: ratelimit-instance
+  namespace: hms
+spec:
+  compiledTemplate: quota
+  params:
+    dimensions:
+      source_service: request.headers | "x-service"
+      destination_service: destination.service.host | "unknown"
+      request_path: request.path | "/"
+---
+# WAF (Web Application Firewall) Configuration
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: waf-policy
+  namespace: hms
+spec:
+  selector:
+    matchLabels:
+      app: patients-service
+  action: CUSTOM
+  provider:
+    name: "waf-provider"
+  rules:
+  - when:
+    - key: request.headers[x-api-key]
+      notValues: ["*"]
+---
+# Health Check Configuration
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: health-check
+  namespace: hms
+spec:
+  hosts:
+  - "*"
+  http:
+  - match:
+    - headers:
+        user-agent:
+          exact: "kube-probe/1.20"
+    route:
+    - destination:
+        host: patients-service
+        port:
+          number: 8080
+---
+# Circuit Breaker Configuration
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: circuit-breakers
+  namespace: hms
+spec:
+  host: "*.hms.svc.cluster.local"
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 30s
+        tcpKeepalive:
+          time: 7200s
+          interval: 75s
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
+        maxRetries: 3
+        idleTimeout: 90s
+        h2UpgradePolicy: UPGRADE
+    outlierDetection:
+      consecutiveGatewayErrors: 5
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 50
+      splitExternalLocalOriginErrors: true
+---
+# Canary Deployment Configuration
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: patients-service-canary
+  namespace: hms
+spec:
+  hosts:
+  - patients-service
+  http:
+  - name: "stable"
+    match:
+      - headers:
+          x-canary:
+            exact: "false"
+    route:
+    - destination:
+        host: patients-service
+        subset: stable
+      weight: 100
+  - name: "canary"
+    match:
+      - headers:
+          x-canary:
+            exact: "true"
+    route:
+    - destination:
+        host: patients-service
+        subset: canary
+      weight: 100
+---
+# Shadow Traffic Configuration
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: shadow-traffic
+  namespace: hms
+spec:
+  hosts:
+  - patients-service
+  tcp:
+  - match:
+    - port: 8000
+    route:
+    - destination:
+        host: patients-service
+        port:
+          number: 8000
+      mirror:
+        host: patients-service-shadow
+        port:
+          number: 8000
+      mirrorPercentage:
+        value: 1.0

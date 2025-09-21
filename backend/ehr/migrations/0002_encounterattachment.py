@@ -1,7 +1,10 @@
 import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
+
 import ehr.models
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("ehr", "0001_initial"),
@@ -24,9 +27,7 @@ class Migration(migrations.Migration):
                 ("updated_at", models.DateTimeField(auto_now=True)),
                 (
                     "file",
-                    models.FileField(
-                        upload_to=ehr.models.encounter_attachment_upload_to
-                    ),
+                    models.FileField(upload_to=ehr.models.encounter_attachment_upload_to),
                 ),
                 ("description", models.CharField(blank=True, max_length=255)),
                 (

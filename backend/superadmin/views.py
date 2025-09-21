@@ -1,14 +1,18 @@
 from datetime import datetime, timedelta
 from decimal import Decimal
-from billing.models import ServiceCatalog
-from django.db.models import Count, Q, Sum
-from django.utils import timezone
-from hospitals.models import Hospital
-from patients.models import Patient
+
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+
+from django.db.models import Count, Q, Sum
+from django.utils import timezone
+
+from billing.models import ServiceCatalog
+from hospitals.models import Hospital
+from patients.models import Patient
 from users.models import User
+
 from .models import (
     GlobalSettings,
     HospitalSubscription,
@@ -32,6 +36,8 @@ from .serializers import (
     SystemAlertSerializer,
     UsageMetricsSerializer,
 )
+
+
 class SuperadminPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
@@ -41,10 +47,13 @@ class SuperadminPermission(permissions.BasePermission):
             return superadmin.is_active
         except SuperadminUser.DoesNotExist:
             return False
+
+
 class SubscriptionTierViewSet(viewsets.ModelViewSet):
     queryset = SubscriptionTier.objects.all()
     serializer_class = SubscriptionTierSerializer
     permission_classes = [SuperadminPermission]
+
     @action(detail=True, methods=["post"])
     def clone(self, request, pk=None):
         tier = self.get_object()
@@ -59,7 +68,7 @@ class SubscriptionTierViewSet(viewsets.ModelViewSet):
             storage_gb=tier.storage_gb,
             api_calls_per_month=tier.api_calls_per_month,
             support_level=tier.support_level,
-            is_active=False,  
+            is_active=False,
         )
         for access in tier.module_access.all():
             TierModuleAccess.objects.create(
@@ -70,6 +79,8 @@ class SubscriptionTierViewSet(viewsets.ModelViewSet):
             )
         serializer = self.get_serializer(new_tier)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
 class HospitalSubscriptionViewSet(viewsets.ModelViewSet):
     queryset = HospitalSubscription.objects.select_related("hospital", "tier")
     serializer_class = HospitalSubscriptionSerializer
@@ -78,6 +89,7 @@ class HospitalSubscriptionViewSet(viewsets.ModelViewSet):
     search_fields = ["hospital__name", "billing_contact_name"]
     ordering_fields = ["created_at", "end_date", "monthly_amount"]
     ordering = ["-created_at"]
+
     @action(detail=False, methods=["get"])
     def overview(self, request):
         subscriptions = self.get_queryset()
@@ -87,15 +99,11 @@ class HospitalSubscriptionViewSet(viewsets.ModelViewSet):
             "trial": subscriptions.filter(status="TRIAL").count(),
             "expired": subscriptions.filter(status="EXPIRED").count(),
             "suspended": subscriptions.filter(status="SUSPENDED").count(),
-            "total_revenue": subscriptions.filter(status="ACTIVE").aggregate(
-                total=Sum("monthly_amount")
-            )["total"]
-            or 0,
-            "expiring_soon": subscriptions.filter(
-                end_date__lte=timezone.now() + timedelta(days=7)
-            ).count(),
+            "total_revenue": subscriptions.filter(status="ACTIVE").aggregate(total=Sum("monthly_amount"))["total"] or 0,
+            "expiring_soon": subscriptions.filter(end_date__lte=timezone.now() + timedelta(days=7)).count(),
         }
         return Response(stats)
+
     @action(detail=True, methods=["post"])
     def extend_subscription(self, request, pk=None):
         subscription = self.get_object()
@@ -108,6 +116,7 @@ class HospitalSubscriptionViewSet(viewsets.ModelViewSet):
                 "new_end_date": subscription.end_date,
             }
         )
+
     @action(detail=True, methods=["post"])
     def change_tier(self, request, pk=None):
         subscription = self.get_object()
@@ -126,11 +135,12 @@ class HospitalSubscriptionViewSet(viewsets.ModelViewSet):
                 }
             )
         except SubscriptionTier.DoesNotExist:
-            return Response(
-                {"error": "Invalid tier ID"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Invalid tier ID"}, status=status.HTTP_400_BAD_REQUEST)
+
+
 class SuperadminDashboardViewSet(viewsets.ViewSet):
     permission_classes = [SuperadminPermission]
+
     @action(detail=False, methods=["get"])
     def stats(self, request):
         total_hospitals = Hospital.objects.count()
@@ -140,9 +150,9 @@ class SuperadminDashboardViewSet(viewsets.ViewSet):
         active_subscriptions = subscriptions.filter(status="ACTIVE").count()
         trial_subscriptions = subscriptions.filter(status="TRIAL").count()
         expired_subscriptions = subscriptions.filter(status="EXPIRED").count()
-        total_revenue_monthly = subscriptions.filter(status="ACTIVE").aggregate(
-            total=Sum("monthly_amount")
-        )["total"] or Decimal("0")
+        total_revenue_monthly = subscriptions.filter(status="ACTIVE").aggregate(total=Sum("monthly_amount"))[
+            "total"
+        ] or Decimal("0")
         active_alerts = SystemAlert.objects.filter(
             is_active=True,
             show_from__lte=timezone.now(),
@@ -173,28 +183,27 @@ class SuperadminDashboardViewSet(viewsets.ViewSet):
         }
         serializer = DashboardStatsSerializer(stats)
         return Response(serializer.data)
+
     @action(detail=False, methods=["get"])
     def hospitals(self, request):
         hospitals = Hospital.objects.select_related("subscription__tier").all()
         serializer = HospitalSummarySerializer(hospitals, many=True)
         return Response(serializer.data)
+
     @action(detail=False, methods=["get"])
     def recent_activity(self, request):
         recent_hospitals = Hospital.objects.order_by("-created_at")[:5]
         recent_alerts = SystemAlert.objects.order_by("-created_at")[:5]
         week_ago = timezone.now().date() - timedelta(days=7)
-        usage_metrics = UsageMetrics.objects.filter(date__gte=week_ago).order_by(
-            "-date"
-        )[:10]
+        usage_metrics = UsageMetrics.objects.filter(date__gte=week_ago).order_by("-date")[:10]
         return Response(
             {
-                "recent_hospitals": HospitalSummarySerializer(
-                    recent_hospitals, many=True
-                ).data,
+                "recent_hospitals": HospitalSummarySerializer(recent_hospitals, many=True).data,
                 "recent_alerts": SystemAlertSerializer(recent_alerts, many=True).data,
                 "usage_metrics": UsageMetricsSerializer(usage_metrics, many=True).data,
             }
         )
+
     @action(detail=False, methods=["post"])
     def price_estimator(self, request):
         serializer = PriceEstimatorRequestSerializer(data=request.data)
@@ -212,9 +221,7 @@ class SuperadminDashboardViewSet(viewsets.ViewSet):
             service_name = service.get("name", "")
             quantity = int(service.get("quantity", 1))
             try:
-                catalog_item = ServiceCatalog.objects.filter(
-                    name__icontains=service_name
-                ).first()
+                catalog_item = ServiceCatalog.objects.filter(name__icontains=service_name).first()
                 if catalog_item:
                     cost = catalog_item.price_cents / 100 * quantity
                 else:
@@ -227,9 +234,7 @@ class SuperadminDashboardViewSet(viewsets.ViewSet):
                         "surgery": 25000,
                         "room_charge": 1000,
                     }
-                    cost = (
-                        Decimal(str(default_prices.get("consultation", 500))) * quantity
-                    )
+                    cost = Decimal(str(default_prices.get("consultation", 500))) * quantity
                 total_estimate += cost
                 breakdown.append(
                     {
@@ -269,14 +274,14 @@ class SuperadminDashboardViewSet(viewsets.ViewSet):
             )
         insurance_coverage = Decimal("0")
         if insurance_type == "BASIC":
-            insurance_coverage = total_estimate * Decimal("0.6")  
+            insurance_coverage = total_estimate * Decimal("0.6")
         elif insurance_type == "PREMIUM":
-            insurance_coverage = total_estimate * Decimal("0.8")  
+            insurance_coverage = total_estimate * Decimal("0.8")
         patient_responsibility = total_estimate - insurance_coverage
         discount_available = Decimal("0")
         estimated_savings = Decimal("0")
         if patient_type == "IPD" and duration_days > 5:
-            discount_available = total_estimate * Decimal("0.1")  
+            discount_available = total_estimate * Decimal("0.1")
             estimated_savings = discount_available
         response_data = {
             "total_estimate": total_estimate,
@@ -288,13 +293,17 @@ class SuperadminDashboardViewSet(viewsets.ViewSet):
         }
         response_serializer = PriceEstimatorResponseSerializer(response_data)
         return Response(response_serializer.data)
+
+
 class SystemAlertViewSet(viewsets.ModelViewSet):
     queryset = SystemAlert.objects.all()
     serializer_class = SystemAlertSerializer
     permission_classes = [SuperadminPermission]
     ordering = ["-created_at"]
+
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
     @action(detail=False, methods=["get"])
     def active(self, request):
         now = timezone.now()
@@ -305,22 +314,29 @@ class SystemAlertViewSet(viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(queryset=active_alerts, many=True)
         return Response(serializer.data)
+
+
 class GlobalSettingsViewSet(viewsets.ModelViewSet):
     queryset = GlobalSettings.objects.all()
     serializer_class = GlobalSettingsSerializer
     permission_classes = [SuperadminPermission]
     filterset_fields = ["category"]
     search_fields = ["key", "description"]
+
     def perform_update(self, serializer):
         serializer.save(last_modified_by=self.request.user)
+
     def perform_create(self, serializer):
         serializer.save(last_modified_by=self.request.user)
+
+
 class UsageMetricsViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = UsageMetrics.objects.select_related("hospital")
     serializer_class = UsageMetricsSerializer
     permission_classes = [SuperadminPermission]
     filterset_fields = ["hospital", "date"]
     ordering = ["-date"]
+
     @action(detail=False, methods=["get"])
     def trends(self, request):
         days = int(request.query_params.get("days", 30))

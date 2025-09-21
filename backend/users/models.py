@@ -1,11 +1,15 @@
 from datetime import timedelta
-from django.contrib.auth.models import AbstractUser, Permission
-from django.db import models
-from django.utils import timezone
+
 from encrypted_model_fields.fields import (
     EncryptedCharField,
     EncryptedEmailField,
 )
+
+from django.contrib.auth.models import AbstractUser, Permission
+from django.db import models
+from django.utils import timezone
+
+
 class UserRole(models.TextChoices):
     SUPER_ADMIN = "SUPER_ADMIN", "Super Admin"
     HOSPITAL_ADMIN = "HOSPITAL_ADMIN", "Hospital Admin"
@@ -39,6 +43,8 @@ class UserRole(models.TextChoices):
     SECURITY = "SECURITY", "Security"
     MAINTENANCE = "MAINTENANCE", "Maintenance"
     VOLUNTEER = "VOLUNTEER", "Volunteer"
+
+
 class UserStatus(models.TextChoices):
     ACTIVE = "ACTIVE", "Active"
     INACTIVE = "INACTIVE", "Inactive"
@@ -46,6 +52,8 @@ class UserStatus(models.TextChoices):
     TERMINATED = "TERMINATED", "Terminated"
     ON_LEAVE = "ON_LEAVE", "On Leave"
     PENDING_VERIFICATION = "PENDING_VERIFICATION", "Pending Verification"
+
+
 class EmploymentType(models.TextChoices):
     FULL_TIME = "FULL_TIME", "Full Time"
     PART_TIME = "PART_TIME", "Part Time"
@@ -53,6 +61,8 @@ class EmploymentType(models.TextChoices):
     TEMPORARY = "TEMPORARY", "Temporary"
     CONSULTANT = "CONSULTANT", "Consultant"
     VOLUNTEER = "VOLUNTEER", "Volunteer"
+
+
 class Department(models.Model):
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20, unique=True)
@@ -83,16 +93,18 @@ class Department(models.Model):
     email = models.EmailField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         unique_together = [["hospital", "code"]]
         ordering = ["name"]
+
     def __str__(self):
         return f"{self.hospital.name} - {self.name}"
+
+
 class User(AbstractUser):
     employee_id = models.CharField(max_length=20, unique=True, null=True, blank=True)
-    role = models.CharField(
-        max_length=32, choices=UserRole.choices, default=UserRole.RECEPTIONIST
-    )
+    role = models.CharField(max_length=32, choices=UserRole.choices, default=UserRole.RECEPTIONIST)
     status = models.CharField(
         max_length=20,
         choices=UserStatus.choices,
@@ -171,6 +183,7 @@ class User(AbstractUser):
     avatar = models.ImageField(upload_to="avatars/", null=True, blank=True)
     bio = models.TextField(blank=True)
     preferences = models.JSONField(default=dict, blank=True)
+
     class Meta:
         indexes = [
             models.Index(fields=["hospital", "department", "status"]),
@@ -189,8 +202,10 @@ class User(AbstractUser):
             ("can_discharge_patients", "Can discharge patients"),
             ("can_access_admin_panel", "Can access admin panel"),
         ]
+
     def __str__(self) -> str:
         return f"{self.get_full_name()} ({self.employee_id or self.username})"
+
     def get_full_name(self):
         parts = [
             self.first_name,
@@ -199,15 +214,19 @@ class User(AbstractUser):
             self.suffix,
         ]
         return " ".join(part for part in parts if part)
+
     def is_account_locked(self):
         return self.account_locked_until and self.account_locked_until > timezone.now()
+
     def lock_account(self, duration_minutes=30):
         self.account_locked_until = timezone.now() + timedelta(minutes=duration_minutes)
         self.save(update_fields=["account_locked_until"])
+
     def unlock_account(self):
         self.account_locked_until = None
         self.failed_login_attempts = 0
         self.save(update_fields=["account_locked_until", "failed_login_attempts"])
+
     def can_prescribe(self):
         prescribing_roles = [
             UserRole.CHIEF_MEDICAL_OFFICER,
@@ -215,9 +234,9 @@ class User(AbstractUser):
             UserRole.RESIDENT,
             UserRole.INTERN,
         ]
-        return self.role in prescribing_roles or self.has_perm(
-            "users.can_prescribe_medication"
-        )
+        return self.role in prescribing_roles or self.has_perm("users.can_prescribe_medication")
+
+
 class UserPermissionGroup(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
@@ -227,17 +246,19 @@ class UserPermissionGroup(models.Model):
         related_name="permission_groups",
     )
     permissions = models.ManyToManyField(Permission, blank=True)
-    users = models.ManyToManyField(
-        User, blank=True, related_name="custom_permission_groups"
-    )
+    users = models.ManyToManyField(User, blank=True, related_name="custom_permission_groups")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         unique_together = [["hospital", "name"]]
         ordering = ["name"]
+
     def __str__(self):
         return f"{self.hospital.name} - {self.name}"
+
+
 class UserSession(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sessions")
     session_key = models.CharField(max_length=40, unique=True)
@@ -248,14 +269,18 @@ class UserSession(models.Model):
     login_time = models.DateTimeField(auto_now_add=True)
     logout_time = models.DateTimeField(null=True, blank=True)
     last_activity = models.DateTimeField(auto_now=True)
+
     class Meta:
         ordering = ["-login_time"]
         indexes = [
             models.Index(fields=["user", "is_active"]),
             models.Index(fields=["session_key"]),
         ]
+
     def __str__(self):
         return f"{self.user} - {self.login_time}"
+
+
 class UserLoginHistory(models.Model):
     user = models.ForeignKey(
         User,
@@ -271,6 +296,7 @@ class UserLoginHistory(models.Model):
     failure_reason = models.CharField(max_length=100, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     location = models.CharField(max_length=255, blank=True)
+
     class Meta:
         ordering = ["-timestamp"]
         indexes = [
@@ -278,14 +304,15 @@ class UserLoginHistory(models.Model):
             models.Index(fields=["ip_address", "timestamp"]),
             models.Index(fields=["success", "timestamp"]),
         ]
+
     def __str__(self):
         status = "Success" if self.success else "Failed"
         return f"{self.username_attempted} - {status} - {self.timestamp}"
+
+
 class UserCredential(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="credentials")
-    credential_type = models.CharField(
-        max_length=100
-    )  
+    credential_type = models.CharField(max_length=100)
     credential_name = models.CharField(max_length=200)
     issuing_organization = models.CharField(max_length=200)
     credential_number = EncryptedCharField(max_length=100, blank=True)
@@ -306,11 +333,13 @@ class UserCredential(models.Model):
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         ordering = ["-issue_date"]
         indexes = [
             models.Index(fields=["user", "is_active"]),
             models.Index(fields=["expiry_date"]),
         ]
+
     def __str__(self):
         return f"{self.user} - {self.credential_name}"

@@ -1,0 +1,641 @@
+# Enterprise-Grade API Gateway Configuration
+# Author: Microservices Scaling Architect
+# Purpose: Advanced API gateway with security, routing, and monitoring
+
+# ==================== KONG API GATEWAY DEPLOYMENT ====================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kong-enterprise-gateway
+  namespace: hms-production
+  labels:
+    app: kong
+    component: api-gateway
+    tier: edge
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: kong
+  template:
+    metadata:
+      labels:
+        app: kong
+        component: api-gateway
+        tier: edge
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9542"
+        prometheus.io/path: "/metrics"
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - kong
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name: kong
+          image: kong/kong-gateway:3.4.0.0
+          imagePullPolicy: Always
+          env:
+            # Database configuration
+            - name: KONG_DATABASE
+              value: "off"
+            - name: KONG_DECLARATIVE_CONFIG
+              value: /kong/declarative/kong.yml
+            - name: KONG_PROXY_ACCESS_LOG
+              value: /dev/stdout
+            - name: KONG_ADMIN_ACCESS_LOG
+              value: /dev/stdout
+            - name: KONG_PROXY_ERROR_LOG
+              value: /dev/stderr
+            - name: KONG_ADMIN_ERROR_LOG
+              value: /dev/stderr
+
+            # Performance tuning
+            - name: KONG_NGINX_WORKER_PROCESSES
+              value: "auto"
+            - name: KONG_NGINX_WORKER_RLIMIT_NOFILE
+              value: "65536"
+            - name: KONG_NGINX_HTTP_CLIENT_MAX_BODY_SIZE
+              value: "100m"
+            - name: KONG_NGINX_PROXY_BUFFER_SIZE
+              value: "128k"
+            - name: KONG_NGINX_PROXY_BUFFERS
+              value: "4 256k"
+
+            # Security
+            - name: KONG_SSL
+              value: "on"
+            - name: KONG_SSL_CERT
+              value: /etc/secrets/kong-tls/tls.crt
+            - name: KONG_SSL_CERT_KEY
+              value: /etc/secrets/kong-tls/tls.key
+            - name: KONG_ADMIN_SSL
+              value: "on"
+            - name: KONG_ADMIN_SSL_CERT
+              value: /etc/secrets/kong-admin-tls/tls.crt
+            - name: KONG_ADMIN_SSL_CERT_KEY
+              value: /etc/secrets/kong-admin-tls/tls.key
+
+            # Plugins
+            - name: KONG_PLUGINS
+              value: "bundled,rate-limiting,oauth2,jwt,correlation-id,datadog,prometheus"
+
+            # Enterprise features
+            - name: KONG_LICENSE_DATA
+              valueFrom:
+                secretKeyRef:
+                  name: kong-enterprise-license
+                  key: license
+
+            # Monitoring
+            - name: KONG_VITALS
+              value: "on"
+            - name: KONG_STATUS_LISTEN
+              value: "0.0.0.0:9542"
+
+          ports:
+            - name: proxy-http
+              containerPort: 8000
+              protocol: TCP
+            - name: proxy-https
+              containerPort: 8443
+              protocol: TCP
+            - name: admin-http
+              containerPort: 8001
+              protocol: TCP
+            - name: admin-https
+              containerPort: 8444
+              protocol: TCP
+            - name: status
+              containerPort: 9542
+              protocol: TCP
+            - name: stream-proxy-tcp
+              containerPort: 9000
+              protocol: TCP
+            - name: stream-proxy-tls
+              containerPort: 9443
+              protocol: TCP
+
+          volumeMounts:
+            - name: kong-config
+              mountPath: /kong/declarative
+            - name: kong-tls
+              mountPath: /etc/secrets/kong-tls
+              readOnly: true
+            - name: kong-admin-tls
+              mountPath: /etc/secrets/kong-admin-tls
+              readOnly: true
+            - name: kong-temp
+              mountPath: /tmp
+
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "1000m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: 9542
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /status/ready
+              port: 9542
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 1
+
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - NET_BIND_SERVICE
+
+      volumes:
+        - name: kong-config
+          configMap:
+            name: kong-declarative-config
+        - name: kong-tls
+          secret:
+            secretName: kong-tls-secret
+        - name: kong-admin-tls
+          secret:
+            secretName: kong-admin-tls-secret
+        - name: kong-temp
+          emptyDir: {}
+
+# ==================== KONG DECLARATIVE CONFIGURATION =================---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-declarative-config
+  namespace: hms-production
+data:
+  kong.yml: |
+    _format_version: "3.0"
+
+    services:
+      # Patient Service
+      - name: patient-service
+        url: http://patient-service.hms-production.svc.cluster.local:8000
+        routes:
+          - name: patient-route
+            paths:
+              - /api/v1/patients
+            strip_path: true
+            plugins:
+              - name: rate-limiting
+                config:
+                  minute: 1000
+                  hour: 10000
+                  day: 100000
+              - name: cors
+                config:
+                  origins:
+                    - "*"
+                  methods:
+                    - GET
+                    - POST
+                    - PUT
+                    - DELETE
+                    - OPTIONS
+                  headers:
+                    - Accept
+                    - Accept-Version
+                    - Content-Length
+                    - Content-MD5
+                    - Content-Type
+                    - Date
+                    - Authorization
+                  exposed_headers:
+                    - X-Request-ID
+                  credentials: true
+                  max_age: 86400
+              - name: prometheus
+              - name: correlation-id
+                config:
+                  header_name: X-Request-ID
+                  generator: uuid
+                  echo_downstream: false
+              - name: acl
+                config:
+                  whitelist:
+                    - patients-read
+                    - patients-write
+
+      # Appointment Service
+      - name: appointment-service
+        url: http://appointment-service.hms-production.svc.cluster.local:8000
+        routes:
+          - name: appointment-route
+            paths:
+              - /api/v1/appointments
+            strip_path: true
+            plugins:
+              - name: rate-limiting
+                config:
+                  minute: 500
+                  hour: 5000
+                  day: 50000
+              - name: request-termination
+                config:
+                  status_code: 429
+                  message: "Rate limit exceeded"
+                  when:
+                    - name: upstream_status
+                      value: "429"
+              - name: oauth2
+                config:
+                  scopes:
+                    - appointments:read
+                    - appointments:write
+
+      # Pharmacy Service
+      - name: pharmacy-service
+        url: http://pharmacy-service.hms-production.svc.cluster.local:8000
+        routes:
+          - name: pharmacy-route
+            paths:
+              - /api/v1/pharmacy
+            strip_path: true
+            plugins:
+              - name: rate-limiting
+                config:
+                  minute: 300
+                  hour: 3000
+                  day: 30000
+              - name: jwt
+                config:
+                  secret_is_base64: false
+                  key_claim_name: alg
+                  algorithm: HS256
+
+      # Lab Service
+      - name: lab-service
+        url: http://lab-service.hms-production.svc.cluster.local:8000
+        routes:
+          - name: lab-route
+            paths:
+              - /api/v1/lab
+            strip_path: true
+            plugins:
+              - name: rate-limiting
+                config:
+                  minute: 200
+                  hour: 2000
+                  day: 20000
+              - name: file-log
+                config:
+                  path: /var/log/kong/lab-service.log
+                  reopen: false
+
+      # Billing Service
+      - name: billing-service
+        url: http://billing-service.hms-production.svc.cluster.local:8000
+        routes:
+          - name: billing-route
+            paths:
+              - /api/v1/billing
+            strip_path: true
+            plugins:
+              - name: rate-limiting
+                config:
+                  minute: 400
+                  hour: 4000
+                  day: 40000
+              - name: request-transformer
+                config:
+                  add:
+                    headers:
+                      - "X-Billing-Service:true"
+
+      # ER Alerts Service
+      - name: er-alerts-service
+        url: http://er-alerts.hms-production.svc.cluster.local:9006
+        routes:
+          - name: er-alerts-route
+            paths:
+              - /api/v1/er
+            strip_path: true
+            plugins:
+              - name: rate-limiting
+                config:
+                  second: 100
+                  minute: 6000
+                  hour: 60000
+              - name: pre-function
+                config:
+                  phase: access
+                  functions:
+                    - |
+                      local start_time = ngx.now()
+                      ngx.ctx.start_time = start_time
+
+      # Analytics Service
+      - name: analytics-service
+        url: http://analytics-service.hms-production.svc.cluster.local:8010
+        routes:
+          - name: analytics-route
+            paths:
+              - /api/v1/analytics
+            strip_path: true
+            plugins:
+              - name: rate-limiting
+                config:
+                  minute: 100
+                  hour: 1000
+                  day: 10000
+              - name: datadog
+                config:
+                  host: "datadog-agent.monitoring.svc.cluster.local"
+                  port: 8125
+
+    upstreams:
+      - name: patient-service-upstream
+        targets:
+          - target: patient-service.hms-production.svc.cluster.local:8000
+            weight: 100
+        healthchecks:
+          active:
+            healthy:
+              http_statuses:
+                - 200
+                - 201
+                - 302
+            unhealthy:
+              http_failures: 3
+              http_statuses:
+                - 429
+                - 500
+                - 501
+                - 502
+                - 503
+                - 504
+            http_path: /health
+            interval: 30
+            timeout: 5
+            successes: 2
+          passive:
+            healthy:
+              successes: 2
+              http_statuses:
+                - 200
+                - 201
+                - 302
+            unhealthy:
+              http_failures: 3
+              http_statuses:
+                - 429
+                - 500
+                - 501
+                - 502
+                - 503
+                - 504
+          type: http
+
+    plugins:
+      - name: prometheus
+        config:
+          per_consumer: true
+          latency_metrics: true
+          bandwidth_metrics: true
+          status_code_metrics: true
+          upstream_health_metrics: true
+
+      - name: correlation-id
+        config:
+          header_name: X-Request-ID
+          generator: uuid
+          echo_downstream: false
+
+      - name: request-termination
+        config:
+          status_code: 404
+          message: "Not Found"
+
+      - name: basic-auth
+        config:
+          hide_credentials: true
+
+# ==================== API GATEWAY SERVICES ====================
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-proxy
+  namespace: hms-production
+  labels:
+    app: kong
+    service: proxy
+spec:
+  type: LoadBalancer
+  selector:
+    app: kong
+  ports:
+    - name: proxy-http
+      port: 80
+      targetPort: 8000
+      protocol: TCP
+    - name: proxy-https
+      port: 443
+      targetPort: 8443
+      protocol: TCP
+    - name: proxy-stream-tcp
+      port: 9000
+      targetPort: 9000
+      protocol: TCP
+    - name: proxy-stream-tls
+      port: 9443
+      targetPort: 9443
+      protocol: TCP
+  externalTrafficPolicy: Local
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-admin
+  namespace: hms-production
+  labels:
+    app: kong
+    service: admin
+spec:
+  type: ClusterIP
+  selector:
+    app: kong
+  ports:
+    - name: admin-http
+      port: 8001
+      targetPort: 8001
+      protocol: TCP
+    - name: admin-https
+      port: 8444
+      targetPort: 8444
+      protocol: TCP
+
+# ==================== API GATEWAY INGRESS =================---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-ingress
+  namespace: hms-production
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains";
+spec:
+  tls:
+    - hosts:
+        - "api.hms.enterprise"
+        - "www.hms.enterprise"
+      secretName: hms-tls-secret
+  rules:
+    - host: "api.hms.enterprise"
+      http:
+        paths:
+          - path: /api(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: kong-proxy
+                port:
+                  number: 80
+    - host: "www.hms.enterprise"
+      http:
+        paths:
+          - path: /(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: hms-frontend-service
+                port:
+                  number: 80
+
+# ==================== API GATEWAY MONITORING =================---
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: kong-gateway-monitor
+  namespace: monitoring
+  labels:
+    app: kong
+    monitoring: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: kong
+  endpoints:
+    - port: status
+      interval: 30s
+      path: /metrics
+      scheme: http
+  namespaceSelector:
+    matchNames:
+      - hms-production
+---
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: kong-admin-monitor
+  namespace: monitoring
+  labels:
+    app: kong
+    monitoring: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: kong
+  endpoints:
+    - port: admin-http
+      interval: 60s
+      path: /metrics
+      scheme: http
+  namespaceSelector:
+    matchNames:
+      - hms-production
+
+# ==================== API DOCUMENTATION SERVICE =================---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swagger-ui
+  namespace: hms-production
+  labels:
+    app: swagger-ui
+    component: documentation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: swagger-ui
+  template:
+    metadata:
+      labels:
+        app: swagger-ui
+        component: documentation
+    spec:
+      containers:
+        - name: swagger-ui
+          image: swaggerapi/swagger-ui:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SWAGGER_JSON_URL
+              value: /api/openapi.json
+            - name: BASE_URL
+              value: /
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: swagger-ui-service
+  namespace: hms-production
+  labels:
+    app: swagger-ui
+    service: documentation
+spec:
+  type: ClusterIP
+  selector:
+    app: swagger-ui
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080

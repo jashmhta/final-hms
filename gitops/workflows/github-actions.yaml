@@ -1,0 +1,439 @@
+# GitHub Actions Workflows
+# Enterprise-grade CI/CD for HMS microservices
+
+name: HMS CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.gitignore'
+      - '.gitattributes'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.gitignore'
+      - '.gitattributes'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+      service:
+        description: 'Target service (optional)'
+        required: false
+        type: string
+      force_deploy:
+        description: 'Force deployment'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: hms-enterprise/hms-microservices
+
+jobs:
+  # Security Scan Job
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run Bandit security linter
+        run: |
+          pip install bandit
+          bandit -r . -f json -o bandit-report.json || true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            trivy-results.sarif
+            bandit-report.json
+
+  # Code Quality Job
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements-dev.txt
+
+      - name: Run code formatting check
+        run: |
+          black --check --diff .
+          isort --check-only --diff .
+
+      - name: Run linting
+        run: |
+          flake8 .
+          pylint **/*.py
+
+      - name: Run type checking
+        run: |
+          mypy .
+
+      - name: Run security checks
+        run: |
+          bandit -r .
+
+      - name: Generate coverage report
+        run: |
+          pytest --cov=. --cov-report=xml --cov-report=html
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            coverage.xml
+            htmlcov/
+
+  # Build and Test Job
+  build-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    needs: [security-scan, code-quality]
+
+    strategy:
+      matrix:
+        service: [patient-service, auth-service, appointment-service, clinical-service, billing-service]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.${{ matrix.service }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run container security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.service }}:${{ steps.meta.outputs.version }}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Run integration tests
+        run: |
+          docker-compose -f docker-compose.test.yml up -d
+          docker-compose -f docker-compose.test.yml exec ${{ matrix.service }} pytest tests/integration/
+          docker-compose -f docker-compose.test.yml down
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.service }}
+          path: test-results/
+
+  # Deploy to Development
+  deploy-dev:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: build-test
+    if: github.ref == 'refs/heads/develop'
+    environment: development
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG_DEV }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Deploy with kubectl
+        run: |
+          kubectl apply -f k8s/development/
+          kubectl rollout status deployment/${{ github.event.inputs.service || 'all' }} -n hms-system
+
+      - name: Run smoke tests
+        run: |
+          ./scripts/smoke-test.sh development
+
+      - name: Notify deployment
+        run: |
+          curl -X POST "${{ secrets.SLACK_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -d '{"text": "✅ HMS deployed to development environment"}'
+
+  # Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-test
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG_STAGING }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Deploy with ArgoCD
+        run: |
+          argocd app sync hms-root --server ${{ secrets.ARGOCD_SERVER }} --auth-token ${{ secrets.ARGOCD_TOKEN }}
+
+      - name: Wait for deployment
+        run: |
+          argocd app wait hms-root --health --timeout 600
+
+      - name: Run integration tests
+        run: |
+          ./scripts/integration-test.sh staging
+
+      - name: Run performance tests
+        run: |
+          ./scripts/performance-test.sh staging
+
+      - name: Generate deployment report
+        run: |
+          ./scripts/deployment-report.sh staging > deployment-report.html
+
+      - name: Upload deployment report
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-report-staging
+          path: deployment-report.html
+
+      - name: Notify deployment
+        run: |
+          curl -X POST "${{ secrets.SLACK_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -d '{"text": "🚀 HMS deployed to staging environment"}'
+
+  # Deploy to Production
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG_PROD }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Pre-deployment health check
+        run: |
+          ./scripts/pre-deployment-check.sh production
+
+      - name: Deploy with ArgoCD
+        run: |
+          argocd app sync hms-root --server ${{ secrets.ARGOCD_SERVER }} --auth-token ${{ secrets.ARGOCD_TOKEN }}
+
+      - name: Wait for deployment
+        run: |
+          argocd app wait hms-root --health --timeout 1200
+
+      - name: Post-deployment health check
+        run: |
+          ./scripts/post-deployment-check.sh production
+
+      - name: Run smoke tests
+        run: |
+          ./scripts/smoke-test.sh production
+
+      - name: Run load tests
+        run: |
+          ./scripts/load-test.sh production
+
+      - name: Generate deployment report
+        run: |
+          ./scripts/deployment-report.sh production > deployment-report.html
+
+      - name: Upload deployment report
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-report-production
+          path: deployment-report.html
+
+      - name: Create deployment tag
+        run: |
+          git tag "production-$(date +%Y%m%d-%H%M%S)"
+          git push origin --tags
+
+      - name: Notify deployment
+        run: |
+          curl -X POST "${{ secrets.SLACK_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -d '{"text": "🎉 HMS deployed to production environment"}'
+
+  # Backup and Recovery
+  backup-recovery:
+    name: Backup and Recovery
+    runs-on: ubuntu-latest
+    needs: deploy-prod
+    if: always() && needs.deploy-prod.result == 'success'
+
+    steps:
+      - name: Create backup
+        run: |
+          kubectl create job hms-backup-$(date +%Y%m%d-%H%M%S) \
+            --from=cronjob/daily-backup \
+            -n velero
+
+      - name: Verify backup
+        run: |
+          velero backup describe $(velero backup get -o jsonpath='{.items[0].metadata.name}')
+
+      - name: Test recovery
+        run: |
+          ./scripts/test-recovery.sh
+
+  # Monitoring and Alerting
+  monitoring:
+    name: Monitoring and Alerting
+    runs-on: ubuntu-latest
+    needs: deploy-prod
+    if: always() && needs.deploy-prod.result == 'success'
+
+    steps:
+      - name: Check service health
+        run: |
+          ./scripts/health-check.sh production
+
+      - name: Verify monitoring
+        run: |
+          curl -f "https://prometheus.hms.enterprise.com/api/v1/query?query=up" || exit 1
+          curl -f "https://grafana.hms.enterprise.com/api/health" || exit 1
+
+      - name: Verify alerts
+        run: |
+          ./scripts/verify-alerts.sh production
+
+      - name: Generate metrics report
+        run: |
+          ./scripts/metrics-report.sh production > metrics-report.json
+
+      - name: Upload metrics report
+        uses: actions/upload-artifact@v4
+        with:
+          name: metrics-report-production
+          path: metrics-report.json
+
+  # Cleanup
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Cleanup old deployments
+        run: |
+          ./scripts/cleanup-deployments.sh
+
+      - name: Cleanup old images
+        run: |
+          docker image prune -f
+
+      - name: Cleanup artifacts
+        uses: geekyeggo/delete-artifact@v2
+        with:
+          name: |
+            security-reports
+            coverage-reports
+            test-results-*
+            deployment-report-*
+            metrics-report-*

@@ -1,0 +1,310 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with performance optimizations
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hms_enterprise}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+      # Performance tuning
+      POSTGRES_SHARED_BUFFERS: 256MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
+      POSTGRES_MAINTENANCE_WORK_MEM: 256MB
+      POSTGRES_CHECKPOINT_COMPLETION_TARGET: 0.9
+      POSTGRES_WAL_BUFFERS: 16MB
+      POSTGRES_DEFAULT_STATISTICS_TARGET: 100
+      POSTGRES_RANDOM_PAGE_COST: 1.1
+      POSTGRES_EFFECTIVE_IO_CONCURRENCY: 200
+      POSTGRES_MAX_WORKER_PROCESSES: 4
+      POSTGRES_MAX_PARALLEL_WORKERS: 4
+      POSTGRES_MAX_PARALLEL_WORKERS_PER_GATHER: 2
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/postgres-performance.conf:/etc/postgresql/postgresql.conf
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-hms_enterprise}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis with performance optimizations
+  redis:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --tcp-keepalive 60
+      --timeout 0
+      --tcp-backlog 511
+      --databases 16
+      --rdbcompression yes
+      --rdbchecksum yes
+      --activerehashing yes
+      --hz 10
+      --dynamic-hz yes
+      --aof-rewrite-percentage 100
+      --aof-rewrite-min-size 64mb
+      --lua-time-limit 5000
+      --slowlog-log-slower-than 10000
+      --slowlog-max-len 128
+      --latency-monitor-threshold 100
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Django Backend with performance optimizations
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.optimized
+    environment:
+      DEBUG: ${DEBUG:-false}
+      DJANGO_SETTINGS_MODULE: hms.settings
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-hms_enterprise}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      REDIS_URL: redis://redis:6379/0
+      # Performance settings
+      GUNICORN_WORKERS: 4
+      GUNICORN_THREADS: 2
+      GUNICORN_TIMEOUT: 120
+      GUNICORN_KEEPALIVE: 5
+      GUNICORN_MAX_REQUESTS: 1000
+      GUNICORN_MAX_REQUESTS_JITTER: 50
+      GUNICORN_WORKER_TMP_DIR: /dev/shm
+      # Database connection pooling
+      DB_CONN_MAX_AGE: 600
+      DB_CONN_HEALTH_CHECKS: true
+      DB_OPTIONS: -c default_transaction_isolation=read_committed
+      # Cache settings
+      CACHE_BACKEND: redis
+      CACHE_LOCATION: redis://redis:6379/1
+      CACHE_TIMEOUT: 300
+      CACHE_MIDDLEWARE_ALIAS: default
+      CACHE_MIDDLEWARE_SECONDS: 600
+      CACHE_MIDDLEWARE_PREFIX: hms_
+      CACHE_MIDDLEWARE_VERSION: 1
+      # Session settings
+      SESSION_ENGINE: django.contrib.sessions.backends.cache
+      SESSION_CACHE_ALIAS: default
+      SESSION_COOKIE_AGE: 86400
+      SESSION_COOKIE_HTTPONLY: true
+      SESSION_COOKIE_SECURE: true
+      SESSION_COOKIE_SAMESITE: 'Lax'
+      # Security
+      SECRET_KEY: ${DJANGO_SECRET_KEY}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      CSRF_COOKIE_SECURE: true
+      SECURE_SSL_REDIRECT: true
+      SECURE_HSTS_SECONDS: 31536000
+      SECURE_HSTS_INCLUDE_SUBDOMAINS: true
+      SECURE_HSTS_PRELOAD: true
+      SECURE_CONTENT_TYPE_NOSNIFF: true
+      SECURE_BROWSER_XSS_FILTER: true
+    volumes:
+      - ./backend:/app
+      - media_volume:/app/media
+      - static_volume:/app/static
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+        reservations:
+          cpus: '2.0'
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend with performance optimizations
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.optimized
+      target: production
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+      VITE_APP_ENV: production
+      NODE_ENV: production
+      # Performance optimizations
+      VITE_BUNDLE_ANALYZER: false
+      VITE_COMPRESSION: true
+      VITE_MINIFY: true
+      VITE_SOURCEMAP: false
+      VITE_INLINE_RUNTIME_CHUNK: false
+      VITE_RUNTIME_CHUNK: true
+      VITE_CHUNK_SIZE_WARNING: 500
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - frontend_dist:/app/dist
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx with performance optimizations
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./nginx/nginx.optimized.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+      - static_volume:/var/www/static
+      - media_volume:/var/www/media
+      - frontend_dist:/var/www/frontend
+      - ./scripts/cdn-optimizer.py:/usr/local/bin/cdn-optimizer
+      - ./scripts/deploy-cdn.py:/usr/local/bin/deploy-cdn
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - frontend
+    environment:
+      - NGINX_WORKER_PROCESSES=auto
+      - NGINX_WORKER_CONNECTIONS=2048
+      - NGINX_GZIP_COMP_LEVEL=6
+      - NGINX_BROTLI_COMP_LEVEL=6
+      - CDN_BASE_URL=${CDN_BASE_URL:-/static/}
+      - CDN_PROVIDER=${CDN_PROVIDER:-none}
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus for monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+      - '--web.route-prefix=/'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: false
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  static_volume:
+    driver: local
+  media_volume:
+    driver: local
+  frontend_dist:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

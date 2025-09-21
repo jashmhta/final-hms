@@ -1,0 +1,358 @@
+{
+  "version": "4",
+  "settings": {
+    "automatic_https_rewrites": "on",
+    "brotli": "on",
+    "minify": {
+      "css": "on",
+      "js": "on",
+      "html": "on"
+    },
+    "rocket_loader": "on",
+    "always_online": "on",
+    "security_level": "strict",
+    "ssl": "strict",
+    "tls_1_3": "on",
+    "http2": "on",
+    "ipv6": "on",
+    "websockets": "on",
+    "pseudo_ipv4": "off",
+    "prefetch_preload": "on",
+    "opportunistic_encryption": "on",
+    "automatic_platform_optimization": {
+      "enabled": true,
+      "css": true,
+      "html": true,
+      "javascript": true,
+      "images": true
+    },
+    "image_resizing": {
+      "enabled": true,
+      "quality": 85,
+      "width": 2048,
+      "height": 2048
+    },
+    "mirage": "on",
+    "polish": "lossless",
+    "hotlink_protection": "on",
+    "max_upload": 100,
+    "email_obfuscation": "on",
+    "server_side_exclude": "on"
+  },
+  "rules": [
+    {
+      "id": "api_optimization",
+      "description": "API Response Optimization",
+      "expression": "(http.host eq \"api.hms.local\")",
+      "action": {
+        "cache_level": "cache_everything",
+        "edge_cache_ttl": 300,
+        "browser_cache_ttl": 300,
+        "respect_strong_etag": true,
+        "origin_error_page_pass_thru": true,
+        "cache_deception_armor": true
+      }
+    },
+    {
+      "id": "static_assets",
+      "description": "Static Assets Optimization",
+      "expression": "(http.host eq \"static.hms.local\")",
+      "action": {
+        "cache_level": "cache_everything",
+        "edge_cache_ttl": 2592000,
+        "browser_cache_ttl": 604800,
+        "respect_strong_etag": true,
+        "cache_on_cookie": false
+      }
+    },
+    {
+      "id": "dynamic_content",
+      "description": "Dynamic Content Caching",
+      "expression": "(http.host eq \"hms.local\")",
+      "action": {
+        "cache_level": "dynamic",
+        "edge_cache_ttl": 60,
+        "browser_cache_ttl": 60,
+        "respect_strong_etag": true,
+        "cache_deception_armor": true
+      }
+    },
+    {
+      "id": "mobile_optimization",
+      "description": "Mobile Optimization",
+      "expression": "(cf.device_type eq \"mobile\")",
+      "action": {
+        "mirage": "on",
+        "auto_minify": {
+          "html": true,
+          "css": true,
+          "js": true
+        },
+        "image_resizing": {
+          "enabled": true,
+          "width": 1080,
+          "quality": 80
+        }
+      }
+    }
+  ],
+  "page_rules": [
+    {
+      "id": "api_caching",
+      "targets": [
+        {
+          "target": "url",
+          "constraint": {
+            "operator": "matches",
+            "value": "https://api.hms.local/api/*"
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "cache_level",
+          "value": "cache_everything"
+        },
+        {
+          "id": "edge_cache_ttl",
+          "value": 300
+        },
+        {
+          "id": "browser_cache_ttl",
+          "value": 300
+        },
+        {
+          "id": "respect_strong_etag",
+          "value": true
+        },
+        {
+          "id": "cache_deception_armor",
+          "value": true
+        },
+        {
+          "id": "always_online",
+          "value": "on"
+        },
+        {
+          "id": "origin_error_page_pass_thru",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": "static_files",
+      "targets": [
+        {
+          "target": "url",
+          "constraint": {
+            "operator": "matches",
+            "value": "*.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)"
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "cache_level",
+          "value": "cache_everything"
+        },
+        {
+          "id": "edge_cache_ttl",
+          "value": 2592000
+        },
+        {
+          "id": "browser_cache_ttl",
+          "value": 604800
+        },
+        {
+          "id": "respect_strong_etag",
+          "value": true
+        },
+        {
+          "id": "always_online",
+          "value": "on"
+        },
+        {
+          "id": "polish",
+          "value": "lossless"
+        }
+      ]
+    },
+    {
+      "id": "media_files",
+      "targets": [
+        {
+          "target": "url",
+          "constraint": {
+            "operator": "matches",
+            "value": "*.(mp4|webm|mov|avi|flv)"
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "cache_level",
+          "value": "cache_everything"
+        },
+        {
+          "id": "edge_cache_ttl",
+          "value": 2592000
+        },
+        {
+          "id": "browser_cache_ttl",
+          "value": 604800
+        },
+        {
+          "id": "mirage",
+          "value": "on"
+        }
+      ]
+    }
+  ],
+  "workers": {
+    "api_worker": {
+      "name": "hms-api-worker",
+      "script": "workers/api-worker.js",
+      "routes": [
+        "api.hms.local/api/*"
+      ]
+    },
+    "auth_worker": {
+      "name": "hms-auth-worker",
+      "script": "workers/auth-worker.js",
+      "routes": [
+        "api.hms.local/api/auth/*"
+      ]
+    }
+  },
+  "edge_functions": {
+    "geo_routing": {
+      "name": "geo-routing",
+      "script": "edge/geo-routing.js",
+      "trigger": "onRequest"
+    },
+    "rate_limiter": {
+      "name": "rate-limiter",
+      "script": "edge/rate-limiter.js",
+      "trigger": "onRequest"
+    }
+  },
+  "load_balancing": {
+    "pools": [
+      {
+        "name": "hms-backend-pool",
+        "origins": [
+          {
+            "name": "backend-1",
+            "address": "backend-1.hms.local",
+            "enabled": true,
+            "weight": 1
+          },
+          {
+            "name": "backend-2",
+            "address": "backend-2.hms.local",
+            "enabled": true,
+            "weight": 1
+          },
+          {
+            "name": "backend-3",
+            "address": "backend-3.hms.local",
+            "enabled": true,
+            "weight": 1
+          }
+        ],
+        "description": "Backend API servers",
+        "monitor": true,
+        "health_check_interval": 30,
+        "health_check_path": "/health/",
+        "health_check_timeout": 5,
+        "health_check_retries": 3,
+        "health_check_region": "us-east-1"
+      }
+    ],
+    "monitors": [
+      {
+        "id": "hms-health-monitor",
+        "type": "http",
+        "path": "/health/",
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "expected_codes": "200",
+        "expected_body": "OK"
+      }
+    ]
+  },
+  "access_rules": [
+    {
+      "id": "block_bots",
+      "description": "Block malicious bots",
+      "action": "block",
+      "expression": "(cf.client.bot) and (cf.threat_score > 20)"
+    },
+    {
+      "id": "rate_limit_api",
+      "description": "API rate limiting",
+      "action": "js_challenge",
+      "expression": "(http.request.uri matches \"^/api/\" and cf.threat_score > 10)"
+    },
+    {
+      "id": "geo_block",
+      "description": "Geo-blocking for restricted regions",
+      "action": "block",
+      "expression": "(ip.geoip.country in {\"CN\",\"RU\",\"KP\"})"
+    }
+  ],
+  "waf_rules": [
+    {
+      "id": "sql_injection_protection",
+      "description": "SQL Injection Protection",
+      "action": "block",
+      "expression": "(http.request.uri contains \"union\" or http.request.uri contains \"select\" or http.request.uri contains \"insert\" or http.request.uri contains \"update\" or http.request.uri contains \"delete\")"
+    },
+    {
+      "id": "xss_protection",
+      "description": "XSS Protection",
+      "action": "block",
+      "expression": "(http.request.uri contains \"<script\" or http.request.uri contains \"javascript:\")"
+    },
+    {
+      "id": "file_upload_protection",
+      "description": "File Upload Protection",
+      "action": "block",
+      "expression": "(http.request.method == \"POST\" and http.request.uri contains \".php\" or http.request.uri contains \".asp\" or http.request.uri contains \".jsp\")"
+    }
+  ],
+  "analytics": {
+    "enabled": true,
+    "metrics": [
+      "requests",
+      "bandwidth",
+      "cache_hit_ratio",
+      "response_time",
+      "error_rate",
+      "threat_type"
+    ],
+    "dashboards": [
+      {
+        "name": "HMS Performance Dashboard",
+        "widgets": [
+          {
+            "type": "line_chart",
+            "title": "Response Time",
+            "metric": "response_time"
+          },
+          {
+            "type": "gauge",
+            "title": "Cache Hit Ratio",
+            "metric": "cache_hit_ratio"
+          },
+          {
+            "type": "table",
+            "title": "Top Endpoints",
+            "metric": "requests"
+          }
+        ]
+      }
+    ]
+  }
+}

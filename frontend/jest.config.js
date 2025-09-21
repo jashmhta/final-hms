@@ -5,19 +5,21 @@ const config = {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   transform: {
-    '^.+\\.(js|jsx|ts|tsx)$': 'ts-jest',
+    '^.+\\.(ts|tsx)$': 'ts-jest',
+    '^.+\\.(js|jsx)$': 'babel-jest',
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   testMatch: [
-    '<rootDir>/src__tests__*.{ts,tsx}',
-    '<rootDir>/src*.{test,spec}.{ts,tsx}',
+    '<rootDir>/src/__tests__/*.{ts,tsx}',
+    '<rootDir>/src/*.{test,spec}.{ts,tsx}',
+    '<rootDir>/src/tests/*.{test,spec}.{ts,tsx}',
   ],
   testPathIgnorePatterns: [
     '<rootDir>/e2e-tests/',
   ],
   collectCoverageFrom: [
-    'src*.{ts,tsx}',
-    '!src*.d.ts',
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.d.ts',
     '!src/main.tsx',
     '!src/vite-env.d.ts',
   ],
@@ -30,14 +32,19 @@ const config = {
     },
   },
   testEnvironmentOptions: {
-    url: 'http:
+    url: 'http://localhost/',
   },
   globals: {
     'ts-jest': {
       tsconfig: {
         jsx: 'react-jsx',
+        esModuleInterop: true,
+        allowSyntheticDefaultImports: true,
       },
     },
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(@mui|x-data-grid|@emotion|@radix-ui|framer-motion|recharts|react-router-dom|lucide-react)/)',
+  ],
 };
 export default config;

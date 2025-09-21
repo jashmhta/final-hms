@@ -1,5 +1,7 @@
-from django.urls import include, path
 from rest_framework.routers import DefaultRouter
+
+from django.urls import include, path
+
 from .views import (
     AccountingAuditLogViewSet,
     AccountingInvoiceViewSet,
@@ -32,6 +34,7 @@ from .views import (
     VendorPayoutViewSet,
     VendorViewSet,
 )
+
 router = DefaultRouter()
 router.register(r"currencies", CurrencyViewSet, basename="currency")
 router.register(
@@ -39,9 +42,7 @@ router.register(
     TaxConfigurationViewSet,
     basename="tax-configuration",
 )
-router.register(
-    r"chart-of-accounts", ChartOfAccountsViewSet, basename="chart-of-accounts"
-)
+router.register(r"chart-of-accounts", ChartOfAccountsViewSet, basename="chart-of-accounts")
 router.register(r"cost-centers", CostCenterViewSet, basename="cost-center")
 router.register(r"vendors", VendorViewSet, basename="vendor")
 router.register(r"customers", CustomerViewSet, basename="customer")
@@ -51,9 +52,7 @@ router.register(r"invoices", AccountingInvoiceViewSet, basename="invoice")
 router.register(r"payments", AccountingPaymentViewSet, basename="payment")
 router.register(r"expenses", ExpenseViewSet, basename="expense")
 router.register(r"bank-accounts", BankAccountViewSet, basename="bank-account")
-router.register(
-    r"bank-transactions", BankTransactionViewSet, basename="bank-transaction"
-)
+router.register(r"bank-transactions", BankTransactionViewSet, basename="bank-transaction")
 router.register(r"fixed-assets", FixedAssetViewSet, basename="fixed-asset")
 router.register(r"payroll-entries", PayrollEntryViewSet, basename="payroll-entry")
 router.register(r"insurance-claims", InsuranceClaimViewSet, basename="insurance-claim")

@@ -1,0 +1,111 @@
+"""
+Common utilities and shared components for HMS microservices
+"""
+
+# Import commonly used utilities
+from .correlation_id import (
+    get_correlation_id,
+    set_correlation_id,
+    generate_correlation_id,
+    ensure_correlation_id,
+    CorrelationIDMiddleware,
+    with_correlation_id,
+    add_correlation_to_message,
+    extract_correlation_from_message
+)
+
+from .otel_config import (
+    setup_otel,
+    get_otel_config,
+    get_tracer,
+    get_meter,
+    trace_async,
+    trace_sync
+)
+
+from .middleware import (
+    PerformanceMonitoringMiddleware,
+    RateLimitMiddleware,
+    SecurityHeadersMiddleware,
+    CacheControlMiddleware,
+    ResponseSizeMiddleware,
+    RequestBodyLoggingMiddleware,
+    create_middleware_stack
+)
+
+from .message_correlation import (
+    RabbitMQCorrelationPublisher,
+    RabbitMQCorrelationConsumer,
+    KafkaCorrelationProducer,
+    KafkaCorrelationConsumer,
+    RedisCorrelationPublisher,
+    RedisCorrelationSubscriber,
+    CorrelationTask,
+    with_message_correlation,
+    message_processing_context
+)
+
+from .database_correlation import (
+    DatabaseCorrelationMixin,
+    DjangoQuerySetCorrelation,
+    SQLAlchemyCorrelationExtension,
+    DatabaseConnectionPool,
+    QueryCorrelationLogger,
+    DatabaseCorrelationMiddleware,
+    database_operation_context,
+    with_database_correlation
+)
+
+# Version
+__version__ = "1.0.0"
+
+# Export commonly used items
+__all__ = [
+    # Correlation ID
+    'get_correlation_id',
+    'set_correlation_id',
+    'generate_correlation_id',
+    'ensure_correlation_id',
+    'CorrelationIDMiddleware',
+    'with_correlation_id',
+    'add_correlation_to_message',
+    'extract_correlation_from_message',
+
+    # OpenTelemetry
+    'setup_otel',
+    'get_otel_config',
+    'get_tracer',
+    'get_meter',
+    'trace_async',
+    'trace_sync',
+
+    # Middleware
+    'PerformanceMonitoringMiddleware',
+    'RateLimitMiddleware',
+    'SecurityHeadersMiddleware',
+    'CacheControlMiddleware',
+    'ResponseSizeMiddleware',
+    'RequestBodyLoggingMiddleware',
+    'create_middleware_stack',
+
+    # Message Correlation
+    'RabbitMQCorrelationPublisher',
+    'RabbitMQCorrelationConsumer',
+    'KafkaCorrelationProducer',
+    'KafkaCorrelationConsumer',
+    'RedisCorrelationPublisher',
+    'RedisCorrelationSubscriber',
+    'CorrelationTask',
+    'with_message_correlation',
+    'message_processing_context',
+
+    # Database Correlation
+    'DatabaseCorrelationMixin',
+    'DjangoQuerySetCorrelation',
+    'SQLAlchemyCorrelationExtension',
+    'DatabaseConnectionPool',
+    'QueryCorrelationLogger',
+    'DatabaseCorrelationMiddleware',
+    'database_operation_context',
+    'with_database_correlation'
+]

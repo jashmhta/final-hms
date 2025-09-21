@@ -3,17 +3,126 @@ import hashlib
 import os
 from datetime import timedelta
 from pathlib import Path
+
 from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 import sys
+
 sys.path.insert(0, str(BASE_DIR.parent))
 import sys
+
 sys.path.insert(0, str(BASE_DIR.parent))
 load_dotenv(BASE_DIR / ".env")
 import os
+
 if os.getenv("REDIS_URL"):
     import django_redis
+
     from core.middleware import PerformanceMonitoringMiddleware
+
+# Enterprise-Grade Configuration
+ENTERPRISE_CONFIG = {
+    "SECURITY_LEVEL": os.getenv("ENTERPRISE_SECURITY_LEVEL", "enterprise"),
+    "PERFORMANCE_LEVEL": os.getenv("ENTERPRISE_PERFORMANCE_LEVEL", "enterprise"),
+    "AI_ENABLED": os.getenv("ENTERPRISE_AI_ENABLED", "true").lower() == "true",
+    "MONITORING_ENABLED": os.getenv("ENTERPRISE_MONITORING_ENABLED", "true").lower() == "true",
+    "AUTO_SCALING_ENABLED": os.getenv("ENTERPRISE_AUTO_SCALING_ENABLED", "true").lower() == "true",
+    "MICROSERVICES_ENABLED": os.getenv("ENTERPRISE_MICROSERVICES_ENABLED", "true").lower() == "true",
+}
+
+# Enterprise Security Configuration
+ENTERPRISE_SECURITY = {
+    "ZERO_TRUST_ENABLED": True,
+    "HIPAA_COMPLIANCE_ENABLED": True,
+    "GDPR_COMPLIANCE_ENABLED": True,
+    "PCI_DSS_COMPLIANCE_ENABLED": True,
+    "MFA_REQUIRED": os.getenv("ENTERPRISE_MFA_REQUIRED", "true").lower() == "true",
+    "ENCRYPTION_ENABLED": True,
+    "AUDIT_LOGGING_ENABLED": True,
+    "RATE_LIMITING_ENABLED": True,
+}
+
+# Enterprise Performance Configuration
+ENTERPRISE_PERFORMANCE = {
+    "CACHE_STRATEGY": "multi_level",
+    "TARGET_RESPONSE_TIME": 0.1,  # 100ms
+    "MAX_CONCURRENT_USERS": 100000,
+    "AUTO_SCALING_ENABLED": True,
+    "LOAD_BALANCING_ENABLED": True,
+    "DATABASE_OPTIMIZATION_ENABLED": True,
+    "CDN_ENABLED": True,
+}
+
+# Enterprise AI/ML Configuration
+ENTERPRISE_AI = {
+    "PREDICTIVE_ANALYTICS_ENABLED": True,
+    "MEDICAL_IMAGE_ANALYSIS_ENABLED": True,
+    "NLP_ENABLED": True,
+    "DRUG_INTERACTION_DETECTION_ENABLED": True,
+    "CLINICAL_DECISION_SUPPORT_ENABLED": True,
+    "MODEL_CACHE_ENABLED": True,
+    "REAL_TIME_PREDICTIONS_ENABLED": True,
+}
+
+# Enterprise Infrastructure Configuration
+ENTERPRISE_INFRASTRUCTURE = {
+    "KUBERNETES_ENABLED": True,
+    "DOCKER_ENABLED": True,
+    "SERVICE_MESH_ENABLED": True,
+    "API_GATEWAY_ENABLED": True,
+    "MONITORING_STACK": "prometheus_grafana",
+    "LOGGING_STACK": "elasticsearch_kibana",
+    "MESSAGE_QUEUE": "kafka",
+}
+
+# Database Configuration Optimization
+if os.getenv("POSTGRES_DB"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("POSTGRES_DB"),
+            "USER": os.getenv("POSTGRES_USER", ""),
+            "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
+            "HOST": os.getenv("POSTGRES_HOST", "localhost"),
+            "PORT": os.getenv("POSTGRES_PORT", "5432"),
+            "OPTIONS": {
+                "sslmode": "prefer",
+                "CONN_MAX_AGE": 600,
+                "CONN_HEALTH_CHECKS": True,
+                "OPTIONS": "-c default_transaction_isolation=read_committed",
+                "connect_timeout": 10,
+                "application_name": "hms_enterprise",
+            },
+            "CONN_MAX_AGE": 600,
+            "AUTOCOMMIT": True,
+            "DISABLE_SERVER_SIDE_CURSORS": True,
+        }
+    }
+    # Read replica configuration for enterprise scaling
+    if os.getenv("POSTGRES_READ_HOST"):
+        DATABASES["default"]["TEST"] = {"MIRROR": "default"}
+        DATABASES["replica"] = {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("POSTGRES_DB"),
+            "USER": os.getenv("POSTGRES_USER", ""),
+            "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
+            "HOST": os.getenv("POSTGRES_READ_HOST"),
+            "PORT": os.getenv("POSTGRES_PORT", "5432"),
+            "OPTIONS": {
+                "sslmode": "prefer",
+                "CONN_MAX_AGE": 600,
+                "CONN_HEALTH_CHECKS": True,
+            },
+        }
+        DATABASE_ROUTERS = ["core.db_router.DatabaseRouter"]
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": str(BASE_DIR / "db.sqlite3"),
+        }
+    }
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "strong-django-secret-key-2024")
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
@@ -47,10 +156,19 @@ INSTALLED_APPS = [
     "facilities",
     "superadmin",
     "authentication",
-    "ai_ml",
+    # "ai_ml",  # Disabled for testing
+    # "enterprise_core",  # Disabled for testing
 ]
 MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusBeforeMiddleware",
+    # Comprehensive logging and monitoring middleware
+    "core.logging_monitoring.LoggingMiddleware",
+    # Database optimization and monitoring middleware
+    "core.query_monitoring.DatabaseHealthMiddleware",
+    "core.query_monitoring.QueryOptimizationMiddleware",
+    "core.query_monitoring.QueryMonitoringMiddleware",
+    "core.query_monitoring.CacheOptimizationMiddleware",
+    # Performance and security middleware
     "core.middleware.PerformanceMonitoringMiddleware",
     "core.middleware.APICacheMiddleware",
     "django.middleware.security.SecurityMiddleware",
@@ -84,53 +202,9 @@ TEMPLATES = [
     },
 ]
 WSGI_APPLICATION = "hms.wsgi.application"
-if os.getenv("POSTGRES_DB"):
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("POSTGRES_DB"),
-            "USER": os.getenv("POSTGRES_USER", ""),
-            "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
-            "HOST": os.getenv("POSTGRES_HOST", "localhost"),
-            "PORT": os.getenv("POSTGRES_PORT", "5432"),
-            "OPTIONS": {
-                "sslmode": "prefer",  
-                "CONN_MAX_AGE": 600,  
-                "CONN_HEALTH_CHECKS": True,  
-                "OPTIONS": "-c default_transaction_isolation=read_committed",
-            },
-            "CONN_MAX_AGE": 600,  
-            "AUTOCOMMIT": True,
-        }
-    }
-    if os.getenv("POSTGRES_READ_HOST"):
-        DATABASES["default"]["TEST"] = {"MIRROR": "default"}
-        DATABASES["replica"] = {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("POSTGRES_DB"),
-            "USER": os.getenv("POSTGRES_USER", ""),
-            "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
-            "HOST": os.getenv("POSTGRES_READ_HOST"),
-            "PORT": os.getenv("POSTGRES_PORT", "5432"),
-            "OPTIONS": {
-                "sslmode": "prefer",
-                "CONN_MAX_AGE": 600,
-                "CONN_HEALTH_CHECKS": True,
-            },
-        }
-        DATABASE_ROUTERS = ["core.db_router.DatabaseRouter"]
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": str(BASE_DIR / "db.sqlite3"),
-        }
-    }
 FERNET_KEYS = [os.getenv("FERNET_SECRET_KEY", SECRET_KEY)]
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
         "OPTIONS": {"min_length": 12},
@@ -154,9 +228,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "users.User"
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_FILTER_BACKENDS": (
@@ -180,7 +252,7 @@ REST_FRAMEWORK = {
         "mfa_setup": os.getenv("DRF_MFA_SETUP_THROTTLE", "10/hour"),
     },
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
-    "EXCEPTION_HANDLER": "core.utils.custom_exception_handler",
+    "EXCEPTION_HANDLER": "core.logging_monitoring.custom_exception_handler",
 }
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.getenv("JWT_ACCESS_MIN", "15"))),
@@ -247,31 +319,17 @@ SPECTACULAR_SETTINGS = {
 _cors_all = os.getenv("CORS_ALLOW_ALL_ORIGINS", "false").lower() == "true"
 CORS_ALLOW_ALL_ORIGINS = _cors_all and DEBUG
 if not CORS_ALLOW_ALL_ORIGINS:
-    CORS_ALLOWED_ORIGINS = [
-        o for o in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if o
-    ]
-CSRF_TRUSTED_ORIGINS = (
-    os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
-    if os.getenv("CSRF_TRUSTED_ORIGINS")
-    else []
-)
-DEFAULT_APPOINTMENT_SLOT_MINUTES = int(
-    os.getenv("DEFAULT_APPOINTMENT_SLOT_MINUTES", "30")
-)
+    CORS_ALLOWED_ORIGINS = [o for o in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if o]
+CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if os.getenv("CSRF_TRUSTED_ORIGINS") else []
+DEFAULT_APPOINTMENT_SLOT_MINUTES = int(os.getenv("DEFAULT_APPOINTMENT_SLOT_MINUTES", "30"))
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_HSTS_SECONDS = (
-    int(os.getenv("SECURE_HSTS_SECONDS", "31536000")) if not DEBUG else 0
-)
-SECURE_HSTS_INCLUDE_SUBDOMAINS = (
-    not DEBUG and os.getenv("SECURE_HSTS_INCLUDE_SUBDOMAINS", "true").lower() == "true"
-)
-SECURE_HSTS_PRELOAD = (
-    not DEBUG and os.getenv("SECURE_HSTS_PRELOAD", "true").lower() == "true"
-)
-SECURE_SSL_REDIRECT = False  
+SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000")) if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG and os.getenv("SECURE_HSTS_INCLUDE_SUBDOMAINS", "true").lower() == "true"
+SECURE_HSTS_PRELOAD = not DEBUG and os.getenv("SECURE_HSTS_PRELOAD", "true").lower() == "true"
+SECURE_SSL_REDIRECT = False
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@example.com")
 ADMINS = [("Admin", os.getenv("ADMIN_EMAIL", "admin@example.com"))]
 LOGGING = {
@@ -279,26 +337,96 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "verbose": {
-            "format": "[{levelname}] {asctime} {name} {message}",
+            "format": "[{levelname}] {asctime} {name} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+        "json": {
+            "()": "core.logging_monitoring.JsonFormatter",
+        },
+        "simple": {
+            "format": "{levelname} {message}",
             "style": "{",
         },
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "formatter": "verbose",
+            "formatter": "json" if not DEBUG else "verbose",
+        },
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": BASE_DIR / "logs" / "hms.log",
+            "maxBytes": 10485760,  # 10MB
+            "backupCount": 5,
+            "formatter": "json",
+        },
+        "audit_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": BASE_DIR / "logs" / "audit.log",
+            "maxBytes": 10485760,  # 10MB
+            "backupCount": 10,
+            "formatter": "json",
+        },
+        "security_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": BASE_DIR / "logs" / "security.log",
+            "maxBytes": 10485760,  # 10MB
+            "backupCount": 10,
+            "formatter": "json",
+        },
+        "error_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": BASE_DIR / "logs" / "error.log",
+            "maxBytes": 10485760,  # 10MB
+            "backupCount": 5,
+            "formatter": "json",
+        },
+    },
+    "loggers": {
+        "hms.access": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "hms.audit": {
+            "handlers": ["console", "audit_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "hms.security": {
+            "handlers": ["console", "security_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "hms.performance": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "hms.error": {
+            "handlers": ["console", "error_file"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "hms.business": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "DEBUG" if DEBUG else "INFO",
+            "propagate": False,
+        },
+        "django": {
+            "handlers": ["console", "file"],
+            "level": "INFO" if not DEBUG else "DEBUG",
+            "propagate": False,
         },
     },
     "root": {
         "handlers": ["console"],
         "level": os.getenv("LOG_LEVEL", "INFO"),
-    },
-    "loggers": {
-        "django.db.backends": {
-            "handlers": ["console"],
-            "level": "DEBUG",
-            "propagate": False,
-        },
     },
 }
 if os.getenv("AWS_STORAGE_BUCKET_NAME"):
@@ -329,7 +457,7 @@ if os.getenv("REDIS_URL"):
                 "SERIALIZER": "django_redis.serializers.json.JSONSerializer",
             },
             "KEY_PREFIX": "hms",
-            "TIMEOUT": 300,  
+            "TIMEOUT": 300,
             "VERSION": 1,
         },
         "session": {
@@ -343,7 +471,7 @@ if os.getenv("REDIS_URL"):
                 },
             },
             "KEY_PREFIX": "session",
-            "TIMEOUT": 3600,  
+            "TIMEOUT": 3600,
         },
         "api_cache": {
             "BACKEND": "django_redis.cache.RedisCache",
@@ -357,7 +485,7 @@ if os.getenv("REDIS_URL"):
                 "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
             },
             "KEY_PREFIX": "api",
-            "TIMEOUT": 600,  
+            "TIMEOUT": 600,
         },
         "query_cache": {
             "BACKEND": "django_redis.cache.RedisCache",
@@ -370,7 +498,7 @@ if os.getenv("REDIS_URL"):
                 },
             },
             "KEY_PREFIX": "query",
-            "TIMEOUT": 1800,  
+            "TIMEOUT": 1800,
         },
     }
     SESSION_ENGINE = "django.contrib.sessions.backends.cache"
@@ -378,13 +506,9 @@ if os.getenv("REDIS_URL"):
     CACHE_MIDDLEWARE_ALIAS = "default"
     CACHE_MIDDLEWARE_SECONDS = 600
     CACHE_MIDDLEWARE_KEY_PREFIX = "middleware"
-CELERY_BROKER_URL = os.getenv(
-    "CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0")
-)
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0"))
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
-CELERY_TASK_ALWAYS_EAGER = (
-    os.getenv("CELERY_TASK_ALWAYS_EAGER", "false").lower() == "true"
-)
+CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "false").lower() == "true"
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
@@ -392,8 +516,8 @@ CELERY_TIMEZONE = "UTC"
 CELERY_ENABLE_UTC = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000
-CELERY_TASK_SOFT_TIME_LIMIT = 300  
-CELERY_TASK_TIME_LIMIT = 600  
+CELERY_TASK_SOFT_TIME_LIMIT = 300
+CELERY_TASK_TIME_LIMIT = 600
 CELERY_TASK_ROUTES = {
     "core.tasks.send_appointment_reminder": {"queue": "notifications"},
     "core.tasks.cache_warmup": {"queue": "maintenance"},
@@ -403,15 +527,15 @@ CELERY_TASK_ROUTES = {
 CELERY_BEAT_SCHEDULE = {
     "cache-warmup": {
         "task": "core.tasks.cache_warmup",
-        "schedule": 1800.0,  
+        "schedule": 1800.0,
     },
     "performance-report": {
         "task": "core.tasks.generate_performance_report",
-        "schedule": 86400.0,  
+        "schedule": 86400.0,
     },
     "database-optimization": {
         "task": "core.tasks.optimize_database",
-        "schedule": 604800.0,  
+        "schedule": 604800.0,
     },
 }
 REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = [
@@ -425,9 +549,7 @@ REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"].update(
         "inventory": os.getenv("THROTTLE_INVENTORY", "60/min"),
     }
 )
-EMAIL_BACKEND = os.getenv(
-    "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
-)
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "25")) if os.getenv("EMAIL_HOST") else None
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
@@ -437,6 +559,7 @@ EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").lower() == "true"
 if os.getenv("SENTRY_DSN"):
     import sentry_sdk
     from sentry_sdk.integrations.django import DjangoIntegration
+
     sentry_sdk.init(
         dsn=os.getenv("SENTRY_DSN"),
         integrations=[DjangoIntegration()],
@@ -447,12 +570,12 @@ INSTALLED_APPS.append("django_celery_beat")
 X_FRAME_OPTIONS = "DENY"
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Strict"
-SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", "900"))  
+SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", "900"))
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Strict"
 _fe_key = os.getenv("FIELD_ENCRYPTION_KEY")
 if not _fe_key:
-    digest = hashlib.sha256(SECRET_KEY.encode("utf-8")).digest()  
+    digest = hashlib.sha256(SECRET_KEY.encode("utf-8")).digest()
     _fe_key = base64.urlsafe_b64encode(digest).decode("utf-8")
 FIELD_ENCRYPTION_KEY = _fe_key

@@ -1,12 +1,13 @@
 try:
     from .biometric_manager import BiometricManager
     from .device_adapters import (
-        FingerprintAdapter,
         FacialRecognitionAdapter,
+        FingerprintAdapter,
         IrisScannerAdapter,
         PalmVeinAdapter,
     )
     from .verification_engine import BiometricVerificationEngine
+
     BIOMETRIC_AVAILABLE = True
     __all__ = [
         "BiometricManager",

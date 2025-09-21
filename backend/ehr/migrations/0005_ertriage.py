@@ -1,8 +1,11 @@
-from django.conf import settings
-import django.core.validators
-from django.db import migrations, models
-import django.db.models.deletion
 import encrypted_model_fields.fields
+
+import django.core.validators
+import django.db.models.deletion
+from django.conf import settings
+from django.db import migrations, models
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("hospitals", "0002_plan_hospitalplan"),
@@ -110,9 +113,7 @@ class Migration(migrations.Migration):
                         fields=["encounter", "triage_level"],
                         name="ehr_ertriag_encount_3cb202_idx",
                     ),
-                    models.Index(
-                        fields=["triage_time"], name="ehr_ertriag_triage__7aa9fa_idx"
-                    ),
+                    models.Index(fields=["triage_time"], name="ehr_ertriag_triage__7aa9fa_idx"),
                 ],
             },
         ),

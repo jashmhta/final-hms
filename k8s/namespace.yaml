@@ -1,0 +1,16 @@
+# Kubernetes Namespace Configuration
+# HMS Microservices Infrastructure
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hms-system
+  labels:
+    name: hms-system
+    app: hms
+    tier: infrastructure
+  annotations:
+    description: "Hospital Management System - Microservices Namespace"
+    monitoring: "prometheus"
+    logging: "elasticsearch"
+    networking: "istio"

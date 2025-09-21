@@ -1,3 +1,4 @@
+import os
 import smtplib
 from datetime import date, timedelta
 from email.mime.text import MimeText
@@ -8,8 +9,9 @@ from django.conf import settings
 from django.core.mail import EmailMessage, send_mail
 from django.db.models import Q
 from django.utils import timezone
-from .models import BloodInventory, LogEntry
+from .models import BloodInventory, LogEntry, TransfusionRecord
 from .views import BloodInventoryViewSet
+
 logger = get_task_logger(__name__)
 @shared_task(bind=True, max_retries=3)
 def check_expiry_alerts(self):
@@ -26,7 +28,7 @@ def check_expiry_alerts(self):
         if alert_count == 0:
             logger.info("No expiring units found")
             return {"status": "success", "alerts_sent": 0}
-        message_body = f
+        message_body = f"Blood Bank Expiry Alert\n\n"
         for unit in expiring_units:
             message_body += f"- Unit ID: {unit.unit_id} | Type: {unit.blood_type} | Expiry: {unit.expiry_date}\n"
         message_body += (
@@ -285,7 +287,8 @@ def purge_old_audit_logs(self):
 def process_transfusion_notification(transfusion_id):
     try:
         transfusion = TransfusionRecord.objects.get(id=transfusion_id)
-        message = f
+        message = f"Transfusion confirmation for patient {transfusion.patient.name}. " \
+                  f"Blood type {transfusion.blood_type} transfused on {transfusion.transfusion_date}."
         send_mail(
             subject="Transfusion Confirmation",
             message=message,

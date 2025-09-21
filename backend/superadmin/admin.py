@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
+
 from .models import (
     GlobalSettings,
     HospitalSubscription,
@@ -12,6 +13,8 @@ from .models import (
     TierModuleAccess,
     UsageMetrics,
 )
+
+
 @admin.register(SubscriptionTier)
 class SubscriptionTierAdmin(admin.ModelAdmin):
     list_display = [
@@ -38,10 +41,14 @@ class SubscriptionTierAdmin(admin.ModelAdmin):
         ),
         ("Support", {"fields": ("support_level",)}),
     )
+
+
 class TierModuleAccessInline(admin.TabularInline):
     model = TierModuleAccess
     extra = 0
     fields = ["module", "is_enabled", "feature_limits"]
+
+
 @admin.register(ModulePermission)
 class ModulePermissionAdmin(admin.ModelAdmin):
     list_display = [
@@ -53,6 +60,8 @@ class ModulePermissionAdmin(admin.ModelAdmin):
     list_filter = ["is_core_module", "min_tier_required"]
     search_fields = ["display_name", "module_name", "description"]
     inlines = [TierModuleAccessInline]
+
+
 @admin.register(HospitalSubscription)
 class HospitalSubscriptionAdmin(admin.ModelAdmin):
     list_display = [
@@ -110,6 +119,7 @@ class HospitalSubscriptionAdmin(admin.ModelAdmin):
         ),
         ("Payment Settings", {"fields": ("auto_renewal", "payment_method")}),
     )
+
     def days_remaining_display(self, obj):
         days = obj.days_remaining
         if days > 30:
@@ -119,13 +129,19 @@ class HospitalSubscriptionAdmin(admin.ModelAdmin):
         else:
             color = "red"
         return format_html('<span style="color: {};">{} days</span>', color, days)
+
     days_remaining_display.short_description = "Days Remaining"
+
     def usage_summary(self, obj):
         tier_limits = obj.tier
         usage_html = f
         from django.utils.html import format_html
+
         return format_html(usage_html)
+
     usage_summary.short_description = "Usage Summary"
+
+
 @admin.register(SuperadminUser)
 class SuperadminUserAdmin(admin.ModelAdmin):
     list_display = ["user", "role", "is_active", "last_login_ip", "permissions_summary"]
@@ -153,6 +169,7 @@ class SuperadminUserAdmin(admin.ModelAdmin):
         ("Access Control", {"fields": ("accessible_hospitals", "ip_whitelist")}),
         ("Activity", {"fields": ("last_login_ip",)}),
     )
+
     def permissions_summary(self, obj):
         perms = []
         if obj.can_manage_subscriptions:
@@ -164,7 +181,10 @@ class SuperadminUserAdmin(admin.ModelAdmin):
         if obj.can_manage_billing:
             perms.append("Billing")
         return ", ".join(perms) if perms else "Basic"
+
     permissions_summary.short_description = "Permissions"
+
+
 @admin.register(GlobalSettings)
 class GlobalSettingsAdmin(admin.ModelAdmin):
     list_display = [
@@ -178,12 +198,17 @@ class GlobalSettingsAdmin(admin.ModelAdmin):
     list_filter = ["category", "is_encrypted"]
     search_fields = ["key", "description"]
     readonly_fields = ["last_modified_by", "modified_at"]
+
     def value_preview(self, obj):
         return obj.value[:100] + "..." if len(obj.value) > 100 else obj.value
+
     value_preview.short_description = "Value"
+
     def save_model(self, request, obj, form, change):
         obj.last_modified_by = request.user
         super().save_model(request, obj, form, change)
+
+
 @admin.register(SystemAlert)
 class SystemAlertAdmin(admin.ModelAdmin):
     list_display = [
@@ -210,6 +235,8 @@ class SystemAlertAdmin(admin.ModelAdmin):
             {"fields": ("show_on_dashboard", "send_email", "send_sms")},
         ),
     )
+
+
 @admin.register(UsageMetrics)
 class UsageMetricsAdmin(admin.ModelAdmin):
     list_display = [
@@ -224,4 +251,4 @@ class UsageMetricsAdmin(admin.ModelAdmin):
     search_fields = ["hospital__name"]
     date_hierarchy = "date"
     ordering = ["-date"]
-    readonly_fields = ["hospital", "date"]  
+    readonly_fields = ["hospital", "date"]

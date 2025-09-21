@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils import timezone
 from django.utils.html import format_html
+
 from .models import (
     AccountingAuditLog,
     AccountingInvoice,
@@ -36,6 +37,8 @@ from .models import (
     VendorPayout,
     VendorPayoutItem,
 )
+
+
 @admin.register(Currency)
 class CurrencyAdmin(admin.ModelAdmin):
     list_display = [
@@ -50,6 +53,8 @@ class CurrencyAdmin(admin.ModelAdmin):
     list_filter = ["is_base_currency", "is_active", "hospital"]
     search_fields = ["code", "name"]
     ordering = ["code"]
+
+
 @admin.register(TaxConfiguration)
 class TaxConfigurationAdmin(admin.ModelAdmin):
     list_display = [
@@ -62,6 +67,8 @@ class TaxConfigurationAdmin(admin.ModelAdmin):
     ]
     list_filter = ["tax_type", "is_active", "effective_from"]
     ordering = ["-effective_from", "tax_type"]
+
+
 @admin.register(ChartOfAccounts)
 class ChartOfAccountsAdmin(admin.ModelAdmin):
     list_display = [
@@ -76,15 +83,21 @@ class ChartOfAccountsAdmin(admin.ModelAdmin):
     search_fields = ["account_code", "account_name"]
     ordering = ["account_code"]
     readonly_fields = ["balance"]
+
     def balance(self, obj):
         return f"₹ {obj.balance / 100:,.2f}"
+
     balance.short_description = "Current Balance"
+
+
 @admin.register(CostCenter)
 class CostCenterAdmin(admin.ModelAdmin):
     list_display = ["code", "name", "manager", "is_active", "hospital"]
     list_filter = ["is_active", "hospital"]
     search_fields = ["code", "name"]
     ordering = ["code"]
+
+
 @admin.register(Vendor)
 class VendorAdmin(admin.ModelAdmin):
     list_display = [
@@ -119,6 +132,8 @@ class VendorAdmin(admin.ModelAdmin):
         ),
         ("Payment Terms", {"fields": ("payment_terms_days", "is_active")}),
     )
+
+
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = [
@@ -132,9 +147,13 @@ class CustomerAdmin(admin.ModelAdmin):
     list_filter = ["customer_type", "is_active"]
     search_fields = ["customer_code", "name", "gstin"]
     ordering = ["name"]
+
     def credit_limit_display(self, obj):
         return f"₹ {obj.credit_limit_cents / 100:,.2f}"
+
     credit_limit_display.short_description = "Credit Limit"
+
+
 class InvoiceLineItemInline(admin.TabularInline):
     model = InvoiceLineItem
     extra = 0
@@ -144,6 +163,8 @@ class InvoiceLineItemInline(admin.TabularInline):
         "tax_cents",
         "total_cents",
     ]
+
+
 @admin.register(AccountingInvoice)
 class AccountingInvoiceAdmin(admin.ModelAdmin):
     list_display = [
@@ -165,12 +186,18 @@ class AccountingInvoiceAdmin(admin.ModelAdmin):
         "total_cents",
         "balance_cents",
     ]
+
     def total_display(self, obj):
         return f"₹ {obj.total_cents / 100:,.2f}"
+
     total_display.short_description = "Total Amount"
+
     def balance_display(self, obj):
         return f"₹ {obj.balance_cents / 100:,.2f}"
+
     balance_display.short_description = "Balance"
+
+
 @admin.register(AccountingPayment)
 class AccountingPaymentAdmin(admin.ModelAdmin):
     list_display = [
@@ -184,9 +211,13 @@ class AccountingPaymentAdmin(admin.ModelAdmin):
     list_filter = ["payment_method", "status", "payment_date"]
     search_fields = ["payment_number", "reference_number"]
     ordering = ["-payment_date"]
+
     def amount_display(self, obj):
         return f"₹ {obj.amount_cents / 100:,.2f}"
+
     amount_display.short_description = "Amount"
+
+
 @admin.register(Expense)
 class ExpenseAdmin(admin.ModelAdmin):
     list_display = [
@@ -207,9 +238,13 @@ class ExpenseAdmin(admin.ModelAdmin):
     ]
     search_fields = ["expense_number", "description"]
     ordering = ["-expense_date"]
+
     def amount_display(self, obj):
         return f"₹ {obj.net_amount_cents / 100:,.2f}"
+
     amount_display.short_description = "Net Amount"
+
+
 @admin.register(BankAccount)
 class BankAccountAdmin(admin.ModelAdmin):
     list_display = [
@@ -222,9 +257,13 @@ class BankAccountAdmin(admin.ModelAdmin):
     ]
     list_filter = ["account_type", "is_active", "bank_name"]
     search_fields = ["account_name", "account_number", "ifsc_code"]
+
     def balance_display(self, obj):
         return f"₹ {obj.current_balance_cents / 100:,.2f}"
+
     balance_display.short_description = "Current Balance"
+
+
 @admin.register(BankTransaction)
 class BankTransactionAdmin(admin.ModelAdmin):
     list_display = [
@@ -243,9 +282,13 @@ class BankTransactionAdmin(admin.ModelAdmin):
     ]
     search_fields = ["description", "reference_number"]
     ordering = ["-transaction_date"]
+
     def amount_display(self, obj):
         return f"₹ {obj.amount_cents / 100:,.2f}"
+
     amount_display.short_description = "Amount"
+
+
 @admin.register(FixedAsset)
 class FixedAssetAdmin(admin.ModelAdmin):
     list_display = [
@@ -260,12 +303,18 @@ class FixedAssetAdmin(admin.ModelAdmin):
     list_filter = ["category", "is_active", "purchase_date", "cost_center"]
     search_fields = ["asset_code", "name"]
     ordering = ["asset_code"]
+
     def cost_display(self, obj):
         return f"₹ {obj.purchase_cost_cents / 100:,.2f}"
+
     cost_display.short_description = "Purchase Cost"
+
     def book_value_display(self, obj):
         return f"₹ {obj.current_book_value_cents / 100:,.2f}"
+
     book_value_display.short_description = "Current Book Value"
+
+
 @admin.register(DepreciationSchedule)
 class DepreciationScheduleAdmin(admin.ModelAdmin):
     list_display = [
@@ -282,12 +331,18 @@ class DepreciationScheduleAdmin(admin.ModelAdmin):
         "accumulated_depreciation_cents",
         "book_value_cents",
     ]
+
     def depreciation_display(self, obj):
         return f"₹ {obj.depreciation_amount_cents / 100:,.2f}"
+
     depreciation_display.short_description = "Depreciation"
+
     def book_value_display(self, obj):
         return f"₹ {obj.book_value_cents / 100:,.2f}"
+
     book_value_display.short_description = "Book Value"
+
+
 @admin.register(PayrollEntry)
 class PayrollEntryAdmin(admin.ModelAdmin):
     list_display = [
@@ -307,18 +362,28 @@ class PayrollEntryAdmin(admin.ModelAdmin):
         "net_salary_cents",
         "employer_cost_cents",
     ]
+
     def pay_period_display(self, obj):
         return f"{obj.pay_period_start} to {obj.pay_period_end}"
+
     pay_period_display.short_description = "Pay Period"
+
     def gross_display(self, obj):
         return f"₹ {obj.gross_salary_cents / 100:,.2f}"
+
     gross_display.short_description = "Gross Salary"
+
     def deductions_display(self, obj):
         return f"₹ {obj.total_deductions_cents / 100:,.2f}"
+
     deductions_display.short_description = "Total Deductions"
+
     def net_display(self, obj):
         return f"₹ {obj.net_salary_cents / 100:,.2f}"
+
     net_display.short_description = "Net Salary"
+
+
 @admin.register(InsuranceClaim)
 class InsuranceClaimAdmin(admin.ModelAdmin):
     list_display = [
@@ -332,9 +397,13 @@ class InsuranceClaimAdmin(admin.ModelAdmin):
     list_filter = ["status", "submission_date", "insurance_company"]
     search_fields = ["claim_number", "policy_number", "authorization_number"]
     ordering = ["-submission_date"]
+
     def claim_amount_display(self, obj):
         return f"₹ {obj.claim_amount_cents / 100:,.2f}"
+
     claim_amount_display.short_description = "Claim Amount"
+
+
 @admin.register(TDSEntry)
 class TDSEntryAdmin(admin.ModelAdmin):
     list_display = [
@@ -348,15 +417,23 @@ class TDSEntryAdmin(admin.ModelAdmin):
     list_filter = ["section", "deduction_date"]
     search_fields = ["tds_entry_number"]
     ordering = ["-deduction_date"]
+
     def deductee_display(self, obj):
         return str(obj.vendor or obj.employee)
+
     deductee_display.short_description = "Deductee"
+
     def gross_amount_display(self, obj):
         return f"₹ {obj.gross_amount_cents / 100:,.2f}"
+
     gross_amount_display.short_description = "Gross Amount"
+
     def tds_amount_display(self, obj):
         return f"₹ {obj.tds_amount_cents / 100:,.2f}"
+
     tds_amount_display.short_description = "TDS Amount"
+
+
 @admin.register(ComplianceDocument)
 class ComplianceDocumentAdmin(admin.ModelAdmin):
     list_display = [
@@ -370,16 +447,18 @@ class ComplianceDocumentAdmin(admin.ModelAdmin):
     list_filter = ["document_type", "is_active", "expiry_date"]
     search_fields = ["document_number", "issuing_authority"]
     ordering = ["expiry_date"]
+
     def status_display(self, obj):
         if obj.is_expiring_soon:
-            return format_html(
-                '<span style="color: orange;">Expiring Soon</span>'
-            )  
+            return format_html('<span style="color: orange;">Expiring Soon</span>')
         elif obj.expiry_date and obj.expiry_date < timezone.now().date():
             return format_html('<span style="color: red;">Expired</span>')
         else:
             return format_html('<span style="color: green;">Active</span>')
+
     status_display.short_description = "Status"
+
+
 @admin.register(FinancialYear)
 class FinancialYearAdmin(admin.ModelAdmin):
     list_display = [
@@ -392,6 +471,8 @@ class FinancialYearAdmin(admin.ModelAdmin):
     ]
     list_filter = ["is_current", "is_locked", "hospital"]
     ordering = ["-start_date"]
+
+
 @admin.register(LedgerEntry)
 class LedgerEntryAdmin(admin.ModelAdmin):
     list_display = [
@@ -410,12 +491,18 @@ class LedgerEntryAdmin(admin.ModelAdmin):
     search_fields = ["description", "reference_number"]
     ordering = ["-transaction_date"]
     readonly_fields = ["entry_id", "amount_currency"]
+
     def entry_id_short(self, obj):
         return f"LE-{obj.entry_id.hex[:8]}"
+
     entry_id_short.short_description = "Entry ID"
+
     def amount_display(self, obj):
         return f"₹ {obj.amount_cents / 100:,.2f}"
+
     amount_display.short_description = "Amount"
+
+
 @admin.register(AccountingAuditLog)
 class AccountingAuditLogAdmin(admin.ModelAdmin):
     list_display = [
@@ -429,21 +516,29 @@ class AccountingAuditLogAdmin(admin.ModelAdmin):
     search_fields = ["user__username", "table_name", "record_id"]
     ordering = ["-timestamp"]
     readonly_fields = ["timestamp"]
+
     def has_add_permission(self, request):
-        return False  
+        return False
+
     def has_change_permission(self, request, obj=None):
-        return False  
+        return False
+
     def has_delete_permission(self, request, obj=None):
-        return False  
+        return False
+
+
 @admin.register(BookLock)
 class BookLockAdmin(admin.ModelAdmin):
     list_display = ["lock_date", "lock_type", "locked_by", "created_at"]
     list_filter = ["lock_type", "lock_date"]
     ordering = ["-lock_date"]
+
     def get_readonly_fields(self, request, obj=None):
-        if obj:  
+        if obj:
             return ["lock_date", "lock_type", "locked_by"]
         return []
+
+
 @admin.register(Budget)
 class BudgetAdmin(admin.ModelAdmin):
     list_display = [
@@ -457,12 +552,17 @@ class BudgetAdmin(admin.ModelAdmin):
     list_filter = ["financial_year", "cost_center"]
     search_fields = ["account__account_name", "cost_center__name"]
     readonly_fields = ["variance_cents", "variance_percentage"]
+
     def budgeted_display(self, obj):
         return f"₹ {obj.budgeted_amount_cents / 100:,.2f}"
+
     budgeted_display.short_description = "Budgeted"
+
     def actual_display(self, obj):
         return f"₹ {obj.actual_amount_cents / 100:,.2f}"
+
     actual_display.short_description = "Actual"
+
     def variance_display(self, obj):
         variance = obj.variance_cents / 100
         color = "green" if variance >= 0 else "red"
@@ -472,10 +572,15 @@ class BudgetAdmin(admin.ModelAdmin):
             variance,
             obj.variance_percentage,
         )
+
     variance_display.short_description = "Variance"
+
+
 class ServicePackageItemInline(admin.TabularInline):
     model = ServicePackageItem
     extra = 0
+
+
 @admin.register(ServicePackage)
 class ServicePackageAdmin(admin.ModelAdmin):
     list_display = [
@@ -489,21 +594,26 @@ class ServicePackageAdmin(admin.ModelAdmin):
     list_filter = ["package_type", "is_active"]
     search_fields = ["package_code", "name"]
     inlines = [ServicePackageItemInline]
+
     def base_price_display(self, obj):
         return f"₹ {obj.base_price_cents / 100:,.2f}"
+
     base_price_display.short_description = "Base Price"
+
     def profit_margin_display(self, obj):
         if obj.cost_price_cents > 0:
-            margin = (
-                (obj.base_price_cents - obj.cost_price_cents)
-                / obj.base_price_cents  
-            ) * 100
+            margin = ((obj.base_price_cents - obj.cost_price_cents) / obj.base_price_cents) * 100
             return f"{margin:.1f}%"
         return "N/A"
+
     profit_margin_display.short_description = "Profit Margin"
+
+
 class VendorPayoutItemInline(admin.TabularInline):
     model = VendorPayoutItem
     extra = 0
+
+
 @admin.register(VendorPayout)
 class VendorPayoutAdmin(admin.ModelAdmin):
     list_display = [
@@ -518,12 +628,18 @@ class VendorPayoutAdmin(admin.ModelAdmin):
     search_fields = ["payout_number"]
     ordering = ["-payout_date"]
     inlines = [VendorPayoutItemInline]
+
     def gross_payout_display(self, obj):
         return f"₹ {obj.gross_payout_cents / 100:,.2f}"
+
     gross_payout_display.short_description = "Gross Payout"
+
     def net_payout_display(self, obj):
         return f"₹ {obj.net_payout_cents / 100:,.2f}"
+
     net_payout_display.short_description = "Net Payout"
+
+
 @admin.register(ImportBatch)
 class ImportBatchAdmin(admin.ModelAdmin):
     list_display = [
@@ -537,8 +653,11 @@ class ImportBatchAdmin(admin.ModelAdmin):
     list_filter = ["import_type", "import_status", "created_at"]
     ordering = ["-created_at"]
     readonly_fields = ["total_records", "successful_records", "failed_records"]
+
     def has_change_permission(self, request, obj=None):
-        return False  
+        return False
+
+
 @admin.register(ExportLog)
 class ExportLogAdmin(admin.ModelAdmin):
     list_display = [
@@ -550,10 +669,14 @@ class ExportLogAdmin(admin.ModelAdmin):
     ]
     list_filter = ["export_type", "created_at"]
     ordering = ["-created_at"]
+
     def file_size_display(self, obj):
         size_mb = obj.file_size_bytes / (1024 * 1024)
         return f"{size_mb:.2f} MB"
+
     file_size_display.short_description = "File Size"
+
+
 @admin.register(RecurringInvoice)
 class RecurringInvoiceAdmin(admin.ModelAdmin):
     list_display = [
@@ -565,6 +688,8 @@ class RecurringInvoiceAdmin(admin.ModelAdmin):
     ]
     list_filter = ["frequency", "is_active"]
     ordering = ["next_billing_date"]
+
+
 @admin.register(TaxLiability)
 class TaxLiabilityAdmin(admin.ModelAdmin):
     list_display = [
@@ -575,12 +700,18 @@ class TaxLiabilityAdmin(admin.ModelAdmin):
     ]
     list_filter = ["tax_type", "return_filed", "period_start"]
     ordering = ["-period_start"]
+
     def period_display(self, obj):
         return f"{obj.period_start} to {obj.period_end}"
+
     period_display.short_description = "Period"
+
     def net_liability_display(self, obj):
         return f"₹ {obj.net_tax_liability_cents / 100:,.2f}"
+
     net_liability_display.short_description = "Net Tax Liability"
+
+
 @admin.register(ReportSchedule)
 class ReportScheduleAdmin(admin.ModelAdmin):
     list_display = [
@@ -592,6 +723,8 @@ class ReportScheduleAdmin(admin.ModelAdmin):
     ]
     list_filter = ["report_type", "frequency", "is_active"]
     ordering = ["next_generation"]
+
+
 @admin.register(PricingTier)
 class PricingTierAdmin(admin.ModelAdmin):
     list_display = [
@@ -604,12 +737,16 @@ class PricingTierAdmin(admin.ModelAdmin):
     ]
     list_filter = ["tier_type", "is_active"]
     search_fields = ["tier_code", "name"]
+
+
 def export_selected_to_excel(modeladmin, request, queryset):
-    pass  
+    pass
+
+
 export_selected_to_excel.short_description = "Export selected items to Excel"
-AccountingInvoiceAdmin.actions = [export_selected_to_excel]  
-ExpenseAdmin.actions = [export_selected_to_excel]  
-PayrollEntryAdmin.actions = [export_selected_to_excel]  
+AccountingInvoiceAdmin.actions = [export_selected_to_excel]
+ExpenseAdmin.actions = [export_selected_to_excel]
+PayrollEntryAdmin.actions = [export_selected_to_excel]
 admin.site.site_header = "Hospital Accounting Administration"
 admin.site.site_title = "HMS Accounting Admin"
 admin.site.index_title = "Welcome to Hospital Accounting Administration"

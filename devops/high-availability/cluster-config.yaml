@@ -1,0 +1,124 @@
+# HMS Enterprise-Grade High Availability Cluster Configuration
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hms-ha
+  labels:
+    name: hms-ha
+    compliance: hipaa
+    environment: production
+
+---
+# Multi-Region Cluster Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-config
+  namespace: hms-ha
+data:
+  # Primary Region Configuration
+  PRIMARY_REGION: "us-east-1"
+  PRIMARY_CLUSTER: "hms-prod-use1"
+  PRIMARY_ENDPOINT: "api.hms-enterprise.com"
+
+  # Secondary Region Configuration
+  SECONDARY_REGION: "us-west-2"
+  SECONDARY_CLUSTER: "hms-prod-usw2"
+  SECONDARY_ENDPOINT: "api-backup.hms-enterprise.com"
+
+  # Tertiary Region for Disaster Recovery
+  DR_REGION: "eu-central-1"
+  DR_CLUSTER: "hms-dr-euc1"
+  DR_ENDPOINT: "api-dr.hms-enterprise.com"
+
+  # Cluster Synchronization
+  SYNC_INTERVAL: "30"
+  MAX_LATENCY: "100"  # Maximum allowed latency between regions (ms)
+  HEALTH_CHECK_INTERVAL: "10"
+  FAILOVER_TIMEOUT: "300"  # 5 minutes
+
+  # Data Consistency
+  ENABLE_MULTI_MASTER: "false"
+  ENABLE_ASYNC_REPLICATION: "true"
+  REPLICATION_LAG_THRESHOLD: "5000"  # 5 seconds
+
+  # Load Balancing
+  ENABLE_GLOBAL_LOAD_BALANCING: "true"
+  SESSION_PERSISTENCE: "true"
+  GEO_ROUTING: "true"
+
+---
+# High Availability Database Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-ha-config
+  namespace: hms-ha
+data:
+  POSTGRES_HOSTS: "postgres-primary,postgres-secondary-1,postgres-secondary-2"
+  POSTGRES_PORT: "5432"
+  POSTGRES_MAX_CONNECTIONS: "500"
+  POSTGRES_REPLICATION_MODE: "synchronous"
+  POSTGRES_FAILOVER_MODE: "automatic"
+  POSTGRES_CONNECTION_POOLING: "true"
+  POSTGRES_SSL_MODE: "require"
+
+  # Connection Pool Configuration
+  PGBOUNCER_MAX_CLIENT_CONN: "1000"
+  PGBOUNCER_DEFAULT_POOL_SIZE: "20"
+  PGBOUNCER_MIN_POOL_SIZE: "5"
+  PGBOUNCER_RESERVE_POOL: "5"
+  PGBOUNCER_POOL_TIMEOUT: "10"
+
+---
+# Redis High Availability Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-ha-config
+  namespace: hms-ha
+data:
+  REDIS_MODE: "cluster"
+  REDIS_NODES: "6"
+  REDIS_REPLICAS: "1"
+  REDIS_CLUSTER_ENABLED: "true"
+  REDIS_PERSISTENCE: "aof"
+  REDIS_APPENDONLY: "yes"
+  REDIS_APPENDFSYNC: "everysec"
+  REDIS_SAVE: "900 1 300 10 60 10000"
+  REDIS_MAXMEMORY: "4gb"
+  REDIS_MAXMEMORY_POLICY: "allkeys-lru"
+
+---
+# Application High Availability Settings
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-ha-config
+  namespace: hms-ha
+data:
+  # Pod Anti-Affinity
+  POD_ANTI_AFFINITY: "required"
+  REPLICAS_PER_ZONE: "2"
+  MAX_UNAVAILABLE: "1"
+  MIN_AVAILABLE: "2"
+
+  # Health Checks
+  LIVENESS_PATH: "/health"
+  READINESS_PATH: "/ready"
+  STARTUP_PATH: "/startup"
+  LIVENESS_TIMEOUT: "5"
+  READINESS_TIMEOUT: "10"
+  STARTUP_TIMEOUT: "30"
+
+  # Resource Management
+  CPU_REQUEST: "500m"
+  CPU_LIMIT: "1000m"
+  MEMORY_REQUEST: "1Gi"
+  MEMORY_LIMIT: "2Gi"
+
+  # Graceful Shutdown
+  TERMINATION_GRACE_PERIOD: "60"
+  PRE_STOP_HOOK: "true"
+  DRAIN_TIMEOUT: "30"

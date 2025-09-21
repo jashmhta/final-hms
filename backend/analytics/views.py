@@ -1,25 +1,31 @@
-from appointments.models import Appointment
-from billing.models import Bill
-from django.db.models import Sum
-from django.utils import timezone
+import joblib
+import numpy as np
 from drf_spectacular.utils import OpenApiResponse, extend_schema
-from patients.models import Patient
+from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import viewsets
-import joblib
-import numpy as np
 from sklearn.ensemble import IsolationForest
-from .models import MLModel, Prediction, Anomaly, EquipmentPrediction
+
+from django.db.models import Sum
+from django.utils import timezone
+
+from appointments.models import Appointment
+from billing.models import Bill
+from patients.models import Patient
+
+from .models import Anomaly, EquipmentPrediction, MLModel, Prediction
 from .serializers import (
-    OverviewStatsSerializer,
-    PredictionSerializer,
     AnomalySerializer,
     EquipmentPredictionSerializer,
+    OverviewStatsSerializer,
+    PredictionSerializer,
 )
+
+
 class OverviewStatsView(APIView):
     permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=OpenApiResponse(response=OverviewStatsSerializer))
     def get(self, request):
         user = request.user
@@ -28,13 +34,8 @@ class OverviewStatsView(APIView):
             filters["hospital_id"] = getattr(user, "hospital_id", None)
         patients_count = Patient.objects.filter(**filters).count()
         today = timezone.localdate()
-        appointments_today = Appointment.objects.filter(
-            **filters, start_at__date=today
-        ).count()
-        revenue_cents = (
-            Bill.objects.filter(**filters).aggregate(total=Sum("paid_cents"))["total"]
-            or 0
-        )
+        appointments_today = Appointment.objects.filter(**filters, start_at__date=today).count()
+        revenue_cents = Bill.objects.filter(**filters).aggregate(total=Sum("paid_cents"))["total"] or 0
         return Response(
             {
                 "patients_count": patients_count,
@@ -42,27 +43,36 @@ class OverviewStatsView(APIView):
                 "revenue_cents": revenue_cents,
             }
         )
+
+
 class PredictionViewSet(viewsets.ModelViewSet):
     queryset = Prediction.objects.all()
     serializer_class = PredictionSerializer
     permission_classes = [IsAuthenticated]
+
+
 class AnomalyViewSet(viewsets.ModelViewSet):
     queryset = Anomaly.objects.all()
     serializer_class = AnomalySerializer
     permission_classes = [IsAuthenticated]
+
+
 class EquipmentPredictionViewSet(viewsets.ModelViewSet):
     queryset = EquipmentPrediction.objects.all()
     serializer_class = EquipmentPredictionSerializer
     permission_classes = [IsAuthenticated]
+
+
 class ReadmissionPredictionView(APIView):
     permission_classes = [IsAuthenticated]
+
     def post(self, request):
         data = request.data
         model = IsolationForest(contamination=0.1)
         features = np.array(data["features"])
         prediction = model.fit_predict(features)
         pred_obj = Prediction.objects.create(
-            model_id=1,  
+            model_id=1,
             input_data=data,
             prediction={"readmission_risk": prediction.tolist()},
         )

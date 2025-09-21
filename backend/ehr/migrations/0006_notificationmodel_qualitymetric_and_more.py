@@ -1,6 +1,8 @@
+import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
-import django.db.models.deletion
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("hospitals", "0002_plan_hospitalplan"),
@@ -85,9 +87,7 @@ class Migration(migrations.Migration):
                 ("value", models.DecimalField(decimal_places=2, max_digits=10)),
                 (
                     "target_value",
-                    models.DecimalField(
-                        blank=True, decimal_places=2, max_digits=10, null=True
-                    ),
+                    models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True),
                 ),
                 ("period_start", models.DateField()),
                 ("period_end", models.DateField()),
@@ -120,9 +120,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="encounter",
-            index=models.Index(
-                fields=["hospital", "created_at"], name="ehr_encount_hospita_a1b086_idx"
-            ),
+            index=models.Index(fields=["hospital", "created_at"], name="ehr_encount_hospita_a1b086_idx"),
         ),
         migrations.AddIndex(
             model_name="encounter",

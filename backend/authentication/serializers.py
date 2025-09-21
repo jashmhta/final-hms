@@ -1,17 +1,21 @@
 import logging
 from datetime import timedelta
+
 try:
     import pyotp
+
     PYOTP_AVAILABLE = True
 except ImportError:
     PYOTP_AVAILABLE = False
     pyotp = None
+from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 from .models import (
     LoginSession,
     MFADevice,
@@ -19,12 +23,16 @@ from .models import (
     SecurityEvent,
     TrustedDevice,
 )
+
 logger = logging.getLogger(__name__)
+
+
 class LoginSerializer(TokenObtainPairSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["username"] = serializers.CharField()
         self.fields["password"] = serializers.CharField()
+
     def validate(self, attrs):
         username = attrs.get("username")
         password = attrs.get("password")
@@ -35,32 +43,32 @@ class LoginSerializer(TokenObtainPairSerializer):
                 password=password,
             )
             if not user:
-                raise serializers.ValidationError(
-                    "No active account found with the given credentials"
-                )
+                raise serializers.ValidationError("No active account found with the given credentials")
             if user.is_account_locked():
-                raise serializers.ValidationError(
-                    "Account is temporarily locked due to too many failed attempts"
-                )
+                raise serializers.ValidationError("Account is temporarily locked due to too many failed attempts")
             if user.must_change_password:
-                raise serializers.ValidationError(
-                    "Password change required before login"
-                )
+                raise serializers.ValidationError("Password change required before login")
             attrs["user"] = user
             return attrs
         else:
             raise serializers.ValidationError("Must include username and password")
+
+
 class MFASerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
     token = serializers.CharField(max_length=10)
     device_id = serializers.IntegerField(required=False)
+
     def validate_token(self, value):
         if not value.isdigit() or len(value) != 6:
             raise serializers.ValidationError("Token must be 6 digits")
         return value
+
+
 class MFASetupSerializer(serializers.ModelSerializer):
     qr_code_url = serializers.SerializerMethodField()
     backup_codes = serializers.SerializerMethodField()
+
     class Meta:
         model = MFADevice
         fields = [
@@ -87,44 +95,45 @@ class MFASetupSerializer(serializers.ModelSerializer):
             "phone_number": {"required": False},
             "email_address": {"required": False},
         }
+
     def get_qr_code_url(self, obj):
         return obj.get_totp_uri()
+
     def get_backup_codes(self, obj):
         if obj.device_type == "BACKUP" and not obj.backup_codes:
             return obj.generate_backup_codes()
         return None
+
     def validate(self, attrs):
         device_type = attrs.get("device_type")
         if device_type == "TOTP":
             pass
         elif device_type == "SMS":
             if not attrs.get("phone_number"):
-                raise serializers.ValidationError(
-                    {"phone_number": "Phone number required for SMS MFA"}
-                )
+                raise serializers.ValidationError({"phone_number": "Phone number required for SMS MFA"})
         elif device_type == "EMAIL":
             if not attrs.get("email_address"):
-                raise serializers.ValidationError(
-                    {"email_address": "Email address required for Email MFA"}
-                )
+                raise serializers.ValidationError({"email_address": "Email address required for Email MFA"})
         return attrs
+
+
 class PasswordChangeSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True, validators=[validate_password])
     new_password_confirm = serializers.CharField(required=True)
+
     def validate_new_password_confirm(self, value):
         new_password = self.initial_data.get("new_password")
         if new_password != value:
             raise serializers.ValidationError("Password confirmation doesn't match")
         return value
+
     def validate_new_password(self, value):
         policy = PasswordPolicy.objects.filter(is_active=True, is_default=True).first()
         if policy:
             errors = []
             if len(value) < policy.min_length:
-                errors.append(
-                    f"Password must be at least {policy.min_length} characters"
-                )
+                errors.append(f"Password must be at least {policy.min_length} characters")
             if policy.require_uppercase and not any(c.isupper() for c in value):
                 errors.append("Password must contain uppercase letters")
             if policy.require_lowercase and not any(c.islower() for c in value):
@@ -138,8 +147,11 @@ class PasswordChangeSerializer(serializers.Serializer):
             if errors:
                 raise serializers.ValidationError(errors)
         return value
+
+
 class TrustedDeviceSerializer(serializers.ModelSerializer):
     is_expired = serializers.SerializerMethodField()
+
     class Meta:
         model = TrustedDevice
         fields = [
@@ -156,13 +168,15 @@ class TrustedDeviceSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["id", "device_id", "is_expired", "created_at"]
+
     def get_is_expired(self, obj):
         return obj.is_expired()
+
+
 class SecurityEventSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source="user.get_full_name", read_only=True)
-    resolved_by_name = serializers.CharField(
-        source="resolved_by.get_full_name", read_only=True
-    )
+    resolved_by_name = serializers.CharField(source="resolved_by.get_full_name", read_only=True)
+
     class Meta:
         model = SecurityEvent
         fields = [
@@ -185,10 +199,13 @@ class SecurityEventSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["id", "user_name", "resolved_by_name", "created_at"]
+
+
 class LoginSessionSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source="user.get_full_name", read_only=True)
     is_expired = serializers.SerializerMethodField()
     time_since_activity = serializers.SerializerMethodField()
+
     class Meta:
         model = LoginSession
         fields = [
@@ -219,12 +236,16 @@ class LoginSessionSerializer(serializers.ModelSerializer):
             "time_since_activity",
             "created_at",
         ]
+
     def get_is_expired(self, obj):
         return obj.is_expired()
+
     def get_time_since_activity(self, obj):
         if obj.last_activity:
             return (timezone.now() - obj.last_activity).total_seconds()
         return None
+
+
 class PasswordPolicySerializer(serializers.ModelSerializer):
     class Meta:
         model = PasswordPolicy
@@ -252,6 +273,8 @@ class PasswordPolicySerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+
 class UserSecurityProfileSerializer(serializers.Serializer):
     mfa_enabled = serializers.BooleanField(read_only=True)
     mfa_devices_count = serializers.IntegerField(read_only=True)

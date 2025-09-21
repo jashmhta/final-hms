@@ -1,0 +1,401 @@
+{
+  "certification_id": "HMS-ENT-20250920133352",
+  "executive_summary": {
+    "overall_status": "FAIL",
+    "overall_score": 68.38888888888889,
+    "certification_period": {
+      "start": "2025-09-20T13:33:52.546501",
+      "end": "2025-09-20T13:34:52.985256",
+      "duration_hours": 0.016788543055555556
+    },
+    "total_phases": 5,
+    "passed_phases": 1,
+    "failed_phases": 4,
+    "partial_phases": 0
+  },
+  "system_information": {
+    "base_url": "http://localhost:8000",
+    "certification_version": "1.0.0",
+    "framework": "Django + FastAPI",
+    "database": "PostgreSQL",
+    "cache": "Redis",
+    "containerization": "Docker + Kubernetes",
+    "monitoring": "Prometheus + Grafana"
+  },
+  "certification_phases": [
+    {
+      "phase": "Security Certification",
+      "status": "FAIL",
+      "score": 75.27777777777777,
+      "duration_minutes": 1.0071472,
+      "details": {
+        "security_score": 75.27777777777777,
+        "compliance_score": 55.55555555555556,
+        "critical_issues": 0,
+        "high_issues": 0,
+        "security_status": "SECURE",
+        "phase_duration_seconds": 60.428832,
+        "certification_status": "FAIL"
+      },
+      "recommendations": [
+        "COMPLIANCE: Fix 3 failed compliance requirements",
+        "Implement regular security scanning and penetration testing",
+        "Establish security incident response procedures",
+        "Provide security awareness training for all staff",
+        "Implement continuous security monitoring",
+        "Schedule quarterly security assessments"
+      ]
+    },
+    {
+      "phase": "Performance Certification",
+      "status": "FAIL",
+      "score": 66.66666666666667,
+      "duration_minutes": 0.82412695,
+      "details": {
+        "performance_score": 66.66666666666667,
+        "max_throughput": 0,
+        "avg_response_time": 0,
+        "avg_error_rate": 0,
+        "scenario_success_rate": 0.0,
+        "phase_duration_seconds": 49.447617,
+        "certification_status": "FAIL"
+      },
+      "recommendations": [
+        "SCALABILITY: Implement horizontal scaling with load balancing",
+        "SCALABILITY: Optimize application server configuration",
+        "SCALABILITY: Consider implementing database read replicas",
+        "MONITORING: Implement comprehensive application monitoring",
+        "MONITORING: Set up alerting for performance thresholds",
+        "OPTIMIZATION: Implement database query optimization",
+        "SCALABILITY: Test auto-scaling configurations",
+        "PERFORMANCE: Conduct regular performance benchmarks"
+      ]
+    },
+    {
+      "phase": "Architecture Certification",
+      "status": "FAIL",
+      "score": 40,
+      "duration_minutes": 1.00725395,
+      "details": {
+        "availability_score": 40,
+        "avg_uptime": 74.9825,
+        "avg_recovery_time": 15.0,
+        "component_success_rate": 25.0,
+        "failure_test_success_rate": 75.0,
+        "phase_duration_seconds": 60.435237,
+        "certification_status": "FAIL"
+      },
+      "recommendations": [
+        "LOAD BALANCER: Implement multiple load balancers with active-passive configuration",
+        "LOAD BALANCER: Add health checks and automatic failover",
+        "CACHE: Implement Redis clustering and sentinel",
+        "CACHE: Add cache warming and fallback mechanisms",
+        "API GATEWAY: Implement multiple gateway instances with load balancing",
+        "API GATEWAY: Add circuit breakers and rate limiting",
+        "FAILURE RECOVERY: Improve automatic recovery mechanisms",
+        "FAILURE RECOVERY: Reduce recovery times for all components",
+        "MONITORING: Implement comprehensive health monitoring and alerting",
+        "BACKUP: Set up regular backups and disaster recovery procedures",
+        "SCALING: Implement auto-scaling for all components",
+        "DOCUMENTATION: Document all high availability procedures",
+        "TESTING: Conduct regular chaos engineering exercises",
+        "SECURITY: Ensure high availability doesn't compromise security"
+      ]
+    },
+    {
+      "phase": "Compliance Validation",
+      "status": "FAIL",
+      "score": 60.0,
+      "duration_minutes": 1.5616666666666666e-05,
+      "details": {
+        "compliance_score": 60.0,
+        "total_checks": 5,
+        "passed_checks": 3,
+        "failed_checks": 2,
+        "phase_duration_seconds": 0.000937,
+        "detailed_checks": {
+          "HIPAA": {
+            "standard": "HIPAA",
+            "passed": false,
+            "score": 66.66666666666666,
+            "requirements": {
+              "data_encryption_at_rest": {
+                "passed": true,
+                "details": "Encryption at rest configured"
+              },
+              "data_encryption_in_transit": {
+                "passed": false,
+                "error": "HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: / (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7b0ff87cab10>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+              },
+              "audit_logging": {
+                "passed": true,
+                "details": "Audit logging configured"
+              },
+              "access_controls": {
+                "passed": false,
+                "details": "Access controls not configured"
+              },
+              "risk_analysis": {
+                "passed": true,
+                "details": "Risk analysis documented"
+              },
+              "breach_notification": {
+                "passed": true,
+                "details": "Breach notification procedures in place"
+              }
+            }
+          },
+          "GDPR": {
+            "standard": "GDPR",
+            "passed": true,
+            "score": 100.0,
+            "requirements": {
+              "lawful_basis": {
+                "passed": true,
+                "details": "Lawful basis established"
+              },
+              "data_minimization": {
+                "passed": true,
+                "details": "Data minimization principles followed"
+              },
+              "consent_management": {
+                "passed": true,
+                "details": "Consent management system in place"
+              },
+              "data_subject_rights": {
+                "passed": true,
+                "details": "Data subject rights implemented"
+              },
+              "data_portability": {
+                "passed": true,
+                "details": "Data portability features available"
+              },
+              "right_to_be_forgotten": {
+                "passed": true,
+                "details": "Right to be forgotten implemented"
+              }
+            }
+          },
+          "PCI_DSS": {
+            "standard": "PCI DSS",
+            "passed": true,
+            "score": 100.0,
+            "requirements": {
+              "network_security": {
+                "passed": true,
+                "details": "Network security measures in place"
+              },
+              "cardholder_data_protection": {
+                "passed": true,
+                "details": "Cardholder data protection implemented"
+              },
+              "vulnerability_management": {
+                "passed": true,
+                "details": "Vulnerability management program in place"
+              },
+              "access_control": {
+                "passed": true,
+                "details": "Strong access control implemented"
+              },
+              "monitoring": {
+                "passed": true,
+                "details": "Monitoring systems in place"
+              },
+              "security_policy": {
+                "passed": true,
+                "details": "Security policy documented"
+              }
+            }
+          },
+          "ISO_27001": {
+            "standard": "ISO 27001",
+            "passed": false,
+            "score": 83.33333333333334,
+            "requirements": {
+              "information_security_policy": {
+                "passed": true,
+                "details": "Security policy documented"
+              },
+              "risk_assessment": {
+                "passed": true,
+                "details": "Risk analysis documented"
+              },
+              "asset_management": {
+                "passed": true,
+                "details": "Asset management implemented"
+              },
+              "access_control": {
+                "passed": false,
+                "details": "Access controls not configured"
+              },
+              "cryptography": {
+                "passed": true,
+                "details": "Cryptography controls in place"
+              },
+              "operations_security": {
+                "passed": true,
+                "details": "Operations security implemented"
+              }
+            }
+          },
+          "NIST": {
+            "standard": "NIST",
+            "passed": true,
+            "score": 100.0,
+            "requirements": {
+              "identify": {
+                "passed": true,
+                "details": "Identify function implemented"
+              },
+              "protect": {
+                "passed": true,
+                "details": "Protect function implemented"
+              },
+              "detect": {
+                "passed": true,
+                "details": "Detect function implemented"
+              },
+              "respond": {
+                "passed": true,
+                "details": "Respond function implemented"
+              },
+              "recover": {
+                "passed": true,
+                "details": "Recover function implemented"
+              }
+            }
+          }
+        }
+      },
+      "recommendations": [
+        "COMPLIANCE: Address HIPAA compliance issues",
+        "COMPLIANCE: Address ISO_27001 compliance issues",
+        "DOCUMENTATION: Maintain comprehensive compliance documentation",
+        "TRAINING: Provide regular compliance training for staff",
+        "AUDITS: Conduct regular compliance audits",
+        "MONITORING: Implement continuous compliance monitoring",
+        "POLICIES: Keep security policies up to date"
+      ]
+    },
+    {
+      "phase": "Production Readiness",
+      "status": "PASS",
+      "score": 100.0,
+      "duration_minutes": 2.1666666666666665e-07,
+      "details": {
+        "readiness_score": 100.0,
+        "total_checks": 8,
+        "passed_checks": 8,
+        "failed_checks": 0,
+        "phase_duration_seconds": 1.3e-05,
+        "detailed_checks": {
+          "deployment_procedures": {
+            "passed": true,
+            "details": "Deployment procedures documented"
+          },
+          "monitoring_alerting": {
+            "passed": true,
+            "details": "Monitoring and alerting configured"
+          },
+          "backup_recovery": {
+            "passed": true,
+            "details": "Backup and recovery procedures in place"
+          },
+          "disaster_recovery": {
+            "passed": true,
+            "details": "Disaster recovery plan documented"
+          },
+          "documentation": {
+            "passed": true,
+            "details": "Documentation complete"
+          },
+          "training_materials": {
+            "passed": true,
+            "details": "Training materials available"
+          },
+          "support_procedures": {
+            "passed": true,
+            "details": "Support procedures documented"
+          },
+          "scalability_planning": {
+            "passed": true,
+            "details": "Scalability planning completed"
+          }
+        }
+      },
+      "recommendations": [
+        "DEPLOYMENT: Conduct deployment dry runs",
+        "MONITORING: Set up comprehensive monitoring dashboards",
+        "BACKUP: Test backup and recovery procedures",
+        "SECURITY: Conduct final security review",
+        "PERFORMANCE: Establish performance baselines"
+      ]
+    }
+  ],
+  "requirements_compliance": {
+    "security": false,
+    "zero_critical_vulnerabilities": true,
+    "min_security_score": false,
+    "performance": false,
+    "performance_thresholds": false,
+    "availability": false,
+    "high_availability": false,
+    "compliance": false,
+    "regulatory_compliance": false,
+    "production_readiness": true,
+    "deployment_ready": true
+  },
+  "final_recommendations": [
+    "COMPLIANCE: Fix 3 failed compliance requirements",
+    "Implement regular security scanning and penetration testing",
+    "Establish security incident response procedures",
+    "Provide security awareness training for all staff",
+    "Implement continuous security monitoring",
+    "Schedule quarterly security assessments",
+    "SCALABILITY: Implement horizontal scaling with load balancing",
+    "SCALABILITY: Optimize application server configuration",
+    "SCALABILITY: Consider implementing database read replicas",
+    "MONITORING: Implement comprehensive application monitoring",
+    "MONITORING: Set up alerting for performance thresholds",
+    "OPTIMIZATION: Implement database query optimization",
+    "SCALABILITY: Test auto-scaling configurations",
+    "PERFORMANCE: Conduct regular performance benchmarks",
+    "LOAD BALANCER: Implement multiple load balancers with active-passive configuration",
+    "LOAD BALANCER: Add health checks and automatic failover",
+    "CACHE: Implement Redis clustering and sentinel",
+    "CACHE: Add cache warming and fallback mechanisms",
+    "API GATEWAY: Implement multiple gateway instances with load balancing",
+    "API GATEWAY: Add circuit breakers and rate limiting",
+    "FAILURE RECOVERY: Improve automatic recovery mechanisms",
+    "FAILURE RECOVERY: Reduce recovery times for all components",
+    "MONITORING: Implement comprehensive health monitoring and alerting",
+    "BACKUP: Set up regular backups and disaster recovery procedures",
+    "SCALING: Implement auto-scaling for all components",
+    "DOCUMENTATION: Document all high availability procedures",
+    "TESTING: Conduct regular chaos engineering exercises",
+    "SECURITY: Ensure high availability doesn't compromise security",
+    "COMPLIANCE: Address HIPAA compliance issues",
+    "COMPLIANCE: Address ISO_27001 compliance issues",
+    "DOCUMENTATION: Maintain comprehensive compliance documentation",
+    "TRAINING: Provide regular compliance training for staff",
+    "AUDITS: Conduct regular compliance audits",
+    "MONITORING: Implement continuous compliance monitoring",
+    "POLICIES: Keep security policies up to date",
+    "DEPLOYMENT: Conduct deployment dry runs",
+    "MONITORING: Set up comprehensive monitoring dashboards",
+    "BACKUP: Test backup and recovery procedures",
+    "SECURITY: Conduct final security review",
+    "PERFORMANCE: Establish performance baselines",
+    "CRITICAL: Address failed certification phases immediately",
+    "MONITORING: Implement continuous monitoring and alerting",
+    "DOCUMENTATION: Maintain complete documentation",
+    "TRAINING: Provide regular staff training",
+    "AUDITS: Conduct regular security and compliance audits",
+    "IMPROVEMENT: Continuous improvement of systems and processes"
+  ],
+  "certification_validity": {
+    "issue_date": "2025-09-20T13:33:52.546501",
+    "expiry_date": "2026-09-20T13:33:52.546501",
+    "next_review_date": "2025-12-19T13:33:52.546501"
+  }
+}

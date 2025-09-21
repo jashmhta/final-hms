@@ -1,4 +1,6 @@
 from django.db import migrations, models
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("appointments", "0002_appointmenthistory_appointmentreminder_and_more"),

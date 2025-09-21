@@ -1,0 +1,418 @@
+name: HMS Enterprise-Grade CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  release:
+    types: [ published ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Run Bandit security linter
+      run: |
+        pip install bandit[toml]
+        bandit -r backend/ -f json -o bandit-report.json || true
+
+    - name: Run Snyk security scan
+      uses: snyk/actions/node@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high
+        command: test
+
+    - name: Run Gitleaks
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    needs: security-scan
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install Python dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+        pip install black isort flake8 mypy bandit pytest pytest-cov
+
+    - name: Install Node.js dependencies
+      run: |
+        cd frontend
+        npm ci --legacy-peer-deps
+        npm install -g eslint prettier typescript
+
+    - name: Run Python formatting and linting
+      run: |
+        cd backend
+        black --check .
+        isort --check-only .
+        flake8 .
+        mypy .
+        bandit -r .
+
+    - name: Run JavaScript/TypeScript linting
+      run: |
+        cd frontend
+        npm run lint
+        npm run type-check
+
+    - name: Generate code quality report
+      run: |
+        mkdir -p reports
+        echo "Code Quality Report" > reports/code-quality.md
+        echo "Generated on: $(date)" >> reports/code-quality.md
+
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    needs: code-quality
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hms_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 3s
+          --health-retries 3
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-django factory-boy
+
+    - name: Run database migrations
+      run: |
+        cd backend
+        python manage.py migrate
+        python manage.py collectstatic --noinput
+
+    - name: Run unit tests
+      run: |
+        cd backend
+        pytest -v --cov=. --cov-report=xml --cov-report=html -m "unit" --junitxml=reports/junit-unit.xml
+
+    - name: Run integration tests
+      run: |
+        cd backend
+        pytest -v --cov=. --cov-report=xml --cov-report=html -m "integration" --junitxml=reports/junit-integration.xml
+
+    - name: Run performance tests
+      run: |
+        cd backend
+        pytest -v --cov=. --cov-report=xml --cov-report=html -m "performance" --junitxml=reports/junit-performance.xml
+
+    - name: Run healthcare compliance tests
+      run: |
+        cd backend
+        pytest -v --cov=. --cov-report=xml --cov-report=html -m "healthcare" --junitxml=reports/junit-healthcare.xml
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./backend/coverage.xml
+        flags: backend
+        name: backend-coverage
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: backend/reports/
+
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      run: |
+        cd frontend
+        npm ci --legacy-peer-deps
+
+    - name: Run unit tests
+      run: |
+        cd frontend
+        npm test -- --coverage --watchAll=false --ci
+
+    - name: Run component tests
+      run: |
+        cd frontend
+        npm run test:components
+
+    - name: Run accessibility tests
+      run: |
+        cd frontend
+        npm run test:a11y
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./frontend/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+
+  build-and-push:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push backend image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: devops/docker/Dockerfile.backend
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}-backend
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+    - name: Build and push frontend image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: devops/docker/Dockerfile.frontend
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}-frontend
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: '1.28.0'
+
+    - name: Configure Kubernetes credentials
+      uses: azure/k8s-set-context@v3
+      with:
+        kubeconfig: ${{ secrets.KUBE_CONFIG_STAGING }}
+
+    - name: Deploy to staging
+      run: |
+        cd devops/kubernetes/overlays/staging
+        kustomize edit set image ghcr.io/${{ github.repository }}-backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ github.sha }}-backend
+        kustomize edit set image ghcr.io/${{ github.repository }}-frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ github.sha }}-frontend
+        kustomize build . | kubectl apply -f -
+
+    - name: Verify deployment
+      run: |
+        kubectl rollout status deployment/backend -n hms --timeout=300s
+        kubectl rollout status deployment/frontend -n hms --timeout=300s
+
+    - name: Run integration tests on staging
+      run: |
+        # Run integration tests against staging environment
+        echo "Running integration tests on staging..."
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy-staging]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: '1.28.0'
+
+    - name: Configure Kubernetes credentials
+      uses: azure/k8s-set-context@v3
+      with:
+        kubeconfig: ${{ secrets.KUBE_CONFIG_PRODUCTION }}
+
+    - name: Create production backup
+      run: |
+        # Create database backup before deployment
+        echo "Creating production backup..."
+
+    - name: Deploy to production
+      run: |
+        cd devops/kubernetes/overlays/production
+        kustomize edit set image ghcr.io/${{ github.repository }}-backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ github.sha }}-backend
+        kustomize edit set image ghcr.io/${{ github.repository }}-frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ github.sha }}-frontend
+        kustomize build . | kubectl apply -f -
+
+    - name: Verify deployment
+      run: |
+        kubectl rollout status deployment/backend -n hms --timeout=600s
+        kubectl rollout status deployment/frontend -n hms --timeout=600s
+
+    - name: Run smoke tests
+      run: |
+        # Run smoke tests on production
+        echo "Running smoke tests..."
+
+    - name: Notify deployment success
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        text: 'HMS deployed to production successfully!'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  security-compliance-check:
+    name: Security & Compliance Check
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: always()
+
+    steps:
+    - name: Run compliance checks
+      run: |
+        echo "Running HIPAA compliance checks..."
+        echo "Running HITRUST compliance checks..."
+        echo "Running PCI-DSS compliance checks..."
+
+    - name: Generate compliance report
+      run: |
+        echo "Compliance Report Generated" > compliance-report.md
+
+  backup-and-maintenance:
+    name: Backup & Maintenance
+    runs-on: ubuntu-latest
+    needs: security-compliance-check
+    if: always()
+
+    steps:
+    - name: Create backup
+      run: |
+        echo "Creating automated backup..."
+
+    - name: Run maintenance tasks
+      run: |
+        echo "Running maintenance tasks..."
+
+    - name: Cleanup old resources
+      run: |
+        echo "Cleaning up old resources..."

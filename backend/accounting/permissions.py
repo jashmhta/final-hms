@@ -1,5 +1,8 @@
 from rest_framework import permissions
+
 from users.models import UserRole
+
+
 class AccountingModulePermission(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
@@ -64,6 +67,7 @@ class AccountingModulePermission(permissions.BasePermission):
         if action in user_perms.get("restricted_actions", []):
             return False
         return True
+
     def has_object_permission(self, request, view, obj):
         user_role = request.user.role
         if user_role in [UserRole.SUPER_ADMIN, UserRole.HOSPITAL_ADMIN]:
@@ -82,6 +86,8 @@ class AccountingModulePermission(permissions.BasePermission):
                 return obj.cost_center.code == user_department
             return True
         return obj.hospital == request.user.hospital
+
+
 class FinancialReportPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
@@ -94,6 +100,8 @@ class FinancialReportPermission(permissions.BasePermission):
         if user_role == UserRole.BILLING_CLERK:
             return request.method == "GET"
         return False
+
+
 class ExpenseApprovalPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
@@ -104,6 +112,8 @@ class ExpenseApprovalPermission(permissions.BasePermission):
         if user_role == UserRole.DOCTOR and view.action == "approve":
             return True
         return False
+
+
 class PayrollProcessingPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
@@ -111,14 +121,13 @@ class PayrollProcessingPermission(permissions.BasePermission):
         user_role = request.user.role
         if user_role in [UserRole.SUPER_ADMIN, UserRole.HOSPITAL_ADMIN]:
             return True
-        if (
-            hasattr(request.user, "has_hr_permissions")
-            and request.user.has_hr_permissions
-        ):
+        if hasattr(request.user, "has_hr_permissions") and request.user.has_hr_permissions:
             return True
         if view.action in ["list", "retrieve"]:
             return True
         return False
+
+
 class BookLockingPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
@@ -129,6 +138,8 @@ class BookLockingPermission(permissions.BasePermission):
         if request.method == "GET":
             return True
         return False
+
+
 class TaxCompliancePermission(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
@@ -136,12 +147,11 @@ class TaxCompliancePermission(permissions.BasePermission):
         user_role = request.user.role
         if user_role in [UserRole.SUPER_ADMIN, UserRole.HOSPITAL_ADMIN]:
             return True
-        if (
-            hasattr(request.user, "has_tax_permissions")
-            and request.user.has_tax_permissions
-        ):
+        if hasattr(request.user, "has_tax_permissions") and request.user.has_tax_permissions:
             return True
         return False
+
+
 class BankReconciliationPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
@@ -149,14 +159,13 @@ class BankReconciliationPermission(permissions.BasePermission):
         user_role = request.user.role
         if user_role in [UserRole.SUPER_ADMIN, UserRole.HOSPITAL_ADMIN]:
             return True
-        if (
-            hasattr(request.user, "has_finance_permissions")
-            and request.user.has_finance_permissions
-        ):
+        if hasattr(request.user, "has_finance_permissions") and request.user.has_finance_permissions:
             return True
         if request.method == "GET":
             return user_role in [UserRole.BILLING_CLERK]
         return False
+
+
 class AuditLogPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
@@ -167,18 +176,24 @@ class AuditLogPermission(permissions.BasePermission):
         if request.method == "GET" and hasattr(request.user, "has_audit_access"):
             return request.user.has_audit_access
         return False
+
+
 class AdvancedReportingPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.role in [
             UserRole.SUPER_ADMIN,
             UserRole.HOSPITAL_ADMIN,
         ]
+
+
 class ComplianceManagementPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.role in [
             UserRole.SUPER_ADMIN,
             UserRole.HOSPITAL_ADMIN,
         ]
+
+
 class AssetManagementPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         user_role = request.user.role

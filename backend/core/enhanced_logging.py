@@ -1,12 +1,15 @@
+import json
 import logging
 import logging.config
-import json
 import time
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from django.conf import settings
 from django.http import HttpRequest
 from django.utils.deprecation import MiddlewareMixin
+
+
 class JSONFormatter(logging.Formatter):
     def format(self, record):
         log_entry = {
@@ -35,20 +38,22 @@ class JSONFormatter(logging.Formatter):
                 "traceback": self.formatException(record.exc_info),
             }
         return json.dumps(log_entry, default=str)
+
+
 class PerformanceLogger:
     def __init__(self, logger_name="hms.performance"):
         self.logger = logging.getLogger(logger_name)
-    def log_query_performance(
-        self, query: str, duration: float, context: Dict[str, Any]
-    ):
+
+    def log_query_performance(self, query: str, duration: float, context: Dict[str, Any]):
         self.logger.info(
             f"Database query executed",
             extra={
-                "query": query[:1000],  
+                "query": query[:1000],
                 "duration_ms": duration * 1000,
                 "context": context,
             },
         )
+
     def log_api_call(
         self,
         method: str,
@@ -67,6 +72,7 @@ class PerformanceLogger:
                 "user_id": user_id,
             },
         )
+
     def log_cache_operation(self, operation: str, key: str, hit: bool, duration: float):
         self.logger.debug(
             f"Cache operation",
@@ -77,15 +83,16 @@ class PerformanceLogger:
                 "duration_ms": duration * 1000,
             },
         )
+
+
 class RequestLoggingMiddleware(MiddlewareMixin):
     def __init__(self, get_response):
         super().__init__(get_response)
         self.performance_logger = PerformanceLogger()
+
     def process_request(self, request: HttpRequest):
         request.start_time = time.time()
-        request.request_id = request.META.get(
-            "HTTP_X_REQUEST_ID", f"req_{int(time.time() * 1000)}"
-        )
+        request.request_id = request.META.get("HTTP_X_REQUEST_ID", f"req_{int(time.time() * 1000)}")
         logger = logging.getLogger("hms.requests")
         logger.info(
             f"Request started",
@@ -95,13 +102,10 @@ class RequestLoggingMiddleware(MiddlewareMixin):
                 "path": request.path,
                 "user_agent": request.META.get("HTTP_USER_AGENT", ""),
                 "ip": self.get_client_ip(request),
-                "user_id": (
-                    getattr(request.user, "id", None)
-                    if hasattr(request.user, "id")
-                    else None
-                ),
+                "user_id": (getattr(request.user, "id", None) if hasattr(request.user, "id") else None),
             },
         )
+
     def process_response(self, request: HttpRequest, response):
         if hasattr(request, "start_time"):
             duration = time.time() - request.start_time
@@ -110,11 +114,7 @@ class RequestLoggingMiddleware(MiddlewareMixin):
                 endpoint=request.path,
                 duration=duration,
                 status_code=response.status_code,
-                user_id=(
-                    getattr(request.user, "id", None)
-                    if hasattr(request.user, "id")
-                    else None
-                ),
+                user_id=(getattr(request.user, "id", None) if hasattr(request.user, "id") else None),
             )
             response["X-Response-Time"] = f"{duration:.3f}s"
             response["X-Request-ID"] = request.request_id
@@ -127,12 +127,11 @@ class RequestLoggingMiddleware(MiddlewareMixin):
                     "path": request.path,
                     "status_code": response.status_code,
                     "duration_ms": duration * 1000,
-                    "response_size": (
-                        len(response.content) if hasattr(response, "content") else 0
-                    ),
+                    "response_size": (len(response.content) if hasattr(response, "content") else 0),
                 },
             )
         return response
+
     def get_client_ip(self, request: HttpRequest) -> str:
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
@@ -140,11 +139,14 @@ class RequestLoggingMiddleware(MiddlewareMixin):
         else:
             ip = request.META.get("REMOTE_ADDR")
         return ip
+
+
 class QueryLoggingMiddleware(MiddlewareMixin):
     def __init__(self, get_response):
         super().__init__(get_response)
         self.performance_logger = PerformanceLogger()
-        self.slow_query_threshold = 0.5  
+        self.slow_query_threshold = 0.5
+
     def process_response(self, request: HttpRequest, response):
         if hasattr(request, "queries"):
             for query in request.queries:
@@ -160,6 +162,8 @@ class QueryLoggingMiddleware(MiddlewareMixin):
                         },
                     )
         return response
+
+
 def setup_logging():
     LOGGING_CONFIG = {
         "version": 1,
@@ -181,21 +185,21 @@ def setup_logging():
             "file": {
                 "class": "logging.handlers.RotatingFileHandler",
                 "filename": "/app/logs/hms.log",
-                "maxBytes": 10485760,  
+                "maxBytes": 10485760,
                 "backupCount": 5,
                 "formatter": "json",
             },
             "performance": {
                 "class": "logging.handlers.RotatingFileHandler",
                 "filename": "/app/logs/performance.log",
-                "maxBytes": 10485760,  
+                "maxBytes": 10485760,
                 "backupCount": 5,
                 "formatter": "json",
             },
             "security": {
                 "class": "logging.handlers.RotatingFileHandler",
                 "filename": "/app/logs/security.log",
-                "maxBytes": 10485760,  
+                "maxBytes": 10485760,
                 "backupCount": 10,
                 "formatter": "json",
             },
@@ -243,6 +247,8 @@ def setup_logging():
         },
     }
     logging.config.dictConfig(LOGGING_CONFIG)
+
+
 performance_logger = PerformanceLogger()
 if not settings.DEBUG:
     setup_logging()

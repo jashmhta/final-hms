@@ -1,12 +1,18 @@
 import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
-from core.models import TimeStampedModel
+
+from encrypted_model_fields.fields import EncryptedTextField
+
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils import timezone
-from encrypted_model_fields.fields import EncryptedTextField
+
+from core.models import TimeStampedModel
+
 User = get_user_model()
+
+
 class BiometricDevice(TimeStampedModel):
     DEVICE_TYPES = [
         ("FINGERPRINT", "Fingerprint Scanner"),
@@ -35,9 +41,7 @@ class BiometricDevice(TimeStampedModel):
         ("OFFLINE", "Offline"),
         ("ERROR", "Error State"),
     ]
-    hospital = models.ForeignKey(
-        "hospitals.Hospital", on_delete=models.CASCADE, related_name="biometric_devices"
-    )
+    hospital = models.ForeignKey("hospitals.Hospital", on_delete=models.CASCADE, related_name="biometric_devices")
     device_id = models.UUIDField(default=uuid.uuid4, unique=True)
     name = models.CharField(max_length=200)
     device_type = models.CharField(max_length=20, choices=DEVICE_TYPES)
@@ -68,10 +72,10 @@ class BiometricDevice(TimeStampedModel):
         default="MULTI_PURPOSE",
     )
     max_users = models.PositiveIntegerField(default=10000)
-    template_size = models.PositiveIntegerField(default=512)  
-    verification_speed = models.FloatField(default=1.0)  
-    false_acceptance_rate = models.FloatField(default=0.0001)  
-    false_rejection_rate = models.FloatField(default=0.01)  
+    template_size = models.PositiveIntegerField(default=512)
+    verification_speed = models.FloatField(default=1.0)
+    false_acceptance_rate = models.FloatField(default=0.0001)
+    false_rejection_rate = models.FloatField(default=0.01)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="INACTIVE")
     last_seen = models.DateTimeField(null=True, blank=True)
     last_maintenance = models.DateTimeField(null=True, blank=True)
@@ -80,22 +84,29 @@ class BiometricDevice(TimeStampedModel):
     successful_scans = models.PositiveIntegerField(default=0)
     failed_scans = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
+
     class Meta:
         ordering = ["name", "hospital"]
         unique_together = ["hospital", "name"]
+
     def __str__(self):
         return f"{self.name} ({self.hospital.name})"
+
     def update_last_seen(self):
         self.last_seen = timezone.now()
         self.save(update_fields=["last_seen"])
+
     def get_success_rate(self):
         if self.total_scans == 0:
             return 0.0
         return (self.successful_scans / self.total_scans) * 100
+
     def needs_maintenance(self):
         if not self.next_maintenance:
             return False
         return timezone.now() >= self.next_maintenance
+
+
 class BiometricTemplate(TimeStampedModel):
     TEMPLATE_TYPES = [
         ("FINGERPRINT", "Fingerprint"),
@@ -115,9 +126,7 @@ class BiometricTemplate(TimeStampedModel):
         ("RIGHT_RING", "Right Ring"),
         ("RIGHT_PINKY", "Right Pinky"),
     ]
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, null=True, blank=True, related_name="biometric_templates"
-    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name="biometric_templates")
     patient = models.ForeignKey(
         "patients.Patient", on_delete=models.CASCADE, null=True, blank=True, related_name="biometric_templates"
     )
@@ -125,11 +134,9 @@ class BiometricTemplate(TimeStampedModel):
     finger_position = models.CharField(max_length=20, choices=FINGERS, null=True, blank=True)
     template_data = EncryptedTextField()
     template_format = models.CharField(max_length=50, default="ISO_19794_2")
-    quality_score = models.FloatField(default=0.0)  
-    image_data = models.BinaryField(null=True, blank=True)  
-    enrolled_device = models.ForeignKey(
-        BiometricDevice, on_delete=models.SET_NULL, null=True, blank=True
-    )
+    quality_score = models.FloatField(default=0.0)
+    image_data = models.BinaryField(null=True, blank=True)
+    enrolled_device = models.ForeignKey(BiometricDevice, on_delete=models.SET_NULL, null=True, blank=True)
     enrolled_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True, related_name="enrolled_templates"
     )
@@ -140,24 +147,30 @@ class BiometricTemplate(TimeStampedModel):
     expires_at = models.DateTimeField(null=True, blank=True)
     anti_spoofing_score = models.FloatField(null=True, blank=True)
     liveness_detection = models.BooleanField(default=True)
+
     class Meta:
         ordering = ["-created_at"]
         unique_together = [
             ("user", "template_type", "finger_position"),
             ("patient", "template_type", "finger_position"),
         ]
+
     def __str__(self):
         person = self.user or self.patient
         return f"{person} - {self.template_type}"
+
     def mark_verified(self):
         self.is_verified = True
         self.last_verified = timezone.now()
         self.verification_count += 1
         self.save(update_fields=["is_verified", "last_verified", "verification_count"])
+
     def is_expired(self):
         if not self.expires_at:
             return False
         return timezone.now() > self.expires_at
+
+
 class BiometricLog(TimeStampedModel):
     OPERATION_TYPES = [
         ("ENROLLMENT", "Template Enrollment"),
@@ -178,24 +191,21 @@ class BiometricLog(TimeStampedModel):
     operation_type = models.CharField(max_length=20, choices=OPERATION_TYPES)
     result = models.CharField(max_length=20, choices=RESULT_CHOICES)
     device = models.ForeignKey(BiometricDevice, on_delete=models.CASCADE)
-    user = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="biometric_logs"
-    )
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="biometric_logs")
     patient = models.ForeignKey(
         "patients.Patient", on_delete=models.SET_NULL, null=True, blank=True, related_name="biometric_logs"
     )
-    template_used = models.ForeignKey(
-        BiometricTemplate, on_delete=models.SET_NULL, null=True, blank=True
-    )
+    template_used = models.ForeignKey(BiometricTemplate, on_delete=models.SET_NULL, null=True, blank=True)
     processing_time = models.FloatField(help_text="Processing time in seconds")
     confidence_score = models.FloatField(null=True, blank=True)
     error_message = models.TextField(blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
     location_data = models.JSONField(null=True, blank=True)
-    risk_score = models.FloatField(null=True, blank=True)  
+    risk_score = models.FloatField(null=True, blank=True)
     anomaly_detected = models.BooleanField(default=False)
     requires_review = models.BooleanField(default=False)
+
     class Meta:
         ordering = ["-created_at"]
         indexes = [
@@ -204,15 +214,17 @@ class BiometricLog(TimeStampedModel):
             models.Index(fields=["user", "created_at"]),
             models.Index(fields=["patient", "created_at"]),
         ]
+
     def __str__(self):
         return f"{self.operation_type} - {self.result} ({self.device.name})"
+
     def get_high_risk_indicators(self):
         indicators = []
         if self.risk_score and self.risk_score > 0.7:
             indicators.append("High risk score")
         if self.anomaly_detected:
             indicators.append("Anomaly detected")
-        if self.processing_time > 10.0:  
+        if self.processing_time > 10.0:
             indicators.append("Slow processing time")
         if self.result == "FAILED" and self.confidence_score and self.confidence_score > 0.8:
             indicators.append("High confidence failure")

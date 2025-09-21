@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: hms_enterprise
       POSTGRES_USER: hms_user
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure-postgres-password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -39,7 +39,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=hms_enterprise
       - DB_USER=hms_user
-      - DB_PASSWORD=password
+      - DB_PASSWORD=${DB_PASSWORD:-secure-postgres-password}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     volumes:

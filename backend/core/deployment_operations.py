@@ -14,18 +14,19 @@ import logging
 import os
 import subprocess
 import time
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass, asdict
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 import docker
 import kubernetes
-from kubernetes import client, config
-import redis
 import prometheus_client
-from prometheus_client import Counter, Histogram, Gauge
+import redis
+from kubernetes import client, config
+from prometheus_client import Counter, Gauge, Histogram
+
 
 # Healthcare-specific deployment considerations
 class DeploymentEnvironment(Enum):

@@ -1,15 +1,18 @@
 import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
-from core.models import TimeStampedModel
+
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils import timezone
+
+from core.models import TimeStampedModel
+
 User = get_user_model()
+
+
 class TallyIntegration(TimeStampedModel):
-    hospital = models.OneToOneField(
-        "hospitals.Hospital", on_delete=models.CASCADE, related_name="tally_config"
-    )
+    hospital = models.OneToOneField("hospitals.Hospital", on_delete=models.CASCADE, related_name="tally_config")
     tally_server_url = models.URLField(help_text="Tally Prime server URL")
     company_name = models.CharField(max_length=200)
     tally_license_key = models.CharField(max_length=100, blank=True)
@@ -32,12 +35,15 @@ class TallyIntegration(TimeStampedModel):
     asset_account_id = models.CharField(max_length=50, blank=True)
     liability_account_id = models.CharField(max_length=50, blank=True)
     is_active = models.BooleanField(default=True)
+
     def __str__(self):
         return f"Tally Integration - {self.hospital.name}"
+
+
 class DepartmentBudget(TimeStampedModel):
     hospital = models.ForeignKey("hospitals.Hospital", on_delete=models.CASCADE)
     department_name = models.CharField(max_length=100)
-    financial_year = models.CharField(max_length=10)  
+    financial_year = models.CharField(max_length=10)
     quarter = models.CharField(
         max_length=10,
         choices=[
@@ -68,35 +74,36 @@ class DepartmentBudget(TimeStampedModel):
         ],
         default="DRAFT",
     )
-    approved_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True
-    )
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     approved_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         unique_together = ["hospital", "department_name", "financial_year", "quarter"]
         indexes = [
             models.Index(fields=["hospital", "financial_year"]),
             models.Index(fields=["department_name", "status"]),
         ]
+
     def __str__(self):
         return f"{self.department_name} Budget - {self.financial_year} {self.quarter}"
+
     @property
     def remaining_budget(self):
-        effective_budget = (
-            self.revised_budget if self.revised_budget > 0 else self.allocated_budget
-        )
+        effective_budget = self.revised_budget if self.revised_budget > 0 else self.allocated_budget
         return effective_budget - self.spent_amount - self.committed_amount
+
     @property
     def utilization_percentage(self):
-        effective_budget = (
-            self.revised_budget if self.revised_budget > 0 else self.allocated_budget
-        )
+        effective_budget = self.revised_budget if self.revised_budget > 0 else self.allocated_budget
         if effective_budget == 0:
             return 0
         return (self.spent_amount / effective_budget) * 100
+
     @property
     def is_over_budget(self):
         return self.remaining_budget < 0
+
+
 class ReferralTracking(TimeStampedModel):
     hospital = models.ForeignKey("hospitals.Hospital", on_delete=models.CASCADE)
     referral_type = models.CharField(
@@ -134,13 +141,17 @@ class ReferralTracking(TimeStampedModel):
     notes = models.TextField(blank=True)
     tally_voucher_id = models.CharField(max_length=100, blank=True)
     synced_to_tally = models.BooleanField(default=False)
+
     class Meta:
         indexes = [
             models.Index(fields=["hospital", "referrer_code"]),
             models.Index(fields=["payment_status", "service_date"]),
         ]
+
     def __str__(self):
         return f"Referral: {self.referrer_name} - {self.patient_name} (₹{self.referral_amount})"
+
+
 class AssetRegister(TimeStampedModel):
     hospital = models.ForeignKey("hospitals.Hospital", on_delete=models.CASCADE)
     asset_code = models.CharField(max_length=50, unique=True)
@@ -172,9 +183,7 @@ class AssetRegister(TimeStampedModel):
     )
     useful_life_years = models.IntegerField(default=5)
     salvage_value = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    depreciation_rate = models.DecimalField(
-        max_digits=5, decimal_places=2, default=20.00
-    )
+    depreciation_rate = models.DecimalField(max_digits=5, decimal_places=2, default=20.00)
     current_status = models.CharField(
         max_length=20,
         choices=[
@@ -193,16 +202,20 @@ class AssetRegister(TimeStampedModel):
     amc_end_date = models.DateField(null=True, blank=True)
     tally_asset_id = models.CharField(max_length=100, blank=True)
     synced_to_tally = models.BooleanField(default=False)
+
     class Meta:
         indexes = [
             models.Index(fields=["hospital", "asset_category"]),
             models.Index(fields=["current_status", "purchase_date"]),
         ]
+
     def __str__(self):
         return f"{self.asset_code} - {self.asset_name}"
+
     @property
     def total_cost(self):
         return self.purchase_amount + self.installation_cost
+
     @property
     def current_book_value(self):
         if self.commissioning_date:
@@ -211,9 +224,7 @@ class AssetRegister(TimeStampedModel):
             start_date = self.purchase_date
         years_elapsed = (timezone.now().date() - start_date).days / 365.25
         if self.depreciation_method == "STRAIGHT_LINE":
-            annual_depreciation = (
-                self.total_cost - self.salvage_value
-            ) / self.useful_life_years
+            annual_depreciation = (self.total_cost - self.salvage_value) / self.useful_life_years
             total_depreciation = min(
                 annual_depreciation * years_elapsed,
                 self.total_cost - self.salvage_value,
@@ -225,9 +236,12 @@ class AssetRegister(TimeStampedModel):
             rate = 2 / self.useful_life_years
             total_depreciation = self.total_cost * (1 - (1 - rate) ** years_elapsed)
         return max(self.total_cost - total_depreciation, self.salvage_value)
+
     @property
     def accumulated_depreciation(self):
         return self.total_cost - self.current_book_value
+
+
 class ProfitLossStatement(TimeStampedModel):
     hospital = models.ForeignKey("hospitals.Hospital", on_delete=models.CASCADE)
     department = models.CharField(max_length=100)
@@ -247,14 +261,10 @@ class ProfitLossStatement(TimeStampedModel):
     other_revenue = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     staff_costs = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     medical_supplies = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    equipment_depreciation = models.DecimalField(
-        max_digits=15, decimal_places=2, default=0
-    )
+    equipment_depreciation = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     utilities = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     maintenance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    administrative_costs = models.DecimalField(
-        max_digits=15, decimal_places=2, default=0
-    )
+    administrative_costs = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     marketing_costs = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     finance_costs = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     other_expenses = models.DecimalField(max_digits=15, decimal_places=2, default=0)
@@ -262,40 +272,42 @@ class ProfitLossStatement(TimeStampedModel):
     operating_profit = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     net_profit = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     is_finalized = models.BooleanField(default=False)
-    finalized_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True
-    )
+    finalized_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     finalized_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         unique_together = ["hospital", "department", "period_start", "period_end"]
         indexes = [
             models.Index(fields=["hospital", "period_start"]),
             models.Index(fields=["department", "period_type"]),
         ]
+
     def __str__(self):
         return f"{self.department} P&L - {self.period_start} to {self.period_end}"
+
     @property
     def total_revenue(self):
-        return (
-            self.patient_revenue
-            + self.insurance_revenue
-            + self.referral_revenue
-            + self.other_revenue
-        )
+        return self.patient_revenue + self.insurance_revenue + self.referral_revenue + self.other_revenue
+
     @property
     def total_direct_costs(self):
         return self.staff_costs + self.medical_supplies + self.equipment_depreciation
+
     @property
     def total_indirect_costs(self):
         return self.utilities + self.maintenance + self.administrative_costs
+
     @property
     def total_other_expenses(self):
         return self.marketing_costs + self.finance_costs + self.other_expenses
+
     def calculate_profits(self):
         self.gross_profit = self.total_revenue - self.total_direct_costs
         self.operating_profit = self.gross_profit - self.total_indirect_costs
         self.net_profit = self.operating_profit - self.total_other_expenses
         self.save()
+
+
 class BreakEvenAnalysis(TimeStampedModel):
     hospital = models.ForeignKey("hospitals.Hospital", on_delete=models.CASCADE)
     analysis_name = models.CharField(max_length=200)
@@ -308,33 +320,30 @@ class BreakEvenAnalysis(TimeStampedModel):
     period_months = models.IntegerField(default=12)
     breakeven_units = models.IntegerField(default=0)
     breakeven_revenue = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    margin_of_safety_percentage = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0
-    )
+    margin_of_safety_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     current_monthly_units = models.IntegerField(default=0)
-    current_monthly_revenue = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0
-    )
+    current_monthly_revenue = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
     class Meta:
         indexes = [
             models.Index(fields=["hospital", "analysis_date"]),
             models.Index(fields=["department", "service_type"]),
         ]
+
     def __str__(self):
         return f"Break-even Analysis: {self.analysis_name}"
+
     def calculate_breakeven(self):
-        contribution_per_unit = (
-            self.selling_price_per_unit - self.variable_cost_per_unit
-        )
+        contribution_per_unit = self.selling_price_per_unit - self.variable_cost_per_unit
         if contribution_per_unit > 0:
             self.breakeven_units = int(self.fixed_costs_monthly / contribution_per_unit)
             self.breakeven_revenue = self.breakeven_units * self.selling_price_per_unit
             if self.current_monthly_units > 0:
                 safety_units = self.current_monthly_units - self.breakeven_units
-                self.margin_of_safety_percentage = (
-                    safety_units / self.current_monthly_units
-                ) * 100
+                self.margin_of_safety_percentage = (safety_units / self.current_monthly_units) * 100
         self.save()
+
+
 class TallyVoucherMapping(TimeStampedModel):
     hospital = models.ForeignKey("hospitals.Hospital", on_delete=models.CASCADE)
     hms_transaction_type = models.CharField(max_length=50)
@@ -360,14 +369,18 @@ class TallyVoucherMapping(TimeStampedModel):
     sync_error_message = models.TextField(blank=True)
     ledger_entries = models.JSONField(default=list, blank=True)
     reference_details = models.JSONField(default=dict, blank=True)
+
     class Meta:
         unique_together = ["hospital", "hms_transaction_type", "hms_transaction_id"]
         indexes = [
             models.Index(fields=["sync_status", "last_sync_attempt"]),
             models.Index(fields=["hospital", "tally_voucher_type"]),
         ]
+
     def __str__(self):
         return f"{self.hms_transaction_type} - {self.hms_transaction_id} -> Tally {self.tally_voucher_number}"
+
+
 class AccountingReport(TimeStampedModel):
     hospital = models.ForeignKey("hospitals.Hospital", on_delete=models.CASCADE)
     report_type = models.CharField(
@@ -396,10 +409,12 @@ class AccountingReport(TimeStampedModel):
     excel_file_path = models.CharField(max_length=500, blank=True)
     is_exported_to_tally = models.BooleanField(default=False)
     export_timestamp = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         indexes = [
             models.Index(fields=["hospital", "report_type", "-generation_time"]),
             models.Index(fields=["period_from", "period_to"]),
         ]
+
     def __str__(self):
         return f"{self.report_title} - {self.period_from} to {self.period_to}"

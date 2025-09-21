@@ -1,10 +1,16 @@
 import uuid
 from decimal import Decimal
-from core.models import TimeStampedModel
+
+from encrypted_model_fields.fields import EncryptedTextField
+
 from django.contrib.auth import get_user_model
 from django.db import models
-from encrypted_model_fields.fields import EncryptedTextField
+
+from core.models import TimeStampedModel
+
 User = get_user_model()
+
+
 class SubscriptionTier(models.Model):
     TIER_CHOICES = [
         ("BASIC", "Basic"),
@@ -24,10 +30,14 @@ class SubscriptionTier(models.Model):
     support_level = models.CharField(max_length=20, default="EMAIL")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         ordering = ["price_monthly"]
+
     def __str__(self):
         return f"{self.name} - ${self.price_monthly}/month"
+
+
 class ModulePermission(models.Model):
     MODULE_CHOICES = [
         ("PATIENT_REGISTRATION", "Patient Registration"),
@@ -63,22 +73,25 @@ class ModulePermission(models.Model):
     display_name = models.CharField(max_length=100)
     description = models.TextField()
     is_core_module = models.BooleanField(default=False)
-    min_tier_required = models.CharField(
-        max_length=20, choices=SubscriptionTier.TIER_CHOICES, default="BASIC"
-    )
+    min_tier_required = models.CharField(max_length=20, choices=SubscriptionTier.TIER_CHOICES, default="BASIC")
+
     def __str__(self):
         return self.display_name
+
+
 class TierModuleAccess(models.Model):
-    tier = models.ForeignKey(
-        SubscriptionTier, on_delete=models.CASCADE, related_name="module_access"
-    )
+    tier = models.ForeignKey(SubscriptionTier, on_delete=models.CASCADE, related_name="module_access")
     module = models.ForeignKey(ModulePermission, on_delete=models.CASCADE)
     is_enabled = models.BooleanField(default=True)
     feature_limits = models.JSONField(default=dict, blank=True)
+
     class Meta:
         unique_together = ["tier", "module"]
+
     def __str__(self):
         return f"{self.tier.name} - {self.module.display_name}"
+
+
 class HospitalSubscription(TimeStampedModel):
     BILLING_CYCLE_CHOICES = [
         ("MONTHLY", "Monthly"),
@@ -96,9 +109,7 @@ class HospitalSubscription(TimeStampedModel):
     )
     tier = models.ForeignKey(SubscriptionTier, on_delete=models.CASCADE)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="TRIAL")
-    billing_cycle = models.CharField(
-        max_length=10, choices=BILLING_CYCLE_CHOICES, default="MONTHLY"
-    )
+    billing_cycle = models.CharField(max_length=10, choices=BILLING_CYCLE_CHOICES, default="MONTHLY")
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
     trial_end_date = models.DateTimeField(null=True, blank=True)
@@ -116,21 +127,27 @@ class HospitalSubscription(TimeStampedModel):
     billing_address = EncryptedTextField()
     auto_renewal = models.BooleanField(default=True)
     payment_method = models.CharField(max_length=50, blank=True)
+
     def __str__(self):
         return f"{self.hospital.name} - {self.tier.name} ({self.status})"
+
     @property
     def is_trial(self):
         return self.status == "TRIAL"
+
     @property
     def is_active(self):
         return self.status == "ACTIVE"
+
     @property
     def days_remaining(self):
         from django.utils import timezone
+
         if self.end_date:
             delta = self.end_date - timezone.now()
             return max(0, delta.days)
         return 0
+
     def can_access_module(self, module_name):
         if not self.is_active and not self.is_trial:
             return False
@@ -140,6 +157,8 @@ class HospitalSubscription(TimeStampedModel):
             return access.is_enabled
         except (ModulePermission.DoesNotExist, TierModuleAccess.DoesNotExist):
             return False
+
+
 class SuperadminUser(TimeStampedModel):
     ROLE_CHOICES = [
         ("SUPER_ADMIN", "Super Administrator"),
@@ -148,9 +167,7 @@ class SuperadminUser(TimeStampedModel):
         ("BILLING", "Billing Manager"),
         ("TECHNICAL", "Technical Manager"),
     ]
-    user = models.OneToOneField(
-        User, on_delete=models.CASCADE, related_name="superadmin_profile"
-    )
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="superadmin_profile")
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     can_manage_subscriptions = models.BooleanField(default=False)
     can_manage_users = models.BooleanField(default=False)
@@ -161,8 +178,11 @@ class SuperadminUser(TimeStampedModel):
     ip_whitelist = models.JSONField(default=list, blank=True)
     is_active = models.BooleanField(default=True)
     last_login_ip = models.GenericIPAddressField(null=True, blank=True)
+
     def __str__(self):
         return f"{self.user.get_full_name()} ({self.role})"
+
+
 class GlobalSettings(models.Model):
     key = models.CharField(max_length=100, unique=True)
     value = models.TextField()
@@ -171,10 +191,14 @@ class GlobalSettings(models.Model):
     category = models.CharField(max_length=50, default="GENERAL")
     last_modified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     modified_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         ordering = ["category", "key"]
+
     def __str__(self):
         return f"{self.key}: {self.value[:50]}..."
+
+
 class SystemAlert(TimeStampedModel):
     ALERT_TYPES = [
         ("INFO", "Information"),
@@ -203,10 +227,14 @@ class SystemAlert(TimeStampedModel):
     send_email = models.BooleanField(default=False)
     send_sms = models.BooleanField(default=False)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
     class Meta:
         ordering = ["-created_at"]
+
     def __str__(self):
         return f"{self.title} ({self.alert_type})"
+
+
 class UsageMetrics(TimeStampedModel):
     hospital = models.ForeignKey("hospitals.Hospital", on_delete=models.CASCADE)
     date = models.DateField()
@@ -221,8 +249,10 @@ class UsageMetrics(TimeStampedModel):
     bandwidth_used_mb = models.PositiveIntegerField(default=0)
     avg_response_time_ms = models.PositiveIntegerField(default=0)
     error_count = models.PositiveIntegerField(default=0)
+
     class Meta:
         unique_together = ["hospital", "date"]
         ordering = ["-date"]
+
     def __str__(self):
         return f"{self.hospital.name} - {self.date}"

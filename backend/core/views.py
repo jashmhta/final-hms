@@ -1,10 +1,14 @@
-from django.db import connection
-from django.http import JsonResponse
-from django.shortcuts import render
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from django.db import connection
+from django.http import JsonResponse
+from django.shortcuts import render
+
 from .serializers import HealthSerializer
+
+
 def root_api_view(request):
     return JsonResponse(
         {
@@ -21,9 +25,12 @@ def root_api_view(request):
             },
         }
     )
+
+
 class HealthCheckView(APIView):
     authentication_classes = []
     permission_classes = []
+
     @extend_schema(responses=OpenApiResponse(response=HealthSerializer))
     def get(self, request):
         try:

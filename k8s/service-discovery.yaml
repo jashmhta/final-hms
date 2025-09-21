@@ -1,0 +1,623 @@
+# Enterprise-Grade Service Discovery and Load Balancing Configuration
+# Author: Microservices Scaling Architect
+# Purpose: Advanced service discovery with health checks and intelligent routing
+
+# ==================== CONSUL SERVICE DISCOVERY ====================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: consul-config
+  namespace: hms-production
+data:
+  consul.json: |
+    {
+      "datacenter": "hms-prod-dc1",
+      "data_dir": "/consul/data",
+      "log_level": "INFO",
+      "server": true,
+      "bootstrap_expect": 3,
+      "ui": true,
+      "client_addr": "0.0.0.0",
+      "bind_addr": "0.0.0.0",
+      "advertise_addr": "{{ GetInterfaceIP \"eth0\" }}",
+      "retry_join": ["consul-server-0", "consul-server-1", "consul-server-2"],
+      "acl": {
+        "enabled": true,
+        "default_policy": "deny",
+        "enable_token_persistence": true
+      },
+      "connect": {
+        "enabled": true,
+        "ca_provider": "consul"
+      },
+      "ports": {
+        "dns": 8600,
+        "http": 8500,
+        "serf_lan": 8301,
+        "serf_wan": 8302,
+        "server": 8300
+      },
+      "telemetry": {
+        "prometheus_retention_time": "30s",
+        "disable_hostname": true
+      },
+      "service": {
+        "name": "consul",
+        "tags": ["infra"],
+        "port": 8500,
+        "check": {
+          "id": "consul-health",
+          "name": "Consul Health Check",
+          "http": "http://localhost:8500/v1/status/leader",
+          "interval": "10s",
+          "timeout": "5s"
+        }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: consul-server
+  namespace: hms-production
+  labels:
+    app: consul
+    component: service-discovery
+spec:
+  serviceName: consul-server
+  replicas: 3
+  selector:
+    matchLabels:
+      app: consul
+  template:
+    metadata:
+      labels:
+        app: consul
+        component: service-discovery
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - consul
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name: consul
+          image: consul:1.15
+          command:
+            - consul
+            - agent
+            - -config-dir=/consul/config
+          ports:
+            - containerPort: 8500
+              name: http
+            - containerPort: 8600
+              name: dns
+            - containerPort: 8301
+              name: serf-lan
+            - containerPort: 8300
+              name: server
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          volumeMounts:
+            - name: config
+              mountPath: /consul/config
+            - name: data
+              mountPath: /consul/data
+      volumes:
+        - name: config
+          configMap:
+            name: consul-config
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: fast-ssd
+        resources:
+          requests:
+            storage: 10Gi
+
+# ==================== ENVOY SIDECAR CONFIGURATION ====================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: envoy-config
+  namespace: hms-production
+data:
+  envoy.yaml: |
+    admin:
+      access_log_path: /tmp/admin_access.log
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: 9901
+
+    static_resources:
+      listeners:
+        - name: listener_0
+          address:
+            socket_address:
+              address: 0.0.0.0
+              port_value: 10000
+          filter_chains:
+            - filters:
+                - name: envoy.filters.network.http_connection_manager
+                  typed_config:
+                    "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                    stat_prefix: ingress_http
+                    route_config:
+                      name: local_route
+                      virtual_hosts:
+                        - name: local_service
+                          domains: ["*"]
+                          routes:
+                            - match:
+                                prefix: "/"
+                              route:
+                                cluster: local_service
+                    http_filters:
+                      - name: envoy.filters.http.router
+
+      clusters:
+        - name: local_service
+          connect_timeout: 0.25s
+          type: strict_dns
+          lb_policy: round_robin
+          load_assignment:
+            cluster_name: local_service
+            endpoints:
+              - lb_endpoints:
+                  - endpoint:
+                      address:
+                        socket_address:
+                          address: 127.0.0.1
+                          port_value: 8080
+
+# ==================== ADVANCED LOAD BALANCING ====================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-lb-config
+  namespace: hms-production
+data:
+  nginx.conf: |
+    user nginx;
+    worker_processes auto;
+    error_log /var/log/nginx/error.log warn;
+    pid /var/run/nginx.pid;
+
+    events {
+        worker_connections 1024;
+        use epoll;
+        multi_accept on;
+    }
+
+    http {
+        include /etc/nginx/mime.types;
+        default_type application/octet-stream;
+
+        # Logging
+        log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                       '$status $body_bytes_sent "$http_referer" '
+                       '"$http_user_agent" "$http_x_forwarded_for" '
+                       'rt=$request_time uct="$upstream_connect_time" '
+                       'uht="$upstream_header_time" urt="$upstream_response_time"';
+
+        access_log /var/log/nginx/access.log main;
+
+        # Performance optimizations
+        sendfile on;
+        tcp_nopush on;
+        tcp_nodelay on;
+        keepalive_timeout 75s;
+        keepalive_requests 1000;
+        types_hash_max_size 2048;
+        server_tokens off;
+
+        # Rate limiting
+        limit_req_zone $binary_remote_addr zone=api:10m rate=100r/s;
+        limit_req_zone $binary_remote_addr zone=login:10m rate=10r/m;
+
+        # Load balancing methods
+        upstream hms_backend {
+            least_conn;
+            server hms-backend-service:8000 max_fails=3 fail_timeout=30s;
+            server hms-backend-service-2:8000 max_fails=3 fail_timeout=30s;
+            server hms-backend-service-3:8000 max_fails=3 fail_timeout=30s backup;
+
+            keepalive 32;
+            keepalive_timeout 30s;
+            keepalive_requests 1000;
+        }
+
+        upstream patient_services {
+            hash $request_uri consistent;
+            server patient-service:8001 max_fails=2 fail_timeout=20s;
+            server patient-service-2:8001 max_fails=2 fail_timeout=20s;
+        }
+
+        upstream appointment_services {
+            ip_hash;
+            server appointment-service:8002 max_fails=3 fail_timeout=30s;
+            server appointment-service-2:8002 max_fails=3 fail_timeout=30s;
+        }
+
+        upstream critical_services {
+            server er-alerts:9006 max_fails=1 fail_timeout=5s;
+            server er-alerts-2:9006 max_fails=1 fail_timeout=5s;
+        }
+
+        # Health checks
+        server {
+            listen 80;
+            server_name localhost;
+            location /health {
+                access_log off;
+                return 200 "healthy\n";
+                add_header Content-Type text/plain;
+            }
+        }
+
+        # API Gateway configuration
+        server {
+            listen 80;
+            server_name api.hms.enterprise;
+
+            # Security headers
+            add_header X-Frame-Options DENY;
+            add_header X-Content-Type-Options nosniff;
+            add_header X-XSS-Protection "1; mode=block";
+            add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+            # Rate limiting for sensitive endpoints
+            location /api/auth/login {
+                limit_req zone=login burst=20 nodelay;
+                proxy_pass http://hms_backend;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            # General API routing
+            location /api/ {
+                limit_req zone=api burst=50 nodelay;
+                proxy_pass http://hms_backend;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+
+                # Health check and circuit breaker
+                proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+                proxy_next_upstream_tries 3;
+                proxy_next_upstream_timeout 10s;
+
+                # Timeout configurations
+                proxy_connect_timeout 5s;
+                proxy_send_timeout 60s;
+                proxy_read_timeout 60s;
+            }
+
+            # Service-specific routing
+            location /api/patients/ {
+                proxy_pass http://patient_services;
+                proxy_set_header Host $host;
+                proxy_cache patients_cache;
+                proxy_cache_valid 200 5m;
+                proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+            }
+
+            location /api/appointments/ {
+                proxy_pass http://appointment_services;
+                proxy_set_header Host $host;
+                proxy_cache appointments_cache;
+                proxy_cache_valid 200 2m;
+            }
+
+            # Emergency services - direct routing
+            location /api/er/ {
+                proxy_pass http://critical_services;
+                proxy_set_header Host $host;
+                proxy_cache off;
+                proxy_connect_timeout 2s;
+                proxy_send_timeout 5s;
+                proxy_read_timeout 5s;
+            }
+        }
+
+        # Caching configuration
+        proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=patients_cache:10m inactive=60m use_temp_path=off;
+        proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=appointments_cache:10m inactive=30m use_temp_path=off;
+    }
+
+# ==================== LOAD BALANCER DEPLOYMENT ====================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-load-balancer
+  namespace: hms-production
+  labels:
+    app: nginx
+    component: load-balancer
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+      component: load-balancer
+  template:
+    metadata:
+      labels:
+        app: nginx
+        component: load-balancer
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - nginx
+                topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name: nginx
+          image: nginx:1.25-alpine
+          ports:
+            - containerPort: 80
+              name: http
+            - containerPort: 443
+              name: https
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-lb-config
+        - name: nginx-cache
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-lb-service
+  namespace: hms-production
+  labels:
+    app: nginx
+    service: load-balancer
+spec:
+  type: LoadBalancer
+  selector:
+    app: nginx
+    component: load-balancer
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+    - name: https
+      port: 443
+      targetPort: 443
+
+# ==================== SERVICE MESH TRAFFIC MANAGEMENT =================---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: hms-traffic-splitting
+  namespace: hms-production
+spec:
+  hosts:
+    - hms-backend-service
+  http:
+    - match:
+        - headers:
+            user-agent:
+              prefix: "HMS-Internal"
+      route:
+        - destination:
+            host: hms-backend-service-v2
+          weight: 10
+        - destination:
+            host: hms-backend-service
+          weight: 90
+    - route:
+        - destination:
+            host: hms-backend-service
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: hms-load-balancing
+  namespace: hms-production
+spec:
+  host: "*.hms-production.svc.cluster.local"
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_REQUEST
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 30s
+        tcpKeepalive:
+          time: 7200s
+          interval: 75s
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 10
+        maxRetries: 3
+        idleTimeout: 90s
+    outlierDetection:
+      consecutiveGatewayErrors: 5
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 50
+
+# ==================== HEALTH CHECK ENDPOINTS =================---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: health-check-config
+  namespace: hms-production
+data:
+  health-check.py: |
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    import json
+    import psutil
+    import socket
+    import sys
+    import os
+
+    class HealthCheckHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == '/health':
+                self.send_health_response()
+            elif self.path == '/ready':
+                self.send_ready_response()
+            elif self.path == '/metrics':
+                self.send_metrics_response()
+            else:
+                self.send_error(404)
+
+        def send_health_response(self):
+            try:
+                # Check system resources
+                cpu_percent = psutil.cpu_percent(interval=1)
+                memory = psutil.virtual_memory()
+                disk = psutil.disk_usage('/')
+
+                health_status = {
+                    "status": "healthy",
+                    "cpu_usage": cpu_percent,
+                    "memory_usage": memory.percent,
+                    "disk_usage": disk.percent,
+                    "pod_name": socket.gethostname(),
+                    "timestamp": self.date_time_string()
+                }
+
+                # Determine overall health
+                if cpu_percent > 90 or memory.percent > 90 or disk.percent > 90:
+                    health_status["status"] = "degraded"
+
+                self.send_response(200 if health_status["status"] == "healthy" else 503)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(health_status).encode())
+
+            except Exception as e:
+                error_response = {"status": "unhealthy", "error": str(e)}
+                self.send_response(503)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(error_response).encode())
+
+        def send_ready_response(self):
+            try:
+                # Check database connectivity
+                db_healthy = self.check_database()
+                redis_healthy = self.check_redis()
+
+                ready_status = {
+                    "status": "ready" if db_healthy and redis_healthy else "not_ready",
+                    "database": "healthy" if db_healthy else "unhealthy",
+                    "cache": "healthy" if redis_healthy else "unhealthy",
+                    "dependencies": {
+                        "database": db_healthy,
+                        "redis": redis_healthy
+                    }
+                }
+
+                self.send_response(200 if ready_status["status"] == "ready" else 503)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(ready_status).encode())
+
+            except Exception as e:
+                error_response = {"status": "not_ready", "error": str(e)}
+                self.send_response(503)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(error_response).encode())
+
+        def send_metrics_response(self):
+            try:
+                metrics = {
+                    "cpu_percent": psutil.cpu_percent(),
+                    "memory_percent": psutil.virtual_memory().percent,
+                    "memory_available": psutil.virtual_memory().available,
+                    "disk_usage": psutil.disk_usage('/').percent,
+                    "disk_free": psutil.disk_usage('/').free,
+                    "load_average": os.getloadavg(),
+                    "network_connections": len(psutil.net_connections()),
+                    "process_count": len(psutil.pids())
+                }
+
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(metrics).encode())
+
+            except Exception as e:
+                error_response = {"error": str(e)}
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(error_response).encode())
+
+        def check_database(self):
+            # Implement actual database check
+            return True
+
+        def check_redis(self):
+            # Implement actual Redis check
+            return True
+
+        def log_message(self, format, *args):
+            # Suppress log messages
+            pass
+
+    if __name__ == '__main__':
+        port = 8080
+        server = HTTPServer(('', port), HealthCheckHandler)
+        print(f"Health check server running on port {port}")
+        server.serve_forever()

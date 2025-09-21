@@ -1,4 +1,6 @@
 from django.db import migrations, models
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("users", "0002_department_usercredential_userloginhistory_and_more"),

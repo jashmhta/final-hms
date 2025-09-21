@@ -1,0 +1,507 @@
+# Multi-Region Automated Failover Configuration
+# Enterprise-grade automated failover and recovery for HMS microservices
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: failover-controller-config
+  namespace: hms-system
+  labels:
+    app.kubernetes.io/name: failover-controller
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: failover
+data:
+  failover-config.yaml: |
+    # Failover controller configuration
+    regions:
+      primary: us-east-1
+      secondary: us-west-2
+      tertiary: eu-west-1
+
+    # Health check configuration
+    health_checks:
+      interval: 30s
+      timeout: 10s
+      failure_threshold: 3
+      success_threshold: 2
+
+    # Service health endpoints
+    services:
+      - name: patient-service
+        health_endpoint: /health
+        critical: true
+      - name: appointment-service
+        health_endpoint: /health
+        critical: true
+      - name: clinical-service
+        health_endpoint: /health
+        critical: true
+      - name: billing-service
+        health_endpoint: /health
+        critical: true
+      - name: auth-service
+        health_endpoint: /health
+        critical: true
+      - name: api-gateway
+        health_endpoint: /health
+        critical: true
+      - name: postgres-primary
+        health_check: exec
+        command: ["pg_isready", "-h", "localhost", "-p", "5432"]
+        critical: true
+      - name: redis-primary
+        health_check: exec
+        command: ["redis-cli", "ping"]
+        critical: true
+
+    # Failover triggers
+    triggers:
+      - name: critical_service_failure
+        condition: "critical_services_unhealthy >= 3"
+        action: failover
+      - name: region_unreachable
+        condition: "region_connectivity == false"
+        action: failover
+      - name: database_failure
+        condition: "database_unhealthy == true"
+        action: failover
+      - name: high_latency
+        condition: "avg_latency > 5000"
+        action: alert
+      - name: high_error_rate
+        condition: "error_rate > 0.1"
+        action: alert
+
+    # Failover actions
+    actions:
+      failover:
+        steps:
+          - name: verify_failure
+            type: health_check
+            timeout: 60s
+          - name: promote_secondary
+            type: database_operation
+            timeout: 300s
+          - name: update_dns
+            type: dns_update
+            timeout: 300s
+          - name: scale_services
+            type: kubernetes_operation
+            timeout: 600s
+          - name: verify_failover
+            type: health_check
+            timeout: 300s
+          - name: notify_teams
+            type: notification
+            timeout: 60s
+
+      rollback:
+        steps:
+          - name: verify_primary_recovery
+            type: health_check
+            timeout: 300s
+          - name: switch_traffic
+            type: dns_update
+            timeout: 300s
+          - name: demote_secondary
+            type: database_operation
+            timeout: 300s
+          - name: verify_rollback
+            type: health_check
+            timeout: 300s
+          - name: notify_teams
+            type: notification
+            timeout: 60s
+
+    # Notification channels
+    notifications:
+      slack:
+        critical_webhook: "${SLACK_CRITICAL_WEBHOOK}"
+        warning_webhook: "${SLACK_WARNING_WEBHOOK}"
+        info_webhook: "${SLACK_INFO_WEBHOOK}"
+      email:
+        smtp_server: "smtp.gmail.com:587"
+        from: "failover@hms.enterprise.com"
+        to: ["hms-ops@hms.enterprise.com", "hms-sre@hms.enterprise.com"]
+      pagerduty:
+        service_key: "${PAGERDUTY_SERVICE_KEY}"
+
+    # DNS configuration
+    dns:
+      provider: route53
+      hosted_zone_id: "${HOSTED_ZONE_ID}"
+      record_name: "api.hms.enterprise.com"
+      ttl: 60
+      health_check_id: "${ROUTE53_HEALTH_CHECK_ID}"
+
+    # Kubernetes configuration
+    kubernetes:
+      context_primary: "arn:aws:eks:us-east-1:123456789012:cluster/hms-primary"
+      context_secondary: "arn:aws:eks:us-west-2:123456789012:cluster/hms-secondary"
+      context_tertiary: "arn:aws:eks:eu-west-1:123456789012:cluster/hms-tertiary"
+
+    # Database configuration
+    database:
+      primary_instance: "postgres-primary.hms.system.svc.cluster.local"
+      secondary_instance: "postgres-secondary.hms.system.svc.cluster.local"
+      tertiary_instance: "postgres-tertiary.hms.system.svc.cluster.local"
+      replication_user: "replicator"
+      failover_timeout: 300s
+
+    # Rate limiting
+    rate_limiting:
+      max_failovers_per_hour: 2
+      cooldown_period: 3600s
+      max_notifications_per_minute: 10
+
+    # Metrics and logging
+    monitoring:
+      metrics_port: 8080
+      log_level: "INFO"
+      log_format: "json"
+      export_metrics: true
+      metrics_endpoint: "prometheus.monitoring.svc.cluster.local:9090"
+
+    # Security
+    security:
+      enable_authentication: true
+      auth_token: "${FAILOVER_AUTH_TOKEN}"
+      allowed_ips: ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+      tls_config:
+        cert_file: "/etc/certs/tls.crt"
+        key_file: "/etc/certs/tls.key"
+        ca_file: "/etc/certs/ca.crt"
+
+    # Testing configuration
+    testing:
+      enabled: true
+      test_schedule: "0 2 * * 6"  # Every Saturday at 2 AM
+      test_failover_region: "us-west-2"
+      test_duration: 300s
+      notification_on_test: true
+
+  prometheus-rules.yml: |
+    groups:
+    - name: failover_rules
+      rules:
+      - alert: FailoverControllerDown
+        expr: up{job="failover-controller"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Failover controller is down"
+          description: "Failover controller is not responding"
+
+      - alert: FailoverTriggered
+        expr: failover_events_total > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Failover triggered"
+          description: "Failover has been triggered due to {{ $labels.reason }}"
+
+      - alert: FailoverCooldown
+        expr: failover_cooldown_active == 1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Failover cooldown active"
+          description: "Failover is in cooldown period"
+
+      - alert: RegionUnhealthy
+        expr: region_health_score < 0.7
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Region unhealthy"
+          description: "Region {{ $labels.region }} has health score {{ $value }}"
+
+      - alert: DatabaseReplicationLag
+        expr: postgresql_replication_lag_seconds > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Database replication lag"
+          description: "Database replication lag is {{ $value }} seconds"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate"
+          description: "Error rate is {{ $value | humanizePercentage }}"
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency"
+          description: "95th percentile latency is {{ $value }}s"
+---
+# Failover controller deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: failover-controller
+  namespace: hms-system
+  labels:
+    app.kubernetes.io/name: failover-controller
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: failover
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: failover-controller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: failover-controller
+        app.kubernetes.io/part-of: hms
+        app.kubernetes.io/component: failover
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - failover-controller
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: failover-controller
+        image: python:3.11-slim
+        command: ["python", "-m", "failover_controller"]
+        ports:
+        - containerPort: 8080
+          name: metrics
+        env:
+        - name: SLACK_CRITICAL_WEBHOOK
+          valueFrom:
+            secretKeyRef:
+              name: failover-secrets
+              key: slack-critical-webhook
+        - name: SLACK_WARNING_WEBHOOK
+          valueFrom:
+            secretKeyRef:
+              name: failover-secrets
+              key: slack-warning-webhook
+        - name: SLACK_INFO_WEBHOOK
+          valueFrom:
+            secretKeyRef:
+              name: failover-secrets
+              key: slack-info-webhook
+        - name: PAGERDUTY_SERVICE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: failover-secrets
+              key: pagerduty-service-key
+        - name: HOSTED_ZONE_ID
+          valueFrom:
+            secretKeyRef:
+              name: failover-secrets
+              key: hosted-zone-id
+        - name: ROUTE53_HEALTH_CHECK_ID
+          valueFrom:
+            secretKeyRef:
+              name: failover-secrets
+              key: route53-health-check-id
+        - name: FAILOVER_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: failover-secrets
+              key: failover-auth-token
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: failover-secrets
+              key: aws-access-key-id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: failover-secrets
+              key: aws-secret-access-key
+        - name: AWS_REGION
+          value: "us-east-1"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/failover
+        - name: certs
+          mountPath: /etc/certs
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: failover-controller-config
+      - name: certs
+        secret:
+          secretName: failover-tls-secrets
+---
+# Failover controller service
+apiVersion: v1
+kind: Service
+metadata:
+  name: failover-controller
+  namespace: hms-system
+  labels:
+    app.kubernetes.io/name: failover-controller
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: failover
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: metrics
+  selector:
+    app.kubernetes.io/name: failover-controller
+---
+# Failover controller service monitor
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: failover-controller
+  namespace: hms-system
+  labels:
+    app.kubernetes.io/name: failover-controller
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: failover
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: failover-controller
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+---
+# Failover secrets
+apiVersion: v1
+kind: Secret
+metadata:
+  name: failover-secrets
+  namespace: hms-system
+  labels:
+    app.kubernetes.io/name: failover-secrets
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: failover
+type: Opaque
+data:
+  # These should be base64 encoded actual values
+  slack-critical-webhook: "eW91ci1zbGFjay13ZWJob29rLXVybA=="
+  slack-warning-webhook: "eW91ci1zbGFjay13ZWJob29rLXVybA=="
+  slack-info-webhook: "eW91ci1zbGFjay13ZWJob29rLXVybA=="
+  pagerduty-service-key: "eW91ci1wYWdlcmR1dHktc2VydmljZS1rZXk="
+  hosted-zone-id: "eW91ci1ob3N0ZWQtem9uZS1pZA=="
+  route53-health-check-id: "eW91ci1yb3V0ZTUzLWhlYWx0aC1jaGVjay1pZA=="
+  failover-auth-token: "eW91ci1mYWlsb3Zlci1hdXRoLXRva2Vu"
+  aws-access-key-id: "eW91ci1hd3MtYWNjZXNzLWtleS1pZA=="
+  aws-secret-access-key: "eW91ci1hd3Mtc2VjcmV0LWFjY2Vzcy1rZXk="
+---
+# Failover TLS secrets
+apiVersion: v1
+kind: Secret
+metadata:
+  name: failover-tls-secrets
+  namespace: hms-system
+  labels:
+    app.kubernetes.io/name: failover-tls-secrets
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: failover
+type: kubernetes.io/tls
+data:
+  tls.crt: "eW91ci10bHMtY2VydGlmaWNhdGU="
+  tls.key: "eW91ci10bHMta2V5"
+  ca.crt: "eW91ci1jYS1jZXJ0aWZpY2F0ZQ=="
+---
+# Failover controller RBAC
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: failover-controller
+  namespace: hms-system
+  labels:
+    app.kubernetes.io/name: failover-controller
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: failover
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: failover-controller
+  labels:
+    app.kubernetes.io/name: failover-controller
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: failover
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "scale"]
+- apiGroups: ["extensions"]
+  resources: ["deployments", "daemonsets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses", "networkpolicies"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["policy"]
+  resources: ["poddisruptionbudgets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: failover-controller
+  labels:
+    app.kubernetes.io/name: failover-controller
+    app.kubernetes.io/part-of: hms
+    app.kubernetes.io/component: failover
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: failover-controller
+subjects:
+- kind: ServiceAccount
+  name: failover-controller
+  namespace: hms-system

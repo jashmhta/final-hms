@@ -1,0 +1,460 @@
+# Enterprise-Grade Circuit Breaker Configuration
+# Author: Microservices Scaling Architect
+# Purpose: Resilience patterns for all HMS microservices
+
+# ==================== ISTIO CIRCUIT BREAKERS ====================
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: hms-backend-circuit-breaker
+  namespace: hms-production
+spec:
+  host: hms-backend-service
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 30s
+        tcpKeepalive:
+          time: 7200s
+          interval: 75s
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 10
+        maxRetries: 3
+        idleTimeout: 90s
+        h2UpgradePolicy: UPGRADE
+    outlierDetection:
+      consecutiveGatewayErrors: 5
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 50
+      splitExternalLocalOriginErrors: true
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: patient-service-circuit-breaker
+  namespace: hms-production
+spec:
+  host: patient-service
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 50
+        connectTimeout: 10s
+      http:
+        http1MaxPendingRequests: 25
+        http2MaxRequests: 500
+        maxRequestsPerConnection: 5
+        maxRetries: 2
+        idleTimeout: 60s
+    outlierDetection:
+      consecutiveGatewayErrors: 3
+      consecutive5xxErrors: 3
+      interval: 15s
+      baseEjectionTime: 60s
+      maxEjectionPercent: 30
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: appointment-service-circuit-breaker
+  namespace: hms-production
+spec:
+  host: appointment-service
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 75
+        connectTimeout: 15s
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 750
+        maxRequestsPerConnection: 8
+        maxRetries: 3
+        idleTimeout: 75s
+    outlierDetection:
+      consecutiveGatewayErrors: 3
+      consecutive5xxErrors: 4
+      interval: 20s
+      baseEjectionTime: 45s
+      maxEjectionPercent: 40
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: pharmacy-service-circuit-breaker
+  namespace: hms-production
+spec:
+  host: pharmacy-service
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 60
+        connectTimeout: 20s
+      http:
+        http1MaxPendingRequests: 40
+        http2MaxRequests: 600
+        maxRequestsPerConnection: 6
+        maxRetries: 3
+        idleTimeout: 70s
+    outlierDetection:
+      consecutiveGatewayErrors: 4
+      consecutive5xxErrors: 5
+      interval: 25s
+      baseEjectionTime: 50s
+      maxEjectionPercent: 35
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: lab-service-circuit-breaker
+  namespace: hms-production
+spec:
+  host: lab-service
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 40
+        connectTimeout: 25s
+      http:
+        http1MaxPendingRequests: 30
+        http2MaxRequests: 400
+        maxRequestsPerConnection: 4
+        maxRetries: 2
+        idleTimeout: 80s
+    outlierDetection:
+      consecutiveGatewayErrors: 5
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 60s
+      maxEjectionPercent: 45
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: billing-service-circuit-breaker
+  namespace: hms-production
+spec:
+  host: billing-service
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 80
+        connectTimeout: 30s
+      http:
+        http1MaxPendingRequests: 60
+        http2MaxRequests: 800
+        maxRequestsPerConnection: 10
+        maxRetries: 3
+        idleTimeout: 90s
+    outlierDetection:
+      consecutiveGatewayErrors: 3
+      consecutive5xxErrors: 4
+      interval: 20s
+      baseEjectionTime: 90s
+      maxEjectionPercent: 50
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: er-alerts-circuit-breaker
+  namespace: hms-production
+spec:
+  host: er-alerts
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 150
+        connectTimeout: 5s
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1500
+        maxRequestsPerConnection: 15
+        maxRetries: 1
+        idleTimeout: 30s
+    outlierDetection:
+      consecutiveGatewayErrors: 2
+      consecutive5xxErrors: 2
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 20
+
+# ==================== RETRY POLICIES ====================
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: hms-retry-policies
+  namespace: hms-production
+spec:
+  hosts:
+    - hms-backend-service
+  http:
+    - match:
+        - uri:
+            prefix: /api/patients/
+      retries:
+        attempts: 3
+        perTryTimeout: 5s
+        retryOn: gateway-error,connect-failure,refused-stream
+      route:
+        - destination:
+            host: hms-backend-service
+    - match:
+        - uri:
+            prefix: /api/appointments/
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: gateway-error,connect-failure,refused-stream
+      route:
+        - destination:
+            host: hms-backend-service
+    - match:
+        - uri:
+            prefix: /api/pharmacy/
+      retries:
+        attempts: 2
+        perTryTimeout: 15s
+        retryOn: gateway-error,connect-failure,refused-stream
+      route:
+        - destination:
+            host: hms-backend-service
+
+# ==================== TIMEOUT POLICIES ====================
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: hms-timeout-policies
+  namespace: hms-production
+spec:
+  hosts:
+    - hms-backend-service
+  http:
+    - match:
+        - uri:
+            prefix: /api/patients/
+      timeout: 10s
+      route:
+        - destination:
+            host: hms-backend-service
+    - match:
+        - uri:
+            prefix: /api/appointments/
+      timeout: 15s
+      route:
+        - destination:
+            host: hms-backend-service
+    - match:
+        - uri:
+            prefix: /api/pharmacy/
+      timeout: 20s
+      route:
+        - destination:
+            host: hms-backend-service
+    - match:
+        - uri:
+            prefix: /api/lab/
+      timeout: 30s
+      route:
+        - destination:
+            host: hms-backend-service
+    - match:
+        - uri:
+            prefix: /api/billing/
+      timeout: 25s
+      route:
+        - destination:
+            host: hms-backend-service
+    - match:
+        - uri:
+            prefix: /api/er/
+      timeout: 5s
+      route:
+        - destination:
+            host: hms-backend-service
+
+# ==================== FAULT INJECTION FOR TESTING ====================
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: hms-fault-injection
+  namespace: hms-staging
+spec:
+  hosts:
+    - hms-backend-service
+  http:
+    - fault:
+        delay:
+          percentage:
+            value: 0.1
+          fixedDelay: 2s
+      route:
+        - destination:
+            host: hms-backend-service
+    - fault:
+        abort:
+          percentage:
+            value: 0.05
+          httpStatus: 503
+      route:
+        - destination:
+            host: hms-backend-service
+
+# ==================== APPLICATION CIRCUIT BREAKER CONFIGURATION =================---
+# Python Circuit Breaker Implementation Template
+"""
+HMS Circuit Breaker Configuration
+Author: Microservices Scaling Architect
+Purpose: Application-level circuit breakers for Python services
+"""
+
+import time
+import asyncio
+from typing import Callable, Any, Dict, Optional
+from dataclasses import dataclass
+from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
+
+class CircuitState(Enum):
+    CLOSED = "closed"
+    OPEN = "open"
+    HALF_OPEN = "half_open"
+
+@dataclass
+class CircuitBreakerConfig:
+    failure_threshold: int = 5
+    recovery_timeout: int = 60
+    expected_exception: tuple = (Exception,)
+    timeout: int = 30
+    max_retries: int = 3
+
+class CircuitBreaker:
+    def __init__(self, config: CircuitBreakerConfig):
+        self.config = config
+        self.state = CircuitState.CLOSED
+        self.failure_count = 0
+        self.last_failure_time = None
+        self.success_count = 0
+
+    async def call(self, func: Callable, *args, **kwargs) -> Any:
+        if self.state == CircuitState.OPEN:
+            if self._should_attempt_reset():
+                self.state = CircuitState.HALF_OPEN
+                logger.info("Circuit breaker moving to HALF_OPEN state")
+            else:
+                raise CircuitBreakerOpenError("Circuit breaker is OPEN")
+
+        try:
+            result = await asyncio.wait_for(
+                func(*args, **kwargs),
+                timeout=self.config.timeout
+            )
+            self._on_success()
+            return result
+        except self.config.expected_exception as e:
+            self._on_failure()
+            if self.state == CircuitState.HALF_OPEN:
+                self.state = CircuitState.OPEN
+                logger.warning("Circuit breaker returned to OPEN state")
+            raise e
+        except asyncio.TimeoutError:
+            self._on_failure()
+            raise TimeoutError(f"Timeout after {self.config.timeout}s")
+
+    def _should_attempt_reset(self) -> bool:
+        if self.last_failure_time is None:
+            return False
+        return (time.time() - self.last_failure_time) >= self.config.recovery_timeout
+
+    def _on_success(self):
+        self.failure_count = 0
+        self.last_failure_time = None
+        if self.state == CircuitState.HALF_OPEN:
+            self.success_count += 1
+            if self.success_count >= 3:
+                self.state = CircuitState.CLOSED
+                self.success_count = 0
+                logger.info("Circuit breaker moved to CLOSED state")
+
+    def _on_failure(self):
+        self.failure_count += 1
+        self.last_failure_time = time.time()
+        if self.failure_count >= self.config.failure_threshold:
+            self.state = CircuitState.OPEN
+            logger.warning(f"Circuit breaker moved to OPEN state after {self.failure_count} failures")
+
+    def get_state(self) -> Dict[str, Any]:
+        return {
+            "state": self.state.value,
+            "failure_count": self.failure_count,
+            "last_failure_time": self.last_failure_time,
+            "success_count": self.success_count
+        }
+
+class CircuitBreakerOpenError(Exception):
+    pass
+
+# ==================== SERVICE-SPECIFIC CIRCUIT BREAKERS ====================
+patient_service_circuit = CircuitBreaker(CircuitBreakerConfig(
+    failure_threshold=3,
+    recovery_timeout=30,
+    expected_exception=(ConnectionError, TimeoutError),
+    timeout=10
+))
+
+appointment_service_circuit = CircuitBreaker(CircuitBreakerConfig(
+    failure_threshold=5,
+    recovery_timeout=45,
+    expected_exception=(ConnectionError, TimeoutError),
+    timeout=15
+))
+
+pharmacy_service_circuit = CircuitBreaker(CircuitBreakerConfig(
+    failure_threshold=4,
+    recovery_timeout=60,
+    expected_exception=(ConnectionError, TimeoutError, DatabaseError),
+    timeout=20
+))
+
+lab_service_circuit = CircuitBreaker(CircuitBreakerConfig(
+    failure_threshold=3,
+    recovery_timeout=90,
+    expected_exception=(ConnectionError, TimeoutError),
+    timeout=30
+))
+
+billing_service_circuit = CircuitBreaker(CircuitBreakerConfig(
+    failure_threshold=2,
+    recovery_timeout=120,
+    expected_exception=(ConnectionError, TimeoutError, PaymentError),
+    timeout=25
+))
+
+er_alerts_circuit = CircuitBreaker(CircuitBreakerConfig(
+    failure_threshold=1,
+    recovery_timeout=15,
+    expected_exception=(ConnectionError, TimeoutError),
+    timeout=5
+))
+
+# ==================== USAGE EXAMPLE ====================
+async def example_usage():
+    try:
+        result = await patient_service_circuit.call(
+            some_patient_api_call,
+            patient_id="12345"
+        )
+        return result
+    except CircuitBreakerOpenError:
+        logger.error("Patient service circuit breaker is open")
+        return fallback_response()
+    except Exception as e:
+        logger.error(f"Patient service call failed: {e}")
+        raise e

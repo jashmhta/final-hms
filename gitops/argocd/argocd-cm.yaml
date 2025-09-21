@@ -1,0 +1,206 @@
+# ArgoCD Configuration Management
+# Enterprise-grade GitOps for HMS microservices
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  # Application controller settings
+  application.instanceLabelKey: argocd.argoproj.io/instance
+
+  # Repository settings
+  repository.credentials: |
+    - url: https://github.com/hms-enterprise/hms-microservices
+      usernameSecret:
+        name: github-credentials
+        key: username
+      passwordSecret:
+        name: github-credentials
+        key: password
+
+    - url: https://github.com/hms-enterprise/hms-config
+      usernameSecret:
+        name: github-credentials
+        key: username
+      passwordSecret:
+        name: github-credentials
+        key: password
+
+  # Resource management
+  resource.customizations: |
+    argoproj.io/Application:
+      health.lua: |
+        hs = {}
+        hs.status = "Progressing"
+        hs.message = ""
+        if obj.status ~= nil then
+          if obj.status.health ~= nil then
+            hs.status = obj.status.health.status
+            if obj.status.health.message ~= nil then
+              hs.message = obj.status.health.message
+            end
+          end
+        end
+        return hs
+
+  # Server settings
+  server.insecure: "true"
+  server.basehref: "/"
+  server.rootpath: ""
+
+  # UI settings
+  ui.bannercontent: "HMS Enterprise - Production Environment"
+  ui.bannerurl: "https://hms.enterprise.com"
+  ui.externalurl: "https://argocd.hms.enterprise.com"
+
+  # Dex configuration
+  dex.config: |
+    connectors:
+      - type: github
+        id: github
+        name: GitHub
+        config:
+          clientID: $argocd-github-client-id
+          clientSecret: $argocd-github-client-secret
+          orgs:
+            - name: hms-enterprise
+
+  # RBAC configuration
+  admin.enabled: "true"
+  admin.password: "$2a$10$8Xb1b6f6f6f6f6f6f6f6fO5ZQ5ZQ5ZQ5ZQ5ZQ5ZQ5ZQ"
+
+  # Policy configuration
+  policy.default: role:readonly
+  policy.csv: |
+    p, role:admin, applications, *, */*, allow
+    p, role:admin, clusters, *, *, allow
+    p, role:admin, repositories, *, *, allow
+    p, role:admin, logs, *, *, allow
+    p, role:admin, exec, *, *, allow
+    p, role:developer, applications, *, hms-system/*, allow
+    p, role:developer, applications, create, hms-system/*, allow
+    p, role:developer, applications, sync, hms-system/*, allow
+    p, role:developer, applications, override, hms-system/*, allow
+    p, role:ops, applications, *, *, allow
+    p, role:ops, clusters, *, *, allow
+    p, role:ops, repositories, *, *, allow
+    p, role:ops, logs, *, *, allow
+    p, role:ops, exec, *, *, allow
+    g, system:admins, role:admin
+    g, hms-enterprise:dev-team, role:developer
+    g, hms-enterprise:ops-team, role:ops
+
+  # Application management
+  application.resourceTrackingMethod: annotation
+  application.syncWave.enabled: "true"
+  application.syncWave.adjustment: 5
+
+  # Resource management
+  resource.inclusions: "*"
+  resource.exclusions: |
+    - apiGroups: ["*"]
+      kinds: ["Event"]
+      clusters: ["*"]
+    - apiGroups: ["metrics.k8s.io"]
+      kinds: ["PodMetrics"]
+      clusters: ["*"]
+
+  # Health checks
+  health.status: "Healthy"
+  health.message: "All systems operational"
+
+  # Notifications
+  notifications.enabled: "true"
+  notifications.recipients: |
+    - service: slack
+      recipients:
+        - "#hms-gitops"
+        - "#hms-alerts"
+    - service: email
+      recipients:
+        - "hms-ops@hms.enterprise.com"
+        - "hms-dev@hms.enterprise.com"
+
+  # Audit logging
+  audit.enabled: "true"
+  audit.level: "info"
+  audit.format: "json"
+  audit.retention: "90d"
+
+  # Metrics
+  metrics.enabled: "true"
+  metrics.path: "/metrics"
+  metrics.port: "8082"
+
+  # Tracing
+  tracing.enabled: "true"
+  tracing.serviceName: "argocd"
+  tracing.samplingRate: "1.0"
+  tracing.endpoint: "http://jaeger-collector:14268/api/traces"
+
+  # Logging
+  log.format: "json"
+  log.level: "info"
+  log.output: "stdout"
+
+  # Server configuration
+  server.staticassets: "/shared/app"
+  server.tls.certificate: "/etc/argocd/tls/tls.crt"
+  server.tls.privatekey: "/etc/argocd/tls/tls.key"
+
+  # Application controller configuration
+  controller.status.processors: "20"
+  controller.operation.processors: "10"
+  controller.self.heal.enabled: "true"
+  controller.self.heal.interval: "30s"
+  controller.upgrade.diff.disabled: "false"
+
+  # Repo server configuration
+  repo.server: "https://argocd-repo-server.hms-system.svc.cluster.local"
+  repo.server.insecure: "true"
+
+  # Application set configuration
+  applicationset.enabled: "true"
+  applicationset.provenance.enabled: "true"
+
+  # Projects configuration
+  projects.default: "hms-system"
+
+  # Security configuration
+  security.csp.enabled: "true"
+  security.csp.directives: |
+    default-src 'self'
+    script-src 'self' 'unsafe-inline' 'unsafe-eval'
+    style-src 'self' 'unsafe-inline'
+    img-src 'self' data:
+    font-src 'self'
+    connect-src 'self' wss:
+    frame-src 'self'
+    object-src 'none'
+
+  # Performance configuration
+  performance.cache.enabled: "true"
+  performance.cache.ttl: "300s"
+  performance.compression.enabled: "true"
+
+  # Backup configuration
+  backup.enabled: "true"
+  backup.schedule: "0 2 * * *"
+  backup.retention: "7d"
+  backup.location: "s3://hms-argocd-backups"
+
+  # HA configuration
+  ha.enabled: "true"
+  ha.replicas: "3"
+  ha.affinity: "hard"
+
+  # DR configuration
+  dr.enabled: "true"
+  dr.primary.region: "us-east-1"
+  dr.secondary.region: "us-west-2"
+  dr.sync.interval: "5m"

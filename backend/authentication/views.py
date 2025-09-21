@@ -1,17 +1,14 @@
 import logging
 import secrets
 from datetime import timedelta
+
 try:
     import pyotp
+
     PYOTP_AVAILABLE = True
 except ImportError:
     PYOTP_AVAILABLE = False
     pyotp = None
-from django.contrib.auth import authenticate, get_user_model
-from django.core.cache import cache
-from django.db import transaction
-from django.utils import timezone
-from django.utils.html import escape
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -20,8 +17,16 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
+
+from django.contrib.auth import authenticate, get_user_model
+from django.core.cache import cache
+from django.db import transaction
+from django.utils import timezone
+from django.utils.html import escape
+
 from core.permissions import RolePermission
 from users.models import UserLoginHistory, UserSession
+
 from .models import (
     LoginSession,
     MFADevice,
@@ -31,19 +36,23 @@ from .models import (
 )
 from .serializers import (
     LoginSerializer,
-    MFASetupSerializer,
+    LoginSessionSerializer,
     MFASerializer,
+    MFASetupSerializer,
     PasswordChangeSerializer,
+    PasswordPolicySerializer,
     SecurityEventSerializer,
     TrustedDeviceSerializer,
-    LoginSessionSerializer,
-    PasswordPolicySerializer,
     UserSecurityProfileSerializer,
 )
+
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
+
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = LoginSerializer
+
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -60,9 +69,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 user_agent=request.META.get("HTTP_USER_AGENT", ""),
                 metadata={"username": username},
             )
-            return Response(
-                {"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
-            )
+            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
         if user.is_account_locked():
             SecurityEvent.objects.create(
                 user=user,
@@ -80,9 +87,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         if not user:
             user.failed_login_attempts += 1
             user.save()
-            policy = PasswordPolicy.objects.filter(
-                is_active=True, is_default=True
-            ).first()
+            policy = PasswordPolicy.objects.filter(is_active=True, is_default=True).first()
             max_attempts = policy.max_failed_attempts if policy else 5
             if user.failed_login_attempts >= max_attempts:
                 lock_duration = policy.lockout_duration_minutes if policy else 30
@@ -112,9 +117,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 user_agent=request.META.get("HTTP_USER_AGENT", ""),
                 metadata={"attempts": user.failed_login_attempts},
             )
-            return Response(
-                {"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
-            )
+            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
         user.failed_login_attempts = 0
         user.save()
         if user.mfa_enabled:
@@ -133,6 +136,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 }
             )
         return self.create_session_and_tokens(request, user)
+
     def create_session_and_tokens(self, request, user):
         session = LoginSession.objects.create(
             user=user,
@@ -182,6 +186,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 "session_id": session.session_id,
             }
         )
+
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
@@ -189,12 +194,15 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         else:
             ip = request.META.get("REMOTE_ADDR")
         return ip
+
     def get_device_info(self, request):
         user_agent = request.META.get("HTTP_USER_AGENT", "")
         return {
             "user_agent": user_agent,
-            "platform": "web",  
+            "platform": "web",
         }
+
+
 class MFAAuthenticationView(APIView):
     def post(self, request):
         serializer = MFASerializer(data=request.data)
@@ -205,9 +213,7 @@ class MFAAuthenticationView(APIView):
         try:
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
-            return Response(
-                {"error": "Invalid user"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Invalid user"}, status=status.HTTP_400_BAD_REQUEST)
         device = None
         if device_id:
             try:
@@ -226,9 +232,7 @@ class MFAAuthenticationView(APIView):
                     ip_address=self.get_client_ip(request),
                     user_agent=request.META.get("HTTP_USER_AGENT", ""),
                 )
-                return Response(
-                    {"error": "Invalid MFA token"}, status=status.HTTP_401_UNAUTHORIZED
-                )
+                return Response({"error": "Invalid MFA token"}, status=status.HTTP_401_UNAUTHORIZED)
         for mfa_device in user.mfa_devices.filter(is_active=True):
             if mfa_device.verify_token(token):
                 return self.create_session_and_tokens(request, user, mfa_device)
@@ -240,15 +244,10 @@ class MFAAuthenticationView(APIView):
             ip_address=self.get_client_ip(request),
             user_agent=request.META.get("HTTP_USER_AGENT", ""),
         )
-        return Response(
-            {"error": "Invalid MFA token"}, status=status.HTTP_401_UNAUTHORIZED
-        )
+        return Response({"error": "Invalid MFA token"}, status=status.HTTP_401_UNAUTHORIZED)
+
     def create_session_and_tokens(self, request, user, mfa_device):
-        session = (
-            LoginSession.objects.filter(user=user, is_active=True)
-            .order_by("-created_at")
-            .first()
-        )
+        session = LoginSession.objects.filter(user=user, is_active=True).order_by("-created_at").first()
         if session:
             session.mfa_verified = True
             session.mfa_device_used = mfa_device
@@ -279,6 +278,7 @@ class MFAAuthenticationView(APIView):
                 "session_id": session.session_id if session else None,
             }
         )
+
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
@@ -286,21 +286,24 @@ class MFAAuthenticationView(APIView):
         else:
             ip = request.META.get("REMOTE_ADDR")
         return ip
+
+
 class MFASetupViewSet(ModelViewSet):
     serializer_class = MFASetupSerializer
     permission_classes = [IsAuthenticated]
+
     def get_queryset(self):
         return MFADevice.objects.filter(user=self.request.user)
+
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
     @action(detail=True, methods=["post"])
     def verify_setup(self, request, pk=None):
         device = self.get_object()
         token = request.data.get("token")
         if not token:
-            return Response(
-                {"error": "Token required"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Token required"}, status=status.HTTP_400_BAD_REQUEST)
         if device.verify_token(token):
             device.is_active = True
             device.save()
@@ -315,9 +318,8 @@ class MFASetupViewSet(ModelViewSet):
             )
             return Response({"message": "MFA setup verified successfully"})
         else:
-            return Response(
-                {"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+
     @action(detail=True, methods=["post"])
     def generate_backup_codes(self, request, pk=None):
         device = self.get_object()
@@ -336,6 +338,7 @@ class MFASetupViewSet(ModelViewSet):
                 "message": "Backup codes generated. Store them securely.",
             }
         )
+
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
@@ -343,8 +346,11 @@ class MFASetupViewSet(ModelViewSet):
         else:
             ip = request.META.get("REMOTE_ADDR")
         return ip
+
+
 class PasswordChangeView(APIView):
     permission_classes = [IsAuthenticated]
+
     def post(self, request):
         serializer = PasswordChangeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -382,6 +388,7 @@ class PasswordChangeView(APIView):
             user_agent=request.META.get("HTTP_USER_AGENT", ""),
         )
         return Response({"message": "Password changed successfully"})
+
     def validate_password_policy(self, password, policy):
         errors = []
         if len(password) < policy.min_length:
@@ -398,7 +405,9 @@ class PasswordChangeView(APIView):
                 errors.append("Password must contain special characters")
         if errors:
             from rest_framework import serializers
+
             raise serializers.ValidationError({"password": errors})
+
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
@@ -406,8 +415,11 @@ class PasswordChangeView(APIView):
         else:
             ip = request.META.get("REMOTE_ADDR")
         return ip
+
+
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
+
     def post(self, request):
         refresh_token = request.data.get("refresh_token")
         if refresh_token:
@@ -415,7 +427,7 @@ class LogoutView(APIView):
                 token = RefreshToken(refresh_token)
                 token.blacklist()
             except Exception:
-                pass  
+                pass
         user_sessions = UserSession.objects.filter(user=request.user, is_active=True)
         user_sessions.update(is_active=False, logout_time=timezone.now())
         login_sessions = LoginSession.objects.filter(user=request.user, is_active=True)
@@ -432,6 +444,7 @@ class LogoutView(APIView):
             user_agent=request.META.get("HTTP_USER_AGENT", ""),
         )
         return Response({"message": "Logged out successfully"})
+
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
@@ -439,11 +452,15 @@ class LogoutView(APIView):
         else:
             ip = request.META.get("REMOTE_ADDR")
         return ip
+
+
 class TrustedDeviceViewSet(ModelViewSet):
     serializer_class = TrustedDeviceSerializer
     permission_classes = [IsAuthenticated]
+
     def get_queryset(self):
         return TrustedDevice.objects.filter(user=self.request.user)
+
     def perform_create(self, serializer):
         fingerprint = self.generate_device_fingerprint(self.request)
         serializer.save(
@@ -451,8 +468,9 @@ class TrustedDeviceViewSet(ModelViewSet):
             device_fingerprint=fingerprint,
             user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
             ip_address=self.get_client_ip(self.request),
-            trust_expires_at=timezone.now() + timedelta(days=30),  
+            trust_expires_at=timezone.now() + timedelta(days=30),
         )
+
     def generate_device_fingerprint(self, request):
         components = [
             request.META.get("HTTP_USER_AGENT", ""),
@@ -461,7 +479,8 @@ class TrustedDeviceViewSet(ModelViewSet):
             request.META.get("HTTP_ACCEPT_ENCODING", ""),
         ]
         fingerprint_string = "|".join(components)
-        return secrets.token_hex(16)  
+        return secrets.token_hex(16)
+
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
@@ -469,10 +488,13 @@ class TrustedDeviceViewSet(ModelViewSet):
         else:
             ip = request.META.get("REMOTE_ADDR")
         return ip
+
+
 class SecurityEventViewSet(ModelViewSet):
     serializer_class = SecurityEventSerializer
     permission_classes = [IsAuthenticated, RolePermission]
     allowed_roles = ["SUPER_ADMIN", "IT_ADMIN", "SECURITY"]
+
     def get_queryset(self):
         queryset = SecurityEvent.objects.all()
         user_id = self.request.query_params.get("user")
@@ -491,6 +513,7 @@ class SecurityEventViewSet(ModelViewSet):
         if end_date:
             queryset = queryset.filter(created_at__lte=end_date)
         return queryset.order_by("-created_at")
+
     @action(detail=True, methods=["post"])
     def resolve(self, request, pk=None):
         event = self.get_object()
@@ -500,12 +523,13 @@ class SecurityEventViewSet(ModelViewSet):
         event.requires_action = False
         event.save()
         return Response({"message": "Event marked as resolved"})
+
+
 class SessionManagementView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request):
-        sessions = LoginSession.objects.filter(
-            user=request.user, is_active=True
-        ).order_by("-last_activity")
+        sessions = LoginSession.objects.filter(user=request.user, is_active=True).order_by("-last_activity")
         session_data = []
         for session in sessions:
             session_data.append(
@@ -521,12 +545,11 @@ class SessionManagementView(APIView):
                 }
             )
         return Response({"sessions": session_data})
+
     @action(detail=True, methods=["post"])
     def terminate(self, request, session_id):
         try:
-            session = LoginSession.objects.get(
-                session_id=session_id, user=request.user, is_active=True
-            )
+            session = LoginSession.objects.get(session_id=session_id, user=request.user, is_active=True)
             session.is_active = False
             session.logout_time = timezone.now()
             session.save()
@@ -541,9 +564,8 @@ class SessionManagementView(APIView):
             )
             return Response({"message": "Session terminated"})
         except LoginSession.DoesNotExist:
-            return Response(
-                {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
+
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:

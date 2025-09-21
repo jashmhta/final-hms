@@ -1,0 +1,402 @@
+# FluxCD Kustomization
+# Enterprise-grade GitOps with Flux for HMS microservices
+
+---
+# HMS Infrastructure Kustomization
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: hms-infrastructure
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-infrastructure
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: infrastructure
+spec:
+  interval: 5m0s
+  timeout: 10m0s
+  retryInterval: 2m0s
+  path: ./infrastructure
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: hms-infra-repo
+    namespace: flux-system
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: hms-ingressgateway
+      namespace: istio-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: hms-egressgateway
+      namespace: istio-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: istiod
+      namespace: istio-system
+  force: false
+  patches:
+    - patch: |-
+        - op: add
+          path: /spec/template/spec/containers/0/env/-
+          value:
+            name: ENVIRONMENT
+            value: production
+      target:
+        kind: Deployment
+        labelSelector: app.kubernetes.io/part-of=hms
+---
+# HMS Services Kustomization
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: hms-services
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-services
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: services
+spec:
+  interval: 5m0s
+  timeout: 15m0s
+  retryInterval: 2m0s
+  path: ./services
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: hms-services-repo
+    namespace: flux-system
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: patient-service
+      namespace: hms-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: auth-service
+      namespace: hms-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: appointment-service
+      namespace: hms-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: clinical-service
+      namespace: hms-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: billing-service
+      namespace: hms-system
+  force: false
+  patches:
+    - patch: |-
+        - op: add
+          path: /spec/template/spec/containers/0/env/-
+          value:
+            name: ENVIRONMENT
+            value: production
+      target:
+        kind: Deployment
+        labelSelector: app.kubernetes.io/part-of=hms
+---
+# HMS Monitoring Kustomization
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: hms-monitoring
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-monitoring
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: monitoring
+spec:
+  interval: 5m0s
+  timeout: 10m0s
+  retryInterval: 2m0s
+  path: ./monitoring
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: hms-monitoring-repo
+    namespace: flux-system
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: prometheus
+      namespace: monitoring
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: grafana
+      namespace: monitoring
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: alertmanager
+      namespace: monitoring
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: jaeger
+      namespace: monitoring
+  force: false
+  patches:
+    - patch: |-
+        - op: add
+          path: /spec/template/spec/containers/0/env/-
+          value:
+            name: ENVIRONMENT
+            value: production
+      target:
+        kind: Deployment
+        labelSelector: app.kubernetes.io/part-of=hms
+---
+# HMS Security Kustomization
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: hms-security
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-security
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: security
+spec:
+  interval: 5m0s
+  timeout: 10m0s
+  retryInterval: 2m0s
+  path: ./security
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: hms-security-repo
+    namespace: flux-system
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: vault
+      namespace: security
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: keycloak
+      namespace: security
+  force: false
+  patches:
+    - patch: |-
+        - op: add
+          path: /spec/template/spec/containers/0/env/-
+          value:
+            name: ENVIRONMENT
+            value: production
+      target:
+        kind: Deployment
+        labelSelector: app.kubernetes.io/part-of=hms
+---
+# HMS Config Kustomization
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: hms-config
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-config
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: config
+spec:
+  interval: 5m0s
+  timeout: 5m0s
+  retryInterval: 2m0s
+  path: ./config
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: hms-config-repo
+    namespace: flux-system
+  healthChecks:
+    - apiVersion: v1
+      kind: ConfigMap
+      name: hms-config
+      namespace: hms-system
+    - apiVersion: v1
+      kind: Secret
+      name: hms-secrets
+      namespace: hms-system
+  force: false
+  patches:
+    - patch: |-
+        - op: add
+          path: /data/ENVIRONMENT
+          value: production
+      target:
+        kind: ConfigMap
+        labelSelector: app.kubernetes.io/part-of=hms
+---
+# HMS Backups Kustomization
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: hms-backups
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-backups
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: backup
+spec:
+  interval: 5m0s
+  timeout: 10m0s
+  retryInterval: 2m0s
+  path: ./backups
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: hms-backups-repo
+    namespace: flux-system
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: velero
+      namespace: velero
+    - apiVersion: v1
+      kind: Schedule
+      name: daily-backup
+      namespace: velero
+  force: false
+  patches:
+    - patch: |-
+        - op: add
+          path: /spec/template/spec/containers/0/env/-
+          value:
+            name: ENVIRONMENT
+            value: production
+      target:
+        kind: Deployment
+        labelSelector: app.kubernetes.io/part-of=hms
+---
+# HMS CQRS Kustomization
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: hms-cqrs
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-cqrs
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: cqrs
+spec:
+  interval: 5m0s
+  timeout: 15m0s
+  retryInterval: 2m0s
+  path: ./cqrs
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: hms-cqrs-repo
+    namespace: flux-system
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: cqrs-api
+      namespace: hms-system
+    - apiVersion: apps/v1
+      kind: StatefulSet
+      name: event-store
+      namespace: hms-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: projector
+      namespace: hms-system
+  force: false
+  patches:
+    - patch: |-
+        - op: add
+          path: /spec/template/spec/containers/0/env/-
+          value:
+            name: ENVIRONMENT
+            value: production
+      target:
+        kind: Deployment
+        labelSelector: app.kubernetes.io/part-of=hms
+---
+# HMS API Gateway Kustomization
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: hms-api-gateway
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-api-gateway
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: gateway
+spec:
+  interval: 5m0s
+  timeout: 10m0s
+  retryInterval: 2m0s
+  path: ./gateway
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: hms-gateway-repo
+    namespace: flux-system
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: kong
+      namespace: hms-system
+    - apiVersion: v1
+      kind: Service
+      name: kong-proxy
+      namespace: hms-system
+  force: false
+  patches:
+    - patch: |-
+        - op: add
+          path: /spec/template/spec/containers/0/env/-
+          value:
+            name: ENVIRONMENT
+            value: production
+      target:
+        kind: Deployment
+        labelSelector: app.kubernetes.io/part-of=hms
+---
+# HMS Messaging Kustomization
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: hms-messaging
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: hms-messaging
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: messaging
+spec:
+  interval: 5m0s
+  timeout: 15m0s
+  retryInterval: 2m0s
+  path: ./messaging
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: hms-messaging-repo
+    namespace: flux-system
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: StatefulSet
+      name: kafka
+      namespace: hms-system
+    - apiVersion: apps/v1
+      kind: StatefulSet
+      name: zookeeper
+      namespace: hms-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: redis
+      namespace: hms-system
+  force: false
+  patches:
+    - patch: |-
+        - op: add
+          path: /spec/template/spec/containers/0/env/-
+          value:
+            name: ENVIRONMENT
+            value: production
+      target:
+        kind: StatefulSet
+        labelSelector: app.kubernetes.io/part-of=hms

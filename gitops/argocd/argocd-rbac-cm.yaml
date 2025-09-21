@@ -1,0 +1,216 @@
+# ArgoCD RBAC Configuration
+# Enterprise-grade access control for HMS microservices
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-rbac-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  # Policy definitions
+  policy.csv: |
+    # Admin policies - full access
+    p, role:admin, applications, *, *, allow
+    p, role:admin, clusters, *, *, allow
+    p, role:admin, repositories, *, *, allow
+    p, role:admin, certificates, *, *, allow
+    p, role:admin, projects, *, *, allow
+    p, role:admin, accounts, *, *, allow
+    p, role:admin, gpgkeys, *, *, allow
+    p, role:admin, logs, *, *, allow
+    p, role:admin, exec, *, *, allow
+    p, role:admin, config, *, allow
+
+    # Developer policies - limited to HMS system
+    p, role:developer, applications, get, hms-system/*, allow
+    p, role:developer, applications, create, hms-system/*, allow
+    p, role:developer, applications, update, hms-system/*, allow
+    p, role:developer, applications, delete, hms-system/*, allow
+    p, role:developer, applications, sync, hms-system/*, allow
+    p, role:developer, applications, override, hms-system/*, allow
+    p, role:developer, applications, action/retry, hms-system/*, allow
+    p, role:developer, applications, action/terminate, hms-system/*, allow
+    p, role:developer, applications, action/refresh, hms-system/*, allow
+    p, role:developer, clusters, get, *, allow
+    p, role:developer, clusters, list, *, allow
+    p, role:developer, repositories, get, *, allow
+    p, role:developer, repositories, list, *, allow
+    p, role:developer, projects, get, hms-system, allow
+    p, role:developer, projects, list, *, allow
+    p, role:developer, logs, get, hms-system/*, allow
+    p, role:developer, logs, list, hms-system/*, allow
+
+    # Operations policies - production management
+    p, role:ops, applications, *, *, allow
+    p, role:ops, clusters, *, *, allow
+    p, role:ops, repositories, *, *, allow
+    p, role:ops, certificates, *, *, allow
+    p, role:ops, projects, *, *, allow
+    p, role:ops, accounts, *, *, allow
+    p, role:ops, gpgkeys, *, *, allow
+    p, role:ops, logs, *, *, allow
+    p, role:ops, exec, *, *, allow
+    p, role:ops, config, *, allow
+
+    # Auditor policies - read-only access
+    p, role:auditor, applications, get, *, allow
+    p, role:auditor, applications, list, *, allow
+    p, role:auditor, clusters, get, *, allow
+    p, role:auditor, clusters, list, *, allow
+    p, role:auditor, repositories, get, *, allow
+    p, role:auditor, repositories, list, *, allow
+    p, role:auditor, projects, get, *, allow
+    p, role:auditor, projects, list, *, allow
+    p, role:auditor, certificates, get, *, allow
+    p, role:auditor, certificates, list, *, allow
+    p, role:auditor, accounts, get, *, allow
+    p, role:auditor, accounts, list, *, allow
+    p, role:auditor, gpgkeys, get, *, allow
+    p, role:auditor, gpgkeys, list, *, allow
+    p, role:auditor, logs, get, *, allow
+    p, role:auditor, logs, list, *, allow
+    p, role:auditor, exec, get, *, allow
+
+    # Security policies - security management
+    p, role:security, applications, get, *, allow
+    p, role:security, applications, list, *, allow
+    p, role:security, applications, sync, *, allow
+    p, role:security, clusters, get, *, allow
+    p, role:security, clusters, list, *, allow
+    p, role:security, repositories, get, *, allow
+    p, role:security, repositories, list, *, allow
+    p, role:security, projects, get, *, allow
+    p, role:security, projects, list, *, allow
+    p, role:security, certificates, *, *, allow
+    p, role:security, accounts, get, *, allow
+    p, role:security, accounts, list, *, allow
+    p, role:security, gpgkeys, *, *, allow
+    p, role:security, logs, *, *, allow
+    p, role:security, exec, *, *, allow
+    p, role:security, config, get, *, allow
+    p, role:security, config, list, *, allow
+
+    # Service account policies - automation
+    p, role:service-account, applications, get, hms-system/*, allow
+    p, role:service-account, applications, sync, hms-system/*, allow
+    p, role:service-account, applications, action/retry, hms-system/*, allow
+    p, role:service-account, applications, action/refresh, hms-system/*, allow
+    p, role:service-account, clusters, get, *, allow
+    p, role:service-account, clusters, list, *, allow
+    p, role:service-account, repositories, get, *, allow
+    p, role:service-account, repositories, list, *, allow
+    p, role:service-account, projects, get, hms-system, allow
+    p, role:service-account, projects, list, *, allow
+    p, role:service-account, logs, get, hms-system/*, allow
+    p, role:service-account, logs, list, hms-system/*, allow
+
+    # Group mappings
+    g, system:admins, role:admin
+    g, hms-enterprise:dev-team, role:developer
+    g, hms-enterprise:ops-team, role:ops
+    g, hms-enterprise:audit-team, role:auditor
+    g, hms-enterprise:security-team, role:security
+    g, hms-enterprise:service-accounts, role:service-account
+
+    # Project-specific permissions
+    p, proj:hms-system:admin, applications, *, hms-system/*, allow
+    p, proj:hms-system:admin, projects, get, hms-system, allow
+    p, proj:hms-system:admin, projects, update, hms-system, allow
+    p, proj:hms-system:developer, applications, get, hms-system/*, allow
+    p, proj:hms-system:developer, applications, create, hms-system/*, allow
+    p, proj:hms-system:developer, applications, sync, hms-system/*, allow
+    p, proj:hms-system:developer, applications, override, hms-system/*, allow
+    p, proj:hms-system:developer, projects, get, hms-system, allow
+
+    # Environment-specific permissions
+    p, env:production:admin, applications, *, hms-system/*, allow
+    p, env:production:admin, clusters, *, *, allow
+    p, env:production:developer, applications, get, hms-system/*, allow
+    p, env:production:developer, applications, sync, hms-system/*, allow
+    p, env:staging:admin, applications, *, hms-system/*, allow
+    p, env:staging:admin, clusters, get, *, allow
+    p, env:staging:admin, clusters, list, *, allow
+    p, env:staging:developer, applications, *, hms-system/*, allow
+    p, env:staging:developer, clusters, get, *, allow
+    p, env:staging:developer, clusters, list, *, allow
+    p, env:development:admin, applications, *, hms-system/*, allow
+    p, env:development:admin, clusters, *, *, allow
+    p, env:development:developer, applications, *, hms-system/*, allow
+    p, env:development:developer, clusters, *, *, allow
+
+    # Resource type permissions
+    p, resource:deployment, applications, create, hms-system/*, allow
+    p, resource:deployment, applications, update, hms-system/*, allow
+    p, resource:deployment, applications, delete, hms-system/*, allow
+    p, resource:service, applications, create, hms-system/*, allow
+    p, resource:service, applications, update, hms-system/*, allow
+    p, resource:service, applications, delete, hms-system/*, allow
+    p, resource:configmap, applications, create, hms-system/*, allow
+    p, resource:configmap, applications, update, hms-system/*, allow
+    p, resource:configmap, applications, delete, hms-system/*, allow
+    p, resource:secret, applications, create, hms-system/*, allow
+    p, resource:secret, applications, update, hms-system/*, allow
+    p, resource:secret, applications, delete, hms-system/*, allow
+    p, resource:ingress, applications, create, hms-system/*, allow
+    p, resource:ingress, applications, update, hms-system/*, allow
+    p, resource:ingress, applications, delete, hms-system/*, allow
+
+    # Namespace permissions
+    p, namespace:hms-system, applications, *, hms-system/*, allow
+    p, namespace:monitoring, applications, *, monitoring/*, allow
+    p, namespace:istio-system, applications, *, istio-system/*, allow
+    p, namespace:kube-system, applications, *, kube-system/*, allow
+
+    # API permissions
+    p, api:internal, applications, *, hms-system/*, allow
+    p, api:external, applications, get, hms-system/*, allow
+    p, api:external, applications, list, hms-system/*, allow
+
+    # Sync wave permissions
+    p, wave:critical, applications, sync, hms-system/*, allow
+    p, wave:high, applications, sync, hms-system/*, allow
+    p, wave:medium, applications, sync, hms-system/*, allow
+    p, wave:low, applications, sync, hms-system/*, allow
+
+    # Health check permissions
+    p, health:check, applications, get, hms-system/*, allow
+    p, health:check, applications, action/refresh, hms-system/*, allow
+
+    # Backup permissions
+    p, backup:create, applications, get, hms-system/*, allow
+    p, backup:restore, applications, sync, hms-system/*, allow
+    p, backup:delete, applications, delete, hms-system/*, allow
+
+    # Audit permissions
+    p, audit:read, applications, get, hms-system/*, allow
+    p, audit:read, applications, list, hms-system/*, allow
+    p, audit:read, logs, get, hms-system/*, allow
+    p, audit:read, logs, list, hms-system/*, allow
+
+    # Compliance permissions
+    p, compliance:check, applications, get, hms-system/*, allow
+    p, compliance:check, applications, action/refresh, hms-system/*, allow
+    p, compliance:check, logs, get, hms-system/*, allow
+    p, compliance:check, logs, list, hms-system/*, allow
+
+    # Deny policies
+    p, role:developer, applications, delete, hms-system/critical-*, deny
+    p, role:developer, applications, sync, hms-system/critical-*, deny
+    p, role:developer, applications, override, hms-system/critical-*, deny
+    p, role:developer, clusters, *, *, deny
+    p, role:developer, repositories, *, *, deny
+    p, role:developer, certificates, *, *, deny
+    p, role:developer, projects, *, *, deny
+    p, role:developer, accounts, *, *, deny
+    p, role:developer, gpgkeys, *, *, deny
+    p, role:developer, exec, *, *, deny
+    p, role:developer, config, *, *, deny
+
+  # Role definitions
+  policy.default: role:readonly
+
+  # Scope definitions
+  scopes: '[groups]'
