@@ -1,3 +1,7 @@
+"""
+serializers module
+"""
+
 from rest_framework import serializers
 
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -58,7 +62,9 @@ class AppointmentTemplateSerializer(serializers.ModelSerializer):
 
 class AppointmentResourceSerializer(serializers.ModelSerializer):
     resource_name = serializers.CharField(source="resource.name", read_only=True)
-    resource_type = serializers.CharField(source="resource.resource_type", read_only=True)
+    resource_type = serializers.CharField(
+        source="resource.resource_type", read_only=True
+    )
 
     class Meta:
         model = AppointmentResource
@@ -93,7 +99,9 @@ class AppointmentReminderSerializer(serializers.ModelSerializer):
 
 
 class AppointmentHistorySerializer(serializers.ModelSerializer):
-    changed_by_name = serializers.CharField(source="changed_by.get_full_name", read_only=True)
+    changed_by_name = serializers.CharField(
+        source="changed_by.get_full_name", read_only=True
+    )
 
     class Meta:
         model = AppointmentHistory
@@ -113,13 +121,21 @@ class AppointmentHistorySerializer(serializers.ModelSerializer):
 
 class AppointmentSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source="patient.get_full_name", read_only=True)
-    provider_name = serializers.CharField(source="primary_provider.get_full_name", read_only=True)
-    duration_display = serializers.CharField(source="get_duration_display", read_only=True)
-    resources = AppointmentResourceSerializer(source="appointmentresource_set", many=True, read_only=True)
+    provider_name = serializers.CharField(
+        source="primary_provider.get_full_name", read_only=True
+    )
+    duration_display = serializers.CharField(
+        source="get_duration_display", read_only=True
+    )
+    resources = AppointmentResourceSerializer(
+        source="appointmentresource_set", many=True, read_only=True
+    )
     reminders = AppointmentReminderSerializer(many=True, read_only=True)
     history = AppointmentHistorySerializer(many=True, read_only=True)
     doctor = serializers.CharField(source="primary_provider", read_only=True)
-    notes = serializers.CharField(source="clinical_notes", allow_blank=True, required=False)
+    notes = serializers.CharField(
+        source="clinical_notes", allow_blank=True, required=False
+    )
 
     class Meta:
         model = Appointment
@@ -227,8 +243,12 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
 class AppointmentBasicSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source="patient.get_full_name", read_only=True)
-    provider_name = serializers.CharField(source="primary_provider.get_full_name", read_only=True)
-    duration_display = serializers.CharField(source="get_duration_display", read_only=True)
+    provider_name = serializers.CharField(
+        source="primary_provider.get_full_name", read_only=True
+    )
+    duration_display = serializers.CharField(
+        source="get_duration_display", read_only=True
+    )
     doctor = serializers.CharField(source="primary_provider", read_only=True)
 
     class Meta:
@@ -256,8 +276,12 @@ class AppointmentBasicSerializer(serializers.ModelSerializer):
 
 class WaitListSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source="patient.get_full_name", read_only=True)
-    provider_name = serializers.CharField(source="provider.get_full_name", read_only=True)
-    created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True)
+    provider_name = serializers.CharField(
+        source="provider.get_full_name", read_only=True
+    )
+    created_by_name = serializers.CharField(
+        source="created_by.get_full_name", read_only=True
+    )
 
     class Meta:
         model = WaitList
@@ -286,7 +310,9 @@ class WaitListSerializer(serializers.ModelSerializer):
 
 class OTSlotSerializer(serializers.ModelSerializer):
     ot_room_name = serializers.CharField(source="ot_room.name", read_only=True)
-    scheduled_by_name = serializers.CharField(source="scheduled_by.get_full_name", read_only=True)
+    scheduled_by_name = serializers.CharField(
+        source="scheduled_by.get_full_name", read_only=True
+    )
     remaining_capacity = serializers.SerializerMethodField()
 
     class Meta:
@@ -330,18 +356,38 @@ class OTSlotSerializer(serializers.ModelSerializer):
 
 
 class OTBookingSerializer(serializers.ModelSerializer):
-    appointment_number = serializers.CharField(source="appointment.appointment_number", read_only=True)
-    patient_name = serializers.CharField(source="appointment.patient.get_full_name", read_only=True)
-    lead_surgeon_name = serializers.CharField(source="lead_surgeon.get_full_name", read_only=True)
-    assisting_surgeon_name = serializers.CharField(source="assisting_surgeon.get_full_name", read_only=True)
-    anesthesiologist_name = serializers.CharField(source="anesthesiologist.get_full_name", read_only=True)
-    scrub_nurse_name = serializers.CharField(source="scrub_nurse.get_full_name", read_only=True)
-    circulating_nurse_name = serializers.CharField(source="circulating_nurse.get_full_name", read_only=True)
-    ot_slot_start = serializers.DateTimeField(source="ot_slot.start_time", read_only=True)
+    appointment_number = serializers.CharField(
+        source="appointment.appointment_number", read_only=True
+    )
+    patient_name = serializers.CharField(
+        source="appointment.patient.get_full_name", read_only=True
+    )
+    lead_surgeon_name = serializers.CharField(
+        source="lead_surgeon.get_full_name", read_only=True
+    )
+    assisting_surgeon_name = serializers.CharField(
+        source="assisting_surgeon.get_full_name", read_only=True
+    )
+    anesthesiologist_name = serializers.CharField(
+        source="anesthesiologist.get_full_name", read_only=True
+    )
+    scrub_nurse_name = serializers.CharField(
+        source="scrub_nurse.get_full_name", read_only=True
+    )
+    circulating_nurse_name = serializers.CharField(
+        source="circulating_nurse.get_full_name", read_only=True
+    )
+    ot_slot_start = serializers.DateTimeField(
+        source="ot_slot.start_time", read_only=True
+    )
     ot_slot_end = serializers.DateTimeField(source="ot_slot.end_time", read_only=True)
     is_ready_for_surgery = serializers.SerializerMethodField()
-    booked_by_name = serializers.CharField(source="booked_by.get_full_name", read_only=True)
-    confirmed_by_name = serializers.CharField(source="confirmed_by.get_full_name", read_only=True)
+    booked_by_name = serializers.CharField(
+        source="booked_by.get_full_name", read_only=True
+    )
+    confirmed_by_name = serializers.CharField(
+        source="confirmed_by.get_full_name", read_only=True
+    )
 
     class Meta:
         model = OTBooking
@@ -421,7 +467,9 @@ class OTBookingSerializer(serializers.ModelSerializer):
         appointment = attrs.get("appointment")
         ot_slot = attrs.get("ot_slot")
         if appointment and ot_slot and appointment.start_at != ot_slot.start_time:
-            raise serializers.ValidationError("Appointment time must match OT slot start time")
+            raise serializers.ValidationError(
+                "Appointment time must match OT slot start time"
+            )
         return attrs
 
     def create(self, validated_data):

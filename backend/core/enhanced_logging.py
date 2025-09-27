@@ -1,3 +1,7 @@
+"""
+enhanced_logging module
+"""
+
 import json
 import logging
 import logging.config
@@ -44,7 +48,9 @@ class PerformanceLogger:
     def __init__(self, logger_name="hms.performance"):
         self.logger = logging.getLogger(logger_name)
 
-    def log_query_performance(self, query: str, duration: float, context: Dict[str, Any]):
+    def log_query_performance(
+        self, query: str, duration: float, context: Dict[str, Any]
+    ):
         self.logger.info(
             f"Database query executed",
             extra={
@@ -92,7 +98,9 @@ class RequestLoggingMiddleware(MiddlewareMixin):
 
     def process_request(self, request: HttpRequest):
         request.start_time = time.time()
-        request.request_id = request.META.get("HTTP_X_REQUEST_ID", f"req_{int(time.time() * 1000)}")
+        request.request_id = request.META.get(
+            "HTTP_X_REQUEST_ID", f"req_{int(time.time() * 1000)}"
+        )
         logger = logging.getLogger("hms.requests")
         logger.info(
             f"Request started",
@@ -102,7 +110,11 @@ class RequestLoggingMiddleware(MiddlewareMixin):
                 "path": request.path,
                 "user_agent": request.META.get("HTTP_USER_AGENT", ""),
                 "ip": self.get_client_ip(request),
-                "user_id": (getattr(request.user, "id", None) if hasattr(request.user, "id") else None),
+                "user_id": (
+                    getattr(request.user, "id", None)
+                    if hasattr(request.user, "id")
+                    else None
+                ),
             },
         )
 
@@ -114,7 +126,11 @@ class RequestLoggingMiddleware(MiddlewareMixin):
                 endpoint=request.path,
                 duration=duration,
                 status_code=response.status_code,
-                user_id=(getattr(request.user, "id", None) if hasattr(request.user, "id") else None),
+                user_id=(
+                    getattr(request.user, "id", None)
+                    if hasattr(request.user, "id")
+                    else None
+                ),
             )
             response["X-Response-Time"] = f"{duration:.3f}s"
             response["X-Request-ID"] = request.request_id
@@ -127,7 +143,9 @@ class RequestLoggingMiddleware(MiddlewareMixin):
                     "path": request.path,
                     "status_code": response.status_code,
                     "duration_ms": duration * 1000,
-                    "response_size": (len(response.content) if hasattr(response, "content") else 0),
+                    "response_size": (
+                        len(response.content) if hasattr(response, "content") else 0
+                    ),
                 },
             )
         return response

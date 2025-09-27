@@ -1,3 +1,7 @@
+"""
+signals module
+"""
+
 import json
 import os
 from datetime import date, datetime
@@ -6,11 +10,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.forms.models import model_to_dict
-
-from appointments.models import Appointment
-from billing.models import Bill, Payment
-from patients.models import Patient
-from pharmacy.models import Prescription
 
 from .audit import send_audit_event
 from .models import AuditLog
@@ -54,35 +53,37 @@ def log_action(instance, action, user=None):
         pass
 
 
-@receiver(post_save, sender=Patient)
-@receiver(post_save, sender=Appointment)
-@receiver(post_save, sender=Prescription)
-@receiver(post_save, sender=Bill)
-@receiver(post_save, sender=Payment)
+@receiver(post_save)
 def on_save(sender, instance, created, **kwargs):
-    log_action(instance, "CREATE" if created else "UPDATE")
-    if created and sender is Appointment and _producer:
-        try:
-            _producer.send(
-                KAFKA_TOPIC_APPT,
-                {
-                    "event": "appointment_created",
-                    "appointment_id": instance.pk,
-                    "hospital_id": getattr(instance, "hospital_id", None),
-                    "patient_id": getattr(instance, "patient_id", None),
-                    "doctor_id": getattr(instance, "doctor_id", None),
-                    "start_at": str(getattr(instance, "start_at", "")),
-                    "end_at": str(getattr(instance, "end_at", "")),
-                },
-            )
-        except Exception:
-            pass
+    # Check sender by model name to avoid circular imports
+    sender_name = sender.__name__ if hasattr(sender, "__name__") else str(sender)
+
+    if sender_name in ["Patient", "Appointment", "Prescription", "Bill", "Payment"]:
+        log_action(instance, "CREATE" if created else "UPDATE")
+
+        # Handle appointment creation event
+        if created and sender_name == "Appointment" and _producer:
+            try:
+                _producer.send(
+                    KAFKA_TOPIC_APPT,
+                    {
+                        "event": "appointment_created",
+                        "appointment_id": instance.pk,
+                        "hospital_id": getattr(instance, "hospital_id", None),
+                        "patient_id": getattr(instance, "patient_id", None),
+                        "doctor_id": getattr(instance, "doctor_id", None),
+                        "start_at": str(getattr(instance, "start_at", "")),
+                        "end_at": str(getattr(instance, "end_at", "")),
+                    },
+                )
+            except Exception:
+                pass
 
 
-@receiver(post_delete, sender=Patient)
-@receiver(post_delete, sender=Appointment)
-@receiver(post_delete, sender=Prescription)
-@receiver(post_delete, sender=Bill)
-@receiver(post_delete, sender=Payment)
+@receiver(post_delete)
 def on_delete(sender, instance, **kwargs):
-    log_action(instance, "DELETE")
+    # Check sender by model name to avoid circular imports
+    sender_name = sender.__name__ if hasattr(sender, "__name__") else str(sender)
+
+    if sender_name in ["Patient", "Appointment", "Prescription", "Bill", "Payment"]:
+        log_action(instance, "DELETE")

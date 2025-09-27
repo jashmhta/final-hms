@@ -1,22 +1,46 @@
+"""
+cqrs-api module
+"""
+
 # CQRS API Implementation
 # Enterprise-grade CQRS API for HMS microservices
 
 import asyncio
 import json
+import logging
 from datetime import datetime
-from typing import Dict, Any, List, Optional, Union
 from enum import Enum
-from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import Any, Dict, List, Optional, Union
+
+from fastapi import (
+    Depends,
+    FastAPI,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field, validator
-import logging
 
-from .event_store import Event, EventType, EventStore, get_event_store
-from .command_handler import Command, CommandResult, CommandPriority, dispatch_command, dispatch_command_async
-from .query_handler import Query, QueryResult, QueryType, dispatch_query, initialize_read_model
+from .command_handler import (
+    Command,
+    CommandPriority,
+    CommandResult,
+    dispatch_command,
+    dispatch_command_async,
+)
+from .event_store import Event, EventStore, EventType, get_event_store
 from .projector import Projector, get_projector, initialize_projections
+from .query_handler import (
+    Query,
+    QueryResult,
+    QueryType,
+    dispatch_query,
+    initialize_read_model,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,7 +52,7 @@ app = FastAPI(
     description="Enterprise-grade CQRS API for Hospital Management System",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 
 # CORS middleware
@@ -42,6 +66,7 @@ app.add_middleware(
 
 # Security
 security = HTTPBearer()
+
 
 # WebSocket manager for real-time updates
 class ConnectionManager:
@@ -65,14 +90,16 @@ class ConnectionManager:
             except:
                 pass
 
+
 manager = ConnectionManager()
+
 
 # Request/Response Models
 class PatientRegistrationRequest(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=100)
     last_name: str = Field(..., min_length=1, max_length=100)
-    date_of_birth: str = Field(..., regex=r'^\d{4}-\d{2}-\d{2}$')
-    email: str = Field(..., regex=r'^[^@]+@[^@]+\.[^@]+$')
+    date_of_birth: str = Field(..., regex=r"^\d{4}-\d{2}-\d{2}$")
+    email: str = Field(..., regex=r"^[^@]+@[^@]+\.[^@]+$")
     phone: Optional[str] = Field(None, max_length=20)
     address: Optional[Dict[str, str]] = None
     emergency_contact: Optional[Dict[str, str]] = None
@@ -80,9 +107,11 @@ class PatientRegistrationRequest(BaseModel):
     allergies: List[str] = Field(default_factory=list)
     medications: List[Dict[str, Any]] = Field(default_factory=list)
 
+
 class PatientUpdateRequest(BaseModel):
     patient_id: str
     updates: Dict[str, Any]
+
 
 class PatientAdmissionRequest(BaseModel):
     patient_id: str
@@ -94,6 +123,7 @@ class PatientAdmissionRequest(BaseModel):
     admission_reason: Optional[str] = None
     expected_stay: Optional[int] = None
 
+
 class AppointmentCreationRequest(BaseModel):
     patient_id: str
     provider_id: str
@@ -103,9 +133,11 @@ class AppointmentCreationRequest(BaseModel):
     location: Optional[str] = None
     notes: Optional[str] = None
 
+
 class AppointmentUpdateRequest(BaseModel):
     appointment_id: str
     updates: Dict[str, Any]
+
 
 class PatientQueryRequest(BaseModel):
     patient_id: Optional[str] = None
@@ -113,6 +145,7 @@ class PatientQueryRequest(BaseModel):
     page_size: int = Field(default=20, ge=1, le=100)
     status: Optional[str] = None
     search_term: Optional[str] = None
+
 
 class AppointmentQueryRequest(BaseModel):
     appointment_id: Optional[str] = None
@@ -124,16 +157,18 @@ class AppointmentQueryRequest(BaseModel):
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=100)
 
+
 class AnalyticsQueryRequest(BaseModel):
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     metric_type: Optional[str] = None
 
+
 # Command Endpoints
 @app.post("/commands/patient/register", response_model=Dict[str, Any])
 async def register_patient(
     request: PatientRegistrationRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Register a new patient"""
     try:
@@ -143,37 +178,37 @@ async def register_patient(
             user_id=credentials.credentials,
             metadata={
                 "ip_address": "192.168.1.1",  # Would get from request
-                "user_agent": "HMS CQRS API"
+                "user_agent": "HMS CQRS API",
             },
-            priority=CommandPriority.NORMAL
+            priority=CommandPriority.NORMAL,
         )
 
         result = await dispatch_command(command)
 
         if result.status.value == "failed":
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.error
+                status_code=status.HTTP_400_BAD_REQUEST, detail=result.error
             )
 
         return {
             "success": True,
             "command_id": result.command_id,
             "patient_id": result.result.get("patient_id"),
-            "processing_time": result.processing_time
+            "processing_time": result.processing_time,
         }
 
     except Exception as e:
         logger.error(f"Error registering patient: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
+
 
 @app.post("/commands/patient/update", response_model=Dict[str, Any])
 async def update_patient(
     request: PatientUpdateRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Update patient information"""
     try:
@@ -181,39 +216,36 @@ async def update_patient(
             type="patient_update",
             data=request.dict(),
             user_id=credentials.credentials,
-            metadata={
-                "ip_address": "192.168.1.1",
-                "user_agent": "HMS CQRS API"
-            },
-            priority=CommandPriority.NORMAL
+            metadata={"ip_address": "192.168.1.1", "user_agent": "HMS CQRS API"},
+            priority=CommandPriority.NORMAL,
         )
 
         result = await dispatch_command(command)
 
         if result.status.value == "failed":
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.error
+                status_code=status.HTTP_400_BAD_REQUEST, detail=result.error
             )
 
         return {
             "success": True,
             "command_id": result.command_id,
             "patient_id": result.result.get("patient_id"),
-            "processing_time": result.processing_time
+            "processing_time": result.processing_time,
         }
 
     except Exception as e:
         logger.error(f"Error updating patient: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
+
 
 @app.post("/commands/patient/admit", response_model=Dict[str, Any])
 async def admit_patient(
     request: PatientAdmissionRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Admit a patient"""
     try:
@@ -221,39 +253,36 @@ async def admit_patient(
             type="patient_admit",
             data=request.dict(),
             user_id=credentials.credentials,
-            metadata={
-                "ip_address": "192.168.1.1",
-                "user_agent": "HMS CQRS API"
-            },
-            priority=CommandPriority.HIGH
+            metadata={"ip_address": "192.168.1.1", "user_agent": "HMS CQRS API"},
+            priority=CommandPriority.HIGH,
         )
 
         result = await dispatch_command(command)
 
         if result.status.value == "failed":
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.error
+                status_code=status.HTTP_400_BAD_REQUEST, detail=result.error
             )
 
         return {
             "success": True,
             "command_id": result.command_id,
             "patient_id": result.result.get("patient_id"),
-            "processing_time": result.processing_time
+            "processing_time": result.processing_time,
         }
 
     except Exception as e:
         logger.error(f"Error admitting patient: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
+
 
 @app.post("/commands/appointment/create", response_model=Dict[str, Any])
 async def create_appointment(
     request: AppointmentCreationRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Create a new appointment"""
     try:
@@ -261,39 +290,36 @@ async def create_appointment(
             type="appointment_create",
             data=request.dict(),
             user_id=credentials.credentials,
-            metadata={
-                "ip_address": "192.168.1.1",
-                "user_agent": "HMS CQRS API"
-            },
-            priority=CommandPriority.NORMAL
+            metadata={"ip_address": "192.168.1.1", "user_agent": "HMS CQRS API"},
+            priority=CommandPriority.NORMAL,
         )
 
         result = await dispatch_command(command)
 
         if result.status.value == "failed":
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.error
+                status_code=status.HTTP_400_BAD_REQUEST, detail=result.error
             )
 
         return {
             "success": True,
             "command_id": result.command_id,
             "appointment_id": result.result.get("appointment_id"),
-            "processing_time": result.processing_time
+            "processing_time": result.processing_time,
         }
 
     except Exception as e:
         logger.error(f"Error creating appointment: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
+
 
 @app.post("/commands/appointment/update", response_model=Dict[str, Any])
 async def update_appointment(
     request: AppointmentUpdateRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Update appointment information"""
     try:
@@ -301,40 +327,37 @@ async def update_appointment(
             type="appointment_update",
             data=request.dict(),
             user_id=credentials.credentials,
-            metadata={
-                "ip_address": "192.168.1.1",
-                "user_agent": "HMS CQRS API"
-            },
-            priority=CommandPriority.NORMAL
+            metadata={"ip_address": "192.168.1.1", "user_agent": "HMS CQRS API"},
+            priority=CommandPriority.NORMAL,
         )
 
         result = await dispatch_command(command)
 
         if result.status.value == "failed":
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.error
+                status_code=status.HTTP_400_BAD_REQUEST, detail=result.error
             )
 
         return {
             "success": True,
             "command_id": result.command_id,
             "appointment_id": result.result.get("appointment_id"),
-            "processing_time": result.processing_time
+            "processing_time": result.processing_time,
         }
 
     except Exception as e:
         logger.error(f"Error updating appointment: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
+
 
 # Query Endpoints
 @app.post("/queries/patients", response_model=Dict[str, Any])
 async def get_patients(
     request: PatientQueryRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Query patients"""
     try:
@@ -346,15 +369,14 @@ async def get_patients(
             parameters=request.dict(),
             user_id=credentials.credentials,
             cache_key=cache_key,
-            cache_ttl=300  # 5 minutes
+            cache_ttl=300,  # 5 minutes
         )
 
         result = await dispatch_query(query)
 
         if result.error:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.error
+                status_code=status.HTTP_400_BAD_REQUEST, detail=result.error
             )
 
         return {
@@ -365,20 +387,20 @@ async def get_patients(
             "processing_time": result.processing_time,
             "total_count": result.total_count,
             "page": result.page,
-            "page_size": result.page_size
+            "page_size": result.page_size,
         }
 
     except Exception as e:
         logger.error(f"Error querying patients: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
+
 
 @app.post("/queries/patients/{patient_id}", response_model=Dict[str, Any])
 async def get_patient(
-    patient_id: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    patient_id: str, credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Get a specific patient"""
     try:
@@ -390,21 +412,19 @@ async def get_patient(
             parameters={"patient_id": patient_id},
             user_id=credentials.credentials,
             cache_key=cache_key,
-            cache_ttl=300  # 5 minutes
+            cache_ttl=300,  # 5 minutes
         )
 
         result = await dispatch_query(query)
 
         if result.error:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=result.error
+                status_code=status.HTTP_404_NOT_FOUND, detail=result.error
             )
 
         if not result.data:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Patient not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found"
             )
 
         return {
@@ -412,7 +432,7 @@ async def get_patient(
             "query_id": result.query_id,
             "data": result.data,
             "cached": result.cached,
-            "processing_time": result.processing_time
+            "processing_time": result.processing_time,
         }
 
     except HTTPException:
@@ -421,13 +441,14 @@ async def get_patient(
         logger.error(f"Error getting patient: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
+
 
 @app.post("/queries/appointments", response_model=Dict[str, Any])
 async def get_appointments(
     request: AppointmentQueryRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Query appointments"""
     try:
@@ -439,15 +460,14 @@ async def get_appointments(
             parameters=request.dict(),
             user_id=credentials.credentials,
             cache_key=cache_key,
-            cache_ttl=300  # 5 minutes
+            cache_ttl=300,  # 5 minutes
         )
 
         result = await dispatch_query(query)
 
         if result.error:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.error
+                status_code=status.HTTP_400_BAD_REQUEST, detail=result.error
             )
 
         return {
@@ -458,20 +478,20 @@ async def get_appointments(
             "processing_time": result.processing_time,
             "total_count": result.total_count,
             "page": result.page,
-            "page_size": result.page_size
+            "page_size": result.page_size,
         }
 
     except Exception as e:
         logger.error(f"Error querying appointments: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
+
 
 @app.post("/queries/appointments/{appointment_id}", response_model=Dict[str, Any])
 async def get_appointment(
-    appointment_id: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    appointment_id: str, credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Get a specific appointment"""
     try:
@@ -483,21 +503,19 @@ async def get_appointment(
             parameters={"appointment_id": appointment_id},
             user_id=credentials.credentials,
             cache_key=cache_key,
-            cache_ttl=300  # 5 minutes
+            cache_ttl=300,  # 5 minutes
         )
 
         result = await dispatch_query(query)
 
         if result.error:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=result.error
+                status_code=status.HTTP_404_NOT_FOUND, detail=result.error
             )
 
         if not result.data:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Appointment not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found"
             )
 
         return {
@@ -505,7 +523,7 @@ async def get_appointment(
             "query_id": result.query_id,
             "data": result.data,
             "cached": result.cached,
-            "processing_time": result.processing_time
+            "processing_time": result.processing_time,
         }
 
     except HTTPException:
@@ -514,13 +532,14 @@ async def get_appointment(
         logger.error(f"Error getting appointment: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
+
 
 @app.post("/queries/analytics", response_model=Dict[str, Any])
 async def get_analytics(
     request: AnalyticsQueryRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Get analytics data"""
     try:
@@ -532,15 +551,14 @@ async def get_analytics(
             parameters=request.dict(),
             user_id=credentials.credentials,
             cache_key=cache_key,
-            cache_ttl=60  # 1 minute for analytics
+            cache_ttl=60,  # 1 minute for analytics
         )
 
         result = await dispatch_query(query)
 
         if result.error:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.error
+                status_code=status.HTTP_400_BAD_REQUEST, detail=result.error
             )
 
         return {
@@ -548,15 +566,16 @@ async def get_analytics(
             "query_id": result.query_id,
             "data": result.data,
             "cached": result.cached,
-            "processing_time": result.processing_time
+            "processing_time": result.processing_time,
         }
 
     except Exception as e:
         logger.error(f"Error getting analytics: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
+
 
 # WebSocket endpoints
 @app.websocket("/ws")
@@ -571,6 +590,7 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
+
 # Health check endpoints
 @app.get("/health")
 async def health_check():
@@ -578,8 +598,9 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
-        "version": "1.0.0"
+        "version": "1.0.0",
     }
+
 
 @app.get("/ready")
 async def readiness_check():
@@ -595,7 +616,7 @@ async def readiness_check():
             "status": "ready",
             "timestamp": datetime.utcnow().isoformat(),
             "event_store": "connected",
-            "projector": "connected"
+            "projector": "connected",
         }
     except Exception as e:
         logger.error(f"Readiness check failed: {e}")
@@ -604,9 +625,10 @@ async def readiness_check():
             content={
                 "status": "not_ready",
                 "timestamp": datetime.utcnow().isoformat(),
-                "error": str(e)
-            }
+                "error": str(e),
+            },
         )
+
 
 # Metrics endpoint
 @app.get("/metrics")
@@ -620,7 +642,7 @@ async def get_metrics():
             type=QueryType.GET_SYSTEM_METRICS,
             parameters={},
             cache_key=cache_key,
-            cache_ttl=60
+            cache_ttl=60,
         )
 
         result = await dispatch_query(query)
@@ -629,21 +651,22 @@ async def get_metrics():
             "success": True,
             "metrics": result.data,
             "cached": result.cached,
-            "processing_time": result.processing_time
+            "processing_time": result.processing_time,
         }
 
     except Exception as e:
         logger.error(f"Error getting metrics: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
+
 
 # Event subscription endpoint
 @app.post("/events/subscribe")
 async def subscribe_to_events(
     event_types: List[str] = [],
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Subscribe to specific event types"""
     try:
@@ -651,20 +674,21 @@ async def subscribe_to_events(
         return {
             "success": True,
             "message": f"Subscribed to {len(event_types)} event types",
-            "event_types": event_types
+            "event_types": event_types,
         }
     except Exception as e:
         logger.error(f"Error subscribing to events: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
+
 
 # Projection management endpoints
 @app.post("/projections/rebuild")
 async def rebuild_projections(
     projection_type: Optional[str] = None,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Rebuild projections"""
     try:
@@ -673,15 +697,18 @@ async def rebuild_projections(
         if projection_type:
             # Rebuild specific projection type
             from .projector import ProjectionType
+
             try:
                 proj_type = ProjectionType(projection_type)
-                projections = await projector_instance.get_projections_by_type(proj_type)
+                projections = await projector_instance.get_projections_by_type(
+                    proj_type
+                )
                 for projection in projections:
                     await projector_instance.rebuild_projection(projection.id)
             except ValueError:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid projection type: {projection_type}"
+                    detail=f"Invalid projection type: {projection_type}",
                 )
         else:
             # Rebuild all projections
@@ -689,20 +716,18 @@ async def rebuild_projections(
             for projection in projections:
                 await projector_instance.rebuild_projection(projection.id)
 
-        return {
-            "success": True,
-            "message": f"Projections rebuilt successfully"
-        }
+        return {"success": True, "message": f"Projections rebuilt successfully"}
     except Exception as e:
         logger.error(f"Error rebuilding projections: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
+
 
 @app.get("/projections")
 async def get_projections(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Get all projections"""
     try:
@@ -715,7 +740,7 @@ async def get_projections(
             "appointment_projection",
             "clinical_projection",
             "billing_projection",
-            "analytics_projection"
+            "analytics_projection",
         ]:
             try:
                 type_projections = await projector_instance.get_projections_by_type(
@@ -735,19 +760,24 @@ async def get_projections(
                     "description": proj.description,
                     "state": proj.state.value,
                     "last_processed_event_id": proj.last_processed_event_id,
-                    "last_processed_event_timestamp": proj.last_processed_event_timestamp.isoformat() if proj.last_processed_event_timestamp else None,
+                    "last_processed_event_timestamp": (
+                        proj.last_processed_event_timestamp.isoformat()
+                        if proj.last_processed_event_timestamp
+                        else None
+                    ),
                     "error_message": proj.error_message,
-                    "version": proj.version
+                    "version": proj.version,
                 }
                 for proj in projections
-            ]
+            ],
         }
     except Exception as e:
         logger.error(f"Error getting projections: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
+
 
 # Startup event
 @app.on_event("startup")
@@ -765,6 +795,7 @@ async def startup_event():
         logger.error(f"Error during startup: {e}")
         raise
 
+
 # Shutdown event
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -775,6 +806,8 @@ async def shutdown_event():
     except Exception as e:
         logger.error(f"Error during shutdown: {e}")
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

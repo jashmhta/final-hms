@@ -1,3 +1,7 @@
+"""
+test_e_prescription module
+"""
+
 import models
 import pytest
 from database import Base
@@ -5,24 +9,33 @@ from fastapi.testclient import TestClient
 from main import app, get_db
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_prescription.db"
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
+
+
 def override_get_db():
     try:
         db = TestingSessionLocal()
         yield db
     finally:
         db.close()
+
+
 app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
+
+
 def test_health_check():
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
+
+
 def test_create_and_get_medication():
     medication_data = {
         "name": "Test Medication",
@@ -39,6 +52,8 @@ def test_create_and_get_medication():
     response = client.get(f"/medications/{medication_id}")
     assert response.status_code == 200
     assert response.json()["name"] == "Test Medication"
+
+
 def test_create_prescription():
     medication_data = {
         "name": "Aspirin",
@@ -65,6 +80,8 @@ def test_create_prescription():
     response = client.post("/prescriptions/", json=prescription_data)
     assert response.status_code == 200
     assert response.json()["prescription_number"].startswith("RX-")
+
+
 def test_safety_check():
     med1_data = {
         "name": "Medication A",
@@ -96,6 +113,8 @@ def test_safety_check():
     response = client.post("/safety/check", json=safety_data)
     assert response.status_code == 200
     assert "has_interactions" in response.json()
+
+
 def test_pharmacy_operations():
     pharmacy_data = {
         "name": "Test Pharmacy",
@@ -109,5 +128,7 @@ def test_pharmacy_operations():
     response = client.get("/pharmacies/")
     assert response.status_code == 200
     assert len(response.json()) > 0
+
+
 if __name__ == "__main__":
     pytest.main(["-v"])

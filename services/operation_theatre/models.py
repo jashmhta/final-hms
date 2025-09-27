@@ -1,7 +1,11 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, JSON
-from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy.ext.declarative import declarative_base
+
 Base = declarative_base()
+
+
 class OperationTheatreModel(Base):
     __tablename__ = "operation_theatre_records"
     id = Column(Integer, primary_key=True, index=True)

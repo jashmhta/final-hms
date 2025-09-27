@@ -1,5 +1,10 @@
+"""
+authentication module
+"""
+
 import logging
 import random
+import secrets
 import string
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple
@@ -8,6 +13,12 @@ from urllib.parse import urlparse
 import pyotp
 import qrcode
 import redis
+from rest_framework import status
+from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.settings import api_settings
+from rest_framework_simplejwt.tokens import RefreshToken
+
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.models import update_last_login
@@ -15,11 +26,6 @@ from django.core.cache import cache
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.utils.translation import gettext_lazy as _
-from rest_framework import status
-from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
-from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework_simplejwt.settings import api_settings
-from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import DataSubjectRequest
 from .services import DataAccessService
@@ -35,10 +41,10 @@ class MultiFactorAuthentication:
     """
 
     def __init__(self):
-        self.issuer = getattr(settings, 'MFA_ISSUER', 'HMS Enterprise')
-        self.token_validity_minutes = getattr(settings, 'MFA_TOKEN_VALIDITY_MINUTES', 5)
-        self.max_attempts = getattr(settings, 'MFA_MAX_ATTEMPTS', 5)
-        self.lockout_duration_minutes = getattr(settings, 'MFA_LOCKOUT_MINUTES', 30)
+        self.issuer = getattr(settings, "MFA_ISSUER", "HMS Enterprise")
+        self.token_validity_minutes = getattr(settings, "MFA_TOKEN_VALIDITY_MINUTES", 5)
+        self.max_attempts = getattr(settings, "MFA_MAX_ATTEMPTS", 5)
+        self.lockout_duration_minutes = getattr(settings, "MFA_LOCKOUT_MINUTES", 30)
 
     def generate_totp_secret(self, user: User) -> str:
         """
@@ -51,7 +57,9 @@ class MultiFactorAuthentication:
         Generate QR code for TOTP setup
         """
         totp = pyotp.TOTP(secret)
-        provisioning_uri = totp.provisioning_uri(name=user.email, issuer_name=self.issuer)
+        provisioning_uri = totp.provisioning_uri(
+            name=user.email, issuer_name=self.issuer
+        )
 
         # Generate QR code
         qr_img = qrcode.make(provisioning_uri)
@@ -73,7 +81,9 @@ class MultiFactorAuthentication:
         if attempts >= self.max_attempts:
             lockout_key = f"mfa_lockout_{user.id}"
             if cache.get(lockout_key):
-                raise AuthenticationFailed("Account temporarily locked due to too many MFA attempts")
+                raise AuthenticationFailed(
+                    "Account temporarily locked due to too many MFA attempts"
+                )
 
         totp = pyotp.TOTP(user.mfa_secret)
 
@@ -88,7 +98,9 @@ class MultiFactorAuthentication:
 
             # Lock account if max attempts reached
             if attempts + 1 >= self.max_attempts:
-                cache.set(f"mfa_lockout_{user.id}", True, self.lockout_duration_minutes * 60)
+                cache.set(
+                    f"mfa_lockout_{user.id}", True, self.lockout_duration_minutes * 60
+                )
                 logger.warning(f"MFA account locked for user {user.id}")
 
             return False
@@ -99,7 +111,7 @@ class MultiFactorAuthentication:
         """
         backup_codes = []
         for _ in range(count):
-            code = ''.join(random.choices(string.digits + string.ascii_uppercase, k=8))
+            code = "".join(secrets.choices(string.digits + string.ascii_uppercase, k=8))
             backup_codes.append(code)
 
         # Store hashed backup codes (in production, use proper hashing)
@@ -128,7 +140,7 @@ class MultiFactorAuthentication:
         Check if user is required to use MFA
         """
         # Require MFA for all users accessing PHI
-        if user.has_perm('patients.view_patient'):
+        if user.has_perm("patients.view_patient"):
             return True
 
         # Require MFA for administrative users
@@ -137,9 +149,9 @@ class MultiFactorAuthentication:
 
         # Require MFA for users with sensitive access
         sensitive_permissions = [
-            'billing.view_billing',
-            'ehr.view_medicalrecord',
-            'pharmacy.view_prescription',
+            "billing.view_billing",
+            "ehr.view_medicalrecord",
+            "pharmacy.view_prescription",
         ]
         return any(user.has_perm(perm) for perm in sensitive_permissions)
 
@@ -197,18 +209,20 @@ class HIPAACompliantJWTAuthentication(JWTAuthentication):
         # Check MFA requirement
         mfa_auth = MultiFactorAuthentication()
         if mfa_auth.enforce_mfa_requirement(user) and not user.mfa_enabled:
-            logger.warning(f"User {user.id} attempted authentication without required MFA")
+            logger.warning(
+                f"User {user.id} attempted authentication without required MFA"
+            )
             return False
 
         # Check for any account restrictions
-        if getattr(user, 'account_locked', False):
+        if getattr(user, "account_locked", False):
             logger.warning(f"Authentication attempt for locked account {user.id}")
             return False
 
         # Check password expiration
-        if hasattr(user, 'password_last_changed'):
+        if hasattr(user, "password_last_changed"):
             password_age = timezone.now() - user.password_last_changed
-            max_password_age = getattr(settings, 'PASSWORD_MAX_AGE_DAYS', 90)
+            max_password_age = getattr(settings, "PASSWORD_MAX_AGE_DAYS", 90)
             if password_age.days > max_password_age:
                 logger.warning(f"User {user.id} password expired")
                 return False
@@ -220,24 +234,24 @@ class HIPAACompliantJWTAuthentication(JWTAuthentication):
         Validate token security attributes
         """
         # Check token expiration
-        if token.get('exp', 0) < timezone.now().timestamp():
+        if token.get("exp", 0) < timezone.now().timestamp():
             logger.warning("Expired token used for authentication")
             return False
 
         # Check token issuer
-        expected_issuer = getattr(settings, 'JWT_ISSUER', 'HMS')
-        if token.get('iss') != expected_issuer:
+        expected_issuer = getattr(settings, "JWT_ISSUER", "HMS")
+        if token.get("iss") != expected_issuer:
             logger.warning(f"Invalid token issuer: {token.get('iss')}")
             return False
 
         # Check token audience
-        expected_audience = getattr(settings, 'JWT_AUDIENCE', 'HMS_API')
-        if token.get('aud') != expected_audience:
+        expected_audience = getattr(settings, "JWT_AUDIENCE", "HMS_API")
+        if token.get("aud") != expected_audience:
             logger.warning(f"Invalid token audience: {token.get('aud')}")
             return False
 
         # Check for token revocation
-        jti = token.get('jti')
+        jti = token.get("jti")
         if jti and self._is_token_revoked(jti):
             logger.warning(f"Revoked token used for authentication: {jti}")
             return False
@@ -249,19 +263,32 @@ class HIPAACompliantJWTAuthentication(JWTAuthentication):
         Validate access compliance requirements
         """
         # Check if user has completed required compliance training
-        if hasattr(user, 'compliance_training_required') and user.compliance_training_required:
-            if not hasattr(user, 'compliance_training_completed') or not user.compliance_training_completed:
-                logger.warning(f"User {user.id} attempting access without compliance training")
+        if (
+            hasattr(user, "compliance_training_required")
+            and user.compliance_training_required
+        ):
+            if (
+                not hasattr(user, "compliance_training_completed")
+                or not user.compliance_training_completed
+            ):
+                logger.warning(
+                    f"User {user.id} attempting access without compliance training"
+                )
                 return False
 
         # Check if user has accepted HIPAA agreement
-        if hasattr(user, 'hipaa_agreement_required') and user.hipaa_agreement_required:
-            if not hasattr(user, 'hipaa_agreement_accepted') or not user.hipaa_agreement_accepted:
-                logger.warning(f"User {user.id} attempting access without HIPAA agreement")
+        if hasattr(user, "hipaa_agreement_required") and user.hipaa_agreement_required:
+            if (
+                not hasattr(user, "hipaa_agreement_accepted")
+                or not user.hipaa_agreement_accepted
+            ):
+                logger.warning(
+                    f"User {user.id} attempting access without HIPAA agreement"
+                )
                 return False
 
         # Check for any access restrictions
-        if hasattr(user, 'access_restricted') and user.access_restricted:
+        if hasattr(user, "access_restricted") and user.access_restricted:
             logger.warning(f"User {user.id} has restricted access")
             return False
 
@@ -283,15 +310,15 @@ class HIPAACompliantJWTAuthentication(JWTAuthentication):
                 action_type="AUTHENTICATION",
                 resource_type="USER_LOGIN",
                 ip_address=self._get_client_ip(request),
-                user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                timestamp=timezone.now()
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                timestamp=timezone.now(),
             )
         except Exception as e:
             logger.error(f"Failed to log authentication event: {e}")
 
         # Update session security
-        request.session['last_security_check'] = timezone.now().isoformat()
-        request.session['security_level'] = self._determine_security_level(user)
+        request.session["last_security_check"] = timezone.now().isoformat()
+        request.session["security_level"] = self._determine_security_level(user)
 
     def _is_token_revoked(self, jti: str) -> bool:
         """
@@ -308,7 +335,7 @@ class HIPAACompliantJWTAuthentication(JWTAuthentication):
             return "ADMIN"
         elif user.is_staff:
             return "STAFF"
-        elif user.has_perm('patients.view_patient'):
+        elif user.has_perm("patients.view_patient"):
             return "CLINICAL"
         else:
             return "BASIC"
@@ -317,13 +344,13 @@ class HIPAACompliantJWTAuthentication(JWTAuthentication):
         """
         Get client IP address with proxy support
         """
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
+            ip = x_forwarded_for.split(",")[0]
         else:
-            ip = request.META.get('REMOTE_ADDR')
+            ip = request.META.get("REMOTE_ADDR")
 
-        return ip or '127.0.0.1'
+        return ip or "127.0.0.1"
 
 
 class RoleBasedAccessControl:
@@ -340,61 +367,61 @@ class RoleBasedAccessControl:
         Define HIPAA compliant role permissions
         """
         return {
-            'PHYSICIAN': {
-                'can_view_own_patients': True,
-                'can_modify_own_patients': True,
-                'can_view_department_patients': True,
-                'can_prescribe_medications': True,
-                'can_order_tests': True,
-                'can_view_billing': True,
-                'can_export_patient_data': True,
+            "PHYSICIAN": {
+                "can_view_own_patients": True,
+                "can_modify_own_patients": True,
+                "can_view_department_patients": True,
+                "can_prescribe_medications": True,
+                "can_order_tests": True,
+                "can_view_billing": True,
+                "can_export_patient_data": True,
             },
-            'NURSE': {
-                'can_view_assigned_patients': True,
-                'can_modify_assigned_patients': True,
-                'can_view_department_patients': True,
-                'can_administer_medications': True,
-                'can_record_vitals': True,
-                'can_view_billing': False,
-                'can_export_patient_data': False,
+            "NURSE": {
+                "can_view_assigned_patients": True,
+                "can_modify_assigned_patients": True,
+                "can_view_department_patients": True,
+                "can_administer_medications": True,
+                "can_record_vitals": True,
+                "can_view_billing": False,
+                "can_export_patient_data": False,
             },
-            'ADMINISTRATOR': {
-                'can_view_all_patients': True,
-                'can_modify_patient_records': False,
-                'can_view_billing': True,
-                'can_process_billing': True,
-                'can_export_patient_data': False,
-                'can_manage_users': True,
+            "ADMINISTRATOR": {
+                "can_view_all_patients": True,
+                "can_modify_patient_records": False,
+                "can_view_billing": True,
+                "can_process_billing": True,
+                "can_export_patient_data": False,
+                "can_manage_users": True,
             },
-            'BILLING_STAFF': {
-                'can_view_patient_billing': True,
-                'can_process_claims': True,
-                'can_view_demographics': True,
-                'can_view_medical_necessity': True,
-                'can_export_billing_data': True,
-                'can_export_patient_data': False,
+            "BILLING_STAFF": {
+                "can_view_patient_billing": True,
+                "can_process_claims": True,
+                "can_view_demographics": True,
+                "can_view_medical_necessity": True,
+                "can_export_billing_data": True,
+                "can_export_patient_data": False,
             },
-            'RECEPTIONIST': {
-                'can_view_patient_schedules': True,
-                'can_schedule_appointments': True,
-                'can_view_demographics': True,
-                'can_view_contact_info': True,
-                'can_export_patient_data': False,
+            "RECEPTIONIST": {
+                "can_view_patient_schedules": True,
+                "can_schedule_appointments": True,
+                "can_view_demographics": True,
+                "can_view_contact_info": True,
+                "can_export_patient_data": False,
             },
-            'LAB_TECHNICIAN': {
-                'can_view_test_orders': True,
-                'can_record_test_results': True,
-                'can_view_patient_demographics': True,
-                'can_export_test_data': True,
-                'can_export_patient_data': False,
+            "LAB_TECHNICIAN": {
+                "can_view_test_orders": True,
+                "can_record_test_results": True,
+                "can_view_patient_demographics": True,
+                "can_export_test_data": True,
+                "can_export_patient_data": False,
             },
-            'PHARMACIST': {
-                'can_view_prescriptions': True,
-                'can_dispense_medications': True,
-                'can_view_patient_demographics': True,
-                'can_view_allergies': True,
-                'can_export_medication_data': True,
-                'can_export_patient_data': False,
+            "PHARMACIST": {
+                "can_view_prescriptions": True,
+                "can_dispense_medications": True,
+                "can_view_patient_demographics": True,
+                "can_view_allergies": True,
+                "can_export_medication_data": True,
+                "can_export_patient_data": False,
             },
         }
 
@@ -403,63 +430,65 @@ class RoleBasedAccessControl:
         Define PHI access control matrix
         """
         return {
-            'DEMOGRAPHICS': {
-                'PHYSICIAN': 'FULL',
-                'NURSE': 'FULL',
-                'ADMINISTRATOR': 'LIMITED',
-                'BILLING_STAFF': 'LIMITED',
-                'RECEPTIONIST': 'FULL',
-                'LAB_TECHNICIAN': 'LIMITED',
-                'PHARMACIST': 'LIMITED',
+            "DEMOGRAPHICS": {
+                "PHYSICIAN": "FULL",
+                "NURSE": "FULL",
+                "ADMINISTRATOR": "LIMITED",
+                "BILLING_STAFF": "LIMITED",
+                "RECEPTIONIST": "FULL",
+                "LAB_TECHNICIAN": "LIMITED",
+                "PHARMACIST": "LIMITED",
             },
-            'MEDICAL_HISTORY': {
-                'PHYSICIAN': 'FULL',
-                'NURSE': 'FULL',
-                'ADMINISTRATOR': 'NONE',
-                'BILLING_STAFF': 'LIMITED',
-                'RECEPTIONIST': 'NONE',
-                'LAB_TECHNICIAN': 'NONE',
-                'PHARMACIST': 'FULL',
+            "MEDICAL_HISTORY": {
+                "PHYSICIAN": "FULL",
+                "NURSE": "FULL",
+                "ADMINISTRATOR": "NONE",
+                "BILLING_STAFF": "LIMITED",
+                "RECEPTIONIST": "NONE",
+                "LAB_TECHNICIAN": "NONE",
+                "PHARMACIST": "FULL",
             },
-            'DIAGNOSES': {
-                'PHYSICIAN': 'FULL',
-                'NURSE': 'FULL',
-                'ADMINISTRATOR': 'NONE',
-                'BILLING_STAFF': 'LIMITED',
-                'RECEPTIONIST': 'NONE',
-                'LAB_TECHNICIAN': 'NONE',
-                'PHARMACIST': 'FULL',
+            "DIAGNOSES": {
+                "PHYSICIAN": "FULL",
+                "NURSE": "FULL",
+                "ADMINISTRATOR": "NONE",
+                "BILLING_STAFF": "LIMITED",
+                "RECEPTIONIST": "NONE",
+                "LAB_TECHNICIAN": "NONE",
+                "PHARMACIST": "FULL",
             },
-            'MEDICATIONS': {
-                'PHYSICIAN': 'FULL',
-                'NURSE': 'FULL',
-                'ADMINISTRATOR': 'NONE',
-                'BILLING_STAFF': 'LIMITED',
-                'RECEPTIONIST': 'NONE',
-                'LAB_TECHNICIAN': 'NONE',
-                'PHARMACIST': 'FULL',
+            "MEDICATIONS": {
+                "PHYSICIAN": "FULL",
+                "NURSE": "FULL",
+                "ADMINISTRATOR": "NONE",
+                "BILLING_STAFF": "LIMITED",
+                "RECEPTIONIST": "NONE",
+                "LAB_TECHNICIAN": "NONE",
+                "PHARMACIST": "FULL",
             },
-            'BILLING_INFORMATION': {
-                'PHYSICIAN': 'LIMITED',
-                'NURSE': 'NONE',
-                'ADMINISTRATOR': 'FULL',
-                'BILLING_STAFF': 'FULL',
-                'RECEPTIONIST': 'LIMITED',
-                'LAB_TECHNICIAN': 'NONE',
-                'PHARMACIST': 'NONE',
+            "BILLING_INFORMATION": {
+                "PHYSICIAN": "LIMITED",
+                "NURSE": "NONE",
+                "ADMINISTRATOR": "FULL",
+                "BILLING_STAFF": "FULL",
+                "RECEPTIONIST": "LIMITED",
+                "LAB_TECHNICIAN": "NONE",
+                "PHARMACIST": "NONE",
             },
-            'INSURANCE_INFORMATION': {
-                'PHYSICIAN': 'LIMITED',
-                'NURSE': 'NONE',
-                'ADMINISTRATOR': 'FULL',
-                'BILLING_STAFF': 'FULL',
-                'RECEPTIONIST': 'LIMITED',
-                'LAB_TECHNICIAN': 'NONE',
-                'PHARMACIST': 'NONE',
+            "INSURANCE_INFORMATION": {
+                "PHYSICIAN": "LIMITED",
+                "NURSE": "NONE",
+                "ADMINISTRATOR": "FULL",
+                "BILLING_STAFF": "FULL",
+                "RECEPTIONIST": "LIMITED",
+                "LAB_TECHNICIAN": "NONE",
+                "PHARMACIST": "NONE",
             },
         }
 
-    def can_access_phi(self, user: User, patient_id: int, phi_category: str, access_type: str = 'VIEW') -> bool:
+    def can_access_phi(
+        self, user: User, patient_id: int, phi_category: str, access_type: str = "VIEW"
+    ) -> bool:
         """
         Check if user can access specific PHI category
         """
@@ -471,20 +500,20 @@ class RoleBasedAccessControl:
 
         # Check role permissions for PHI category
         phi_access = self.phi_access_matrix.get(phi_category, {})
-        access_level = phi_access.get(user_role, 'NONE')
+        access_level = phi_access.get(user_role, "NONE")
 
-        if access_level == 'NONE':
+        if access_level == "NONE":
             return False
 
         # Check specific permissions for access type
         role_permissions = self.role_permissions.get(user_role, {})
 
-        if access_type == 'VIEW':
-            return role_permissions.get('can_view_own_patients', False)
-        elif access_type == 'MODIFY':
-            return role_permissions.get('can_modify_own_patients', False)
-        elif access_type == 'EXPORT':
-            return role_permissions.get('can_export_patient_data', False)
+        if access_type == "VIEW":
+            return role_permissions.get("can_view_own_patients", False)
+        elif access_type == "MODIFY":
+            return role_permissions.get("can_modify_own_patients", False)
+        elif access_type == "EXPORT":
+            return role_permissions.get("can_export_patient_data", False)
 
         return False
 
@@ -494,18 +523,20 @@ class RoleBasedAccessControl:
         """
         # Implementation depends on how roles are stored in user model
         # This is a placeholder implementation
-        if hasattr(user, 'role'):
+        if hasattr(user, "role"):
             return user.role
 
         # Fallback: determine role from user groups/permissions
         if user.is_superuser:
-            return 'PHYSICIAN'  # Default for superusers
+            return "PHYSICIAN"  # Default for superusers
         elif user.is_staff:
-            return 'ADMINISTRATOR'
+            return "ADMINISTRATOR"
 
         return None
 
-    def enforce_minimum_necessary_principle(self, user: User, requested_data: Dict) -> Dict:
+    def enforce_minimum_necessary_principle(
+        self, user: User, requested_data: Dict
+    ) -> Dict:
         """
         Enforce HIPAA minimum necessary principle
         """
@@ -517,13 +548,20 @@ class RoleBasedAccessControl:
 
         # Filter data based on user role and permissions
         for data_category, data_value in requested_data.items():
-            if self.can_access_phi(user, None, data_category, 'VIEW'):
+            if self.can_access_phi(user, None, data_category, "VIEW"):
                 filtered_data[data_category] = data_value
 
         return filtered_data
 
-    def log_phi_access(self, user: User, patient_id: int, phi_category: str,
-                      access_type: str, purpose: str, ip_address: str = None) -> bool:
+    def log_phi_access(
+        self,
+        user: User,
+        patient_id: int,
+        phi_category: str,
+        access_type: str,
+        purpose: str,
+        ip_address: str = None,
+    ) -> bool:
         """
         Log PHI access for audit trail
         """
@@ -538,10 +576,10 @@ class RoleBasedAccessControl:
                 ip_address=ip_address or "127.0.0.1",
                 timestamp=timezone.now(),
                 metadata={
-                    'purpose': purpose,
-                    'access_type': access_type,
-                    'phi_category': phi_category
-                }
+                    "purpose": purpose,
+                    "access_type": access_type,
+                    "phi_category": phi_category,
+                },
             )
 
             return True
@@ -557,8 +595,8 @@ class SessionSecurity:
     """
 
     def __init__(self):
-        self.session_timeout_minutes = getattr(settings, 'HIPAA_SESSION_TIMEOUT', 15)
-        self.max_concurrent_sessions = getattr(settings, 'MAX_CONCURRENT_SESSIONS', 3)
+        self.session_timeout_minutes = getattr(settings, "HIPAA_SESSION_TIMEOUT", 15)
+        self.max_concurrent_sessions = getattr(settings, "MAX_CONCURRENT_SESSIONS", 3)
 
     def enforce_session_timeout(self, request) -> bool:
         """
@@ -567,19 +605,21 @@ class SessionSecurity:
         if not request.user.is_authenticated:
             return True
 
-        last_activity = request.session.get('last_activity')
+        last_activity = request.session.get("last_activity")
         if not last_activity:
             return True
 
         last_activity_time = datetime.fromisoformat(last_activity)
-        timeout_threshold = timezone.now() - timedelta(minutes=self.session_timeout_minutes)
+        timeout_threshold = timezone.now() - timedelta(
+            minutes=self.session_timeout_minutes
+        )
 
         if last_activity_time < timeout_threshold:
             logger.warning(f"Session timeout for user {request.user.id}")
             return False
 
         # Update last activity
-        request.session['last_activity'] = timezone.now().isoformat()
+        request.session["last_activity"] = timezone.now().isoformat()
         return True
 
     def enforce_concurrent_session_limit(self, user: User) -> bool:
@@ -597,11 +637,11 @@ class SessionSecurity:
         if not request.user.is_authenticated:
             return True
 
-        session_ip = request.session.get('session_ip')
-        session_ua = request.session.get('session_ua')
+        session_ip = request.session.get("session_ip")
+        session_ua = request.session.get("session_ua")
 
         current_ip = self._get_client_ip(request)
-        current_ua = request.META.get('HTTP_USER_AGENT', '')
+        current_ua = request.META.get("HTTP_USER_AGENT", "")
 
         if session_ip and session_ip != current_ip:
             logger.warning(f"Session IP mismatch for user {request.user.id}")
@@ -617,10 +657,10 @@ class SessionSecurity:
         """
         Get client IP address with proxy support
         """
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
+            ip = x_forwarded_for.split(",")[0]
         else:
-            ip = request.META.get('REMOTE_ADDR')
+            ip = request.META.get("REMOTE_ADDR")
 
-        return ip or '127.0.0.1'
+        return ip or "127.0.0.1"

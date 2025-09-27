@@ -1,21 +1,29 @@
+"""
+zero_defect_quality_framework module
+"""
+
 import asyncio
-import logging
 import json
-import time
+import logging
+import secrets
 import statistics
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Tuple
-from dataclasses import dataclass, asdict
-from enum import Enum
-import pytest
-import coverage
-import bandit
-import safety
+import time
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
 import aiohttp
+import bandit
 import numpy as np
 import pandas as pd
-from pathlib import Path
+import pytest
+import safety
+
+import coverage
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - [QUALITY] - %(message)s'
@@ -631,7 +639,7 @@ class ComplianceValidator:
             ComplianceStandard.FDA_21CFR: 67
         }
         total_checks = validation_checks.get(standard, 0)
-        passed_checks = int(total_checks * (0.90 + np.random.random() * 0.1))  
+        passed_checks = int(total_checks * (0.90 + np.secrets.random() * 0.1))  
         return {
             "standard": standard.value,
             "total_checks": total_checks,

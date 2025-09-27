@@ -12,40 +12,47 @@ This module implements comprehensive cross-browser and mobile testing:
 - Viewport and breakpoint testing
 """
 
-import pytest
-import json
-import time
-import requests
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Tuple
-from unittest.mock import Mock, patch, MagicMock
-from django.test import TestCase, Client
-from django.urls import reverse
-from django.contrib.auth import get_user_model
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import Select
-from selenium.webdriver.common.touch_actions import TouchActions
-from bs4 import BeautifulSoup
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from PIL import Image, ImageChops
-import io
 import base64
+import io
+import json
 import statistics
+import time
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
+from unittest.mock import MagicMock, Mock, patch
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import pytest
+import requests
+import seaborn as sns
+from bs4 import BeautifulSoup
+from PIL import Image, ImageChops
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.touch_actions import TouchActions
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import Select, WebDriverWait
+
+from django.contrib.auth import get_user_model
+from django.test import Client, TestCase
+from django.urls import reverse
+
+from ..conftest import HealthcareDataMixin, PerformanceTestingMixin
 
 # Import cross-browser framework
 from .cross_browser_framework import (
-    CrossBrowserTestingFramework, BrowserType, DeviceType, DeviceProfile,
-    CrossBrowserTestResult, CrossBrowserTestCase, ViewportSize
+    BrowserType,
+    CrossBrowserTestCase,
+    CrossBrowserTestingFramework,
+    CrossBrowserTestResult,
+    DeviceProfile,
+    DeviceType,
+    ViewportSize,
 )
-from ..conftest import HealthcareDataMixin, PerformanceTestingMixin
 
 User = get_user_model()
 
@@ -69,7 +76,7 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             "prescription_management",
             "communication_portal",
             "health_tracking",
-            "logout_functionality"
+            "logout_functionality",
         ]
 
         # Run tests across all browser-device combinations
@@ -80,7 +87,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
         print("✓ Patient Portal cross-browser tests completed")
 
-    def run_comprehensive_scenario_test(self, base_scenario: str, scenarios: List[str]) -> List[CrossBrowserTestResult]:
+    def run_comprehensive_scenario_test(
+        self, base_scenario: str, scenarios: List[str]
+    ) -> List[CrossBrowserTestResult]:
         """Run comprehensive tests for specific scenario"""
         all_results = []
 
@@ -90,17 +99,23 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
                 try:
                     # Initialize browser
-                    driver = self.cross_browser_framework.get_browser_driver(browser_type, headless=True)
+                    driver = self.cross_browser_framework.get_browser_driver(
+                        browser_type, headless=True
+                    )
                     self.cross_browser_framework.current_driver = driver
 
                     # Set device profile
-                    self.cross_browser_framework._set_device_profile(driver, device_profile)
+                    self.cross_browser_framework._set_device_profile(
+                        driver, device_profile
+                    )
 
                     # Run all scenarios for this browser-device combination
                     for scenario in scenarios:
                         result = self.run_single_scenario(
-                            driver, f"{base_scenario}_{scenario}",
-                            browser_type, device_profile
+                            driver,
+                            f"{base_scenario}_{scenario}",
+                            browser_type,
+                            device_profile,
                         )
                         all_results.append(result)
 
@@ -109,9 +124,7 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
                     # Create failed results for all scenarios
                     for scenario in scenarios:
                         result = CrossBrowserTestResult(
-                            f"{base_scenario}_{scenario}",
-                            browser_type,
-                            device_profile
+                            f"{base_scenario}_{scenario}", browser_type, device_profile
                         )
                         result.status = "FAILED"
                         result.add_error(f"Browser initialization failed: {str(e)}")
@@ -125,8 +138,13 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
         return all_results
 
-    def run_single_scenario(self, driver: webdriver.Remote, scenario: str,
-                          browser_type: BrowserType, device_profile: DeviceProfile) -> CrossBrowserTestResult:
+    def run_single_scenario(
+        self,
+        driver: webdriver.Remote,
+        scenario: str,
+        browser_type: BrowserType,
+        device_profile: DeviceProfile,
+    ) -> CrossBrowserTestResult:
         """Run single test scenario"""
         result = CrossBrowserTestResult(scenario, browser_type, device_profile)
 
@@ -157,7 +175,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
                 result.add_warning(f"Unknown scenario: {scenario}")
 
             end_time = time.time()
-            result.add_performance_metric("total_time", end_time - start_time, "seconds")
+            result.add_performance_metric(
+                "total_time", end_time - start_time, "seconds"
+            )
             result.status = "PASSED" if len(result.errors) == 0 else "FAILED"
 
         except Exception as e:
@@ -166,7 +186,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
         return result
 
-    def test_patient_portal_login(self, driver: webdriver.Remote, result: CrossBrowserTestResult):
+    def test_patient_portal_login(
+        self, driver: webdriver.Remote, result: CrossBrowserTestResult
+    ):
         """Test patient portal login functionality"""
         print(f"    Testing login functionality...")
 
@@ -184,52 +206,78 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
             # Test username input
             username_start = time.time()
-            username_field = driver.find_element(By.CSS_SELECTOR, "input[name='username'], input[type='email'], #username")
+            username_field = driver.find_element(
+                By.CSS_SELECTOR,
+                "input[name='username'], input[type='email'], #username",
+            )
             username_field.clear()
             username_field.send_keys("testpatient@example.com")
             username_time = time.time() - username_start
-            result.add_performance_metric("username_input_time", username_time, "seconds")
+            result.add_performance_metric(
+                "username_input_time", username_time, "seconds"
+            )
 
             # Test password input
             password_start = time.time()
-            password_field = driver.find_element(By.CSS_SELECTOR, "input[name='password'], input[type='password'], #password")
+            password_field = driver.find_element(
+                By.CSS_SELECTOR,
+                "input[name='password'], input[type='password'], #password",
+            )
             password_field.clear()
             password_field.send_keys("SecurePass123!")
             password_time = time.time() - password_start
-            result.add_performance_metric("password_input_time", password_time, "seconds")
+            result.add_performance_metric(
+                "password_input_time", password_time, "seconds"
+            )
 
             # Test form validation
             validation_start = time.time()
             self.test_login_form_validation(driver, result)
             validation_time = time.time() - validation_start
-            result.add_performance_metric("form_validation_time", validation_time, "seconds")
+            result.add_performance_metric(
+                "form_validation_time", validation_time, "seconds"
+            )
 
             # Test login submission
             login_start = time.time()
-            login_button = driver.find_element(By.CSS_SELECTOR, "button[type='submit'], .login-btn, #login-button")
+            login_button = driver.find_element(
+                By.CSS_SELECTOR, "button[type='submit'], .login-btn, #login-button"
+            )
             login_button.click()
             login_time = time.time() - login_start
-            result.add_performance_metric("login_submission_time", login_time, "seconds")
+            result.add_performance_metric(
+                "login_submission_time", login_time, "seconds"
+            )
 
             # Wait for successful login
             WebDriverWait(driver, 10).until(
-                EC.url_contains("dashboard") or EC.presence_of_element_located((By.CSS_SELECTOR, ".dashboard, .patient-dashboard"))
+                EC.url_contains("dashboard")
+                or EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, ".dashboard, .patient-dashboard")
+                )
             )
 
             # Test responsive behavior on mobile
             if result.device_profile.device_type == DeviceType.MOBILE:
                 mobile_score = self.test_mobile_login_flow(driver, result)
-                result.add_performance_metric("mobile_login_score", mobile_score, "points")
+                result.add_performance_metric(
+                    "mobile_login_score", mobile_score, "points"
+                )
 
         except Exception as e:
             result.add_error(f"Login test failed: {str(e)}")
             raise
 
-    def test_login_form_validation(self, driver: webdriver.Remote, result: CrossBrowserTestResult):
+    def test_login_form_validation(
+        self, driver: webdriver.Remote, result: CrossBrowserTestResult
+    ):
         """Test login form validation"""
         try:
             # Test empty username validation
-            username_field = driver.find_element(By.CSS_SELECTOR, "input[name='username'], input[type='email'], #username")
+            username_field = driver.find_element(
+                By.CSS_SELECTOR,
+                "input[name='username'], input[type='email'], #username",
+            )
             username_field.clear()
 
             # Trigger validation
@@ -238,9 +286,14 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
             # Check for validation message
             try:
-                error_message = driver.find_element(By.CSS_SELECTOR, ".error-message, .validation-error, .invalid-feedback")
+                error_message = driver.find_element(
+                    By.CSS_SELECTOR,
+                    ".error-message, .validation-error, .invalid-feedback",
+                )
                 if error_message and error_message.is_displayed():
-                    result.add_performance_metric("validation_error_display", 1, "boolean")
+                    result.add_performance_metric(
+                        "validation_error_display", 1, "boolean"
+                    )
             except:
                 pass
 
@@ -250,7 +303,10 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             time.sleep(0.5)
 
             try:
-                error_message = driver.find_element(By.CSS_SELECTOR, ".error-message, .validation-error, .invalid-feedback")
+                error_message = driver.find_element(
+                    By.CSS_SELECTOR,
+                    ".error-message, .validation-error, .invalid-feedback",
+                )
                 if error_message and error_message.is_displayed():
                     result.add_performance_metric("email_validation", 1, "boolean")
             except:
@@ -259,39 +315,48 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
         except Exception as e:
             result.add_warning(f"Form validation test issue: {str(e)}")
 
-    def test_mobile_login_flow(self, driver: webdriver.Remote, result: CrossBrowserTestResult) -> float:
+    def test_mobile_login_flow(
+        self, driver: webdriver.Remote, result: CrossBrowserTestResult
+    ) -> float:
         """Test mobile-specific login flow"""
         score = 0.0
 
         try:
             # Test virtual keyboard behavior
             window_size = driver.get_window_size()
-            if window_size['width'] < 768:
+            if window_size["width"] < 768:
                 # Check if viewport adjusts for keyboard
-                initial_height = window_size['height']
+                initial_height = window_size["height"]
 
                 # Focus on password field to trigger keyboard
-                password_field = driver.find_element(By.CSS_SELECTOR, "input[name='password'], input[type='password'], #password")
+                password_field = driver.find_element(
+                    By.CSS_SELECTOR,
+                    "input[name='password'], input[type='password'], #password",
+                )
                 password_field.click()
 
                 time.sleep(1)  # Allow for keyboard animation
 
-                final_height = driver.get_window_size()['height']
+                final_height = driver.get_window_size()["height"]
 
                 # Viewport should shrink when keyboard appears
                 if final_height < initial_height:
                     score += 25
 
                 # Test touch target sizes
-                login_button = driver.find_element(By.CSS_SELECTOR, "button[type='submit'], .login-btn, #login-button")
+                login_button = driver.find_element(
+                    By.CSS_SELECTOR, "button[type='submit'], .login-btn, #login-button"
+                )
                 button_size = login_button.size
 
                 # Minimum touch target size (44x44 points)
-                if button_size['width'] >= 44 and button_size['height'] >= 44:
+                if button_size["width"] >= 44 and button_size["height"] >= 44:
                     score += 25
 
                 # Test form layout on mobile
-                form_elements = driver.find_elements(By.CSS_SELECTOR, ".form-group, .form-field")
+                form_elements = driver.find_elements(
+                    By.CSS_SELECTOR, ".form-group, .form-field"
+                )
                 if len(form_elements) > 0:
                     # Check for proper spacing
                     score += 25
@@ -313,21 +378,27 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
         return score
 
-    def test_patient_portal_dashboard(self, driver: webdriver.Remote, result: CrossBrowserTestResult):
+    def test_patient_portal_dashboard(
+        self, driver: webdriver.Remote, result: CrossBrowserTestResult
+    ):
         """Test patient portal dashboard"""
         print(f"    Testing dashboard functionality...")
 
         try:
             # Wait for dashboard to load
             WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, ".dashboard, .patient-dashboard"))
+                EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, ".dashboard, .patient-dashboard")
+                )
             )
 
             # Test dashboard loading performance
             start_time = time.time()
             self.verify_dashboard_elements(driver, result)
             load_time = time.time() - start_time
-            result.add_performance_metric("dashboard_verification_time", load_time, "seconds")
+            result.add_performance_metric(
+                "dashboard_verification_time", load_time, "seconds"
+            )
 
             # Test responsive dashboard layout
             responsive_score = self.test_responsive_dashboard(driver, result)
@@ -337,7 +408,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             interaction_start = time.time()
             self.test_dashboard_interactions(driver, result)
             interaction_time = time.time() - interaction_start
-            result.add_performance_metric("dashboard_interaction_time", interaction_time, "seconds")
+            result.add_performance_metric(
+                "dashboard_interaction_time", interaction_time, "seconds"
+            )
 
             # Test data loading performance
             data_start = time.time()
@@ -349,7 +422,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             result.add_error(f"Dashboard test failed: {str(e)}")
             raise
 
-    def verify_dashboard_elements(self, driver: webdriver.Remote, result: CrossBrowserTestResult):
+    def verify_dashboard_elements(
+        self, driver: webdriver.Remote, result: CrossBrowserTestResult
+    ):
         """Verify dashboard elements are present"""
         expected_elements = [
             ".welcome-message, .user-greeting",
@@ -357,7 +432,7 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             ".medical-records-summary, .recent-records",
             ".billing-summary, .payment-status",
             ".navigation-menu, .sidebar",
-            ".notifications, .alerts"
+            ".notifications, .alerts",
         ]
 
         found_elements = 0
@@ -374,7 +449,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
         element_coverage = (found_elements / len(expected_elements)) * 100
         result.add_performance_metric("element_coverage", element_coverage, "percent")
 
-    def test_responsive_dashboard(self, driver: webdriver.Remote, result: CrossBrowserTestResult) -> float:
+    def test_responsive_dashboard(
+        self, driver: webdriver.Remote, result: CrossBrowserTestResult
+    ) -> float:
         """Test responsive dashboard behavior"""
         score = 0.0
 
@@ -389,14 +466,18 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
                 # Check if layout adapts properly
                 if width <= 768:  # Mobile
                     try:
-                        hamburger_menu = driver.find_element(By.CSS_SELECTOR, ".hamburger-menu, .mobile-menu-toggle")
+                        hamburger_menu = driver.find_element(
+                            By.CSS_SELECTOR, ".hamburger-menu, .mobile-menu-toggle"
+                        )
                         if hamburger_menu.is_displayed():
                             score += 10
                     except:
                         pass
                 else:  # Desktop
                     try:
-                        sidebar = driver.find_element(By.CSS_SELECTOR, ".sidebar, .navigation-menu")
+                        sidebar = driver.find_element(
+                            By.CSS_SELECTOR, ".sidebar, .navigation-menu"
+                        )
                         if sidebar.is_displayed():
                             score += 10
                     except:
@@ -407,12 +488,16 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
         return score
 
-    def test_dashboard_interactions(self, driver: webdriver.Remote, result: CrossBrowserTestResult):
+    def test_dashboard_interactions(
+        self, driver: webdriver.Remote, result: CrossBrowserTestResult
+    ):
         """Test dashboard interactions"""
         try:
             # Test navigation menu
             try:
-                nav_items = driver.find_elements(By.CSS_SELECTOR, ".nav-item, .menu-item")
+                nav_items = driver.find_elements(
+                    By.CSS_SELECTOR, ".nav-item, .menu-item"
+                )
                 if nav_items and len(nav_items) > 0:
                     # Click first nav item
                     nav_items[0].click()
@@ -423,11 +508,15 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
             # Test notification dropdown
             try:
-                notification_bell = driver.find_element(By.CSS_SELECTOR, ".notification-bell, .alerts-toggle")
+                notification_bell = driver.find_element(
+                    By.CSS_SELECTOR, ".notification-bell, .alerts-toggle"
+                )
                 notification_bell.click()
                 time.sleep(0.5)
 
-                dropdown = driver.find_element(By.CSS_SELECTOR, ".notification-dropdown, .alerts-menu")
+                dropdown = driver.find_element(
+                    By.CSS_SELECTOR, ".notification-dropdown, .alerts-menu"
+                )
                 if dropdown.is_displayed():
                     result.add_performance_metric("notification_test", 1, "boolean")
 
@@ -438,7 +527,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
             # Test quick actions
             try:
-                quick_actions = driver.find_elements(By.CSS_SELECTOR, ".quick-action, .dashboard-action")
+                quick_actions = driver.find_elements(
+                    By.CSS_SELECTOR, ".quick-action, .dashboard-action"
+                )
                 if quick_actions and len(quick_actions) > 0:
                     # Hover over first quick action
                     action = ActionChains(driver)
@@ -451,35 +542,60 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
         except Exception as e:
             result.add_warning(f"Dashboard interaction test issue: {str(e)}")
 
-    def test_dashboard_data_loading(self, driver: webdriver.Remote, result: CrossBrowserTestResult):
+    def test_dashboard_data_loading(
+        self, driver: webdriver.Remote, result: CrossBrowserTestResult
+    ):
         """Test dashboard data loading performance"""
         try:
             # Test appointment data loading
             start_time = time.time()
-            appointments_section = driver.find_element(By.CSS_SELECTOR, ".appointment-summary, .upcoming-appointments")
+            appointments_section = driver.find_element(
+                By.CSS_SELECTOR, ".appointment-summary, .upcoming-appointments"
+            )
             WebDriverWait(driver, 10).until(
-                lambda d: len(d.find_elements(By.CSS_SELECTOR, ".appointment-item, .appointment-card")) > 0
+                lambda d: len(
+                    d.find_elements(
+                        By.CSS_SELECTOR, ".appointment-item, .appointment-card"
+                    )
+                )
+                > 0
             )
             appointment_load_time = time.time() - start_time
-            result.add_performance_metric("appointment_data_load_time", appointment_load_time, "seconds")
+            result.add_performance_metric(
+                "appointment_data_load_time", appointment_load_time, "seconds"
+            )
 
             # Test medical records data loading
             start_time = time.time()
-            records_section = driver.find_element(By.CSS_SELECTOR, ".medical-records-summary, .recent-records")
+            records_section = driver.find_element(
+                By.CSS_SELECTOR, ".medical-records-summary, .recent-records"
+            )
             WebDriverWait(driver, 10).until(
-                lambda d: len(d.find_elements(By.CSS_SELECTOR, ".record-item, .record-card")) > 0
+                lambda d: len(
+                    d.find_elements(By.CSS_SELECTOR, ".record-item, .record-card")
+                )
+                > 0
             )
             records_load_time = time.time() - start_time
-            result.add_performance_metric("records_data_load_time", records_load_time, "seconds")
+            result.add_performance_metric(
+                "records_data_load_time", records_load_time, "seconds"
+            )
 
             # Test billing data loading
             start_time = time.time()
-            billing_section = driver.find_element(By.CSS_SELECTOR, ".billing-summary, .payment-status")
+            billing_section = driver.find_element(
+                By.CSS_SELECTOR, ".billing-summary, .payment-status"
+            )
             WebDriverWait(driver, 10).until(
-                lambda d: len(d.find_elements(By.CSS_SELECTOR, ".billing-item, .payment-item")) > 0
+                lambda d: len(
+                    d.find_elements(By.CSS_SELECTOR, ".billing-item, .payment-item")
+                )
+                > 0
             )
             billing_load_time = time.time() - start_time
-            result.add_performance_metric("billing_data_load_time", billing_load_time, "seconds")
+            result.add_performance_metric(
+                "billing_data_load_time", billing_load_time, "seconds"
+            )
 
         except Exception as e:
             result.add_warning(f"Data loading test issue: {str(e)}")
@@ -499,10 +615,12 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             "appointment_cancellation",
             "appointment_reminders",
             "telehealth_integration",
-            "mobile_appointment_flow"
+            "mobile_appointment_flow",
         ]
 
-        results = self.run_comprehensive_scenario_test("appointment_scheduling", scenarios)
+        results = self.run_comprehensive_scenario_test(
+            "appointment_scheduling", scenarios
+        )
         self.analyze_appointment_results(results)
 
         print("✓ Appointment Scheduling cross-browser tests completed")
@@ -522,7 +640,7 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             "record_history",
             "pdf_generation",
             "mobile_record_view",
-            "accessibility_compliance"
+            "accessibility_compliance",
         ]
 
         results = self.run_comprehensive_scenario_test("medical_records", scenarios)
@@ -545,7 +663,7 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             "invoice_generation",
             "mobile_billing",
             "security_compliance",
-            "receipt_management"
+            "receipt_management",
         ]
 
         results = self.run_comprehensive_scenario_test("billing_portal", scenarios)
@@ -569,12 +687,13 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             "gps_location_services",
             "biometric_authentication",
             "voice_commands",
-            "mobile_optimization"
+            "mobile_optimization",
         ]
 
         # Test only on mobile devices
         mobile_device_profiles = [
-            profile for profile in self.cross_browser_framework.device_profiles
+            profile
+            for profile in self.cross_browser_framework.device_profiles
             if profile.device_type == DeviceType.MOBILE
         ]
 
@@ -584,15 +703,23 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             for scenario in mobile_scenarios:
                 for browser_type in BrowserType:
                     try:
-                        driver = self.cross_browser_framework.get_browser_driver(browser_type, headless=True)
+                        driver = self.cross_browser_framework.get_browser_driver(
+                            browser_type, headless=True
+                        )
                         self.cross_browser_framework.current_driver = driver
-                        self.cross_browser_framework._set_device_profile(driver, device_profile)
+                        self.cross_browser_framework._set_device_profile(
+                            driver, device_profile
+                        )
 
-                        result = self.run_mobile_scenario(driver, scenario, browser_type, device_profile)
+                        result = self.run_mobile_scenario(
+                            driver, scenario, browser_type, device_profile
+                        )
                         self.cross_browser_framework.test_results.append(result)
 
                     except Exception as e:
-                        print(f"    Error testing {scenario} on {browser_type.value}: {str(e)}")
+                        print(
+                            f"    Error testing {scenario} on {browser_type.value}: {str(e)}"
+                        )
                     finally:
                         if self.cross_browser_framework.current_driver:
                             self.cross_browser_framework.current_driver.quit()
@@ -600,10 +727,17 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
         print("✓ Mobile-specific features tests completed")
 
-    def run_mobile_scenario(self, driver: webdriver.Remote, scenario: str,
-                          browser_type: BrowserType, device_profile: DeviceProfile) -> CrossBrowserTestResult:
+    def run_mobile_scenario(
+        self,
+        driver: webdriver.Remote,
+        scenario: str,
+        browser_type: BrowserType,
+        device_profile: DeviceProfile,
+    ) -> CrossBrowserTestResult:
         """Run mobile-specific scenario"""
-        result = CrossBrowserTestResult(f"mobile_{scenario}", browser_type, device_profile)
+        result = CrossBrowserTestResult(
+            f"mobile_{scenario}", browser_type, device_profile
+        )
 
         try:
             start_time = time.time()
@@ -630,7 +764,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
                 self.test_mobile_optimization(driver, result)
 
             end_time = time.time()
-            result.add_performance_metric("total_time", end_time - start_time, "seconds")
+            result.add_performance_metric(
+                "total_time", end_time - start_time, "seconds"
+            )
             result.status = "PASSED" if len(result.errors) == 0 else "FAILED"
 
         except Exception as e:
@@ -639,13 +775,17 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
         return result
 
-    def test_touch_gestures(self, driver: webdriver.Remote, result: CrossBrowserTestResult):
+    def test_touch_gestures(
+        self, driver: webdriver.Remote, result: CrossBrowserTestResult
+    ):
         """Test touch gestures on mobile"""
         try:
             # Test tap functionality
             try:
                 # Find a tappable element
-                tappable_element = driver.find_element(By.CSS_SELECTOR, "button, .clickable, .tap-target")
+                tappable_element = driver.find_element(
+                    By.CSS_SELECTOR, "button, .clickable, .tap-target"
+                )
                 tappable_element.click()
                 result.add_performance_metric("tap_test", 1, "boolean")
             except:
@@ -655,7 +795,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             try:
                 touch_actions = TouchActions(driver)
                 # Find a swipeable area
-                swipe_area = driver.find_element(By.CSS_SELECTOR, ".swipeable, .carousel, .swipe-container")
+                swipe_area = driver.find_element(
+                    By.CSS_SELECTOR, ".swipeable, .carousel, .swipe-container"
+                )
                 touch_actions.swipe(swipe_area, 500, 0, 0, 0).perform()
                 result.add_performance_metric("swipe_test", 1, "boolean")
             except:
@@ -663,7 +805,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
             # Test pinch-to-zoom (if applicable)
             try:
-                zoom_element = driver.find_element(By.CSS_SELECTOR, ".zoomable, .image-container, .map-container")
+                zoom_element = driver.find_element(
+                    By.CSS_SELECTOR, ".zoomable, .image-container, .map-container"
+                )
                 # Simulate pinch gesture (simplified)
                 result.add_performance_metric("pinch_zoom_test", 1, "boolean")
             except:
@@ -672,16 +816,18 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
         except Exception as e:
             result.add_warning(f"Touch gestures test issue: {str(e)}")
 
-    def test_swipe_navigation(self, driver: webdriver.Remote, result: CrossBrowserTestResult):
+    def test_swipe_navigation(
+        self, driver: webdriver.Remote, result: CrossBrowserTestResult
+    ):
         """Test swipe navigation on mobile"""
         try:
             # Test left swipe
             try:
                 touch_actions = TouchActions(driver)
                 screen_size = driver.get_window_size()
-                start_x = screen_size['width'] * 0.8
-                end_x = screen_size['width'] * 0.2
-                y = screen_size['height'] * 0.5
+                start_x = screen_size["width"] * 0.8
+                end_x = screen_size["width"] * 0.2
+                y = screen_size["height"] * 0.5
 
                 touch_actions.flick(start_x, y, end_x, y, 800).perform()
                 result.add_performance_metric("left_swipe_test", 1, "boolean")
@@ -692,9 +838,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             try:
                 touch_actions = TouchActions(driver)
                 screen_size = driver.get_window_size()
-                start_x = screen_size['width'] * 0.2
-                end_x = screen_size['width'] * 0.8
-                y = screen_size['height'] * 0.5
+                start_x = screen_size["width"] * 0.2
+                end_x = screen_size["width"] * 0.8
+                y = screen_size["height"] * 0.5
 
                 touch_actions.flick(start_x, y, end_x, y, 800).perform()
                 result.add_performance_metric("right_swipe_test", 1, "boolean")
@@ -704,7 +850,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
         except Exception as e:
             result.add_warning(f"Swipe navigation test issue: {str(e)}")
 
-    def test_pull_to_refresh(self, driver: webdriver.Remote, result: CrossBrowserTestResult):
+    def test_pull_to_refresh(
+        self, driver: webdriver.Remote, result: CrossBrowserTestResult
+    ):
         """Test pull-to-refresh functionality"""
         try:
             # Test pull gesture (simplified)
@@ -717,8 +865,8 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
                 touch_actions = TouchActions(driver)
                 screen_size = driver.get_window_size()
                 start_y = 100
-                end_y = screen_size['height'] * 0.5
-                x = screen_size['width'] * 0.5
+                end_y = screen_size["height"] * 0.5
+                x = screen_size["width"] * 0.5
 
                 touch_actions.flick(x, start_y, x, end_y, 1000).perform()
                 result.add_performance_metric("pull_to_refresh_test", 1, "boolean")
@@ -728,36 +876,47 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
         except Exception as e:
             result.add_warning(f"Pull-to-refresh test issue: {str(e)}")
 
-    def test_mobile_optimization(self, driver: webdriver.Remote, result: CrossBrowserTestResult):
+    def test_mobile_optimization(
+        self, driver: webdriver.Remote, result: CrossBrowserTestResult
+    ):
         """Test mobile optimization features"""
         try:
             # Test viewport meta tag
             try:
-                viewport_meta = driver.find_element(By.CSS_SELECTOR, "meta[name='viewport']")
-                viewport_content = viewport_meta.get_attribute('content')
-                if viewport_content and 'width=device-width' in viewport_content:
+                viewport_meta = driver.find_element(
+                    By.CSS_SELECTOR, "meta[name='viewport']"
+                )
+                viewport_content = viewport_meta.get_attribute("content")
+                if viewport_content and "width=device-width" in viewport_content:
                     result.add_performance_metric("viewport_optimization", 1, "boolean")
             except:
                 pass
 
             # Test touch-friendly interface
             try:
-                buttons = driver.find_elements(By.CSS_SELECTOR, "button, .btn, .clickable")
+                buttons = driver.find_elements(
+                    By.CSS_SELECTOR, "button, .btn, .clickable"
+                )
                 touch_friendly_count = 0
                 for button in buttons:
                     size = button.size
-                    if size['width'] >= 44 and size['height'] >= 44:
+                    if size["width"] >= 44 and size["height"] >= 44:
                         touch_friendly_count += 1
 
                 if len(buttons) > 0:
                     touch_friendly_ratio = touch_friendly_count / len(buttons)
-                    result.add_performance_metric("touch_friendly_ratio", touch_friendly_ratio, "ratio")
+                    result.add_performance_metric(
+                        "touch_friendly_ratio", touch_friendly_ratio, "ratio"
+                    )
             except:
                 pass
 
             # Test mobile navigation
             try:
-                hamburger_menu = driver.find_element(By.CSS_SELECTOR, ".hamburger-menu, .mobile-menu-toggle, .menu-toggle")
+                hamburger_menu = driver.find_element(
+                    By.CSS_SELECTOR,
+                    ".hamburger-menu, .mobile-menu-toggle, .menu-toggle",
+                )
                 if hamburger_menu.is_displayed():
                     result.add_performance_metric("mobile_navigation", 1, "boolean")
             except:
@@ -768,13 +927,15 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
                 images = driver.find_elements(By.CSS_SELECTOR, "img")
                 responsive_images = 0
                 for img in images:
-                    style = img.get_attribute('style') or ''
-                    if 'max-width' in style or 'width: 100%' in style:
+                    style = img.get_attribute("style") or ""
+                    if "max-width" in style or "width: 100%" in style:
                         responsive_images += 1
 
                 if len(images) > 0:
                     responsive_ratio = responsive_images / len(images)
-                    result.add_performance_metric("responsive_images_ratio", responsive_ratio, "ratio")
+                    result.add_performance_metric(
+                        "responsive_images_ratio", responsive_ratio, "ratio"
+                    )
             except:
                 pass
 
@@ -793,20 +954,26 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             ("Tablet", 768, 1024),
             ("Desktop", 1366, 768),
             ("Desktop Large", 1920, 1080),
-            ("Ultrawide", 2560, 1440)
+            ("Ultrawide", 2560, 1440),
         ]
 
         responsive_results = []
 
         for browser_type in BrowserType:
             for viewport_name, width, height in viewport_sizes:
-                print(f"\n  Testing {viewport_name} ({width}x{height}) on {browser_type.value}...")
+                print(
+                    f"\n  Testing {viewport_name} ({width}x{height}) on {browser_type.value}..."
+                )
 
                 try:
-                    driver = self.cross_browser_framework.get_browser_driver(browser_type, headless=True)
+                    driver = self.cross_browser_framework.get_browser_driver(
+                        browser_type, headless=True
+                    )
                     driver.set_window_size(width, height)
 
-                    result = self.test_viewport_responsiveness(driver, viewport_name, browser_type, width, height)
+                    result = self.test_viewport_responsiveness(
+                        driver, viewport_name, browser_type, width, height
+                    )
                     responsive_results.append(result)
 
                 except Exception as e:
@@ -820,10 +987,18 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
         print("✓ Responsive Design tests completed")
 
-    def test_viewport_responsiveness(self, driver: webdriver.Remote, viewport_name: str,
-                                   browser_type: BrowserType, width: int, height: int) -> CrossBrowserTestResult:
+    def test_viewport_responsiveness(
+        self,
+        driver: webdriver.Remote,
+        viewport_name: str,
+        browser_type: BrowserType,
+        width: int,
+        height: int,
+    ) -> CrossBrowserTestResult:
         """Test responsiveness for specific viewport"""
-        result = CrossBrowserTestResult(f"responsive_{viewport_name}", browser_type, None)
+        result = CrossBrowserTestResult(
+            f"responsive_{viewport_name}", browser_type, None
+        )
 
         try:
             # Navigate to a test page
@@ -854,15 +1029,23 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
         return result
 
-    def test_layout_adaptation(self, driver: webdriver.Remote, width: int, height: int, result: CrossBrowserTestResult) -> float:
+    def test_layout_adaptation(
+        self,
+        driver: webdriver.Remote,
+        width: int,
+        height: int,
+        result: CrossBrowserTestResult,
+    ) -> float:
         """Test layout adaptation for viewport"""
         score = 0.0
 
         try:
             # Check if main container adapts to viewport
             try:
-                main_container = driver.find_element(By.CSS_SELECTOR, ".container, .main-container, #main")
-                container_width = main_container.size['width']
+                main_container = driver.find_element(
+                    By.CSS_SELECTOR, ".container, .main-container, #main"
+                )
+                container_width = main_container.size["width"]
 
                 # Container should not overflow viewport
                 if container_width <= width:
@@ -872,7 +1055,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
             # Check grid/flexbox adaptation
             try:
-                grid_elements = driver.find_elements(By.CSS_SELECTOR, ".grid, .flex, .row")
+                grid_elements = driver.find_elements(
+                    By.CSS_SELECTOR, ".grid, .flex, .row"
+                )
                 if grid_elements:
                     score += 25
             except:
@@ -883,7 +1068,7 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
                 images = driver.find_elements(By.CSS_SELECTOR, "img")
                 responsive_images = 0
                 for img in images:
-                    img_width = img.size['width']
+                    img_width = img.size["width"]
                     if img_width <= width:
                         responsive_images += 1
 
@@ -896,11 +1081,13 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             # Check for mobile/desktop class switches
             try:
                 body = driver.find_element(By.TAG_NAME, "body")
-                body_classes = body.get_attribute('class').lower()
+                body_classes = body.get_attribute("class").lower()
 
-                if width <= 768 and ('mobile' in body_classes or 'sm' in body_classes):
+                if width <= 768 and ("mobile" in body_classes or "sm" in body_classes):
                     score += 25
-                elif width > 768 and ('desktop' in body_classes or 'lg' in body_classes):
+                elif width > 768 and (
+                    "desktop" in body_classes or "lg" in body_classes
+                ):
                     score += 25
             except:
                 pass
@@ -910,15 +1097,23 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
         return score
 
-    def test_content_scaling(self, driver: webdriver.Remote, width: int, height: int, result: CrossBrowserTestResult) -> float:
+    def test_content_scaling(
+        self,
+        driver: webdriver.Remote,
+        width: int,
+        height: int,
+        result: CrossBrowserTestResult,
+    ) -> float:
         """Test content scaling for viewport"""
         score = 0.0
 
         try:
             # Test font scaling
             try:
-                font_size = driver.execute_script("return window.getComputedStyle(document.body).fontSize")
-                base_font_size = float(font_size.replace('px', ''))
+                font_size = driver.execute_script(
+                    "return window.getComputedStyle(document.body).fontSize"
+                )
+                base_font_size = float(font_size.replace("px", ""))
 
                 # Font size should be reasonable for viewport
                 if width <= 768 and 14 <= base_font_size <= 18:
@@ -962,7 +1157,7 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             "semantic_html",
             "aria_attributes",
             "skip_links",
-            "language_attributes"
+            "language_attributes",
         ]
 
         accessibility_results = []
@@ -972,10 +1167,14 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
             for scenario in accessibility_scenarios:
                 try:
-                    driver = self.cross_browser_framework.get_browser_driver(browser_type, headless=True)
+                    driver = self.cross_browser_framework.get_browser_driver(
+                        browser_type, headless=True
+                    )
                     driver.get(f"{self.cross_browser_framework.base_url}/")
 
-                    result = self.test_accessibility_scenario(driver, scenario, browser_type)
+                    result = self.test_accessibility_scenario(
+                        driver, scenario, browser_type
+                    )
                     accessibility_results.append(result)
 
                 except Exception as e:
@@ -989,7 +1188,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
         print("✓ Accessibility Compliance tests completed")
 
-    def test_accessibility_scenario(self, driver: webdriver.Remote, scenario: str, browser_type: BrowserType) -> CrossBrowserTestResult:
+    def test_accessibility_scenario(
+        self, driver: webdriver.Remote, scenario: str, browser_type: BrowserType
+    ) -> CrossBrowserTestResult:
         """Test accessibility scenario"""
         result = CrossBrowserTestResult(f"accessibility_{scenario}", browser_type, None)
 
@@ -1024,7 +1225,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
         return result
 
-    def test_keyboard_navigation(self, driver: webdriver.Remote, result: CrossBrowserTestResult) -> float:
+    def test_keyboard_navigation(
+        self, driver: webdriver.Remote, result: CrossBrowserTestResult
+    ) -> float:
         """Test keyboard navigation accessibility"""
         score = 0.0
 
@@ -1074,14 +1277,19 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
         return score
 
-    def test_screen_reader_compatibility(self, driver: webdriver.Remote, result: CrossBrowserTestResult) -> float:
+    def test_screen_reader_compatibility(
+        self, driver: webdriver.Remote, result: CrossBrowserTestResult
+    ) -> float:
         """Test screen reader compatibility"""
         score = 0.0
 
         try:
             # Test ARIA landmarks
             try:
-                landmarks = driver.find_elements(By.XPATH, "//*[@role='banner' or @role='navigation' or @role='main' or @role='contentinfo' or @role='complementary']")
+                landmarks = driver.find_elements(
+                    By.XPATH,
+                    "//*[@role='banner' or @role='navigation' or @role='main' or @role='contentinfo' or @role='complementary']",
+                )
                 if len(landmarks) >= 3:
                     score += 25
             except:
@@ -1089,7 +1297,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
             # Test proper heading structure
             try:
-                headings = driver.find_elements(By.XPATH, "//h1|//h2|//h3|//h4|//h5|//h6")
+                headings = driver.find_elements(
+                    By.XPATH, "//h1|//h2|//h3|//h4|//h5|//h6"
+                )
                 if headings:
                     # Check if headings are properly nested
                     score += 25
@@ -1117,7 +1327,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
         return score
 
-    def test_color_contrast(self, driver: webdriver.Remote, result: CrossBrowserTestResult) -> float:
+    def test_color_contrast(
+        self, driver: webdriver.Remote, result: CrossBrowserTestResult
+    ) -> float:
         """Test color contrast compliance"""
         score = 0.0
 
@@ -1127,10 +1339,12 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
             # Test for high contrast mode support
             try:
-                css_variables = driver.execute_script("""
+                css_variables = driver.execute_script(
+                    """
                     var styles = getComputedStyle(document.documentElement);
                     return Object.keys(styles).filter(key => key.startsWith('--'));
-                """)
+                """
+                )
 
                 if len(css_variables) > 5:
                     score += 50
@@ -1139,7 +1353,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
             # Test for theme support
             try:
-                theme_elements = driver.find_elements(By.CSS_SELECTOR, "[data-theme], .theme-switcher")
+                theme_elements = driver.find_elements(
+                    By.CSS_SELECTOR, "[data-theme], .theme-switcher"
+                )
                 if len(theme_elements) > 0:
                     score += 50
             except:
@@ -1189,7 +1405,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
         self.analyze_scenario_results(results, "billing_")
 
-    def analyze_scenario_results(self, results: List[CrossBrowserTestResult], scenario_prefix: str):
+    def analyze_scenario_results(
+        self, results: List[CrossBrowserTestResult], scenario_prefix: str
+    ):
         """Analyze results for specific scenario prefix"""
         scenario_results = {}
         for result in results:
@@ -1217,7 +1435,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             viewport_results[viewport].append(result)
 
         for viewport, viewport_result_list in viewport_results.items():
-            avg_score = sum(r.responsiveness_score for r in viewport_result_list) / len(viewport_result_list)
+            avg_score = sum(r.responsiveness_score for r in viewport_result_list) / len(
+                viewport_result_list
+            )
             passed = len([r for r in viewport_result_list if r.status == "PASSED"])
             total = len(viewport_result_list)
 
@@ -1235,7 +1455,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             scenario_results[scenario].append(result)
 
         for scenario, scenario_result_list in scenario_results.items():
-            avg_score = sum(r.accessibility_score for r in scenario_result_list) / len(scenario_result_list)
+            avg_score = sum(r.accessibility_score for r in scenario_result_list) / len(
+                scenario_result_list
+            )
             passed = len([r for r in scenario_result_list if r.status == "PASSED"])
             total = len(scenario_result_list)
 
@@ -1255,16 +1477,26 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
         report = self.cross_browser_framework.generate_cross_browser_report()
 
         # Add detailed analysis
-        report['detailed_analysis'] = {
-            'browser_compatibility_matrix': self.generate_browser_compatibility_matrix(comprehensive_results),
-            'device_compatibility_matrix': self.generate_device_compatibility_matrix(comprehensive_results),
-            'performance_analysis': self.generate_performance_analysis(comprehensive_results),
-            'accessibility_analysis': self.generate_accessibility_analysis(comprehensive_results),
-            'mobile_optimization_analysis': self.generate_mobile_optimization_analysis(comprehensive_results)
+        report["detailed_analysis"] = {
+            "browser_compatibility_matrix": self.generate_browser_compatibility_matrix(
+                comprehensive_results
+            ),
+            "device_compatibility_matrix": self.generate_device_compatibility_matrix(
+                comprehensive_results
+            ),
+            "performance_analysis": self.generate_performance_analysis(
+                comprehensive_results
+            ),
+            "accessibility_analysis": self.generate_accessibility_analysis(
+                comprehensive_results
+            ),
+            "mobile_optimization_analysis": self.generate_mobile_optimization_analysis(
+                comprehensive_results
+            ),
         }
 
         # Save comprehensive report
-        with open('/tmp/hms_comprehensive_cross_browser_report.json', 'w') as f:
+        with open("/tmp/hms_comprehensive_cross_browser_report.json", "w") as f:
             json.dump(report, f, indent=2)
 
         print(f"Comprehensive cross-browser report generated")
@@ -1273,7 +1505,9 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
 
         return report
 
-    def generate_browser_compatibility_matrix(self, results: List[CrossBrowserTestResult]) -> Dict[str, Any]:
+    def generate_browser_compatibility_matrix(
+        self, results: List[CrossBrowserTestResult]
+    ) -> Dict[str, Any]:
         """Generate browser compatibility matrix"""
         matrix = {}
 
@@ -1281,33 +1515,43 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
             browser = result.browser.value
             if browser not in matrix:
                 matrix[browser] = {
-                    'total_tests': 0,
-                    'passed_tests': 0,
-                    'failed_tests': 0,
-                    'avg_responsiveness': 0,
-                    'avg_accessibility': 0,
-                    'performance_metrics': {}
+                    "total_tests": 0,
+                    "passed_tests": 0,
+                    "failed_tests": 0,
+                    "avg_responsiveness": 0,
+                    "avg_accessibility": 0,
+                    "performance_metrics": {},
                 }
 
-            matrix[browser]['total_tests'] += 1
+            matrix[browser]["total_tests"] += 1
             if result.status == "PASSED":
-                matrix[browser]['passed_tests'] += 1
+                matrix[browser]["passed_tests"] += 1
             else:
-                matrix[browser]['failed_tests'] += 1
+                matrix[browser]["failed_tests"] += 1
 
             # Aggregate metrics
-            responsiveness_scores = [r.responsiveness_score for r in results if r.browser.value == browser]
-            accessibility_scores = [r.accessibility_score for r in results if r.browser.value == browser]
+            responsiveness_scores = [
+                r.responsiveness_score for r in results if r.browser.value == browser
+            ]
+            accessibility_scores = [
+                r.accessibility_score for r in results if r.browser.value == browser
+            ]
 
             if responsiveness_scores:
-                matrix[browser]['avg_responsiveness'] = sum(responsiveness_scores) / len(responsiveness_scores)
+                matrix[browser]["avg_responsiveness"] = sum(
+                    responsiveness_scores
+                ) / len(responsiveness_scores)
 
             if accessibility_scores:
-                matrix[browser]['avg_accessibility'] = sum(accessibility_scores) / len(accessibility_scores)
+                matrix[browser]["avg_accessibility"] = sum(accessibility_scores) / len(
+                    accessibility_scores
+                )
 
         return matrix
 
-    def generate_device_compatibility_matrix(self, results: List[CrossBrowserTestResult]) -> Dict[str, Any]:
+    def generate_device_compatibility_matrix(
+        self, results: List[CrossBrowserTestResult]
+    ) -> Dict[str, Any]:
         """Generate device compatibility matrix"""
         matrix = {}
 
@@ -1316,102 +1560,124 @@ class CrossBrowserComprehensiveTestSuite(CrossBrowserTestCase):
                 device = result.device_profile.name
                 if device not in matrix:
                     matrix[device] = {
-                        'device_type': result.device_profile.device_type.value,
-                        'viewport': result.device_profile.viewport,
-                        'total_tests': 0,
-                        'passed_tests': 0,
-                        'failed_tests': 0,
-                        'avg_responsiveness': 0,
-                        'avg_accessibility': 0
+                        "device_type": result.device_profile.device_type.value,
+                        "viewport": result.device_profile.viewport,
+                        "total_tests": 0,
+                        "passed_tests": 0,
+                        "failed_tests": 0,
+                        "avg_responsiveness": 0,
+                        "avg_accessibility": 0,
                     }
 
-                matrix[device]['total_tests'] += 1
+                matrix[device]["total_tests"] += 1
                 if result.status == "PASSED":
-                    matrix[device]['passed_tests'] += 1
+                    matrix[device]["passed_tests"] += 1
                 else:
-                    matrix[device]['failed_tests'] += 1
+                    matrix[device]["failed_tests"] += 1
 
         return matrix
 
-    def generate_performance_analysis(self, results: List[CrossBrowserTestResult]) -> Dict[str, Any]:
+    def generate_performance_analysis(
+        self, results: List[CrossBrowserTestResult]
+    ) -> Dict[str, Any]:
         """Generate performance analysis"""
         analysis = {
-            'page_load_times': [],
-            'interaction_times': [],
-            'data_loading_times': [],
-            'browser_performance': {},
-            'device_performance': {}
+            "page_load_times": [],
+            "interaction_times": [],
+            "data_loading_times": [],
+            "browser_performance": {},
+            "device_performance": {},
         }
 
         for result in results:
             for metric_name, metric_data in result.performance_metrics.items():
-                if 'load' in metric_name.lower():
-                    analysis['page_load_times'].append(metric_data['value'])
-                elif 'interaction' in metric_name.lower():
-                    analysis['interaction_times'].append(metric_data['value'])
-                elif 'data' in metric_name.lower():
-                    analysis['data_loading_times'].append(metric_data['value'])
+                if "load" in metric_name.lower():
+                    analysis["page_load_times"].append(metric_data["value"])
+                elif "interaction" in metric_name.lower():
+                    analysis["interaction_times"].append(metric_data["value"])
+                elif "data" in metric_name.lower():
+                    analysis["data_loading_times"].append(metric_data["value"])
 
         # Calculate statistics
         for metric_name, values in analysis.items():
             if isinstance(values, list) and values:
                 analysis[metric_name] = {
-                    'min': min(values),
-                    'max': max(values),
-                    'avg': sum(values) / len(values),
-                    'median': statistics.median(values)
+                    "min": min(values),
+                    "max": max(values),
+                    "avg": sum(values) / len(values),
+                    "median": statistics.median(values),
                 }
 
         return analysis
 
-    def generate_accessibility_analysis(self, results: List[CrossBrowserTestResult]) -> Dict[str, Any]:
+    def generate_accessibility_analysis(
+        self, results: List[CrossBrowserTestResult]
+    ) -> Dict[str, Any]:
         """Generate accessibility analysis"""
         analysis = {
-            'overall_accessibility_score': 0,
-            'accessibility_by_browser': {},
-            'accessibility_by_device': {},
-            'common_accessibility_issues': []
+            "overall_accessibility_score": 0,
+            "accessibility_by_browser": {},
+            "accessibility_by_device": {},
+            "common_accessibility_issues": [],
         }
 
-        accessibility_scores = [r.accessibility_score for r in results if r.accessibility_score > 0]
+        accessibility_scores = [
+            r.accessibility_score for r in results if r.accessibility_score > 0
+        ]
         if accessibility_scores:
-            analysis['overall_accessibility_score'] = sum(accessibility_scores) / len(accessibility_scores)
+            analysis["overall_accessibility_score"] = sum(accessibility_scores) / len(
+                accessibility_scores
+            )
 
         # Group by browser
         for result in results:
             browser = result.browser.value
-            if browser not in analysis['accessibility_by_browser']:
-                analysis['accessibility_by_browser'][browser] = []
+            if browser not in analysis["accessibility_by_browser"]:
+                analysis["accessibility_by_browser"][browser] = []
             if result.accessibility_score > 0:
-                analysis['accessibility_by_browser'][browser].append(result.accessibility_score)
+                analysis["accessibility_by_browser"][browser].append(
+                    result.accessibility_score
+                )
 
         # Calculate averages
-        for browser, scores in analysis['accessibility_by_browser'].items():
+        for browser, scores in analysis["accessibility_by_browser"].items():
             if scores:
-                analysis['accessibility_by_browser'][browser] = sum(scores) / len(scores)
+                analysis["accessibility_by_browser"][browser] = sum(scores) / len(
+                    scores
+                )
 
         return analysis
 
-    def generate_mobile_optimization_analysis(self, results: List[CrossBrowserTestResult]) -> Dict[str, Any]:
+    def generate_mobile_optimization_analysis(
+        self, results: List[CrossBrowserTestResult]
+    ) -> Dict[str, Any]:
         """Generate mobile optimization analysis"""
         analysis = {
-            'mobile_test_results': [],
-            'mobile_optimization_score': 0,
-            'mobile_bugs': [],
-            'mobile_recommendations': []
+            "mobile_test_results": [],
+            "mobile_optimization_score": 0,
+            "mobile_bugs": [],
+            "mobile_recommendations": [],
         }
 
-        mobile_results = [r for r in results if r.device_profile and r.device_profile.device_type == DeviceType.MOBILE]
+        mobile_results = [
+            r
+            for r in results
+            if r.device_profile and r.device_profile.device_type == DeviceType.MOBILE
+        ]
 
         if mobile_results:
-            analysis['mobile_test_results'] = mobile_results
-            analysis['mobile_optimization_score'] = sum(r.responsiveness_score for r in mobile_results) / len(mobile_results)
+            analysis["mobile_test_results"] = mobile_results
+            analysis["mobile_optimization_score"] = sum(
+                r.responsiveness_score for r in mobile_results
+            ) / len(mobile_results)
 
             # Identify mobile-specific issues
             for result in mobile_results:
                 if result.status == "FAILED":
-                    analysis['mobile_bugs'].extend(result.errors)
-                    analysis['mobile_bugs'].extend([f"{w['warning']}" for w in result.warnings])
+                    analysis["mobile_bugs"].extend(result.errors)
+                    analysis["mobile_bugs"].extend(
+                        [f"{w['warning']}" for w in result.warnings]
+                    )
 
         return analysis
 
@@ -1429,7 +1695,7 @@ def cross_browser_test_results():
     return []
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run comprehensive cross-browser testing
     test_suite = CrossBrowserComprehensiveTestSuite()
     test_suite.setUp()
@@ -1442,11 +1708,11 @@ if __name__ == '__main__':
     print(f"Best browser: {report['executive_summary']['best_performing_browser']}")
     print(f"Critical issues: {report['executive_summary']['critical_issues']}")
 
-    if report['overall_scores']['pass_rate'] >= 90:
+    if report["overall_scores"]["pass_rate"] >= 90:
         print("🎉 Excellent cross-browser compatibility!")
-    elif report['overall_scores']['pass_rate'] >= 80:
+    elif report["overall_scores"]["pass_rate"] >= 80:
         print("✅ Good cross-browser compatibility")
-    elif report['overall_scores']['pass_rate'] >= 70:
+    elif report["overall_scores"]["pass_rate"] >= 70:
         print("⚠️  Cross-browser compatibility needs improvement")
     else:
         print("🚨 Cross-browser compatibility requires immediate attention")

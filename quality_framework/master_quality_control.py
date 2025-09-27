@@ -1,16 +1,22 @@
+"""
+master_quality_control module
+"""
+
+import argparse
 import asyncio
 import json
 import logging
-import argparse
 import sys
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
-from pathlib import Path
 import traceback
-from zero_defect_quality_framework import ZeroDefectQualityFramework
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from continuous_quality_integration import ContinuousQualityIntegration
 from healthcare_test_automation import HealthcareTestAutomation
 from quality_metrics_dashboard import QualityMetricsDashboard
-from continuous_quality_integration import ContinuousQualityIntegration
+from zero_defect_quality_framework import ZeroDefectQualityFramework
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - [MASTER-QC] - %(message)s',

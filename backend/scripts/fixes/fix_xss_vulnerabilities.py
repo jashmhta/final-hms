@@ -1,3 +1,7 @@
+"""
+fix_xss_vulnerabilities module
+"""
+
 import ast
 import re
 from pathlib import Path
@@ -5,7 +9,11 @@ from pathlib import Path
 
 class XSSFixer(ast.NodeTransformer):
     def visit_Call(self, node):
-        if isinstance(node.func, ast.Name) and node.func.id == "format_html" and len(node.args) > 0:
+        if (
+            isinstance(node.func, ast.Name)
+            and node.func.id == "format_html"
+            and len(node.args) > 0
+        ):
             new_args = []
             for arg in node.args:
                 if isinstance(arg, ast.Str):

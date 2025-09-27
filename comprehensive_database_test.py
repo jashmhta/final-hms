@@ -1,22 +1,27 @@
+"""
+comprehensive_database_test module
+"""
+
+import json
+import logging
 import os
 import sys
-import django
-import json
 import time
-import logging
 from datetime import datetime, timedelta
 from pathlib import Path
+
+import django
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hms.settings')
 sys.path.insert(0, '/home/azureuser/hms-enterprise-grade/backend')
 try:
     django.setup()
-    from django.db import connection, connections, transaction
-    from django.core.management import call_command
-    from django.test.utils import get_runner
-    from django.conf import settings
-    from django.core.management.color import no_style
-    from django.db import connection
     from django.apps import apps
+    from django.conf import settings
+    from django.core.management import call_command
+    from django.core.management.color import no_style
+    from django.db import connection, connections, transaction
+    from django.test.utils import get_runner
 except Exception as e:
     print(f"Error setting up Django: {e}")
     sys.exit(1)

@@ -30,7 +30,9 @@ class Migration(migrations.Migration):
                 ("is_active", models.BooleanField(default=True)),
                 (
                     "budget",
-                    models.DecimalField(blank=True, decimal_places=2, max_digits=15, null=True),
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=15, null=True
+                    ),
                 ),
                 ("location", models.CharField(blank=True, max_length=255)),
                 ("phone", models.CharField(blank=True, max_length=20)),
@@ -59,7 +61,9 @@ class Migration(migrations.Migration):
                 ("issuing_organization", models.CharField(max_length=200)),
                 (
                     "credential_number",
-                    encrypted_model_fields.fields.EncryptedCharField(blank=True),
+                    encrypted_model_fields.fields.EncryptedCharField(
+                        max_length=100, blank=True
+                    ),
                 ),
                 ("issue_date", models.DateField()),
                 ("expiry_date", models.DateField(blank=True, null=True)),
@@ -187,12 +191,16 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="user",
             name="address_line1",
-            field=encrypted_model_fields.fields.EncryptedCharField(blank=True),
+            field=encrypted_model_fields.fields.EncryptedCharField(
+                max_length=255, blank=True
+            ),
         ),
         migrations.AddField(
             model_name="user",
             name="address_line2",
-            field=encrypted_model_fields.fields.EncryptedCharField(blank=True),
+            field=encrypted_model_fields.fields.EncryptedCharField(
+                max_length=255, blank=True
+            ),
         ),
         migrations.AddField(
             model_name="user",
@@ -465,15 +473,21 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="user",
-            index=models.Index(fields=["role", "status"], name="users_user_role_6e67fb_idx"),
+            index=models.Index(
+                fields=["role", "status"], name="users_user_role_6e67fb_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="user",
-            index=models.Index(fields=["employee_id"], name="users_user_employe_e638d5_idx"),
+            index=models.Index(
+                fields=["employee_id"], name="users_user_employe_e638d5_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="user",
-            index=models.Index(fields=["last_activity"], name="users_user_last_ac_1898c4_idx"),
+            index=models.Index(
+                fields=["last_activity"], name="users_user_last_ac_1898c4_idx"
+            ),
         ),
         migrations.AddField(
             model_name="usersession",
@@ -578,7 +592,9 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="usersession",
-            index=models.Index(fields=["session_key"], name="users_users_session_70af4d_idx"),
+            index=models.Index(
+                fields=["session_key"], name="users_users_session_70af4d_idx"
+            ),
         ),
         migrations.AlterUniqueTogether(
             name="userpermissiongroup",
@@ -614,7 +630,9 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="usercredential",
-            index=models.Index(fields=["expiry_date"], name="users_userc_expiry__e79935_idx"),
+            index=models.Index(
+                fields=["expiry_date"], name="users_userc_expiry__e79935_idx"
+            ),
         ),
         migrations.AlterUniqueTogether(
             name="department",

@@ -1,3 +1,7 @@
+"""
+middleware module
+"""
+
 import logging
 import re
 from datetime import datetime, timedelta
@@ -11,8 +15,8 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.deprecation import MiddlewareMixin
 
-from .models import DataAccessType, AccessPurpose
-from .services import DataAccessService, AuditTrailService
+from .models import AccessPurpose, DataAccessType
+from .services import AuditTrailService, DataAccessService
 
 User = get_user_model()
 
@@ -30,22 +34,24 @@ class HIPAASecurityMiddleware(MiddlewareMixin):
         self.audit_service = AuditTrailService()
 
         # Security configurations
-        self.max_phi_requests_per_minute = getattr(settings, 'HIPAA_MAX_REQUESTS_PER_MINUTE', 100)
-        self.session_timeout_minutes = getattr(settings, 'HIPAA_SESSION_TIMEOUT', 15)
-        self.blocked_countries = getattr(settings, 'HIPAA_BLOCKED_COUNTRIES', [])
-        self.required_headers = getattr(settings, 'HIPAA_REQUIRED_HEADERS', [
-            'X-Content-Type-Options',
-            'X-Frame-Options',
-            'X-XSS-Protection'
-        ])
+        self.max_phi_requests_per_minute = getattr(
+            settings, "HIPAA_MAX_REQUESTS_PER_MINUTE", 100
+        )
+        self.session_timeout_minutes = getattr(settings, "HIPAA_SESSION_TIMEOUT", 15)
+        self.blocked_countries = getattr(settings, "HIPAA_BLOCKED_COUNTRIES", [])
+        self.required_headers = getattr(
+            settings,
+            "HIPAA_REQUIRED_HEADERS",
+            ["X-Content-Type-Options", "X-Frame-Options", "X-XSS-Protection"],
+        )
 
         # PHI data patterns for detection
         self.phi_patterns = [
-            r'\b\d{3}-\d{2}-\d{4}\b',  # SSN
-            r'\b\d{10}\b',  # Phone number
-            r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',  # Email
-            r'\b\d{2}/\d{2}/\d{4}\b',  # Date
-            r'\b\d{3}-\d{3}-\d{4}\b',  # US Phone
+            r"\b\d{3}-\d{2}-\d{4}\b",  # SSN
+            r"\b\d{10}\b",  # Phone number
+            r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",  # Email
+            r"\b\d{2}/\d{2}/\d{4}\b",  # Date
+            r"\b\d{3}-\d{3}-\d{4}\b",  # US Phone
         ]
 
     def process_request(self, request):
@@ -54,11 +60,15 @@ class HIPAASecurityMiddleware(MiddlewareMixin):
         """
         # Security header validation
         if not self._validate_security_headers(request):
-            return self._security_violation_response("Missing required security headers")
+            return self._security_violation_response(
+                "Missing required security headers"
+            )
 
         # Geographic restriction check
         if not self._check_geographic_restriction(request):
-            return self._security_violation_response("Access restricted from this location")
+            return self._security_violation_response(
+                "Access restricted from this location"
+            )
 
         # Session timeout validation
         if not self._validate_session_timeout(request):
@@ -87,16 +97,18 @@ class HIPAASecurityMiddleware(MiddlewareMixin):
         response = self._add_security_headers(response)
 
         # PHI detection in response data
-        if hasattr(response, 'data'):
+        if hasattr(response, "data"):
             phi_in_response = self._detect_phi_in_data(response.data)
             if phi_in_response:
-                logger.warning(f"PHI detected in response for {request.path}: {phi_in_response}")
+                logger.warning(
+                    f"PHI detected in response for {request.path}: {phi_in_response}"
+                )
                 self._audit_service.log_system_event(
                     "PHI_LEAK_DETECTED",
                     f"PHI found in response: {request.path}",
                     request.user if request.user.is_authenticated else None,
                     self._get_client_ip(request),
-                    {"phi_detected": phi_in_response}
+                    {"phi_detected": phi_in_response},
                 )
 
         # Response logging for audit trail
@@ -114,15 +126,18 @@ class HIPAASecurityMiddleware(MiddlewareMixin):
             f"Exception occurred: {str(exception)}",
             request.user if request.user.is_authenticated else None,
             self._get_client_ip(request),
-            {"exception_type": type(exception).__name__}
+            {"exception_type": type(exception).__name__},
         )
 
         # Never expose sensitive information in error responses
-        return JsonResponse({
-            "error": "An internal error occurred",
-            "error_code": "INTERNAL_ERROR",
-            "timestamp": timezone.now().isoformat()
-        }, status=500)
+        return JsonResponse(
+            {
+                "error": "An internal error occurred",
+                "error_code": "INTERNAL_ERROR",
+                "timestamp": timezone.now().isoformat(),
+            },
+            status=500,
+        )
 
     def _validate_security_headers(self, request) -> bool:
         """
@@ -153,19 +168,21 @@ class HIPAASecurityMiddleware(MiddlewareMixin):
         if not request.user.is_authenticated:
             return True
 
-        last_activity = request.session.get('last_activity')
+        last_activity = request.session.get("last_activity")
         if not last_activity:
             return True
 
         last_activity_time = datetime.fromisoformat(last_activity)
-        timeout_threshold = timezone.now() - timedelta(minutes=self.session_timeout_minutes)
+        timeout_threshold = timezone.now() - timedelta(
+            minutes=self.session_timeout_minutes
+        )
 
         if last_activity_time < timeout_threshold:
             logger.warning(f"Session timeout for user {request.user.id}")
             return False
 
         # Update last activity
-        request.session['last_activity'] = timezone.now().isoformat()
+        request.session["last_activity"] = timezone.now().isoformat()
         return True
 
     def _detect_phi_in_request(self, request) -> List[str]:
@@ -182,18 +199,21 @@ class HIPAASecurityMiddleware(MiddlewareMixin):
                         detected_phi.append(f"GET parameter '{key}': {value[:50]}...")
 
         # Check POST data
-        if hasattr(request, 'POST'):
+        if hasattr(request, "POST"):
             for key, value in request.POST.items():
                 if isinstance(value, str):
                     for pattern in self.phi_patterns:
                         if re.search(pattern, value):
-                            detected_phi.append(f"POST parameter '{key}': {value[:50]}...")
+                            detected_phi.append(
+                                f"POST parameter '{key}': {value[:50]}..."
+                            )
 
         # Check JSON body
-        if hasattr(request, 'body') and request.body:
+        if hasattr(request, "body") and request.body:
             try:
                 import json
-                body_str = request.body.decode('utf-8')
+
+                body_str = request.body.decode("utf-8")
                 for pattern in self.phi_patterns:
                     if re.search(pattern, body_str):
                         detected_phi.append("Request body contains potential PHI")
@@ -249,25 +269,27 @@ class HIPAASecurityMiddleware(MiddlewareMixin):
         for key, value in request.GET.items():
             if isinstance(value, str):
                 sql_injection_patterns = [
-                    r'(?i)\b(select|insert|update|delete|drop|create|alter|union)\b',
-                    r'(?i)\b(or|and)\s+\d+\s*=\s*\d+',
-                    r'(?i)(\b;|\b--)',
-                    r'(?i)\b(exec|execute|sp_)\b'
+                    r"(?i)\b(select|insert|update|delete|drop|create|alter|union)\b",
+                    r"(?i)\b(or|and)\s+\d+\s*=\s*\d+",
+                    r"(?i)(\b;|\b--)",
+                    r"(?i)\b(exec|execute|sp_)\b",
                 ]
                 for pattern in sql_injection_patterns:
                     if re.search(pattern, value):
-                        logger.warning(f"Potential SQL injection in parameter '{key}': {value}")
+                        logger.warning(
+                            f"Potential SQL injection in parameter '{key}': {value}"
+                        )
                         return False
 
         # Check for XSS patterns
         for key, value in request.GET.items():
             if isinstance(value, str):
                 xss_patterns = [
-                    r'<script.*?>.*?</script>',
-                    r'javascript:',
-                    r'on\w+\s*=',
-                    r'<iframe.*?>',
-                    r'<object.*?>'
+                    r"<script.*?>.*?</script>",
+                    r"javascript:",
+                    r"on\w+\s*=",
+                    r"<iframe.*?>",
+                    r"<object.*?>",
                 ]
                 for pattern in xss_patterns:
                     if re.search(pattern, value, re.IGNORECASE):
@@ -280,15 +302,17 @@ class HIPAASecurityMiddleware(MiddlewareMixin):
         """
         Add HIPAA compliant security headers
         """
-        response['X-Content-Type-Options'] = 'nosniff'
-        response['X-Frame-Options'] = 'DENY'
-        response['X-XSS-Protection'] = '1; mode=block'
-        response['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-        response['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'"
-        response['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-        response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response['Pragma'] = 'no-cache'
-        response['Expires'] = '0'
+        response["X-Content-Type-Options"] = "nosniff"
+        response["X-Frame-Options"] = "DENY"
+        response["X-XSS-Protection"] = "1; mode=block"
+        response["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'"
+        )
+        response["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response["Pragma"] = "no-cache"
+        response["Expires"] = "0"
 
         return response
 
@@ -312,7 +336,7 @@ class HIPAASecurityMiddleware(MiddlewareMixin):
                 purpose=purpose,
                 resource_type="API_RESPONSE",
                 ip_address=self._get_client_ip(request),
-                user_agent=request.META.get('HTTP_USER_AGENT', '')
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
             )
 
     def _extract_patient_id_from_request(self, request) -> Optional[int]:
@@ -320,11 +344,12 @@ class HIPAASecurityMiddleware(MiddlewareMixin):
         Extract patient ID from request path
         """
         import re
+
         path_patterns = [
-            r'/api/patients/(\d+)/',
-            r'/api/ehr/patients/(\d+)/',
-            r'/api/appointments/patients/(\d+)/',
-            r'/api/medications/patients/(\d+)/',
+            r"/api/patients/(\d+)/",
+            r"/api/ehr/patients/(\d+)/",
+            r"/api/appointments/patients/(\d+)/",
+            r"/api/medications/patients/(\d+)/",
         ]
 
         for pattern in path_patterns:
@@ -338,11 +363,11 @@ class HIPAASecurityMiddleware(MiddlewareMixin):
         """
         Determine access type based on request method and path
         """
-        if method == 'GET':
+        if method == "GET":
             return DataAccessType.VIEW
-        elif method in ['POST', 'PUT', 'PATCH']:
+        elif method in ["POST", "PUT", "PATCH"]:
             return DataAccessType.MODIFY
-        elif method == 'DELETE':
+        elif method == "DELETE":
             return DataAccessType.DELETE
         else:
             return DataAccessType.VIEW
@@ -351,13 +376,13 @@ class HIPAASecurityMiddleware(MiddlewareMixin):
         """
         Determine access purpose based on request path
         """
-        if '/billing/' in path:
+        if "/billing/" in path:
             return AccessPurpose.PAYMENT
-        elif '/ehr/' in path or '/medical/' in path:
+        elif "/ehr/" in path or "/medical/" in path:
             return AccessPurpose.TREATMENT
-        elif '/appointments/' in path:
+        elif "/appointments/" in path:
             return AccessPurpose.TREATMENT
-        elif '/admin/' in path:
+        elif "/admin/" in path:
             return AccessPurpose.HEALTHCARE_OPERATIONS
         else:
             return AccessPurpose.TREATMENT
@@ -366,13 +391,13 @@ class HIPAASecurityMiddleware(MiddlewareMixin):
         """
         Get client IP address with proxy support
         """
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
+            ip = x_forwarded_for.split(",")[0]
         else:
-            ip = request.META.get('REMOTE_ADDR')
+            ip = request.META.get("REMOTE_ADDR")
 
-        return ip or '127.0.0.1'
+        return ip or "127.0.0.1"
 
     def _log_phi_detection(self, request, detected_phi: List[str]) -> None:
         """
@@ -386,20 +411,23 @@ class HIPAASecurityMiddleware(MiddlewareMixin):
             {
                 "detected_phi": detected_phi,
                 "request_method": request.method,
-                "request_path": request.path
-            }
+                "request_path": request.path,
+            },
         )
 
     def _security_violation_response(self, message: str) -> JsonResponse:
         """
         Return standardized security violation response
         """
-        return JsonResponse({
-            "error": "Security violation",
-            "error_code": "SECURITY_VIOLATION",
-            "message": message,
-            "timestamp": timezone.now().isoformat()
-        }, status=403)
+        return JsonResponse(
+            {
+                "error": "Security violation",
+                "error_code": "SECURITY_VIOLATION",
+                "message": message,
+                "timestamp": timezone.now().isoformat(),
+            },
+            status=403,
+        )
 
 
 class DataLeakPreventionMiddleware(MiddlewareMixin):
@@ -411,23 +439,23 @@ class DataLeakPreventionMiddleware(MiddlewareMixin):
         super().__init__(get_response)
         self.sensitive_data_patterns = [
             # SSN patterns
-            r'\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b',
+            r"\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b",
             # Credit card patterns
-            r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b',
+            r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b",
             # Medical record numbers
-            r'\b(?:MRN|Medical Record)\s*[:#]?\s*\w+\b',
+            r"\b(?:MRN|Medical Record)\s*[:#]?\s*\w+\b",
             # Patient identifiers
-            r'\bPatient\s+ID\s*[:#]?\s*\w+\b',
+            r"\bPatient\s+ID\s*[:#]?\s*\w+\b",
             # Insurance numbers
-            r'\b(?:Policy|Insurance)\s+Number\s*[:#]?\s*\w+\b',
+            r"\b(?:Policy|Insurance)\s+Number\s*[:#]?\s*\w+\b",
         ]
 
     def process_response(self, request, response):
         """
         Scan response for potential data leaks
         """
-        if hasattr(response, 'content'):
-            content = response.content.decode('utf-8', errors='ignore')
+        if hasattr(response, "content"):
+            content = response.content.decode("utf-8", errors="ignore")
             detected_leaks = self._scan_for_data_leaks(content)
 
             if detected_leaks:
@@ -444,14 +472,17 @@ class DataLeakPreventionMiddleware(MiddlewareMixin):
 
         for pattern in self.sensitive_data_patterns:
             import re
+
             matches = re.finditer(pattern, content, re.IGNORECASE)
             for match in matches:
-                leaks.append({
-                    'pattern': pattern,
-                    'match': match.group(),
-                    'position': match.start(),
-                    'severity': 'HIGH'
-                })
+                leaks.append(
+                    {
+                        "pattern": pattern,
+                        "match": match.group(),
+                        "position": match.start(),
+                        "severity": "HIGH",
+                    }
+                )
 
         return leaks
 
@@ -468,8 +499,8 @@ class DataLeakPreventionMiddleware(MiddlewareMixin):
             {
                 "leaks": leaks,
                 "request_method": request.method,
-                "request_path": request.path
-            }
+                "request_path": request.path,
+            },
         )
 
         # In production, this should trigger immediate alerts
@@ -505,14 +536,16 @@ class SessionSecurityMiddleware(MiddlewareMixin):
         """
         Validate session is bound to original IP and user agent
         """
-        session_ip = request.session.get('session_ip')
-        session_ua = request.session.get('session_ua')
+        session_ip = request.session.get("session_ip")
+        session_ua = request.session.get("session_ua")
 
         current_ip = self._get_client_ip(request)
-        current_ua = request.META.get('HTTP_USER_AGENT', '')
+        current_ua = request.META.get("HTTP_USER_AGENT", "")
 
         if session_ip and session_ip != current_ip:
-            logger.warning(f"Session IP mismatch for user {request.user.id}: {session_ip} vs {current_ip}")
+            logger.warning(
+                f"Session IP mismatch for user {request.user.id}: {session_ip} vs {current_ip}"
+            )
             return False
 
         if session_ua and session_ua != current_ua:
@@ -521,9 +554,9 @@ class SessionSecurityMiddleware(MiddlewareMixin):
 
         # Bind session to current IP and UA if not already bound
         if not session_ip:
-            request.session['session_ip'] = current_ip
+            request.session["session_ip"] = current_ip
         if not session_ua:
-            request.session['session_ua'] = current_ua
+            request.session["session_ua"] = current_ua
 
         return True
 
@@ -531,7 +564,7 @@ class SessionSecurityMiddleware(MiddlewareMixin):
         """
         Validate concurrent session limits
         """
-        max_concurrent_sessions = getattr(settings, 'MAX_CONCURRENT_SESSIONS', 3)
+        max_concurrent_sessions = getattr(settings, "MAX_CONCURRENT_SESSIONS", 3)
 
         # Implementation should check number of active sessions for user
         # For now, assume valid
@@ -545,6 +578,7 @@ class SessionSecurityMiddleware(MiddlewareMixin):
 
         # Terminate current session
         from django.contrib.auth import logout
+
         logout(request)
 
         # Log security incident
@@ -552,7 +586,7 @@ class SessionSecurityMiddleware(MiddlewareMixin):
             "SESSION_HIJACK_DETECTED",
             f"Session hijacking attempt for user {request.user.id}",
             request.user,
-            self._get_client_ip(request)
+            self._get_client_ip(request),
         )
 
     def _handle_concurrent_session(self, request) -> None:
@@ -566,17 +600,17 @@ class SessionSecurityMiddleware(MiddlewareMixin):
             "CONCURRENT_SESSION_VIOLATION",
             f"Concurrent session limit exceeded for user {request.user.id}",
             request.user,
-            self._get_client_ip(request)
+            self._get_client_ip(request),
         )
 
     def _get_client_ip(self, request) -> str:
         """
         Get client IP address with proxy support
         """
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
+            ip = x_forwarded_for.split(",")[0]
         else:
-            ip = request.META.get('REMOTE_ADDR')
+            ip = request.META.get("REMOTE_ADDR")
 
-        return ip or '127.0.0.1'
+        return ip or "127.0.0.1"

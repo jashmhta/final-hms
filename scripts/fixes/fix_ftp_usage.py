@@ -1,7 +1,13 @@
+"""
+fix_ftp_usage module
+"""
+
 import os
 import re
 import shutil
 from pathlib import Path
+
+
 def fix_ftp_to_sftp(filepath):
     try:
         with open(filepath, "r") as f:
@@ -28,6 +34,8 @@ def fix_ftp_to_sftp(filepath):
             print(f"Fixed FTP usage in {filepath} (backup: {backup_path})")
     except Exception as e:
         print(f"Error fixing {filepath}: {e}")
+
+
 root_dir = Path("/root/hms-enterprise-grade/backend")
 backend_services = ["appointments", "billing", "patients", "lab", "radiology", "ehr"]
 for service in backend_services:

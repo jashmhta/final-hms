@@ -1,3 +1,5 @@
+import secrets
+
 """
 Performance Monitoring and Load Testing Setup for HMS
 Enterprise-grade performance monitoring, benchmarking, and load testing infrastructure
@@ -6,14 +8,14 @@ Enterprise-grade performance monitoring, benchmarking, and load testing infrastr
 import asyncio
 import json
 import logging
-import time
 import threading
+import time
 import uuid
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Union
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 import psutil
 import redis.asyncio as aioredis
@@ -25,14 +27,18 @@ from django.db import connection, connections
 from django.utils import timezone
 
 from .performance_optimization import (
-    query_optimizer, enhanced_cache, api_optimizer,
-    cdn_optimizer, performance_optimizer
+    api_optimizer,
+    cdn_optimizer,
+    enhanced_cache,
+    performance_optimizer,
+    query_optimizer,
 )
 
 
 @dataclass
 class PerformanceMetric:
     """Data class for performance metrics"""
+
     timestamp: datetime
     metric_name: str
     value: float
@@ -44,6 +50,7 @@ class PerformanceMetric:
 @dataclass
 class LoadTestResult:
     """Data class for load test results"""
+
     test_id: str
     test_name: str
     start_time: datetime
@@ -79,14 +86,14 @@ class PerformanceMonitoringSystem:
                 "disk_usage": 90,
                 "response_time": 2000,  # ms
                 "error_rate": 5,  # percent
-                "database_connections": 80
+                "database_connections": 80,
             },
             "benchmark_thresholds": {
                 "page_load_time": 3000,  # ms
                 "api_response_time": 1000,  # ms
                 "database_query_time": 500,  # ms
-                "cache_hit_rate": 70  # percent
-            }
+                "cache_hit_rate": 70,  # percent
+            },
         }
         self.is_monitoring = False
         self.monitoring_thread = None
@@ -95,12 +102,14 @@ class PerformanceMonitoringSystem:
         """Start comprehensive performance monitoring"""
         try:
             if self.is_monitoring:
-                return {"status": "already_running", "message": "Monitoring is already active"}
+                return {
+                    "status": "already_running",
+                    "message": "Monitoring is already active",
+                }
 
             self.is_monitoring = True
             self.monitoring_thread = threading.Thread(
-                target=self._monitoring_loop,
-                daemon=True
+                target=self._monitoring_loop, daemon=True
             )
             self.monitoring_thread.start()
 
@@ -108,7 +117,7 @@ class PerformanceMonitoringSystem:
             return {
                 "status": "started",
                 "timestamp": timezone.now().isoformat(),
-                "config": self.monitoring_config
+                "config": self.monitoring_config,
             }
 
         except Exception as e:
@@ -126,7 +135,7 @@ class PerformanceMonitoringSystem:
             return {
                 "status": "stopped",
                 "timestamp": timezone.now().isoformat(),
-                "metrics_collected": len(self.metrics_buffer)
+                "metrics_collected": len(self.metrics_buffer),
             }
 
         except Exception as e:
@@ -179,104 +188,114 @@ class PerformanceMonitoringSystem:
             cpu_count = psutil.cpu_count()
             cpu_freq = psutil.cpu_freq()
 
-            metrics.extend([
-                PerformanceMetric(
-                    timestamp=timestamp,
-                    metric_name="cpu_usage_percent",
-                    value=cpu_percent,
-                    unit="%",
-                    tags={"type": "system", "metric": "cpu"}
-                ),
-                PerformanceMetric(
-                    timestamp=timestamp,
-                    metric_name="cpu_count",
-                    value=cpu_count,
-                    unit="cores",
-                    tags={"type": "system", "metric": "cpu"}
-                )
-            ])
+            metrics.extend(
+                [
+                    PerformanceMetric(
+                        timestamp=timestamp,
+                        metric_name="cpu_usage_percent",
+                        value=cpu_percent,
+                        unit="%",
+                        tags={"type": "system", "metric": "cpu"},
+                    ),
+                    PerformanceMetric(
+                        timestamp=timestamp,
+                        metric_name="cpu_count",
+                        value=cpu_count,
+                        unit="cores",
+                        tags={"type": "system", "metric": "cpu"},
+                    ),
+                ]
+            )
 
             if cpu_freq:
-                metrics.append(PerformanceMetric(
-                    timestamp=timestamp,
-                    metric_name="cpu_frequency_mhz",
-                    value=cpu_freq.current,
-                    unit="MHz",
-                    tags={"type": "system", "metric": "cpu"}
-                ))
+                metrics.append(
+                    PerformanceMetric(
+                        timestamp=timestamp,
+                        metric_name="cpu_frequency_mhz",
+                        value=cpu_freq.current,
+                        unit="MHz",
+                        tags={"type": "system", "metric": "cpu"},
+                    )
+                )
 
             # Memory metrics
             memory = psutil.virtual_memory()
             swap = psutil.swap_memory()
 
-            metrics.extend([
-                PerformanceMetric(
-                    timestamp=timestamp,
-                    metric_name="memory_usage_percent",
-                    value=memory.percent,
-                    unit="%",
-                    tags={"type": "system", "metric": "memory"}
-                ),
-                PerformanceMetric(
-                    timestamp=timestamp,
-                    metric_name="memory_available_gb",
-                    value=memory.available / (1024**3),
-                    unit="GB",
-                    tags={"type": "system", "metric": "memory"}
-                ),
-                PerformanceMetric(
-                    timestamp=timestamp,
-                    metric_name="memory_used_gb",
-                    value=memory.used / (1024**3),
-                    unit="GB",
-                    tags={"type": "system", "metric": "memory"}
-                ),
-                PerformanceMetric(
-                    timestamp=timestamp,
-                    metric_name="swap_usage_percent",
-                    value=swap.percent,
-                    unit="%",
-                    tags={"type": "system", "metric": "swap"}
-                )
-            ])
+            metrics.extend(
+                [
+                    PerformanceMetric(
+                        timestamp=timestamp,
+                        metric_name="memory_usage_percent",
+                        value=memory.percent,
+                        unit="%",
+                        tags={"type": "system", "metric": "memory"},
+                    ),
+                    PerformanceMetric(
+                        timestamp=timestamp,
+                        metric_name="memory_available_gb",
+                        value=memory.available / (1024**3),
+                        unit="GB",
+                        tags={"type": "system", "metric": "memory"},
+                    ),
+                    PerformanceMetric(
+                        timestamp=timestamp,
+                        metric_name="memory_used_gb",
+                        value=memory.used / (1024**3),
+                        unit="GB",
+                        tags={"type": "system", "metric": "memory"},
+                    ),
+                    PerformanceMetric(
+                        timestamp=timestamp,
+                        metric_name="swap_usage_percent",
+                        value=swap.percent,
+                        unit="%",
+                        tags={"type": "system", "metric": "swap"},
+                    ),
+                ]
+            )
 
             # Disk metrics
-            disk = psutil.disk_usage('/')
-            metrics.extend([
-                PerformanceMetric(
-                    timestamp=timestamp,
-                    metric_name="disk_usage_percent",
-                    value=disk.percent,
-                    unit="%",
-                    tags={"type": "system", "metric": "disk"}
-                ),
-                PerformanceMetric(
-                    timestamp=timestamp,
-                    metric_name="disk_free_gb",
-                    value=disk.free / (1024**3),
-                    unit="GB",
-                    tags={"type": "system", "metric": "disk"}
-                )
-            ])
+            disk = psutil.disk_usage("/")
+            metrics.extend(
+                [
+                    PerformanceMetric(
+                        timestamp=timestamp,
+                        metric_name="disk_usage_percent",
+                        value=disk.percent,
+                        unit="%",
+                        tags={"type": "system", "metric": "disk"},
+                    ),
+                    PerformanceMetric(
+                        timestamp=timestamp,
+                        metric_name="disk_free_gb",
+                        value=disk.free / (1024**3),
+                        unit="GB",
+                        tags={"type": "system", "metric": "disk"},
+                    ),
+                ]
+            )
 
             # Network metrics
             net_io = psutil.net_io_counters()
-            metrics.extend([
-                PerformanceMetric(
-                    timestamp=timestamp,
-                    metric_name="network_bytes_sent",
-                    value=net_io.bytes_sent,
-                    unit="bytes",
-                    tags={"type": "system", "metric": "network"}
-                ),
-                PerformanceMetric(
-                    timestamp=timestamp,
-                    metric_name="network_bytes_recv",
-                    value=net_io.bytes_recv,
-                    unit="bytes",
-                    tags={"type": "system", "metric": "network"}
-                )
-            ])
+            metrics.extend(
+                [
+                    PerformanceMetric(
+                        timestamp=timestamp,
+                        metric_name="network_bytes_sent",
+                        value=net_io.bytes_sent,
+                        unit="bytes",
+                        tags={"type": "system", "metric": "network"},
+                    ),
+                    PerformanceMetric(
+                        timestamp=timestamp,
+                        metric_name="network_bytes_recv",
+                        value=net_io.bytes_recv,
+                        unit="bytes",
+                        tags={"type": "system", "metric": "network"},
+                    ),
+                ]
+            )
 
         except Exception as e:
             logging.error(f"System metrics collection failed: {e}")
@@ -295,17 +314,19 @@ class PerformanceMonitoringSystem:
                 ("process_cpu_percent", process.cpu_percent(), "%"),
                 ("process_memory_mb", process.memory_info().rss / (1024**2), "MB"),
                 ("process_threads", process.num_threads(), "threads"),
-                ("process_handles", process.num_handles(), "handles")
+                ("process_handles", process.num_handles(), "handles"),
             ]
 
             for name, value, unit in process_metrics:
-                metrics.append(PerformanceMetric(
-                    timestamp=timestamp,
-                    metric_name=name,
-                    value=value,
-                    unit=unit,
-                    tags={"type": "application", "process": str(process.pid)}
-                ))
+                metrics.append(
+                    PerformanceMetric(
+                        timestamp=timestamp,
+                        metric_name=name,
+                        value=value,
+                        unit=unit,
+                        tags={"type": "application", "process": str(process.pid)},
+                    )
+                )
 
         except Exception as e:
             logging.error(f"Application metrics collection failed: {e}")
@@ -320,46 +341,56 @@ class PerformanceMonitoringSystem:
         try:
             # Database connection metrics
             for alias, conn in connections.all():
-                if hasattr(conn, 'connection') and conn.connection:
+                if hasattr(conn, "connection") and conn.connection:
                     try:
                         # Get connection stats (implementation varies by database backend)
                         cursor = conn.cursor()
 
                         # PostgreSQL specific queries
-                        if conn.vendor == 'postgresql':
-                            cursor.execute("""
+                        if conn.vendor == "postgresql":
+                            cursor.execute(
+                                """
                                 SELECT count(*)
                                 FROM pg_stat_activity
                                 WHERE state = 'active'
-                            """)
+                            """
+                            )
                             active_connections = cursor.fetchone()[0]
 
-                            metrics.append(PerformanceMetric(
-                                timestamp=timestamp,
-                                metric_name="database_active_connections",
-                                value=active_connections,
-                                unit="connections",
-                                tags={"type": "database", "alias": alias}
-                            ))
+                            metrics.append(
+                                PerformanceMetric(
+                                    timestamp=timestamp,
+                                    metric_name="database_active_connections",
+                                    value=active_connections,
+                                    unit="connections",
+                                    tags={"type": "database", "alias": alias},
+                                )
+                            )
 
                             # Get slow queries
-                            cursor.execute("""
+                            cursor.execute(
+                                """
                                 SELECT count(*)
                                 FROM pg_stat_statements
                                 WHERE mean_exec_time > 1000
-                            """)
+                            """
+                            )
                             slow_queries = cursor.fetchone()[0]
 
-                            metrics.append(PerformanceMetric(
-                                timestamp=timestamp,
-                                metric_name="database_slow_queries",
-                                value=slow_queries,
-                                unit="queries",
-                                tags={"type": "database", "alias": alias}
-                            ))
+                            metrics.append(
+                                PerformanceMetric(
+                                    timestamp=timestamp,
+                                    metric_name="database_slow_queries",
+                                    value=slow_queries,
+                                    unit="queries",
+                                    tags={"type": "database", "alias": alias},
+                                )
+                            )
 
                     except Exception as db_e:
-                        logging.warning(f"Database metrics collection failed for {alias}: {db_e}")
+                        logging.warning(
+                            f"Database metrics collection failed for {alias}: {db_e}"
+                        )
                     finally:
                         cursor.close()
 
@@ -376,54 +407,58 @@ class PerformanceMonitoringSystem:
         try:
             # Redis cache metrics if available
             redis_client = cache.get_backend()
-            if hasattr(redis_client, 'client'):
+            if hasattr(redis_client, "client"):
                 try:
                     info = redis_client.client.info()
 
-                    metrics.extend([
-                        PerformanceMetric(
-                            timestamp=timestamp,
-                            metric_name="redis_used_memory_mb",
-                            value=info.get('used_memory', 0) / (1024**2),
-                            unit="MB",
-                            tags={"type": "cache", "backend": "redis"}
-                        ),
-                        PerformanceMetric(
-                            timestamp=timestamp,
-                            metric_name="redis_connected_clients",
-                            value=info.get('connected_clients', 0),
-                            unit="clients",
-                            tags={"type": "cache", "backend": "redis"}
-                        ),
-                        PerformanceMetric(
-                            timestamp=timestamp,
-                            metric_name="redis_keyspace_hits",
-                            value=info.get('keyspace_hits', 0),
-                            unit="hits",
-                            tags={"type": "cache", "backend": "redis"}
-                        ),
-                        PerformanceMetric(
-                            timestamp=timestamp,
-                            metric_name="redis_keyspace_misses",
-                            value=info.get('keyspace_misses', 0),
-                            unit="misses",
-                            tags={"type": "cache", "backend": "redis"}
-                        )
-                    ])
+                    metrics.extend(
+                        [
+                            PerformanceMetric(
+                                timestamp=timestamp,
+                                metric_name="redis_used_memory_mb",
+                                value=info.get("used_memory", 0) / (1024**2),
+                                unit="MB",
+                                tags={"type": "cache", "backend": "redis"},
+                            ),
+                            PerformanceMetric(
+                                timestamp=timestamp,
+                                metric_name="redis_connected_clients",
+                                value=info.get("connected_clients", 0),
+                                unit="clients",
+                                tags={"type": "cache", "backend": "redis"},
+                            ),
+                            PerformanceMetric(
+                                timestamp=timestamp,
+                                metric_name="redis_keyspace_hits",
+                                value=info.get("keyspace_hits", 0),
+                                unit="hits",
+                                tags={"type": "cache", "backend": "redis"},
+                            ),
+                            PerformanceMetric(
+                                timestamp=timestamp,
+                                metric_name="redis_keyspace_misses",
+                                value=info.get("keyspace_misses", 0),
+                                unit="misses",
+                                tags={"type": "cache", "backend": "redis"},
+                            ),
+                        ]
+                    )
 
                     # Calculate hit rate
-                    hits = info.get('keyspace_hits', 0)
-                    misses = info.get('keyspace_misses', 0)
+                    hits = info.get("keyspace_hits", 0)
+                    misses = info.get("keyspace_misses", 0)
                     total = hits + misses
                     if total > 0:
                         hit_rate = (hits / total) * 100
-                        metrics.append(PerformanceMetric(
-                            timestamp=timestamp,
-                            metric_name="cache_hit_rate_percent",
-                            value=hit_rate,
-                            unit="%",
-                            tags={"type": "cache", "backend": "redis"}
-                        ))
+                        metrics.append(
+                            PerformanceMetric(
+                                timestamp=timestamp,
+                                metric_name="cache_hit_rate_percent",
+                                value=hit_rate,
+                                unit="%",
+                                tags={"type": "cache", "backend": "redis"},
+                            )
+                        )
 
                 except Exception as redis_e:
                     logging.warning(f"Redis metrics collection failed: {redis_e}")
@@ -441,19 +476,31 @@ class PerformanceMonitoringSystem:
             alert_triggered = False
             message = ""
 
-            if metric.metric_name == "cpu_usage_percent" and metric.value > thresholds["cpu_usage"]:
+            if (
+                metric.metric_name == "cpu_usage_percent"
+                and metric.value > thresholds["cpu_usage"]
+            ):
                 alert_triggered = True
                 message = f"High CPU usage: {metric.value:.1f}% (threshold: {thresholds['cpu_usage']}%)"
 
-            elif metric.metric_name == "memory_usage_percent" and metric.value > thresholds["memory_usage"]:
+            elif (
+                metric.metric_name == "memory_usage_percent"
+                and metric.value > thresholds["memory_usage"]
+            ):
                 alert_triggered = True
                 message = f"High memory usage: {metric.value:.1f}% (threshold: {thresholds['memory_usage']}%)"
 
-            elif metric.metric_name == "disk_usage_percent" and metric.value > thresholds["disk_usage"]:
+            elif (
+                metric.metric_name == "disk_usage_percent"
+                and metric.value > thresholds["disk_usage"]
+            ):
                 alert_triggered = True
                 message = f"High disk usage: {metric.value:.1f}% (threshold: {thresholds['disk_usage']}%)"
 
-            elif metric.metric_name == "database_active_connections" and metric.value > thresholds["database_connections"]:
+            elif (
+                metric.metric_name == "database_active_connections"
+                and metric.value > thresholds["database_connections"]
+            ):
                 alert_triggered = True
                 message = f"High database connections: {metric.value:.0f} (threshold: {thresholds['database_connections']})"
 
@@ -463,10 +510,26 @@ class PerformanceMonitoringSystem:
                     "timestamp": timezone.now().isoformat(),
                     "metric": metric.metric_name,
                     "value": metric.value,
-                    "threshold": thresholds.get(metric.metric_name.split('_')[0] + "_" + metric.metric_name.split('_')[1], 0),
+                    "threshold": thresholds.get(
+                        metric.metric_name.split("_")[0]
+                        + "_"
+                        + metric.metric_name.split("_")[1],
+                        0,
+                    ),
                     "message": message,
-                    "severity": "warning" if metric.value < thresholds.get(metric.metric_name.split('_')[0] + "_" + metric.metric_name.split('_')[1], 0) * 1.1 else "critical",
-                    "tags": metric.tags
+                    "severity": (
+                        "warning"
+                        if metric.value
+                        < thresholds.get(
+                            metric.metric_name.split("_")[0]
+                            + "_"
+                            + metric.metric_name.split("_")[1],
+                            0,
+                        )
+                        * 1.1
+                        else "critical"
+                    ),
+                    "tags": metric.tags,
                 }
 
                 self.alerts.append(alert)
@@ -474,10 +537,11 @@ class PerformanceMonitoringSystem:
 
     def _cleanup_old_metrics(self):
         """Remove old metrics from buffer"""
-        cutoff_time = timezone.now() - timedelta(days=self.monitoring_config["retention_days"])
+        cutoff_time = timezone.now() - timedelta(
+            days=self.monitoring_config["retention_days"]
+        )
         self.metrics_buffer = [
-            metric for metric in self.metrics_buffer
-            if metric.timestamp > cutoff_time
+            metric for metric in self.metrics_buffer if metric.timestamp > cutoff_time
         ]
 
     def get_performance_dashboard(self) -> Dict:
@@ -503,7 +567,7 @@ class PerformanceMonitoringSystem:
                 "health_summary": health_summary,
                 "performance_trends": trends,
                 "metrics_count": len(self.metrics_buffer),
-                "alerts_count": len(self.alerts)
+                "alerts_count": len(self.alerts),
             }
 
         except Exception as e:
@@ -523,7 +587,7 @@ class PerformanceMonitoringSystem:
                     "value": metric.value,
                     "unit": metric.unit,
                     "timestamp": metric.timestamp.isoformat(),
-                    "tags": metric.tags
+                    "tags": metric.tags,
                 }
 
         return latest_metrics
@@ -571,10 +635,14 @@ class PerformanceMonitoringSystem:
 
             return {
                 "overall_score": health_score,
-                "status": "healthy" if health_score >= 80 else "warning" if health_score >= 60 else "critical",
+                "status": (
+                    "healthy"
+                    if health_score >= 80
+                    else "warning" if health_score >= 60 else "critical"
+                ),
                 "issues": issues,
                 "checked_components": ["cpu", "memory", "disk"],
-                "last_check": timezone.now().isoformat()
+                "last_check": timezone.now().isoformat(),
             }
 
         except Exception as e:
@@ -592,7 +660,8 @@ class PerformanceMonitoringSystem:
             cutoff_time = timezone.now() - timedelta(hours=1)  # Last hour
 
             recent_metrics = [
-                metric for metric in self.metrics_buffer
+                metric
+                for metric in self.metrics_buffer
                 if metric.timestamp > cutoff_time
             ]
 
@@ -613,8 +682,8 @@ class PerformanceMonitoringSystem:
 
                     if len(values) >= 10:
                         # Simple trend detection
-                        first_half = values[:len(values)//2]
-                        second_half = values[len(values)//2:]
+                        first_half = values[: len(values) // 2]
+                        second_half = values[len(values) // 2 :]
                         first_avg = sum(first_half) / len(first_half)
                         second_avg = sum(second_half) / len(second_half)
 
@@ -628,7 +697,7 @@ class PerformanceMonitoringSystem:
                         "minimum": round(min_value, 2),
                         "maximum": round(max_value, 2),
                         "trend": trend,
-                        "data_points": len(values)
+                        "data_points": len(values),
                     }
 
             return trends
@@ -671,7 +740,7 @@ class PerformanceMonitoringSystem:
                 "duration_seconds": round(time.time() - start_time, 2),
                 "overall_score": overall_score,
                 "benchmarks": benchmark_results,
-                "thresholds": self.monitoring_config["benchmark_thresholds"]
+                "thresholds": self.monitoring_config["benchmark_thresholds"],
             }
 
             # Store benchmark result
@@ -687,14 +756,15 @@ class PerformanceMonitoringSystem:
     def _benchmark_database_queries(self) -> Dict:
         """Benchmark database query performance"""
         try:
-            from django.db import connections
             import time
+
+            from django.db import connections
 
             results = {
                 "query_times": [],
                 "average_time": 0,
                 "slow_queries": 0,
-                "query_count": 0
+                "query_count": 0,
             }
 
             # Test common query patterns
@@ -708,15 +778,14 @@ class PerformanceMonitoringSystem:
                 try:
                     start_time = time.time()
 
-                    with connections['default'].cursor() as cursor:
+                    with connections["default"].cursor() as cursor:
                         cursor.execute(query)
                         result = cursor.fetchall()
 
                     query_time = (time.time() - start_time) * 1000  # Convert to ms
-                    results["query_times"].append({
-                        "query": query[:50] + "...",
-                        "time_ms": round(query_time, 2)
-                    })
+                    results["query_times"].append(
+                        {"query": query[:50] + "...", "time_ms": round(query_time, 2)}
+                    )
                     results["query_count"] += 1
 
                     if query_time > 100:  # Slow query threshold
@@ -728,7 +797,9 @@ class PerformanceMonitoringSystem:
             # Calculate average
             if results["query_times"]:
                 results["average_time"] = round(
-                    sum(qt["time_ms"] for qt in results["query_times"]) / len(results["query_times"]), 2
+                    sum(qt["time_ms"] for qt in results["query_times"])
+                    / len(results["query_times"]),
+                    2,
                 )
 
             return results
@@ -747,7 +818,7 @@ class PerformanceMonitoringSystem:
                 "write_times": [],
                 "average_read_time": 0,
                 "average_write_time": 0,
-                "hit_rate": 0
+                "hit_rate": 0,
             }
 
             # Test cache reads
@@ -802,7 +873,7 @@ class PerformanceMonitoringSystem:
                 "max_response_time": 0,
                 "success_rate": 0,
                 "total_requests": 0,
-                "successful_requests": 0
+                "successful_requests": 0,
             }
 
             # Test API endpoints (mock implementation)
@@ -818,23 +889,27 @@ class PerformanceMonitoringSystem:
                     response = requests.get(endpoint, timeout=5)
                     response_time = (time.time() - start_time) * 1000
 
-                    results["response_times"].append({
-                        "endpoint": endpoint,
-                        "time_ms": round(response_time, 2),
-                        "status_code": response.status_code
-                    })
+                    results["response_times"].append(
+                        {
+                            "endpoint": endpoint,
+                            "time_ms": round(response_time, 2),
+                            "status_code": response.status_code,
+                        }
+                    )
 
                     results["total_requests"] += 1
                     if response.status_code == 200:
                         results["successful_requests"] += 1
 
                 except requests.RequestException as e:
-                    results["response_times"].append({
-                        "endpoint": endpoint,
-                        "time_ms": 5000,  # Timeout
-                        "status_code": 0,
-                        "error": str(e)
-                    })
+                    results["response_times"].append(
+                        {
+                            "endpoint": endpoint,
+                            "time_ms": 5000,  # Timeout
+                            "status_code": 0,
+                            "error": str(e),
+                        }
+                    )
                     results["total_requests"] += 1
 
             # Calculate statistics
@@ -846,7 +921,8 @@ class PerformanceMonitoringSystem:
 
             if results["total_requests"] > 0:
                 results["success_rate"] = round(
-                    (results["successful_requests"] / results["total_requests"]) * 100, 2
+                    (results["successful_requests"] / results["total_requests"]) * 100,
+                    2,
                 )
 
             return results
@@ -865,12 +941,14 @@ class PerformanceMonitoringSystem:
                 "baseline_memory_mb": 0,
                 "peak_memory_mb": 0,
                 "memory_growth_mb": 0,
-                "garbage_collection_stats": {}
+                "garbage_collection_stats": {},
             }
 
             # Get baseline memory
             process = psutil.Process()
-            results["baseline_memory_mb"] = round(process.memory_info().rss / (1024**2), 2)
+            results["baseline_memory_mb"] = round(
+                process.memory_info().rss / (1024**2), 2
+            )
 
             # Start memory tracing
             tracemalloc.start()
@@ -882,7 +960,9 @@ class PerformanceMonitoringSystem:
             # Get peak memory
             peak_memory = process.memory_info().rss / (1024**2)
             results["peak_memory_mb"] = round(peak_memory, 2)
-            results["memory_growth_mb"] = round(peak_memory - results["baseline_memory_mb"], 2)
+            results["memory_growth_mb"] = round(
+                peak_memory - results["baseline_memory_mb"], 2
+            )
 
             # Get garbage collection stats
             gc_stats = gc.get_stats()
@@ -890,7 +970,7 @@ class PerformanceMonitoringSystem:
                 f"generation_{i}": {
                     "collections": stat["collections"],
                     "collected": stat["collected"],
-                    "uncollectable": stat["uncollectable"]
+                    "uncollectable": stat["uncollectable"],
                 }
                 for i, stat in enumerate(gc_stats)
             }
@@ -918,7 +998,7 @@ class PerformanceMonitoringSystem:
                 "min_load_time": 0,
                 "max_load_time": 0,
                 "resource_load_times": {},
-                "pages_tested": 0
+                "pages_tested": 0,
             }
 
             # Simulate load testing different pages
@@ -927,16 +1007,15 @@ class PerformanceMonitoringSystem:
                 "/patients",
                 "/appointments",
                 "/billing",
-                "/reports"
+                "/reports",
             ]
 
             for page in test_pages:
                 # Mock load times (in real implementation, these would be actual measurements)
-                load_time = random.uniform(800, 3000)  # 0.8-3 seconds
-                results["page_load_times"].append({
-                    "page": page,
-                    "load_time_ms": round(load_time, 2)
-                })
+                load_time = secrets.uniform(800, 3000)  # 0.8-3 seconds
+                results["page_load_times"].append(
+                    {"page": page, "load_time_ms": round(load_time, 2)}
+                )
                 results["pages_tested"] += 1
 
                 # Simulate resource load times
@@ -944,7 +1023,7 @@ class PerformanceMonitoringSystem:
                     "html_ms": round(load_time * 0.3, 2),
                     "css_ms": round(load_time * 0.2, 2),
                     "js_ms": round(load_time * 0.4, 2),
-                    "images_ms": round(load_time * 0.1, 2)
+                    "images_ms": round(load_time * 0.1, 2),
                 }
 
             # Calculate statistics
@@ -968,28 +1047,48 @@ class PerformanceMonitoringSystem:
             deductions = 0
 
             # Database score
-            if "database" in benchmark_results and "average_time" in benchmark_results["database"]:
+            if (
+                "database" in benchmark_results
+                and "average_time" in benchmark_results["database"]
+            ):
                 db_time = benchmark_results["database"]["average_time"]
                 if db_time > thresholds["database_query_time"]:
-                    deductions += min(20, (db_time / thresholds["database_query_time"] - 1) * 10)
+                    deductions += min(
+                        20, (db_time / thresholds["database_query_time"] - 1) * 10
+                    )
 
             # API score
-            if "api" in benchmark_results and "average_response_time" in benchmark_results["api"]:
+            if (
+                "api" in benchmark_results
+                and "average_response_time" in benchmark_results["api"]
+            ):
                 api_time = benchmark_results["api"]["average_response_time"]
                 if api_time > thresholds["api_response_time"]:
-                    deductions += min(25, (api_time / thresholds["api_response_time"] - 1) * 12)
+                    deductions += min(
+                        25, (api_time / thresholds["api_response_time"] - 1) * 12
+                    )
 
             # Frontend score
-            if "frontend" in benchmark_results and "average_load_time" in benchmark_results["frontend"]:
+            if (
+                "frontend" in benchmark_results
+                and "average_load_time" in benchmark_results["frontend"]
+            ):
                 frontend_time = benchmark_results["frontend"]["average_load_time"]
                 if frontend_time > thresholds["page_load_time"]:
-                    deductions += min(20, (frontend_time / thresholds["page_load_time"] - 1) * 10)
+                    deductions += min(
+                        20, (frontend_time / thresholds["page_load_time"] - 1) * 10
+                    )
 
             # Cache score
-            if "cache" in benchmark_results and "hit_rate" in benchmark_results["cache"]:
+            if (
+                "cache" in benchmark_results
+                and "hit_rate" in benchmark_results["cache"]
+            ):
                 cache_hit_rate = benchmark_results["cache"]["hit_rate"]
                 if cache_hit_rate < thresholds["cache_hit_rate"]:
-                    deductions += min(15, (thresholds["cache_hit_rate"] - cache_hit_rate) * 0.3)
+                    deductions += min(
+                        15, (thresholds["cache_hit_rate"] - cache_hit_rate) * 0.3
+                    )
 
             return max(0, score - deductions)
 
@@ -1011,7 +1110,9 @@ class PerformanceMonitoringSystem:
             ramp_up_time = test_config.get("ramp_up_time", 10)
             endpoints = test_config.get("endpoints", [])
 
-            logging.info(f"Starting load test: {test_name} with {concurrent_users} users for {duration_seconds}s")
+            logging.info(
+                f"Starting load test: {test_name} with {concurrent_users} users for {duration_seconds}s"
+            )
 
             # Run load test
             result = self._execute_load_test(
@@ -1020,7 +1121,7 @@ class PerformanceMonitoringSystem:
                 concurrent_users=concurrent_users,
                 duration_seconds=duration_seconds,
                 ramp_up_time=ramp_up_time,
-                endpoints=endpoints
+                endpoints=endpoints,
             )
 
             end_time = timezone.now()
@@ -1039,8 +1140,8 @@ class PerformanceMonitoringSystem:
     def _execute_load_test(self, **kwargs) -> LoadTestResult:
         """Execute the actual load test"""
         try:
-            from concurrent.futures import ThreadPoolExecutor, as_completed
             import statistics
+            from concurrent.futures import ThreadPoolExecutor, as_completed
 
             test_id = kwargs["test_id"]
             test_name = kwargs["test_name"]
@@ -1056,7 +1157,11 @@ class PerformanceMonitoringSystem:
                 """Make a single request as part of load test"""
                 try:
                     # Select random endpoint
-                    endpoint = random.choice(endpoints) if endpoints else "http://localhost:8000/api/health/"
+                    endpoint = (
+                        secrets.choice(endpoints)
+                        if endpoints
+                        else "http://localhost:8000/api/health/"
+                    )
 
                     start_time = time.time()
                     response = requests.get(endpoint, timeout=30)
@@ -1067,7 +1172,7 @@ class PerformanceMonitoringSystem:
                         "response_time_ms": response_time,
                         "status_code": response.status_code,
                         "success": response.status_code == 200,
-                        "endpoint": endpoint
+                        "endpoint": endpoint,
                     }
 
                 except Exception as e:
@@ -1077,7 +1182,7 @@ class PerformanceMonitoringSystem:
                         "status_code": 0,
                         "success": False,
                         "error": str(e),
-                        "endpoint": endpoint if endpoints else "unknown"
+                        "endpoint": endpoint if endpoints else "unknown",
                     }
 
             # Execute load test with ThreadPoolExecutor
@@ -1117,12 +1222,18 @@ class PerformanceMonitoringSystem:
                 p95_response_time = sorted_times[int(len(sorted_times) * 0.95)]
                 p99_response_time = sorted_times[int(len(sorted_times) * 0.99)]
             else:
-                avg_response_time = min_response_time = max_response_time = p95_response_time = p99_response_time = 0
+                avg_response_time = min_response_time = max_response_time = (
+                    p95_response_time
+                ) = p99_response_time = 0
 
             # Calculate requests per second
             actual_duration = max(1, time.time() - start_time)
             requests_per_second = len(all_response_times) / actual_duration
-            error_rate = (failed_requests / len(all_response_times)) * 100 if all_response_times else 0
+            error_rate = (
+                (failed_requests / len(all_response_times)) * 100
+                if all_response_times
+                else 0
+            )
 
             # Collect system metrics during test
             system_metrics = self._collect_load_test_system_metrics()
@@ -1143,7 +1254,7 @@ class PerformanceMonitoringSystem:
                 p99_response_time=round(p99_response_time, 2),
                 requests_per_second=round(requests_per_second, 2),
                 error_rate=round(error_rate, 2),
-                system_metrics=system_metrics
+                system_metrics=system_metrics,
             )
 
         except Exception as e:
@@ -1156,10 +1267,10 @@ class PerformanceMonitoringSystem:
             return {
                 "cpu_usage_percent": psutil.cpu_percent(interval=1),
                 "memory_usage_percent": psutil.virtual_memory().percent,
-                "disk_usage_percent": psutil.disk_usage('/').percent,
+                "disk_usage_percent": psutil.disk_usage("/").percent,
                 "network_sent_bytes": psutil.net_io_counters().bytes_sent,
                 "network_recv_bytes": psutil.net_io_counters().bytes_recv,
-                "timestamp": timezone.now().isoformat()
+                "timestamp": timezone.now().isoformat(),
             }
         except Exception as e:
             logging.error(f"System metrics collection during load test failed: {e}")
@@ -1172,37 +1283,51 @@ class PerformanceMonitoringSystem:
                 "generated_at": timezone.now().isoformat(),
                 "report_type": report_type,
                 "monitoring_status": "active" if self.is_monitoring else "inactive",
-                "data_period": f"Last {self.monitoring_config['retention_days']} days"
+                "data_period": f"Last {self.monitoring_config['retention_days']} days",
             }
 
             if report_type == "comprehensive":
                 # Include all sections
-                report.update({
-                    "executive_summary": self._generate_executive_summary(),
-                    "system_health": self._get_health_summary(),
-                    "performance_benchmarks": list(self.benchmarks.values())[-5:],  # Last 5 benchmarks
-                    "load_test_results": [asdict(result) for result in self.load_test_history[-3:]],  # Last 3 load tests
-                    "recent_alerts": self.alerts[-10:],  # Last 10 alerts
-                    "optimization_recommendations": self._generate_optimization_recommendations(),
-                    "performance_trends": self._get_performance_trends()
-                })
+                report.update(
+                    {
+                        "executive_summary": self._generate_executive_summary(),
+                        "system_health": self._get_health_summary(),
+                        "performance_benchmarks": list(self.benchmarks.values())[
+                            -5:
+                        ],  # Last 5 benchmarks
+                        "load_test_results": [
+                            asdict(result) for result in self.load_test_history[-3:]
+                        ],  # Last 3 load tests
+                        "recent_alerts": self.alerts[-10:],  # Last 10 alerts
+                        "optimization_recommendations": self._generate_optimization_recommendations(),
+                        "performance_trends": self._get_performance_trends(),
+                    }
+                )
 
             elif report_type == "summary":
                 # Brief overview
-                report.update({
-                    "executive_summary": self._generate_executive_summary(),
-                    "system_health": self._get_health_summary(),
-                    "recent_alerts_count": len(self.alerts),
-                    "last_benchmark_score": list(self.benchmarks.values())[-1]["overall_score"] if self.benchmarks else 0
-                })
+                report.update(
+                    {
+                        "executive_summary": self._generate_executive_summary(),
+                        "system_health": self._get_health_summary(),
+                        "recent_alerts_count": len(self.alerts),
+                        "last_benchmark_score": (
+                            list(self.benchmarks.values())[-1]["overall_score"]
+                            if self.benchmarks
+                            else 0
+                        ),
+                    }
+                )
 
             elif report_type == "alerts":
                 # Focus on alerts and issues
-                report.update({
-                    "recent_alerts": self.alerts,
-                    "alert_summary": self._generate_alert_summary(),
-                    "recommendations": self._generate_alert_recommendations()
-                })
+                report.update(
+                    {
+                        "recent_alerts": self.alerts,
+                        "alert_summary": self._generate_alert_summary(),
+                        "recommendations": self._generate_alert_recommendations(),
+                    }
+                )
 
             return report
 
@@ -1217,29 +1342,45 @@ class PerformanceMonitoringSystem:
             current_metrics = self._get_current_metrics()
 
             # Get latest benchmark
-            latest_benchmark = list(self.benchmarks.values())[-1] if self.benchmarks else None
+            latest_benchmark = (
+                list(self.benchmarks.values())[-1] if self.benchmarks else None
+            )
 
             # Get latest load test
-            latest_load_test = self.load_test_history[-1] if self.load_test_history else None
+            latest_load_test = (
+                self.load_test_history[-1] if self.load_test_history else None
+            )
 
             return {
                 "overall_health": health.get("status", "unknown"),
                 "health_score": health.get("overall_score", 0),
                 "monitoring_active": self.is_monitoring,
-                "active_alerts": len([a for a in self.alerts if a["severity"] == "critical"]),
-                "benchmark_score": latest_benchmark["overall_score"] if latest_benchmark else 0,
-                "load_test_rps": latest_load_test.requests_per_second if latest_load_test else 0,
+                "active_alerts": len(
+                    [a for a in self.alerts if a["severity"] == "critical"]
+                ),
+                "benchmark_score": (
+                    latest_benchmark["overall_score"] if latest_benchmark else 0
+                ),
+                "load_test_rps": (
+                    latest_load_test.requests_per_second if latest_load_test else 0
+                ),
                 "key_metrics": {
-                    "cpu_usage": current_metrics.get("cpu_usage_percent", {}).get("value", 0),
-                    "memory_usage": current_metrics.get("memory_usage_percent", {}).get("value", 0),
-                    "database_connections": current_metrics.get("database_active_connections", {}).get("value", 0)
+                    "cpu_usage": current_metrics.get("cpu_usage_percent", {}).get(
+                        "value", 0
+                    ),
+                    "memory_usage": current_metrics.get("memory_usage_percent", {}).get(
+                        "value", 0
+                    ),
+                    "database_connections": current_metrics.get(
+                        "database_active_connections", {}
+                    ).get("value", 0),
                 },
                 "recommendations": [
                     "Continue monitoring system performance",
                     "Review any critical alerts",
                     "Schedule regular load testing",
-                    "Optimize based on benchmark results"
-                ]
+                    "Optimize based on benchmark results",
+                ],
             }
 
         except Exception as e:
@@ -1258,59 +1399,69 @@ class PerformanceMonitoringSystem:
             if "cpu_usage_percent" in current_metrics:
                 cpu_usage = current_metrics["cpu_usage_percent"]["value"]
                 if cpu_usage > 80:
-                    recommendations.append({
-                        "priority": "high",
-                        "category": "cpu",
-                        "issue": f"High CPU usage: {cpu_usage:.1f}%",
-                        "recommendation": "Consider scaling up resources or optimizing CPU-intensive tasks",
-                        "estimated_improvement": "20-30% reduction in CPU usage"
-                    })
+                    recommendations.append(
+                        {
+                            "priority": "high",
+                            "category": "cpu",
+                            "issue": f"High CPU usage: {cpu_usage:.1f}%",
+                            "recommendation": "Consider scaling up resources or optimizing CPU-intensive tasks",
+                            "estimated_improvement": "20-30% reduction in CPU usage",
+                        }
+                    )
 
             # Memory optimization recommendations
             if "memory_usage_percent" in current_metrics:
                 memory_usage = current_metrics["memory_usage_percent"]["value"]
                 if memory_usage > 85:
-                    recommendations.append({
-                        "priority": "high",
-                        "category": "memory",
-                        "issue": f"High memory usage: {memory_usage:.1f}%",
-                        "recommendation": "Implement memory optimization strategies and consider memory profiling",
-                        "estimated_improvement": "30-40% reduction in memory usage"
-                    })
+                    recommendations.append(
+                        {
+                            "priority": "high",
+                            "category": "memory",
+                            "issue": f"High memory usage: {memory_usage:.1f}%",
+                            "recommendation": "Implement memory optimization strategies and consider memory profiling",
+                            "estimated_improvement": "30-40% reduction in memory usage",
+                        }
+                    )
 
             # Database optimization recommendations
             if "database_active_connections" in current_metrics:
                 db_connections = current_metrics["database_active_connections"]["value"]
                 if db_connections > 50:
-                    recommendations.append({
-                        "priority": "medium",
-                        "category": "database",
-                        "issue": f"High database connections: {db_connections}",
-                        "recommendation": "Optimize database connection pooling and query efficiency",
-                        "estimated_improvement": "40-50% reduction in connection count"
-                    })
+                    recommendations.append(
+                        {
+                            "priority": "medium",
+                            "category": "database",
+                            "issue": f"High database connections: {db_connections}",
+                            "recommendation": "Optimize database connection pooling and query efficiency",
+                            "estimated_improvement": "40-50% reduction in connection count",
+                        }
+                    )
 
             # Cache optimization recommendations
             if "cache_hit_rate_percent" in current_metrics:
                 cache_hit_rate = current_metrics["cache_hit_rate_percent"]["value"]
                 if cache_hit_rate < 70:
-                    recommendations.append({
-                        "priority": "medium",
-                        "category": "cache",
-                        "issue": f"Low cache hit rate: {cache_hit_rate:.1f}%",
-                        "recommendation": "Implement caching strategies for frequently accessed data",
-                        "estimated_improvement": "60-80% improvement in cache hit rate"
-                    })
+                    recommendations.append(
+                        {
+                            "priority": "medium",
+                            "category": "cache",
+                            "issue": f"Low cache hit rate: {cache_hit_rate:.1f}%",
+                            "recommendation": "Implement caching strategies for frequently accessed data",
+                            "estimated_improvement": "60-80% improvement in cache hit rate",
+                        }
+                    )
 
             # General recommendations
             if health.get("overall_score", 100) < 80:
-                recommendations.append({
-                    "priority": "medium",
-                    "category": "general",
-                    "issue": f"System health score below threshold: {health['overall_score']}",
-                    "recommendation": "Review system performance and implement optimization measures",
-                    "estimated_improvement": "20-40% improvement in overall health"
-                })
+                recommendations.append(
+                    {
+                        "priority": "medium",
+                        "category": "general",
+                        "issue": f"System health score below threshold: {health['overall_score']}",
+                        "recommendation": "Review system performance and implement optimization measures",
+                        "estimated_improvement": "20-40% improvement in overall health",
+                    }
+                )
 
         except Exception as e:
             logging.error(f"Optimization recommendations generation failed: {e}")
@@ -1325,7 +1476,11 @@ class PerformanceMonitoringSystem:
 
             # Analyze recent alerts (last 24 hours)
             cutoff_time = timezone.now() - timedelta(hours=24)
-            recent_alerts = [a for a in self.alerts if datetime.fromisoformat(a["timestamp"]) > cutoff_time]
+            recent_alerts = [
+                a
+                for a in self.alerts
+                if datetime.fromisoformat(a["timestamp"]) > cutoff_time
+            ]
 
             if not recent_alerts:
                 return {"message": "No alerts in the last 24 hours"}
@@ -1345,8 +1500,10 @@ class PerformanceMonitoringSystem:
             return {
                 "total_alerts_24h": len(recent_alerts),
                 "severity_breakdown": severity_counts,
-                "most_alerted_metrics": sorted(metric_counts.items(), key=lambda x: x[1], reverse=True)[:5],
-                "latest_alert": recent_alerts[-1] if recent_alerts else None
+                "most_alerted_metrics": sorted(
+                    metric_counts.items(), key=lambda x: x[1], reverse=True
+                )[:5],
+                "latest_alert": recent_alerts[-1] if recent_alerts else None,
             }
 
         except Exception as e:
@@ -1375,29 +1532,35 @@ class PerformanceMonitoringSystem:
             for metric, data in alert_patterns.items():
                 if data["count"] >= 3:  # Recurring alerts
                     if "cpu" in metric:
-                        recommendations.append({
-                            "priority": "high",
-                            "metric": metric,
-                            "issue": f"Recurring CPU alerts ({data['count']} occurrences)",
-                            "recommendation": "Investigate CPU-intensive processes and consider scaling",
-                            "avg_value": round(data["avg_value"], 2)
-                        })
+                        recommendations.append(
+                            {
+                                "priority": "high",
+                                "metric": metric,
+                                "issue": f"Recurring CPU alerts ({data['count']} occurrences)",
+                                "recommendation": "Investigate CPU-intensive processes and consider scaling",
+                                "avg_value": round(data["avg_value"], 2),
+                            }
+                        )
                     elif "memory" in metric:
-                        recommendations.append({
-                            "priority": "high",
-                            "metric": metric,
-                            "issue": f"Recurring memory alerts ({data['count']} occurrences)",
-                            "recommendation": "Implement memory optimization and investigate memory leaks",
-                            "avg_value": round(data["avg_value"], 2)
-                        })
+                        recommendations.append(
+                            {
+                                "priority": "high",
+                                "metric": metric,
+                                "issue": f"Recurring memory alerts ({data['count']} occurrences)",
+                                "recommendation": "Implement memory optimization and investigate memory leaks",
+                                "avg_value": round(data["avg_value"], 2),
+                            }
+                        )
                     elif "database" in metric:
-                        recommendations.append({
-                            "priority": "medium",
-                            "metric": metric,
-                            "issue": f"Recurring database alerts ({data['count']} occurrences)",
-                            "recommendation": "Optimize database queries and connection pooling",
-                            "avg_value": round(data["avg_value"], 2)
-                        })
+                        recommendations.append(
+                            {
+                                "priority": "medium",
+                                "metric": metric,
+                                "issue": f"Recurring database alerts ({data['count']} occurrences)",
+                                "recommendation": "Optimize database queries and connection pooling",
+                                "avg_value": round(data["avg_value"], 2),
+                            }
+                        )
 
         except Exception as e:
             logging.error(f"Alert recommendations generation failed: {e}")

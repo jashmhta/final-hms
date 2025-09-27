@@ -1,11 +1,17 @@
+"""
+performance_test module
+"""
+
 import asyncio
-import aiohttp
-import time
-import statistics
-from concurrent.futures import ThreadPoolExecutor
-import logging
-from typing import List, Dict
 import json
+import logging
+import statistics
+import time
+from concurrent.futures import ThreadPoolExecutor
+from typing import Dict, List
+
+import aiohttp
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 class PerformanceTestSuite:

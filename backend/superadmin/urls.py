@@ -12,7 +12,9 @@ from .views import (
 )
 
 router = DefaultRouter()
-router.register(r"subscription-tiers", SubscriptionTierViewSet, basename="subscription-tier")
+router.register(
+    r"subscription-tiers", SubscriptionTierViewSet, basename="subscription-tier"
+)
 router.register(
     r"hospital-subscriptions",
     HospitalSubscriptionViewSet,

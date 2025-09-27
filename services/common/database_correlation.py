@@ -3,18 +3,19 @@ Database correlation ID tracking utilities
 Support for PostgreSQL, MySQL, and SQLite with query correlation
 """
 
+import json
 import logging
 import time
-from typing import Dict, Any, Optional, List, Union
+import uuid
 from contextlib import contextmanager
 from datetime import datetime
-import uuid
-import json
+from typing import Any, Dict, List, Optional, Union
 
 from .correlation_id import get_correlation_id, set_correlation_id
 from .otel_config import get_tracer
 
 logger = logging.getLogger(__name__)
+
 
 class DatabaseCorrelationMixin:
     """Mixin to add correlation ID support to database operations"""
@@ -27,7 +28,7 @@ class DatabaseCorrelationMixin:
         self,
         query: str,
         params: Optional[Dict[str, Any]] = None,
-        correlation_id: Optional[str] = None
+        correlation_id: Optional[str] = None,
     ):
         """Execute query with correlation ID tracking"""
         # Get or generate correlation ID
@@ -46,11 +47,11 @@ class DatabaseCorrelationMixin:
             "Executing database query",
             correlation_id=correlation_id,
             query=query[:200] + "..." if len(query) > 200 else query,
-            params_type=type(params).__name__
+            params_type=type(params).__name__,
         )
 
         # Add correlation ID as comment for PostgreSQL
-        if 'postgresql' in str(type(self.cursor).lower()):
+        if "postgresql" in str(type(self.cursor).lower()):
             query_with_correlation = f"/* correlation_id: {correlation_id} */ {query}"
         else:
             query_with_correlation = query
@@ -66,7 +67,7 @@ class DatabaseCorrelationMixin:
                 "Database query completed",
                 correlation_id=correlation_id,
                 duration_ms=duration * 1000,
-                rows_affected=getattr(result, 'rowcount', 0)
+                rows_affected=getattr(result, "rowcount", 0),
             )
 
             # Record metrics if OpenTelemetry is available
@@ -88,7 +89,7 @@ class DatabaseCorrelationMixin:
                 "Database query failed",
                 correlation_id=correlation_id,
                 error=str(e),
-                duration_ms=duration * 1000
+                duration_ms=duration * 1000,
             )
 
             # Record error in span if available
@@ -105,9 +106,10 @@ class DatabaseCorrelationMixin:
     def _extract_operation(self, query: str) -> str:
         """Extract SQL operation from query"""
         query = query.strip().upper()
-        if query.startswith(('SELECT', 'INSERT', 'UPDATE', 'DELETE')):
+        if query.startswith(("SELECT", "INSERT", "UPDATE", "DELETE")):
             return query.split()[0]
-        return 'UNKNOWN'
+        return "UNKNOWN"
+
 
 class DjangoQuerySetCorrelation:
     """Django QuerySet mixin for correlation ID support"""
@@ -129,34 +131,48 @@ class DjangoQuerySetCorrelation:
         original_last = queryset.__class__.last
 
         def iter_with_correlation(self):
-            correlation_id = getattr(self, '_correlation_id', None) or get_correlation_id()
+            correlation_id = (
+                getattr(self, "_correlation_id", None) or get_correlation_id()
+            )
             if correlation_id:
-                logger.info("Executing QuerySet iteration", correlation_id=correlation_id)
+                logger.info(
+                    "Executing QuerySet iteration", correlation_id=correlation_id
+                )
                 # Log the query
                 query = str(self.query)
-                logger.debug("QuerySet query", correlation_id=correlation_id, query=query)
+                logger.debug(
+                    "QuerySet query", correlation_id=correlation_id, query=query
+                )
             return original_iter(self)
 
         def count_with_correlation(self):
-            correlation_id = getattr(self, '_correlation_id', None) or get_correlation_id()
+            correlation_id = (
+                getattr(self, "_correlation_id", None) or get_correlation_id()
+            )
             if correlation_id:
                 logger.info("Executing QuerySet count", correlation_id=correlation_id)
             return original_count(self)
 
         def exists_with_correlation(self):
-            correlation_id = getattr(self, '_correlation_id', None) or get_correlation_id()
+            correlation_id = (
+                getattr(self, "_correlation_id", None) or get_correlation_id()
+            )
             if correlation_id:
                 logger.info("Executing QuerySet exists", correlation_id=correlation_id)
             return original_exists(self)
 
         def first_with_correlation(self):
-            correlation_id = getattr(self, '_correlation_id', None) or get_correlation_id()
+            correlation_id = (
+                getattr(self, "_correlation_id", None) or get_correlation_id()
+            )
             if correlation_id:
                 logger.info("Executing QuerySet first", correlation_id=correlation_id)
             return original_first(self)
 
         def last_with_correlation(self):
-            correlation_id = getattr(self, '_correlation_id', None) or get_correlation_id()
+            correlation_id = (
+                getattr(self, "_correlation_id", None) or get_correlation_id()
+            )
             if correlation_id:
                 logger.info("Executing QuerySet last", correlation_id=correlation_id)
             return original_last(self)
@@ -169,6 +185,7 @@ class DjangoQuerySetCorrelation:
         queryset.__class__.last = last_with_correlation
 
         return queryset
+
 
 class SQLAlchemyCorrelationExtension:
     """SQLAlchemy extension for correlation ID support"""
@@ -184,7 +201,7 @@ class SQLAlchemyCorrelationExtension:
 
         # Store correlation ID in connection info
         conn = self.engine.connect()
-        conn.info['correlation_id'] = correlation_id
+        conn.info["correlation_id"] = correlation_id
 
         # Set correlation ID in context
         original_correlation = get_correlation_id()
@@ -197,6 +214,7 @@ class SQLAlchemyCorrelationExtension:
             if original_correlation:
                 set_correlation_id(original_correlation)
             conn.close()
+
 
 class DatabaseConnectionPool:
     """Database connection pool with correlation ID tracking"""
@@ -214,24 +232,27 @@ class DatabaseConnectionPool:
             correlation_id = get_correlation_id() or str(uuid.uuid4())
 
         # Check for available connection
-        if correlation_id in self.connections and self.connections[correlation_id]['available']:
+        if (
+            correlation_id in self.connections
+            and self.connections[correlation_id]["available"]
+        ):
             conn = self.connections[correlation_id]
-            conn['available'] = False
-            conn['last_used'] = time.time()
-            conn['query_count'] = conn.get('query_count', 0) + 1
+            conn["available"] = False
+            conn["last_used"] = time.time()
+            conn["query_count"] = conn.get("query_count", 0) + 1
             return conn
 
         # Create new connection if under pool size
         if self.active_connections < self.pool_size:
             self.active_connections += 1
             conn = {
-                'id': str(uuid.uuid4()),
-                'correlation_id': correlation_id,
-                'created_at': time.time(),
-                'last_used': time.time(),
-                'query_count': 0,
-                'available': False,
-                'connection': self._create_connection()
+                "id": str(uuid.uuid4()),
+                "correlation_id": correlation_id,
+                "created_at": time.time(),
+                "last_used": time.time(),
+                "query_count": 0,
+                "available": False,
+                "connection": self._create_connection(),
             }
             self.connections[correlation_id] = conn
             return conn
@@ -241,14 +262,14 @@ class DatabaseConnectionPool:
             self.active_connections += 1
             correlation_id = f"overflow_{str(uuid.uuid4())}"
             conn = {
-                'id': str(uuid.uuid4()),
-                'correlation_id': correlation_id,
-                'created_at': time.time(),
-                'last_used': time.time(),
-                'query_count': 0,
-                'available': False,
-                'overflow': True,
-                'connection': self._create_connection()
+                "id": str(uuid.uuid4()),
+                "correlation_id": correlation_id,
+                "created_at": time.time(),
+                "last_used": time.time(),
+                "query_count": 0,
+                "available": False,
+                "overflow": True,
+                "connection": self._create_connection(),
             }
             self.connections[correlation_id] = conn
             return conn
@@ -260,15 +281,15 @@ class DatabaseConnectionPool:
         """Release connection back to pool"""
         if correlation_id in self.connections:
             conn = self.connections[correlation_id]
-            conn['available'] = True
-            conn['last_used'] = time.time()
+            conn["available"] = True
+            conn["last_used"] = time.time()
 
             # Log connection stats
             logger.info(
                 "Released database connection",
                 correlation_id=correlation_id,
-                query_count=conn['query_count'],
-                duration_ms=(time.time() - conn['created_at']) * 1000
+                query_count=conn["query_count"],
+                duration_ms=(time.time() - conn["created_at"]) * 1000,
             )
 
     def _create_connection(self):
@@ -276,10 +297,16 @@ class DatabaseConnectionPool:
         # This would be implemented with actual database driver
         return {"connection": "database_connection_object"}
 
+
 class QueryCorrelationLogger:
     """Log all database queries with correlation IDs"""
 
-    def __init__(self, log_queries: bool = True, log_slow_queries: bool = True, slow_threshold: float = 0.1):
+    def __init__(
+        self,
+        log_queries: bool = True,
+        log_slow_queries: bool = True,
+        slow_threshold: float = 0.1,
+    ):
         self.log_queries = log_queries
         self.log_slow_queries = log_slow_queries
         self.slow_threshold = slow_threshold
@@ -291,7 +318,7 @@ class QueryCorrelationLogger:
         params: Optional[Dict[str, Any]] = None,
         correlation_id: Optional[str] = None,
         duration: Optional[float] = None,
-        success: bool = True
+        success: bool = True,
     ):
         """Log query execution with correlation ID"""
         if not correlation_id:
@@ -299,12 +326,12 @@ class QueryCorrelationLogger:
 
         # Prepare log data
         log_data = {
-            'correlation_id': correlation_id,
-            'query': query[:500] + "..." if len(query) > 500 else query,
-            'params': params,
-            'duration_ms': duration * 1000 if duration else None,
-            'success': success,
-            'timestamp': datetime.utcnow().isoformat()
+            "correlation_id": correlation_id,
+            "query": query[:500] + "..." if len(query) > 500 else query,
+            "params": params,
+            "duration_ms": duration * 1000 if duration else None,
+            "success": success,
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
         # Log based on configuration
@@ -321,7 +348,7 @@ class QueryCorrelationLogger:
                 correlation_id=correlation_id,
                 query=query[:200],
                 duration_ms=duration * 1000,
-                threshold_ms=self.slow_threshold * 1000
+                threshold_ms=self.slow_threshold * 1000,
             )
 
         # Update query statistics
@@ -333,44 +360,42 @@ class QueryCorrelationLogger:
 
         if query_hash not in self.query_stats:
             self.query_stats[query_hash] = {
-                'query': query,
-                'count': 0,
-                'total_duration': 0,
-                'avg_duration': 0,
-                'success_count': 0,
-                'failure_count': 0
+                "query": query,
+                "count": 0,
+                "total_duration": 0,
+                "avg_duration": 0,
+                "success_count": 0,
+                "failure_count": 0,
             }
 
         stats = self.query_stats[query_hash]
-        stats['count'] += 1
+        stats["count"] += 1
 
         if duration:
-            stats['total_duration'] += duration
-            stats['avg_duration'] = stats['total_duration'] / stats['count']
+            stats["total_duration"] += duration
+            stats["avg_duration"] = stats["total_duration"] / stats["count"]
 
         if success:
-            stats['success_count'] += 1
+            stats["success_count"] += 1
         else:
-            stats['failure_count'] += 1
+            stats["failure_count"] += 1
 
     def get_query_stats(self) -> Dict[str, Any]:
         """Get query execution statistics"""
         return {
-            'total_queries': sum(stats['count'] for stats in self.query_stats.values()),
-            'queries_by_frequency': sorted(
-                self.query_stats.values(),
-                key=lambda x: x['count'],
-                reverse=True
+            "total_queries": sum(stats["count"] for stats in self.query_stats.values()),
+            "queries_by_frequency": sorted(
+                self.query_stats.values(), key=lambda x: x["count"], reverse=True
             )[:10],
-            'slowest_queries': sorted(
-                self.query_stats.values(),
-                key=lambda x: x['avg_duration'],
-                reverse=True
+            "slowest_queries": sorted(
+                self.query_stats.values(), key=lambda x: x["avg_duration"], reverse=True
             )[:10],
-            'error_rate': sum(stats['failure_count'] for stats in self.query_stats.values()) / max(
-                sum(stats['count'] for stats in self.query_stats.values()), 1
+            "error_rate": sum(
+                stats["failure_count"] for stats in self.query_stats.values()
             )
+            / max(sum(stats["count"] for stats in self.query_stats.values()), 1),
         }
+
 
 # Database middleware for Django
 class DatabaseCorrelationMiddleware:
@@ -382,7 +407,9 @@ class DatabaseCorrelationMiddleware:
 
     def __call__(self, request):
         # Get correlation ID from request
-        correlation_id = getattr(request, 'correlation_id', None) or get_correlation_id()
+        correlation_id = (
+            getattr(request, "correlation_id", None) or get_correlation_id()
+        )
 
         if not correlation_id:
             correlation_id = str(uuid.uuid4())
@@ -392,6 +419,7 @@ class DatabaseCorrelationMiddleware:
 
         # Monkey patch django.db connection
         from django.db import connection
+
         original_execute = connection.cursor
 
         def execute_with_correlation():
@@ -403,11 +431,15 @@ class DatabaseCorrelationMiddleware:
                 try:
                     result = original_execute_wrapper(query, params)
                     duration = time.time() - start_time
-                    self.query_logger.log_query(query, params, correlation_id, duration, True)
+                    self.query_logger.log_query(
+                        query, params, correlation_id, duration, True
+                    )
                     return result
                 except Exception as e:
                     duration = time.time() - start_time
-                    self.query_logger.log_query(query, params, correlation_id, duration, False)
+                    self.query_logger.log_query(
+                        query, params, correlation_id, duration, False
+                    )
                     raise
 
             cursor.execute = execute_wrapper
@@ -424,17 +456,16 @@ class DatabaseCorrelationMiddleware:
             "Request database statistics",
             correlation_id=correlation_id,
             path=request.path,
-            **stats
+            **stats,
         )
 
         return response
 
+
 # Context manager for database operations
 @contextmanager
 def database_operation_context(
-    operation_name: str,
-    correlation_id: Optional[str] = None,
-    log_params: bool = False
+    operation_name: str, correlation_id: Optional[str] = None, log_params: bool = False
 ):
     """Context manager for database operations with correlation ID"""
     if not correlation_id:
@@ -447,17 +478,14 @@ def database_operation_context(
     logger.info(
         "Starting database operation",
         correlation_id=correlation_id,
-        operation=operation_name
+        operation=operation_name,
     )
 
     start_time = time.time()
     query_count = 0
 
     try:
-        yield {
-            'correlation_id': correlation_id,
-            'operation_name': operation_name
-        }
+        yield {"correlation_id": correlation_id, "operation_name": operation_name}
 
     except Exception as e:
         duration = time.time() - start_time
@@ -468,7 +496,7 @@ def database_operation_context(
             operation=operation_name,
             error=str(e),
             duration_ms=duration * 1000,
-            query_count=query_count
+            query_count=query_count,
         )
 
         # Record in OpenTelemetry if available
@@ -495,8 +523,9 @@ def database_operation_context(
             correlation_id=correlation_id,
             operation=operation_name,
             duration_ms=duration * 1000,
-            query_count=query_count
+            query_count=query_count,
         )
+
 
 # Decorator for database functions
 def with_database_correlation(func):
@@ -506,19 +535,20 @@ def with_database_correlation(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         # Extract correlation ID from kwargs or generate new one
-        correlation_id = kwargs.pop('correlation_id', None)
+        correlation_id = kwargs.pop("correlation_id", None)
         if not correlation_id:
             correlation_id = get_correlation_id() or str(uuid.uuid4())
 
         # Execute with correlation context
         with database_operation_context(func.__name__, correlation_id):
             # Add correlation ID to kwargs
-            kwargs['correlation_id'] = correlation_id
+            kwargs["correlation_id"] = correlation_id
 
             # Execute function
             return func(*args, **kwargs)
 
     return wrapper
+
 
 # PostgreSQL specific correlation ID functions
 def postgresql_setup_correlation(connection):

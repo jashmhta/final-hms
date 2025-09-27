@@ -733,7 +733,9 @@ class Migration(migrations.Migration):
                 ("base_price_cents", models.BigIntegerField()),
                 (
                     "cost_price_cents",
-                    models.BigIntegerField(help_text="Internal cost for profitability analysis"),
+                    models.BigIntegerField(
+                        help_text="Internal cost for profitability analysis"
+                    ),
                 ),
                 ("is_active", models.BooleanField(default=True)),
                 (
@@ -1466,7 +1468,9 @@ class Migration(migrations.Migration):
                 ("salvage_value_cents", models.BigIntegerField(default=0)),
                 (
                     "depreciation_rate",
-                    models.DecimalField(blank=True, decimal_places=2, max_digits=5, null=True),
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=5, null=True
+                    ),
                 ),
                 ("current_book_value_cents", models.BigIntegerField()),
                 (
@@ -1928,7 +1932,9 @@ class Migration(migrations.Migration):
             ],
             options={
                 "ordering": ["-period_start"],
-                "unique_together": {("hospital", "period_start", "period_end", "tax_type")},
+                "unique_together": {
+                    ("hospital", "period_start", "period_end", "tax_type")
+                },
             },
         ),
         migrations.CreateModel(
@@ -2487,11 +2493,15 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="accountinginvoice",
-            index=models.Index(fields=["invoice_date"], name="accounting__invoice_335e93_idx"),
+            index=models.Index(
+                fields=["invoice_date"], name="accounting__invoice_335e93_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="accountinginvoice",
-            index=models.Index(fields=["due_date"], name="accounting__due_dat_544306_idx"),
+            index=models.Index(
+                fields=["due_date"], name="accounting__due_dat_544306_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="accountinginvoice",
@@ -2499,11 +2509,15 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="accountinginvoice",
-            index=models.Index(fields=["patient"], name="accounting__patient_1f90f6_idx"),
+            index=models.Index(
+                fields=["patient"], name="accounting__patient_1f90f6_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="accountinginvoice",
-            index=models.Index(fields=["customer"], name="accounting__custome_fd0423_idx"),
+            index=models.Index(
+                fields=["customer"], name="accounting__custome_fd0423_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="accountingauditlog",

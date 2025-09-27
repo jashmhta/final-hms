@@ -1,3 +1,7 @@
+"""
+dashboard module
+"""
+
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, List
@@ -45,16 +49,24 @@ class SecurityDashboard:
 
         events_24h = SecurityEvent.objects.filter(created_at__gte=last_24h)
         events_7d = SecurityEvent.objects.filter(created_at__gte=last_7d)
-        severity_counts_24h = events_24h.values("severity").annotate(count=Count("severity"))
-        severity_counts_7d = events_7d.values("severity").annotate(count=Count("severity"))
+        severity_counts_24h = events_24h.values("severity").annotate(
+            count=Count("severity")
+        )
+        severity_counts_7d = events_7d.values("severity").annotate(
+            count=Count("severity")
+        )
         return {
             "last_24h": {
                 "total_events": events_24h.count(),
-                "by_severity": {item["severity"]: item["count"] for item in severity_counts_24h},
+                "by_severity": {
+                    item["severity"]: item["count"] for item in severity_counts_24h
+                },
             },
             "last_7d": {
                 "total_events": events_7d.count(),
-                "by_severity": {item["severity"]: item["count"] for item in severity_counts_7d},
+                "by_severity": {
+                    item["severity"]: item["count"] for item in severity_counts_7d
+                },
             },
             "trend": self._calculate_trend(events_24h.count(), events_7d.count() / 7),
         }
@@ -85,15 +97,25 @@ class SecurityDashboard:
         from authentication.models import LoginSession
 
         sessions = LoginSession.objects.filter(created_at__gte=last_24h)
-        geo_data = sessions.values("ip_address").annotate(count=Count("ip_address")).order_by("-count")[:10]
-        device_data = sessions.values("device_info").annotate(count=Count("device_info")).order_by("-count")[:5]
+        geo_data = (
+            sessions.values("ip_address")
+            .annotate(count=Count("ip_address"))
+            .order_by("-count")[:10]
+        )
+        device_data = (
+            sessions.values("device_info")
+            .annotate(count=Count("device_info"))
+            .order_by("-count")[:5]
+        )
         failed_logins = sessions.filter(is_active=False).count()
         return {
             "total_sessions": sessions.count(),
             "unique_ips": sessions.values("ip_address").distinct().count(),
             "failed_logins": failed_logins,
             "success_rate": (
-                ((sessions.count() - failed_logins) / sessions.count() * 100) if sessions.count() > 0 else 100
+                ((sessions.count() - failed_logins) / sessions.count() * 100)
+                if sessions.count() > 0
+                else 100
             ),
             "top_locations": list(geo_data),
             "device_types": list(device_data),
@@ -132,9 +154,9 @@ class SecurityDashboard:
     def _get_recent_incidents(self, last_7d) -> List[Dict]:
         from authentication.models import SecurityEvent
 
-        incidents = SecurityEvent.objects.filter(created_at__gte=last_7d, severity__in=["HIGH", "CRITICAL"]).order_by(
-            "-created_at"
-        )[:10]
+        incidents = SecurityEvent.objects.filter(
+            created_at__gte=last_7d, severity__in=["HIGH", "CRITICAL"]
+        ).order_by("-created_at")[:10]
         return [
             {
                 "id": incident.id,
@@ -181,8 +203,12 @@ class ComplianceDashboard:
         report = compliance_reporter.generate_compliance_report()
         return {
             "overall_score": report["detailed_findings"]["overall_score"],
-            "hipaa_compliance": self._format_compliance_data(report["detailed_findings"].get("hipaa", {})),
-            "gdpr_compliance": self._format_compliance_data(report["detailed_findings"].get("gdpr", {})),
+            "hipaa_compliance": self._format_compliance_data(
+                report["detailed_findings"].get("hipaa", {})
+            ),
+            "gdpr_compliance": self._format_compliance_data(
+                report["detailed_findings"].get("gdpr", {})
+            ),
             "critical_issues": report["detailed_findings"]["critical_issues"],
             "action_items": report["action_items"],
             "last_updated": report["generated_at"],

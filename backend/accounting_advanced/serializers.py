@@ -1,3 +1,7 @@
+"""
+serializers module
+"""
+
 from rest_framework import serializers
 
 from .models import TallyIntegration
@@ -42,15 +46,24 @@ class TallyIntegrationSerializer(serializers.ModelSerializer):
         return None
 
     def get_sync_status_display(self, obj):
-        status_map = {"PENDING": "Pending", "SUCCESS": "Success", "FAILED": "Failed", "IN_PROGRESS": "In Progress"}
+        status_map = {
+            "PENDING": "Pending",
+            "SUCCESS": "Success",
+            "FAILED": "Failed",
+            "IN_PROGRESS": "In Progress",
+        }
         return status_map.get(obj.last_sync_status, obj.last_sync_status)
 
     def validate_tally_server_url(self, value):
         if not value.startswith(("http://", "https://")):
-            raise serializers.ValidationError("Tally server URL must start with http:// or https://")
+            raise serializers.ValidationError(
+                "Tally server URL must start with http:// or https://"
+            )
         return value
 
     def validate_company_name(self, value):
         if len(value.strip()) < 2:
-            raise serializers.ValidationError("Company name must be at least 2 characters long")
+            raise serializers.ValidationError(
+                "Company name must be at least 2 characters long"
+            )
         return value.strip()

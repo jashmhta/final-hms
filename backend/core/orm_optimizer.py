@@ -29,13 +29,19 @@ logger = logging.getLogger(__name__)
 # Prometheus metrics for ORM monitoring
 orm_metrics = {
     "query_count": metrics.Counter(
-        "hms_orm_query_count_total", "Total number of ORM queries executed", ["model", "operation"]
+        "hms_orm_query_count_total",
+        "Total number of ORM queries executed",
+        ["model", "operation"],
     ),
     "query_duration": metrics.Histogram(
-        "hms_orm_query_duration_seconds", "ORM query duration in seconds", ["model", "operation", "query_type"]
+        "hms_orm_query_duration_seconds",
+        "ORM query duration in seconds",
+        ["model", "operation", "query_type"],
     ),
     "n_plus_one_detected": metrics.Counter(
-        "hms_orm_n_plus_one_detected_total", "Total number of N+1 query patterns detected", ["model", "field"]
+        "hms_orm_n_plus_one_detected_total",
+        "Total number of N+1 query patterns detected",
+        ["model", "field"],
     ),
     "select_related_usage": metrics.Counter(
         "hms_orm_select_related_total",
@@ -48,10 +54,14 @@ orm_metrics = {
         ["model", "fields_count"],
     ),
     "cache_hits": metrics.Counter(
-        "hms_orm_cache_hits_total", "Total number of ORM cache hits", ["model", "cache_type"]
+        "hms_orm_cache_hits_total",
+        "Total number of ORM cache hits",
+        ["model", "cache_type"],
     ),
     "cache_misses": metrics.Counter(
-        "hms_orm_cache_misses_total", "Total number of ORM cache misses", ["model", "cache_type"]
+        "hms_orm_cache_misses_total",
+        "Total number of ORM cache misses",
+        ["model", "cache_type"],
     ),
 }
 
@@ -72,12 +82,14 @@ class QueryOptimizer:
             yield
         finally:
             duration = time.time() - start_time
-            orm_metrics["query_duration"].labels(model=model_name, operation=operation, query_type="orm").observe(
-                duration
-            )
+            orm_metrics["query_duration"].labels(
+                model=model_name, operation=operation, query_type="orm"
+            ).observe(duration)
 
             if duration > self.slow_query_threshold:
-                logger.warning(f"Slow ORM query detected: {model_name}.{operation} took {duration:.3f}s")
+                logger.warning(
+                    f"Slow ORM query detected: {model_name}.{operation} took {duration:.3f}s"
+                )
 
     def detect_n_plus_one(self, queryset: QuerySet) -> List[str]:
         """Detect potential N+1 query patterns"""
@@ -91,18 +103,24 @@ class QueryOptimizer:
                 field_name = field.name
                 if field_name not in str(queryset.query):
                     warnings.append(
-                        f"Potential N+1: {model_name}.{field_name} - " f"Consider using select_related('{field_name}')"
+                        f"Potential N+1: {model_name}.{field_name} - "
+                        f"Consider using select_related('{field_name}')"
                     )
-                    orm_metrics["n_plus_one_detected"].labels(model=model_name, field=field_name).inc()
+                    orm_metrics["n_plus_one_detected"].labels(
+                        model=model_name, field=field_name
+                    ).inc()
 
         # Check for missing prefetch_related on many-to-many
         for field in model._meta.many_to_many:
             field_name = field.name
             if field_name not in str(queryset.query):
                 warnings.append(
-                    f"Potential N+1: {model_name}.{field_name} - " f"Consider using prefetch_related('{field_name}')"
+                    f"Potential N+1: {model_name}.{field_name} - "
+                    f"Consider using prefetch_related('{field_name}')"
                 )
-                orm_metrics["n_plus_one_detected"].labels(model=model_name, field=field_name).inc()
+                orm_metrics["n_plus_one_detected"].labels(
+                    model=model_name, field=field_name
+                ).inc()
 
         return warnings
 
@@ -117,7 +135,9 @@ class QueryOptimizer:
                 fk_fields = self._get_frequently_accessed_foreign_keys(model)
                 if fk_fields:
                     queryset = queryset.select_related(*fk_fields)
-                    orm_metrics["select_related_usage"].labels(model=model_name, fields_count=str(len(fk_fields))).inc()
+                    orm_metrics["select_related_usage"].labels(
+                        model=model_name, fields_count=str(len(fk_fields))
+                    ).inc()
 
             # Apply prefetch_related for many-to-many if not already present
             if "prefetch_related" not in kwargs:
@@ -143,7 +163,9 @@ class QueryOptimizer:
 
         return queryset
 
-    def _get_frequently_accessed_foreign_keys(self, model: Type[models.Model]) -> List[str]:
+    def _get_frequently_accessed_foreign_keys(
+        self, model: Type[models.Model]
+    ) -> List[str]:
         """Get foreign keys that are frequently accessed"""
         # This would normally be determined by query analysis
         # For now, return common patterns
@@ -151,12 +173,20 @@ class QueryOptimizer:
         for field in model._meta.fields:
             if isinstance(field, (ForeignKey, OneToOneField)):
                 # Include if field name suggests it's commonly accessed
-                common_patterns = ["user", "created_by", "updated_by", "hospital", "patient"]
+                common_patterns = [
+                    "user",
+                    "created_by",
+                    "updated_by",
+                    "hospital",
+                    "patient",
+                ]
                 if any(pattern in field.name.lower() for pattern in common_patterns):
                     fk_fields.append(field.name)
         return fk_fields
 
-    def _get_frequently_accessed_m2m_fields(self, model: Type[models.Model]) -> List[str]:
+    def _get_frequently_accessed_m2m_fields(
+        self, model: Type[models.Model]
+    ) -> List[str]:
         """Get many-to-many fields that are frequently accessed"""
         m2m_fields = []
         for field in model._meta.many_to_many:
@@ -190,11 +220,15 @@ class QueryOptimizer:
         # Try to get from cache
         result = cache.get(cache_key)
         if result is not None:
-            orm_metrics["cache_hits"].labels(model=model_name, cache_type="queryset").inc()
+            orm_metrics["cache_hits"].labels(
+                model=model_name, cache_type="queryset"
+            ).inc()
             return result
 
         # Execute and cache
-        orm_metrics["cache_misses"].labels(model=model_name, cache_type="queryset").inc()
+        orm_metrics["cache_misses"].labels(
+            model=model_name, cache_type="queryset"
+        ).inc()
 
         # Convert to list to force evaluation
         result = list(queryset)
@@ -223,7 +257,9 @@ class QueryOptimizer:
             try:
                 if operation == "create":
                     model.objects.bulk_create(
-                        [model(**obj) for obj in objects], batch_size=batch_size, ignore_conflicts=True
+                        [model(**obj) for obj in objects],
+                        batch_size=batch_size,
+                        ignore_conflicts=True,
                     )
                     results["created"] = len(objects)
 
@@ -235,7 +271,9 @@ class QueryOptimizer:
                         updated_count = 0
                         for obj in objects:
                             if "id" in obj:
-                                existing.filter(id=obj["id"]).update(**{k: v for k, v in obj.items() if k != "id"})
+                                existing.filter(id=obj["id"]).update(
+                                    **{k: v for k, v in obj.items() if k != "id"}
+                                )
                                 updated_count += 1
                         results["updated"] = updated_count
 
@@ -263,7 +301,9 @@ class OptimizedQuerySet(models.QuerySet):
 
     def bulk_create_optimized(self, objects, batch_size=1000):
         """Optimized bulk create with monitoring"""
-        return self._optimizer.bulk_operations(self.model, objects, "create", batch_size)
+        return self._optimizer.bulk_operations(
+            self.model, objects, "create", batch_size
+        )
 
     def detect_n_plus_one(self):
         """Detect and warn about potential N+1 patterns"""
@@ -339,7 +379,9 @@ class QueryProfiler:
         recommendations = []
 
         if duplicates:
-            recommendations.append(f"Found {len(duplicates)} duplicate queries. Consider caching or bulk operations.")
+            recommendations.append(
+                f"Found {len(duplicates)} duplicate queries. Consider caching or bulk operations."
+            )
 
         if profile["slow_queries"]:
             recommendations.append(
@@ -367,14 +409,20 @@ class QueryProfiler:
             "total_queries": profile["total_queries"],
             "total_time": round(profile["total_time"], 3),
             "average_query_time": (
-                round(sum(float(q["time"]) for q in profile["queries"]) / len(profile["queries"]), 3)
+                round(
+                    sum(float(q["time"]) for q in profile["queries"])
+                    / len(profile["queries"]),
+                    3,
+                )
                 if profile["queries"]
                 else 0
             ),
             "slow_queries_count": len(profile["slow_queries"]),
             "duplicate_queries_count": len(profile.get("duplicate_queries", {})),
             "recommendations": profile.get("recommendations", []),
-            "slowest_queries": sorted(profile["queries"], key=lambda x: float(x["time"]), reverse=True)[:5],
+            "slowest_queries": sorted(
+                profile["queries"], key=lambda x: float(x["time"]), reverse=True
+            )[:5],
         }
 
 
@@ -400,13 +448,15 @@ class QueryCache:
         self.cache_prefix = "orm_cache:"
         self.default_timeout = 3600  # 1 hour
 
-    def get_cache_key(self, model: Type[models.Model], query_type: str, params: Dict[str, Any]) -> str:
+    def get_cache_key(
+        self, model: Type[models.Model], query_type: str, params: Dict[str, Any]
+    ) -> str:
         """Generate cache key for a query"""
         import hashlib
 
         param_str = str(sorted(params.items()))
         key_str = f"{self.cache_prefix}{model.__name__}:{query_type}:{param_str}"
-        return hashlib.md5(key_str.encode()).hexdigest()
+        return hashlib.hashlib.sha256(key_str.encode()).hexdigest()
 
     def get_or_set(
         self,
@@ -421,7 +471,9 @@ class QueryCache:
         result = cache.get(cache_key)
 
         if result is not None:
-            orm_metrics["cache_hits"].labels(model=model.__name__, cache_type="custom").inc()
+            orm_metrics["cache_hits"].labels(
+                model=model.__name__, cache_type="custom"
+            ).inc()
             return result
 
         # Execute query
@@ -429,7 +481,9 @@ class QueryCache:
 
         # Cache result
         cache.set(cache_key, result, timeout or self.default_timeout)
-        orm_metrics["cache_misses"].labels(model=model.__name__, cache_type="custom").inc()
+        orm_metrics["cache_misses"].labels(
+            model=model.__name__, cache_type="custom"
+        ).inc()
 
         return result
 

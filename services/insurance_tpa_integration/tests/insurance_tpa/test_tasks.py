@@ -1,9 +1,13 @@
+"""
+test_tasks module
+"""
+
 from datetime import timedelta
 from unittest import mock
+
 import pytest
 import responses
 from celery import current_app
-from django.utils import timezone
 from fakeredis import FakeStrictRedis
 from insurance_tpa.factories.factories import *
 from insurance_tpa.models import Claim, PreAuth, Reimbursement
@@ -13,6 +17,10 @@ from insurance_tpa.tasks import (
     send_notification,
     submit_tpa_request,
 )
+
+from django.utils import timezone
+
+
 @pytest.mark.django_db
 class TestSubmitTPATask:
     def test_submit_tpa_request_success(self):
@@ -29,10 +37,11 @@ class TestSubmitTPATask:
                 status=200,
             )
             result = submit_tpa_request.delay(preauth.id)
-            result.get()  
+            result.get()
             preauth.refresh_from_db()
             assert preauth.status == "approved"
             assert preauth.approval_id == "APRV123456"
+
     @responses.activate
     def test_submit_tpa_request_failure(self):
         preauth = PreAuthFactory(status="pending")
@@ -47,6 +56,7 @@ class TestSubmitTPATask:
             result.get()
         preauth.refresh_from_db()
         assert preauth.status == "rejected"
+
     @mock.patch("redis.Redis")
     def test_submit_tpa_request_caching(self, mock_redis):
         preauth = PreAuthFactory(status="pending")
@@ -54,8 +64,9 @@ class TestSubmitTPATask:
         result = submit_tpa_request.delay(preauth.id)
         result.get()
         mock_redis_instance.set.assert_called_with(
-            f"preauth_status:{preauth.id}", mock.ANY, ex=3600  
+            f"preauth_status:{preauth.id}", mock.ANY, ex=3600
         )
+
     def test_submit_tpa_request_network_error(self):
         preauth = PreAuthFactory(status="pending")
         with responses.RequestsMock() as rsps:
@@ -69,6 +80,8 @@ class TestSubmitTPATask:
                 with pytest.raises(Exception):
                     result.get()
                 mock_retry.assert_called_once()
+
+
 @pytest.mark.django_db
 class TestPollTPAStatusTask:
     def test_poll_tpa_status_success(self):
@@ -84,6 +97,7 @@ class TestPollTPAStatusTask:
             result.get()
             preauth.refresh_from_db()
             assert preauth.status == "approved"
+
     def test_poll_tpa_status_still_pending(self):
         preauth = PreAuthFactory(status="pending", approval_id="APRV123456")
         with responses.RequestsMock() as rsps:
@@ -98,6 +112,7 @@ class TestPollTPAStatusTask:
                 with pytest.raises(Exception):
                     result.get()
                 mock_retry.assert_called_once()
+
     @mock.patch("time.sleep")
     def test_poll_tpa_status_max_retries_exceeded(self, mock_sleep):
         preauth = PreAuthFactory(status="pending", approval_id="APRV123456")
@@ -115,6 +130,8 @@ class TestPollTPAStatusTask:
                     result.get()
                 preauth.refresh_from_db()
                 assert preauth.status == "failed"
+
+
 @pytest.mark.django_db
 class TestSendNotificationTask:
     def test_send_notification_success(self):
@@ -123,20 +140,24 @@ class TestSendNotificationTask:
             result = send_notification.delay(preauth.id, "approved")
             result.get()
             mock_smtp.return_value.sendmail.assert_called_once()
+
     def test_send_notification_email_failure(self):
         preauth = PreAuthFactory(status="rejected")
         with mock.patch("smtplib.SMTP") as mock_smtp:
             mock_smtp.return_value.sendmail.side_effect = Exception("SMTP error")
             result = send_notification.delay(preauth.id, "rejected")
-            result.get()  
+            result.get()
             preauth.refresh_from_db()
-            assert preauth.status == "rejected"  
+            assert preauth.status == "rejected"
+
     def test_send_notification_sms_success(self):
         preauth = PreAuthFactory(status="approved")
         with mock.patch("twilio.rest.Client") as mock_twilio:
             result = send_notification.delay(preauth.id, "approved", method="sms")
             result.get()
             mock_twilio.return_value.messages.create.assert_called_once()
+
+
 @pytest.mark.django_db
 class TestCleanupOldRecordsTask:
     @pytest.fixture
@@ -165,6 +186,7 @@ class TestCleanupOldRecordsTask:
                 "reimbursement": recent_reimbursement,
             },
         }
+
     def test_cleanup_old_records(self, setup_records):
         records = setup_records
         result = cleanup_old_records.delay()
@@ -179,6 +201,7 @@ class TestCleanupOldRecordsTask:
         assert Reimbursement.objects.filter(
             id=records["recent"]["reimbursement"].id
         ).exists()
+
     def test_cleanup_no_old_records(self, setup_records):
         PreAuth.objects.filter(id=setup_records["old"]["preauth"].id).delete()
         Claim.objects.filter(id=setup_records["old"]["claim"].id).delete()
@@ -192,6 +215,7 @@ class TestCleanupOldRecordsTask:
         assert Reimbursement.objects.filter(
             id=setup_records["recent"]["reimbursement"].id
         ).exists()
+
     def test_cleanup_edge_case_boundary_date(self):
         patient = PatientFactory()
         user = UserFactory()
@@ -203,12 +227,15 @@ class TestCleanupOldRecordsTask:
         result = cleanup_old_records.delay()
         result.get()
         assert PreAuth.objects.filter(id=boundary_preauth.id).exists()
+
+
 @pytest.mark.django_db
 class TestTaskErrorHandling:
     def test_task_invalid_object_id(self):
         with pytest.raises(PreAuth.DoesNotExist):
             result = submit_tpa_request.delay(999999)
             result.get()
+
     def test_task_database_connection_error(self):
         preauth = PreAuthFactory(status="pending")
         with mock.patch("django.db.transaction.atomic") as mock_atomic:
@@ -217,14 +244,14 @@ class TestTaskErrorHandling:
             with pytest.raises(Exception):
                 result.get()
             preauth.refresh_from_db()
-            assert (
-                preauth.status != "pending"
-            )  
+            assert preauth.status != "pending"
+
     def test_task_celery_broker_failure(self):
         with mock.patch("celery.current_app") as mock_celery:
             mock_celery.send_task.side_effect = Exception("Broker unavailable")
             with pytest.raises(Exception):
                 submit_tpa_request.delay(1)
+
     @mock.patch("logging.Logger.error")
     def test_task_logging_integration(self, mock_logger):
         preauth = PreAuthFactory(status="pending")

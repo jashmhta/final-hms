@@ -1,3 +1,7 @@
+"""
+middleware module
+"""
+
 import logging
 import threading
 import time
@@ -209,7 +213,11 @@ class PerformanceMonitoringMiddleware(MiddlewareMixin):
                     "path": request.path,
                     "duration": duration,
                     "status_code": response.status_code,
-                    "user_id": getattr(request.user, "id", None) if hasattr(request, "user") else None,
+                    "user_id": (
+                        getattr(request.user, "id", None)
+                        if hasattr(request, "user")
+                        else None
+                    ),
                 },
             )
         return response

@@ -80,11 +80,19 @@ class APIMetrics:
 
     def get_average_response_time(self) -> float:
         """Get average response time"""
-        return sum(self.response_times) / len(self.response_times) if self.response_times else 0
+        return (
+            sum(self.response_times) / len(self.response_times)
+            if self.response_times
+            else 0
+        )
 
     def get_error_rate(self) -> float:
         """Get error rate percentage"""
-        return (self.error_count / self.request_count * 100) if self.request_count > 0 else 0
+        return (
+            (self.error_count / self.request_count * 100)
+            if self.request_count > 0
+            else 0
+        )
 
     def get_cache_hit_rate(self) -> float:
         """Get cache hit rate percentage"""
@@ -111,7 +119,10 @@ class APIRateLimiter:
         self.rate_limits = {
             "default": {"requests": 100, "window": 60},  # 100 requests per minute
             "auth": {"requests": 5, "window": 60},  # 5 auth requests per minute
-            "sensitive": {"requests": 10, "window": 60},  # 10 sensitive requests per minute
+            "sensitive": {
+                "requests": 10,
+                "window": 60,
+            },  # 10 sensitive requests per minute
             "admin": {"requests": 1000, "window": 60},  # 1000 admin requests per minute
         }
 
@@ -167,7 +178,9 @@ class APICacheManager:
             "admin_data": {"ttl": 600, "prefix": "admin"},
         }
 
-    async def get_cache_key(self, request: Request, user_id: Optional[int] = None) -> str:
+    async def get_cache_key(
+        self, request: Request, user_id: Optional[int] = None
+    ) -> str:
         """Generate cache key for request"""
         cache_key_parts = [
             request.method,
@@ -194,7 +207,9 @@ class APICacheManager:
     async def cache_response(self, cache_key: str, response_data: Dict, ttl: int = 300):
         """Cache API response"""
         try:
-            await self.redis_client.setex(cache_key, ttl, json.dumps(response_data, default=str))
+            await self.redis_client.setex(
+                cache_key, ttl, json.dumps(response_data, default=str)
+            )
         except Exception as e:
             logging.error(f"Cache set error: {e}")
 
@@ -267,7 +282,11 @@ class RESTAPIOptimizer:
         # CORS middleware
         self.app.add_middleware(
             CORSMiddleware,
-            allow_origins=settings.CORS_ALLOWED_ORIGINS if hasattr(settings, "CORS_ALLOWED_ORIGINS") else ["*"],
+            allow_origins=(
+                settings.CORS_ALLOWED_ORIGINS
+                if hasattr(settings, "CORS_ALLOWED_ORIGINS")
+                else ["*"]
+            ),
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
@@ -328,7 +347,13 @@ class RESTAPIOptimizer:
         self.app.docs_url = "/docs"
         self.app.redoc_url = "/redoc"
 
-    def create_endpoint(self, path: str, methods: List[str], cache_ttl: int = 0, rate_limit_type: str = "default"):
+    def create_endpoint(
+        self,
+        path: str,
+        methods: List[str],
+        cache_ttl: int = 0,
+        rate_limit_type: str = "default",
+    ):
         """Decorator for optimized REST endpoints"""
 
         def decorator(func):
@@ -341,14 +366,20 @@ class RESTAPIOptimizer:
                 try:
                     # Rate limiting
                     client_ip = request.client.host
-                    if not await self.rate_limiter.check_rate_limit(client_ip, rate_limit_type):
+                    if not await self.rate_limiter.check_rate_limit(
+                        client_ip, rate_limit_type
+                    ):
                         self.metrics.rate_limited_requests += 1
-                        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+                        raise HTTPException(
+                            status_code=429, detail="Rate limit exceeded"
+                        )
 
                     # Cache check
                     cache_key = await self.cache_manager.get_cache_key(request)
                     if cache_ttl > 0:
-                        cached_response = await self.cache_manager.get_cached_response(cache_key)
+                        cached_response = await self.cache_manager.get_cached_response(
+                            cache_key
+                        )
                         if cached_response:
                             self.metrics.record_cache_result(hit=True)
                             return JSONResponse(cached_response)
@@ -357,12 +388,18 @@ class RESTAPIOptimizer:
                     result = await func(request, *args, **kwargs)
 
                     # Optimize response
-                    response_data = APIResponseOptimizer.optimize_response_data(result, request)
-                    response_data = APIResponseOptimizer.compress_response(response_data)
+                    response_data = APIResponseOptimizer.optimize_response_data(
+                        result, request
+                    )
+                    response_data = APIResponseOptimizer.compress_response(
+                        response_data
+                    )
 
                     # Cache response
                     if cache_ttl > 0:
-                        await self.cache_manager.cache_response(cache_key, response_data, cache_ttl)
+                        await self.cache_manager.cache_response(
+                            cache_key, response_data, cache_ttl
+                        )
 
                     response_time = time.time() - start_time
                     self.metrics.record_request(response_time, is_error=False)
@@ -567,7 +604,10 @@ class RealTimeCommunicationManager:
             async def event_generator():
                 while client_id in self.active_connections:
                     # Send heartbeat
-                    yield {"event": "heartbeat", "data": json.dumps({"timestamp": datetime.now().isoformat()})}
+                    yield {
+                        "event": "heartbeat",
+                        "data": json.dumps({"timestamp": datetime.now().isoformat()}),
+                    }
                     await asyncio.sleep(30)
 
             return EventSourceResponse(event_generator())
@@ -599,12 +639,18 @@ class RealTimeCommunicationManager:
     async def broadcast_event(self, event_type: str, data: Dict):
         """Broadcast event to subscribed clients"""
         if event_type in self.event_subscribers:
-            message = {"type": event_type, "data": data, "timestamp": datetime.now().isoformat()}
+            message = {
+                "type": event_type,
+                "data": data,
+                "timestamp": datetime.now().isoformat(),
+            }
 
             for client_id in self.event_subscribers[event_type]:
                 if client_id in self.active_connections:
                     try:
-                        await self.active_connections[client_id].send_text(json.dumps(message))
+                        await self.active_connections[client_id].send_text(
+                            json.dumps(message)
+                        )
                     except Exception as e:
                         logging.error(f"Failed to send message to {client_id}: {e}")
 
@@ -622,7 +668,9 @@ class APIGateway:
         """Initialize API Gateway"""
         # Initialize Redis
         if hasattr(settings, "REDIS_URL"):
-            self.redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+            self.redis_client = aioredis.from_url(
+                settings.REDIS_URL, decode_responses=True
+            )
 
             # Initialize REST optimizer
             self.rest_optimizer = RESTAPIOptimizer(app, self.redis_client)
@@ -638,7 +686,9 @@ class APIGateway:
     def get_metrics(self) -> Dict:
         """Get combined API metrics"""
         metrics = {
-            "rest": self.rest_optimizer.metrics.to_dict() if self.rest_optimizer else {},
+            "rest": (
+                self.rest_optimizer.metrics.to_dict() if self.rest_optimizer else {}
+            ),
             "graphql": self.graphql_optimizer.metrics.to_dict(),
             "total_requests": 0,
             "total_errors": 0,
@@ -657,7 +707,8 @@ class APIGateway:
         if metrics["total_requests"] > 0:
             metrics["average_response_time"] = (
                 (
-                    self.rest_optimizer.metrics.get_average_response_time() * self.rest_optimizer.metrics.request_count
+                    self.rest_optimizer.metrics.get_average_response_time()
+                    * self.rest_optimizer.metrics.request_count
                     if self.rest_optimizer
                     else 0
                 )
@@ -697,7 +748,11 @@ class APIMonitor:
                 "status": "healthy",
                 "timestamp": datetime.now().isoformat(),
                 "version": "1.0.0",
-                "services": {"database": "healthy", "redis": "healthy", "api": "healthy"},
+                "services": {
+                    "database": "healthy",
+                    "redis": "healthy",
+                    "api": "healthy",
+                },
             }
 
         @self.app.get("/health/detailed")
@@ -734,13 +789,18 @@ def initialize_api_optimization(app: FastAPI):
 
 # Decorators for easy use
 def optimized_rest_endpoint(
-    path: str, methods: List[str] = ["GET"], cache_ttl: int = 0, rate_limit_type: str = "default"
+    path: str,
+    methods: List[str] = ["GET"],
+    cache_ttl: int = 0,
+    rate_limit_type: str = "default",
 ):
     """Decorator for optimized REST endpoints"""
 
     def decorator(func):
         if api_gateway.rest_optimizer:
-            return api_gateway.rest_optimizer.create_endpoint(path, methods, cache_ttl, rate_limit_type)(func)
+            return api_gateway.rest_optimizer.create_endpoint(
+                path, methods, cache_ttl, rate_limit_type
+            )(func)
         return func
 
     return decorator
@@ -750,6 +810,8 @@ def optimized_graphql_resolver(cache_ttl: int = 0):
     """Decorator for optimized GraphQL resolvers"""
 
     def decorator(func):
-        return api_gateway.graphql_optimizer.optimize_resolver(func.__name__, cache_ttl)(func)
+        return api_gateway.graphql_optimizer.optimize_resolver(
+            func.__name__, cache_ttl
+        )(func)
 
     return decorator

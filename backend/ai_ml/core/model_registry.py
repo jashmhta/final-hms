@@ -1,3 +1,7 @@
+"""
+model_registry module
+"""
+
 import hashlib
 import json
 import logging
@@ -21,7 +25,9 @@ logger = logging.getLogger(__name__)
 
 class ModelRegistry:
     def __init__(self, registry_path: Optional[str] = None):
-        self.registry_path = registry_path or os.path.join(settings.BASE_DIR, "ml_models")
+        self.registry_path = registry_path or os.path.join(
+            settings.BASE_DIR, "ml_models"
+        )
         self.models_db_path = os.path.join(self.registry_path, "models_registry.json")
         self.registry_cache = {}
         self._initialize_registry()
@@ -149,7 +155,9 @@ class ModelRegistry:
             logger.error(f"Model listing failed: {e}")
             return []
 
-    def update_model_status(self, model_id: str, status: str, deployment_info: Optional[Dict] = None) -> Dict:
+    def update_model_status(
+        self, model_id: str, status: str, deployment_info: Optional[Dict] = None
+    ) -> Dict:
         try:
             registry_db = self._load_models_database()
             model_info = registry_db["models"].get(model_id)
@@ -182,7 +190,9 @@ class ModelRegistry:
             model_info = model_result["model_info"]
             target_path = os.path.join(self.registry_path, target_environment)
             os.makedirs(target_path, exist_ok=True)
-            target_file = os.path.join(target_path, os.path.basename(model_info["model_file"]))
+            target_file = os.path.join(
+                target_path, os.path.basename(model_info["model_file"])
+            )
             import shutil
 
             shutil.copy2(model_info["model_file"], target_file)
@@ -192,11 +202,15 @@ class ModelRegistry:
                 "deployment_status": "active",
                 "deployment_path": target_file,
             }
-            update_result = self.update_model_status(model_id, "active", deployment_info)
+            update_result = self.update_model_status(
+                model_id, "active", deployment_info
+            )
             registry_db = self._load_models_database()
             registry_db["deployments"][model_id] = deployment_info
             self._save_models_database(registry_db)
-            logger.info(f"Model deployed successfully: {model_id} -> {target_environment}")
+            logger.info(
+                f"Model deployed successfully: {model_id} -> {target_environment}"
+            )
             return {
                 "model_id": model_id,
                 "deployment_status": "success",
@@ -293,7 +307,9 @@ class ModelRegistry:
             cleaned_models = []
             cleaned_files = []
             for model_id, model_info in list(registry_db["models"].items()):
-                model_date = datetime.fromisoformat(model_info["registered_at"]).timestamp()
+                model_date = datetime.fromisoformat(
+                    model_info["registered_at"]
+                ).timestamp()
                 if model_date < cutoff_date and model_info["status"] == "inactive":
                     if os.path.exists(model_info["model_file"]):
                         os.remove(model_info["model_file"])

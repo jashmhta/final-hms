@@ -1,1 +1,415 @@
-{"uuid":"f861ff6b-f599-47a8-9d55-2ac3a016c32a","name":"1.1.10 - Patient registration data validation and business rules","historyId":"4e3ba96be1f9ee5d4f431fdfb3e35af0:5bd835b0d6b1d4ada3b9f0db936e82c8","status":"failed","statusDetails":{"message":"TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\n","trace":"TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\n\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:322:7"},"stage":"finished","steps":[{"status":"passed","statusDetails":{},"stage":"finished","steps":[{"status":"passed","statusDetails":{},"stage":"finished","steps":[{"status":"passed","statusDetails":{},"stage":"finished","steps":[{"status":"passed","statusDetails":{},"stage":"finished","steps":[],"attachments":[],"parameters":[],"name":"Launch browser","start":1758126703885,"uuid":"6ed5fe20-57ad-4664-9a46-81a87c23b680","stop":1758126703985}],"attachments":[],"parameters":[],"name":"Fixture \"browser\"","start":1758126703882,"uuid":"59c8363c-3dcf-4ce2-b99c-cd94de5a54ed","stop":1758126703985},{"status":"passed","statusDetails":{},"stage":"finished","steps":[{"status":"passed","statusDetails":{},"stage":"finished","steps":[],"attachments":[],"parameters":[],"name":"Create context","start":1758126703992,"uuid":"da263a44-b78a-4bfb-9c74-4fa2eba6ca0a","stop":1758126704004}],"attachments":[],"parameters":[],"name":"Fixture \"context\"","start":1758126703990,"uuid":"6a148284-b280-4524-b7f7-fd202188916d","stop":1758126704005},{"status":"passed","statusDetails":{},"stage":"finished","steps":[{"status":"passed","statusDetails":{},"stage":"finished","steps":[],"attachments":[],"parameters":[],"name":"Create page","start":1758126704007,"uuid":"fbd50dc2-4460-495f-8aec-72a7a0d3ed35","stop":1758126704091}],"attachments":[],"parameters":[],"name":"Fixture \"page\"","start":1758126704005,"uuid":"b5977fe5-5cf1-46fe-9983-5b59bcf7a443","stop":1758126704091}],"attachments":[],"parameters":[],"name":"beforeEach hook","start":1758126703861,"uuid":"8f365cd6-5704-46f3-a7e4-ecd27a919e41","stop":1758126704091}],"attachments":[],"parameters":[],"name":"Before Hooks","start":1758126703860,"uuid":"63663e6b-b9dc-48bd-ad41-519d80ea0a4d","stop":1758126704091},{"status":"passed","statusDetails":{},"stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1758126704114,"name":"Navigate to \"/patient/register\"","uuid":"b3103208-e7e6-473f-bb76-be35c5cdbb65","stop":1758126704382},{"status":"passed","statusDetails":{},"stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1758126704383,"name":"Wait for load state \"networkidle\"","uuid":"1f414f82-4854-416a-a4f4-73224aba0575","stop":1758126704881},{"status":"passed","statusDetails":{},"stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1758126704882,"name":"Wait for load state \"domcontentloaded\"","uuid":"7f24c273-d169-4e0b-8780-8c29695a5c07","stop":1758126704882},{"status":"passed","statusDetails":{},"stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1758126704887,"name":"Wait for selector locator('[data-testid=\"loading\"], .loading, .spinner')","uuid":"c17bca10-bb35-44fe-8590-6c947e1fe126","stop":1758126704906},{"status":"passed","statusDetails":{},"stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1758126704907,"name":"Wait for load state \"networkidle\"","uuid":"a50aaca2-5efe-443f-a4d8-3c3106d87bea","stop":1758126704908},{"status":"passed","statusDetails":{},"stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1758126704910,"name":"Navigate to \"/patient/register\"","uuid":"39b2af86-95f3-48e2-96fc-ce2943b7bcee","stop":1758126704956},{"status":"passed","statusDetails":{},"stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1758126704957,"name":"Wait for load state \"networkidle\"","uuid":"051b7567-dae8-4a29-b1a8-87b3d8c03024","stop":1758126705455},{"status":"passed","statusDetails":{},"stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1758126705456,"name":"Wait for load state \"domcontentloaded\"","uuid":"a0b9d361-b38f-4ef3-aac1-1f51fb2c7a2a","stop":1758126705456},{"status":"passed","statusDetails":{},"stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1758126705457,"name":"Wait for selector locator('[data-testid=\"loading\"], .loading, .spinner')","uuid":"6a456c90-a4a3-425f-b8fb-dd73e3bc6ed4","stop":1758126705467},{"status":"passed","statusDetails":{},"stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1758126705468,"name":"Wait for load state \"networkidle\"","uuid":"0bd30924-4a72-4754-9ae5-477d64b14311","stop":1758126705468},{"status":"failed","statusDetails":{"message":"TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\n","trace":"TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\n\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:322:7"},"stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1758126705469,"name":"Wait for selector locator('[data-testid=\"patient-registration-form\"], .patient-registration-form')","uuid":"988c3698-cf92-44c9-a936-1e1eef946760","stop":1758126715471},{"statusDetails":{},"stage":"finished","steps":[],"attachments":[{"name":"screenshot","source":"054d85a1-f951-4088-b035-0907c85f8bca-attachment.png","type":"image/png"}],"parameters":[],"start":1758126726133,"name":"screenshot","stop":1758126726133},{"statusDetails":{},"stage":"finished","steps":[],"attachments":[{"name":"video","source":"b526e77f-881e-4fd1-8d15-b328e31e2471-attachment.webm","type":"video/webm"}],"parameters":[],"start":1758126726133,"name":"video","stop":1758126726133},{"status":"failed","statusDetails":{},"stage":"finished","steps":[{"status":"failed","statusDetails":{},"stage":"finished","steps":[{"status":"failed","statusDetails":{"message":"TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"profile-dropdown\"], .profile-dropdown') to be visible\n","trace":"TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"profile-dropdown\"], .profile-dropdown') to be visible\n\n    at DashboardPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at DashboardPage.click (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:67:16)\n    at DashboardPage.openProfileDropdown (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/dashboard-page.ts:195:16)\n    at DashboardPage.logout (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/dashboard-page.ts:203:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:355:29"},"stage":"finished","steps":[],"attachments":[],"parameters":[],"name":"Wait for selector locator('[data-testid=\"profile-dropdown\"], .profile-dropdown')","start":1758126715582,"uuid":"d57ffc83-fbd3-44e5-8d10-0bc2be87cd01","stop":1758126725583}],"attachments":[],"parameters":[],"name":"afterEach hook","start":1758126715571,"uuid":"67820228-dd97-4e14-854d-c83fa91ba472","stop":1758126725583},{"status":"passed","statusDetails":{},"stage":"finished","steps":[],"attachments":[],"parameters":[],"name":"Fixture \"page\"","start":1758126725583,"uuid":"d2a6e8ae-e540-4113-ab01-d910598710fc","stop":1758126725583},{"status":"passed","statusDetails":{},"stage":"finished","steps":[{"status":"passed","statusDetails":{},"stage":"finished","steps":[],"attachments":[],"parameters":[],"name":"Close context","start":1758126725592,"uuid":"2319257e-feca-4009-b3af-baaf5760e523","stop":1758126726110}],"attachments":[],"parameters":[],"name":"Fixture \"context\"","start":1758126725584,"uuid":"4d38fa7c-f9ba-43b2-9477-e3ae5465057a","stop":1758126726111}],"attachments":[],"parameters":[],"name":"After Hooks","start":1758126715474,"uuid":"d82dffce-5d7c-4c0b-81b6-90f2f5982100","stop":1758126726114}],"attachments":[],"parameters":[{"name":"Project","value":"chromium"}],"labels":[{"name":"language","value":"javascript"},{"name":"framework","value":"playwright"},{"name":"package","value":"phase1-user-journeys.patient-registration-journey.spec.ts"},{"name":"titlePath","value":" > chromium > phase1-user-journeys/patient-registration-journey.spec.ts > PHASE 1: Patient Registration Journey > Complete Patient Registration Journey"},{"name":"host","value":"CODERME-copy"},{"name":"thread","value":"pid-300652-worker-7"},{"name":"parentSuite","value":"chromium"},{"name":"suite","value":"phase1-user-journeys/patient-registration-journey.spec.ts"},{"name":"subSuite","value":"PHASE 1: Patient Registration Journey > Complete Patient Registration Journey"}],"links":[],"start":1758126703855,"testCaseId":"4e3ba96be1f9ee5d4f431fdfb3e35af0","fullName":"phase1-user-journeys/patient-registration-journey.spec.ts:314:5","titlePath":["phase1-user-journeys","patient-registration-journey.spec.ts","PHASE 1: Patient Registration Journey","Complete Patient Registration Journey"],"stop":1758126725980}
+{
+  "uuid": "f861ff6b-f599-47a8-9d55-2ac3a016c32a",
+  "name": "1.1.10 - Patient registration data validation and business rules",
+  "historyId": "4e3ba96be1f9ee5d4f431fdfb3e35af0:5bd835b0d6b1d4ada3b9f0db936e82c8",
+  "status": "failed",
+  "statusDetails": {
+    "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\n",
+    "trace": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\n\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:322:7"
+  },
+  "stage": "finished",
+  "steps": [
+    {
+      "status": "passed",
+      "statusDetails": {},
+      "stage": "finished",
+      "steps": [
+        {
+          "status": "passed",
+          "statusDetails": {},
+          "stage": "finished",
+          "steps": [
+            {
+              "status": "passed",
+              "statusDetails": {},
+              "stage": "finished",
+              "steps": [
+                {
+                  "status": "passed",
+                  "statusDetails": {},
+                  "stage": "finished",
+                  "steps": [],
+                  "attachments": [],
+                  "parameters": [],
+                  "name": "Launch browser",
+                  "start": 1758126703885,
+                  "uuid": "6ed5fe20-57ad-4664-9a46-81a87c23b680",
+                  "stop": 1758126703985
+                }
+              ],
+              "attachments": [],
+              "parameters": [],
+              "name": "Fixture \"browser\"",
+              "start": 1758126703882,
+              "uuid": "59c8363c-3dcf-4ce2-b99c-cd94de5a54ed",
+              "stop": 1758126703985
+            },
+            {
+              "status": "passed",
+              "statusDetails": {},
+              "stage": "finished",
+              "steps": [
+                {
+                  "status": "passed",
+                  "statusDetails": {},
+                  "stage": "finished",
+                  "steps": [],
+                  "attachments": [],
+                  "parameters": [],
+                  "name": "Create context",
+                  "start": 1758126703992,
+                  "uuid": "da263a44-b78a-4bfb-9c74-4fa2eba6ca0a",
+                  "stop": 1758126704004
+                }
+              ],
+              "attachments": [],
+              "parameters": [],
+              "name": "Fixture \"context\"",
+              "start": 1758126703990,
+              "uuid": "6a148284-b280-4524-b7f7-fd202188916d",
+              "stop": 1758126704005
+            },
+            {
+              "status": "passed",
+              "statusDetails": {},
+              "stage": "finished",
+              "steps": [
+                {
+                  "status": "passed",
+                  "statusDetails": {},
+                  "stage": "finished",
+                  "steps": [],
+                  "attachments": [],
+                  "parameters": [],
+                  "name": "Create page",
+                  "start": 1758126704007,
+                  "uuid": "fbd50dc2-4460-495f-8aec-72a7a0d3ed35",
+                  "stop": 1758126704091
+                }
+              ],
+              "attachments": [],
+              "parameters": [],
+              "name": "Fixture \"page\"",
+              "start": 1758126704005,
+              "uuid": "b5977fe5-5cf1-46fe-9983-5b59bcf7a443",
+              "stop": 1758126704091
+            }
+          ],
+          "attachments": [],
+          "parameters": [],
+          "name": "beforeEach hook",
+          "start": 1758126703861,
+          "uuid": "8f365cd6-5704-46f3-a7e4-ecd27a919e41",
+          "stop": 1758126704091
+        }
+      ],
+      "attachments": [],
+      "parameters": [],
+      "name": "Before Hooks",
+      "start": 1758126703860,
+      "uuid": "63663e6b-b9dc-48bd-ad41-519d80ea0a4d",
+      "stop": 1758126704091
+    },
+    {
+      "status": "passed",
+      "statusDetails": {},
+      "stage": "finished",
+      "steps": [],
+      "attachments": [],
+      "parameters": [],
+      "start": 1758126704114,
+      "name": "Navigate to \"/patient/register\"",
+      "uuid": "b3103208-e7e6-473f-bb76-be35c5cdbb65",
+      "stop": 1758126704382
+    },
+    {
+      "status": "passed",
+      "statusDetails": {},
+      "stage": "finished",
+      "steps": [],
+      "attachments": [],
+      "parameters": [],
+      "start": 1758126704383,
+      "name": "Wait for load state \"networkidle\"",
+      "uuid": "1f414f82-4854-416a-a4f4-73224aba0575",
+      "stop": 1758126704881
+    },
+    {
+      "status": "passed",
+      "statusDetails": {},
+      "stage": "finished",
+      "steps": [],
+      "attachments": [],
+      "parameters": [],
+      "start": 1758126704882,
+      "name": "Wait for load state \"domcontentloaded\"",
+      "uuid": "7f24c273-d169-4e0b-8780-8c29695a5c07",
+      "stop": 1758126704882
+    },
+    {
+      "status": "passed",
+      "statusDetails": {},
+      "stage": "finished",
+      "steps": [],
+      "attachments": [],
+      "parameters": [],
+      "start": 1758126704887,
+      "name": "Wait for selector locator('[data-testid=\"loading\"], .loading, .spinner')",
+      "uuid": "c17bca10-bb35-44fe-8590-6c947e1fe126",
+      "stop": 1758126704906
+    },
+    {
+      "status": "passed",
+      "statusDetails": {},
+      "stage": "finished",
+      "steps": [],
+      "attachments": [],
+      "parameters": [],
+      "start": 1758126704907,
+      "name": "Wait for load state \"networkidle\"",
+      "uuid": "a50aaca2-5efe-443f-a4d8-3c3106d87bea",
+      "stop": 1758126704908
+    },
+    {
+      "status": "passed",
+      "statusDetails": {},
+      "stage": "finished",
+      "steps": [],
+      "attachments": [],
+      "parameters": [],
+      "start": 1758126704910,
+      "name": "Navigate to \"/patient/register\"",
+      "uuid": "39b2af86-95f3-48e2-96fc-ce2943b7bcee",
+      "stop": 1758126704956
+    },
+    {
+      "status": "passed",
+      "statusDetails": {},
+      "stage": "finished",
+      "steps": [],
+      "attachments": [],
+      "parameters": [],
+      "start": 1758126704957,
+      "name": "Wait for load state \"networkidle\"",
+      "uuid": "051b7567-dae8-4a29-b1a8-87b3d8c03024",
+      "stop": 1758126705455
+    },
+    {
+      "status": "passed",
+      "statusDetails": {},
+      "stage": "finished",
+      "steps": [],
+      "attachments": [],
+      "parameters": [],
+      "start": 1758126705456,
+      "name": "Wait for load state \"domcontentloaded\"",
+      "uuid": "a0b9d361-b38f-4ef3-aac1-1f51fb2c7a2a",
+      "stop": 1758126705456
+    },
+    {
+      "status": "passed",
+      "statusDetails": {},
+      "stage": "finished",
+      "steps": [],
+      "attachments": [],
+      "parameters": [],
+      "start": 1758126705457,
+      "name": "Wait for selector locator('[data-testid=\"loading\"], .loading, .spinner')",
+      "uuid": "6a456c90-a4a3-425f-b8fb-dd73e3bc6ed4",
+      "stop": 1758126705467
+    },
+    {
+      "status": "passed",
+      "statusDetails": {},
+      "stage": "finished",
+      "steps": [],
+      "attachments": [],
+      "parameters": [],
+      "start": 1758126705468,
+      "name": "Wait for load state \"networkidle\"",
+      "uuid": "0bd30924-4a72-4754-9ae5-477d64b14311",
+      "stop": 1758126705468
+    },
+    {
+      "status": "failed",
+      "statusDetails": {
+        "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\n",
+        "trace": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"patient-registration-form\"], .patient-registration-form') to be visible\n\n    at PatientRegistrationPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at PatientRegistrationPage.registerPatient (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/patient-registration-page.ts:37:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:322:7"
+      },
+      "stage": "finished",
+      "steps": [],
+      "attachments": [],
+      "parameters": [],
+      "start": 1758126705469,
+      "name": "Wait for selector locator('[data-testid=\"patient-registration-form\"], .patient-registration-form')",
+      "uuid": "988c3698-cf92-44c9-a936-1e1eef946760",
+      "stop": 1758126715471
+    },
+    {
+      "statusDetails": {},
+      "stage": "finished",
+      "steps": [],
+      "attachments": [
+        {
+          "name": "screenshot",
+          "source": "054d85a1-f951-4088-b035-0907c85f8bca-attachment.png",
+          "type": "image/png"
+        }
+      ],
+      "parameters": [],
+      "start": 1758126726133,
+      "name": "screenshot",
+      "stop": 1758126726133
+    },
+    {
+      "statusDetails": {},
+      "stage": "finished",
+      "steps": [],
+      "attachments": [
+        {
+          "name": "video",
+          "source": "b526e77f-881e-4fd1-8d15-b328e31e2471-attachment.webm",
+          "type": "video/webm"
+        }
+      ],
+      "parameters": [],
+      "start": 1758126726133,
+      "name": "video",
+      "stop": 1758126726133
+    },
+    {
+      "status": "failed",
+      "statusDetails": {},
+      "stage": "finished",
+      "steps": [
+        {
+          "status": "failed",
+          "statusDetails": {},
+          "stage": "finished",
+          "steps": [
+            {
+              "status": "failed",
+              "statusDetails": {
+                "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"profile-dropdown\"], .profile-dropdown') to be visible\n",
+                "trace": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"profile-dropdown\"], .profile-dropdown') to be visible\n\n    at DashboardPage.waitForVisible (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:53:21)\n    at DashboardPage.click (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/base-page.ts:67:16)\n    at DashboardPage.openProfileDropdown (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/dashboard-page.ts:195:16)\n    at DashboardPage.logout (/home/azureuser/hms-enterprise-grade/e2e-tests/pages/dashboard-page.ts:203:16)\n    at /home/azureuser/hms-enterprise-grade/e2e-tests/tests/phase1-user-journeys/patient-registration-journey.spec.ts:355:29"
+              },
+              "stage": "finished",
+              "steps": [],
+              "attachments": [],
+              "parameters": [],
+              "name": "Wait for selector locator('[data-testid=\"profile-dropdown\"], .profile-dropdown')",
+              "start": 1758126715582,
+              "uuid": "d57ffc83-fbd3-44e5-8d10-0bc2be87cd01",
+              "stop": 1758126725583
+            }
+          ],
+          "attachments": [],
+          "parameters": [],
+          "name": "afterEach hook",
+          "start": 1758126715571,
+          "uuid": "67820228-dd97-4e14-854d-c83fa91ba472",
+          "stop": 1758126725583
+        },
+        {
+          "status": "passed",
+          "statusDetails": {},
+          "stage": "finished",
+          "steps": [],
+          "attachments": [],
+          "parameters": [],
+          "name": "Fixture \"page\"",
+          "start": 1758126725583,
+          "uuid": "d2a6e8ae-e540-4113-ab01-d910598710fc",
+          "stop": 1758126725583
+        },
+        {
+          "status": "passed",
+          "statusDetails": {},
+          "stage": "finished",
+          "steps": [
+            {
+              "status": "passed",
+              "statusDetails": {},
+              "stage": "finished",
+              "steps": [],
+              "attachments": [],
+              "parameters": [],
+              "name": "Close context",
+              "start": 1758126725592,
+              "uuid": "2319257e-feca-4009-b3af-baaf5760e523",
+              "stop": 1758126726110
+            }
+          ],
+          "attachments": [],
+          "parameters": [],
+          "name": "Fixture \"context\"",
+          "start": 1758126725584,
+          "uuid": "4d38fa7c-f9ba-43b2-9477-e3ae5465057a",
+          "stop": 1758126726111
+        }
+      ],
+      "attachments": [],
+      "parameters": [],
+      "name": "After Hooks",
+      "start": 1758126715474,
+      "uuid": "d82dffce-5d7c-4c0b-81b6-90f2f5982100",
+      "stop": 1758126726114
+    }
+  ],
+  "attachments": [],
+  "parameters": [
+    {
+      "name": "Project",
+      "value": "chromium"
+    }
+  ],
+  "labels": [
+    {
+      "name": "language",
+      "value": "javascript"
+    },
+    {
+      "name": "framework",
+      "value": "playwright"
+    },
+    {
+      "name": "package",
+      "value": "phase1-user-journeys.patient-registration-journey.spec.ts"
+    },
+    {
+      "name": "titlePath",
+      "value": " > chromium > phase1-user-journeys/patient-registration-journey.spec.ts > PHASE 1: Patient Registration Journey > Complete Patient Registration Journey"
+    },
+    {
+      "name": "host",
+      "value": "CODERME-copy"
+    },
+    {
+      "name": "thread",
+      "value": "pid-300652-worker-7"
+    },
+    {
+      "name": "parentSuite",
+      "value": "chromium"
+    },
+    {
+      "name": "suite",
+      "value": "phase1-user-journeys/patient-registration-journey.spec.ts"
+    },
+    {
+      "name": "subSuite",
+      "value": "PHASE 1: Patient Registration Journey > Complete Patient Registration Journey"
+    }
+  ],
+  "links": [],
+  "start": 1758126703855,
+  "testCaseId": "4e3ba96be1f9ee5d4f431fdfb3e35af0",
+  "fullName": "phase1-user-journeys/patient-registration-journey.spec.ts:314:5",
+  "titlePath": [
+    "phase1-user-journeys",
+    "patient-registration-journey.spec.ts",
+    "PHASE 1: Patient Registration Journey",
+    "Complete Patient Registration Journey"
+  ],
+  "stop": 1758126725980
+}

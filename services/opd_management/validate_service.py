@@ -1,11 +1,19 @@
+"""
+validate_service module
+"""
+
 import subprocess
 import sys
+
+
 def run_command(command):
     try:
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        result = subprocess.run(command, shell=False, capture_output=True, text=True)
         return result.returncode == 0, result.stdout, result.stderr
     except Exception as e:
         return False, "", str(e)
+
+
 print("Validating OPD Management Service Enterprise-Grade Implementation...")
 required_files = [
     "Dockerfile",

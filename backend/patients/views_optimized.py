@@ -104,14 +104,20 @@ class OptimizedPatientViewSet(viewsets.ModelViewSet):
         cache_key = f"patient_search:{hospital_id}:{hash(search_query)}"
 
         results = cache_optimizer.smart_cache(
-            cache_key, lambda: self._execute_search(search_query, hospital_id, filters), timeout=180, tier="redis"
+            cache_key,
+            lambda: self._execute_search(search_query, hospital_id, filters),
+            timeout=180,
+            tier="redis",
         )
 
         # Serialize results
         serializer = self.get_serializer(results, many=True)
 
         return Response(
-            {"results": serializer.data, "meta": {"total_items": len(results), "search_query": search_query}}
+            {
+                "results": serializer.data,
+                "meta": {"total_items": len(results), "search_query": search_query},
+            }
         )
 
     def _execute_search(self, search_query, hospital_id, filters):
@@ -131,7 +137,9 @@ class OptimizedPatientViewSet(viewsets.ModelViewSet):
             search_conditions &= Q(status=filters["status"])
 
         return list(
-            Patient.get_optimized_queryset(hospital_id=hospital_id).filter(search_conditions)[:100]
+            Patient.get_optimized_queryset(hospital_id=hospital_id).filter(
+                search_conditions
+            )[:100]
         )  # Limit results
 
     @profile_queries
@@ -206,7 +214,10 @@ class OptimizedPatientViewSet(viewsets.ModelViewSet):
         cache_key = f"patient_stats:{hospital_id}"
 
         stats_data = cache_optimizer.smart_cache(
-            cache_key, lambda: self._calculate_patient_stats(hospital_id), timeout=600, tier="redis"
+            cache_key,
+            lambda: self._calculate_patient_stats(hospital_id),
+            timeout=600,
+            tier="redis",
         )
 
         return Response(stats_data)
@@ -368,7 +379,9 @@ class OptimizedEmergencyContactViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Get optimized queryset"""
         patient_id = self.kwargs.get("patient_pk")
-        return EmergencyContact.objects.filter(patient_id=patient_id).select_related("patient")
+        return EmergencyContact.objects.filter(patient_id=patient_id).select_related(
+            "patient"
+        )
 
     def perform_create(self, serializer):
         """Create with caching invalidation"""

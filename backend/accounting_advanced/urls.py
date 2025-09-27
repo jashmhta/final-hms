@@ -5,7 +5,9 @@ from django.urls import include, path
 from .views import TallyIntegrationViewSet
 
 router = DefaultRouter()
-router.register(r"tally-integrations", TallyIntegrationViewSet, basename="tallyintegration")
+router.register(
+    r"tally-integrations", TallyIntegrationViewSet, basename="tallyintegration"
+)
 urlpatterns = [
     path("", include(router.urls)),
 ]

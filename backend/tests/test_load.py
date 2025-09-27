@@ -1,3 +1,7 @@
+"""
+test_load module
+"""
+
 import pytest
 from locust import HttpUser, task
 

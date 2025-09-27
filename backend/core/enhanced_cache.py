@@ -1,3 +1,7 @@
+"""
+enhanced_cache module
+"""
+
 import hashlib
 import json
 import logging
@@ -5,16 +9,16 @@ import pickle
 import time
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Any, Callable, Dict, Optional, Union, List
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from django_redis import get_redis_connection
 
 from django.conf import settings
 from django.core.cache import cache
 from django.core.cache.backends.base import BaseCache
-from django.core.signals import request_started, request_finished
+from django.core.signals import request_finished, request_started
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
-from django.db.models.signals import post_save, post_delete
 
 logger = logging.getLogger(__name__)
 
@@ -51,16 +55,20 @@ class EnhancedCache:
         key_data = f"{prefix}:{':'.join(str(arg) for arg in args)}"
         if kwargs:
             key_data += f":{json.dumps(kwargs, sort_keys=True)}"
-        return hashlib.md5(key_data.encode()).hexdigest()
+        return hashlib.hashlib.sha256(key_data.encode()).hexdigest()
 
-    def get_with_fallback(self, key: str, fallback_func: Callable, timeout: int = None) -> Any:
+    def get_with_fallback(
+        self, key: str, fallback_func: Callable, timeout: int = None
+    ) -> Any:
         result = self.cache.get(key)
         if result is None:
             result = fallback_func()
             self.cache.set(key, result, timeout or self.config.MEDIUM_TIMEOUT)
         return result
 
-    def set_with_tags(self, key: str, value: Any, timeout: int, tags: list = None) -> None:
+    def set_with_tags(
+        self, key: str, value: Any, timeout: int, tags: list = None
+    ) -> None:
         self.cache.set(key, value, timeout)
         if tags and self.redis:
             for tag in tags:
@@ -77,7 +85,9 @@ class EnhancedCache:
                 self.redis.delete(tag_key)
 
     def cache_patient_data(self, patient_id: Union[str, int], data: Dict) -> None:
-        patient_key = self.generate_cache_key(self.config.PATIENT_CACHE_PREFIX, patient_id)
+        patient_key = self.generate_cache_key(
+            self.config.PATIENT_CACHE_PREFIX, patient_id
+        )
         self.set_with_tags(
             patient_key,
             data,
@@ -112,22 +122,33 @@ class EnhancedCache:
         )
         self.cache.set(next_hour_key, data, self.config.VERY_LONG_TIMEOUT)
 
-    def cache_queryset(self, queryset_key: str, queryset_data: List[Dict], timeout: int = None, tags: List[str] = None) -> None:
+    def cache_queryset(
+        self,
+        queryset_key: str,
+        queryset_data: List[Dict],
+        timeout: int = None,
+        tags: List[str] = None,
+    ) -> None:
         """Cache queryset results with optimized serialization"""
         if not queryset_data:
             return
 
         try:
             # Optimize for large datasets
-            serialized_data = json.dumps({
-                'count': len(queryset_data),
-                'data': queryset_data,
-                'timestamp': datetime.now().isoformat(),
-                'cached_by': 'enhanced_cache'
-            }, separators=(',', ':'))  # Compact JSON
+            serialized_data = json.dumps(
+                {
+                    "count": len(queryset_data),
+                    "data": queryset_data,
+                    "timestamp": datetime.now().isoformat(),
+                    "cached_by": "enhanced_cache",
+                },
+                separators=(",", ":"),
+            )  # Compact JSON
 
             cache_key = f"qs:{self.generate_cache_key(queryset_key)}"
-            self.cache.set(cache_key, serialized_data, timeout or self.config.MEDIUM_TIMEOUT)
+            self.cache.set(
+                cache_key, serialized_data, timeout or self.config.MEDIUM_TIMEOUT
+            )
 
             if tags and self.redis:
                 for tag in tags:
@@ -135,7 +156,9 @@ class EnhancedCache:
                     self.redis.sadd(tag_key, cache_key)
                     self.redis.expire(tag_key, timeout or self.config.MEDIUM_TIMEOUT)
 
-            logger.debug(f"Cached queryset: {queryset_key} ({len(queryset_data)} items)")
+            logger.debug(
+                f"Cached queryset: {queryset_key} ({len(queryset_data)} items)"
+            )
         except Exception as e:
             logger.error(f"Error caching queryset {queryset_key}: {str(e)}")
 
@@ -148,7 +171,7 @@ class EnhancedCache:
             if cached_data:
                 parsed_data = json.loads(cached_data)
                 logger.debug(f"Cache hit for queryset: {queryset_key}")
-                return parsed_data.get('data')
+                return parsed_data.get("data")
             return None
         except Exception as e:
             logger.error(f"Error retrieving cached queryset {queryset_key}: {str(e)}")
@@ -167,28 +190,37 @@ class EnhancedCache:
     def get_cache_stats(self) -> Dict[str, Any]:
         """Get cache performance statistics"""
         stats = {
-            'redis_available': self.redis is not None,
-            'total_keys': 0,
-            'memory_usage': 0,
-            'hit_rate': 0,
-            'cache_keys_by_tag': {}
+            "redis_available": self.redis is not None,
+            "total_keys": 0,
+            "memory_usage": 0,
+            "hit_rate": 0,
+            "cache_keys_by_tag": {},
         }
 
         try:
             if self.redis:
                 info = self.redis.info()
-                stats['total_keys'] = info.get('keyspace_hits', 0) + info.get('keyspace_misses', 0)
-                stats['memory_usage'] = info.get('used_memory_human', 'N/A')
+                stats["total_keys"] = info.get("keyspace_hits", 0) + info.get(
+                    "keyspace_misses", 0
+                )
+                stats["memory_usage"] = info.get("used_memory_human", "N/A")
 
-                hits = info.get('keyspace_hits', 0)
-                misses = info.get('keyspace_misses', 0)
+                hits = info.get("keyspace_hits", 0)
+                misses = info.get("keyspace_misses", 0)
                 total = hits + misses
-                stats['hit_rate'] = round((hits / total * 100), 2) if total > 0 else 0
+                stats["hit_rate"] = round((hits / total * 100), 2) if total > 0 else 0
 
                 # Get cache keys by tag (sample)
-                for prefix in ['patient:', 'appt:', 'bill:', 'analytics:', 'user:', 'hospital:']:
+                for prefix in [
+                    "patient:",
+                    "appt:",
+                    "bill:",
+                    "analytics:",
+                    "user:",
+                    "hospital:",
+                ]:
                     keys = self.redis.keys(f"tag:{prefix}*")
-                    stats['cache_keys_by_tag'][prefix] = len(keys)
+                    stats["cache_keys_by_tag"][prefix] = len(keys)
 
         except Exception as e:
             logger.error(f"Error getting cache stats: {str(e)}")
@@ -203,34 +235,36 @@ class EnhancedCache:
             if cache_type in ["all", "patients"]:
                 # Cache active patients
                 from patients.models import Patient
-                active_patients = Patient.objects.filter(status='ACTIVE').select_related('hospital')[:100]
+
+                active_patients = Patient.objects.filter(
+                    status="ACTIVE"
+                ).select_related("hospital")[:100]
                 for patient in active_patients:
                     patient_data = {
-                        'id': patient.id,
-                        'first_name': patient.first_name,
-                        'last_name': patient.last_name,
-                        'hospital_id': patient.hospital_id,
-                        'status': patient.status
+                        "id": patient.id,
+                        "first_name": patient.first_name,
+                        "last_name": patient.last_name,
+                        "hospital_id": patient.hospital_id,
+                        "status": patient.status,
                     }
                     self.cache_patient_data(patient.id, patient_data)
-                warmed_up['patients'] = len(active_patients)
+                warmed_up["patients"] = len(active_patients)
 
             if cache_type in ["all", "hospitals"]:
                 # Cache hospital information
                 from hospitals.models import Hospital
-                hospitals = Hospital.objects.filter(status='ACTIVE')[:50]
+
+                hospitals = Hospital.objects.filter(status="ACTIVE")[:50]
                 for hospital in hospitals:
                     hospital_data = {
-                        'id': hospital.id,
-                        'name': hospital.name,
-                        'code': hospital.code,
-                        'status': hospital.status,
-                        'capacity': hospital.capacity
+                        "id": hospital.id,
+                        "name": hospital.name,
+                        "code": hospital.code,
+                        "status": hospital.status,
+                        "capacity": hospital.capacity,
                     }
                     analytics_key = self.generate_cache_key(
-                        self.config.HOSPITAL_CACHE_PREFIX,
-                        hospital.id,
-                        "basic_info"
+                        self.config.HOSPITAL_CACHE_PREFIX, hospital.id, "basic_info"
                     )
                     self.set_with_tags(
                         analytics_key,
@@ -238,22 +272,23 @@ class EnhancedCache:
                         self.config.LONG_TIMEOUT,
                         [f"hospital_{hospital.code}", "hospital_data"],
                     )
-                warmed_up['hospitals'] = len(hospitals)
+                warmed_up["hospitals"] = len(hospitals)
 
             if cache_type in ["all", "analytics"]:
                 # Cache basic analytics for active hospitals
                 from hospitals.models import Hospital
-                hospitals = Hospital.objects.filter(status='ACTIVE')[:20]
+
+                hospitals = Hospital.objects.filter(status="ACTIVE")[:20]
                 for hospital in hospitals:
                     analytics_data = {
-                        'hospital_id': hospital.id,
-                        'hospital_name': hospital.name,
-                        'patient_count': 0,  # Placeholder
-                        'active_appointments': 0,  # Placeholder
-                        'last_updated': datetime.now().isoformat()
+                        "hospital_id": hospital.id,
+                        "hospital_name": hospital.name,
+                        "patient_count": 0,  # Placeholder
+                        "active_appointments": 0,  # Placeholder
+                        "last_updated": datetime.now().isoformat(),
                     }
                     self.cache_analytics_data(hospital.id, analytics_data)
-                warmed_up['analytics'] = len(hospitals)
+                warmed_up["analytics"] = len(hospitals)
 
             logger.info(f"Cache warm-up completed: {warmed_up}")
             return warmed_up
@@ -262,7 +297,9 @@ class EnhancedCache:
             logger.error(f"Error during cache warm-up: {str(e)}")
             return warmed_up
 
-    def implement_cache_strategy(self, strategy: str, key: str, value: Any, timeout: int = None) -> bool:
+    def implement_cache_strategy(
+        self, strategy: str, key: str, value: Any, timeout: int = None
+    ) -> bool:
         """Implement different caching strategies"""
         try:
             if strategy == "write_through":
@@ -274,12 +311,17 @@ class EnhancedCache:
                 # Write to cache immediately, queue for database write
                 self.cache.set(key, value, timeout)
                 if self.redis:
-                    self.redis.lpush("write_behind_queue", json.dumps({
-                        'key': key,
-                        'value': value,
-                        'timeout': timeout,
-                        'timestamp': datetime.now().isoformat()
-                    }))
+                    self.redis.lpush(
+                        "write_behind_queue",
+                        json.dumps(
+                            {
+                                "key": key,
+                                "value": value,
+                                "timeout": timeout,
+                                "timestamp": datetime.now().isoformat(),
+                            }
+                        ),
+                    )
                 return True
 
             elif strategy == "cache_aside":
@@ -323,9 +365,13 @@ class CacheInvalidationManager:
             tags = self.cache_tags_func(instance, created=created)
             if tags:
                 self.enhanced_cache.bulk_invalidate_by_tags(tags)
-                logger.info(f"Cache invalidated for {sender.__name__} instance {instance.id}: {tags}")
+                logger.info(
+                    f"Cache invalidated for {sender.__name__} instance {instance.id}: {tags}"
+                )
         except Exception as e:
-            logger.error(f"Error handling cache invalidation for {sender.__name__}: {str(e)}")
+            logger.error(
+                f"Error handling cache invalidation for {sender.__name__}: {str(e)}"
+            )
 
     def _handle_model_delete(self, sender, instance, **kwargs):
         """Handle model delete events"""
@@ -333,9 +379,13 @@ class CacheInvalidationManager:
             tags = self.cache_tags_func(instance, deleted=True)
             if tags:
                 self.enhanced_cache.bulk_invalidate_by_tags(tags)
-                logger.info(f"Cache invalidated for deleted {sender.__name__} instance {instance.id}: {tags}")
+                logger.info(
+                    f"Cache invalidated for deleted {sender.__name__} instance {instance.id}: {tags}"
+                )
         except Exception as e:
-            logger.error(f"Error handling cache invalidation for deleted {sender.__name__}: {str(e)}")
+            logger.error(
+                f"Error handling cache invalidation for deleted {sender.__name__}: {str(e)}"
+            )
 
 
 # Global cache invalidation manager
@@ -345,7 +395,7 @@ cache_invalidation_manager = CacheInvalidationManager()
 def get_patient_cache_tags(patient, created=False, deleted=False):
     """Get cache tags for patient model changes"""
     tags = [f"patient_{patient.id}", "patient_data"]
-    if hasattr(patient, 'hospital_id') and patient.hospital_id:
+    if hasattr(patient, "hospital_id") and patient.hospital_id:
         tags.append(f"hospital_patient_{patient.hospital_id}")
     return tags
 
@@ -361,21 +411,29 @@ def get_hospital_cache_tags(hospital, created=False, deleted=False):
 def get_appointment_cache_tags(appointment, created=False, deleted=False):
     """Get cache tags for appointment model changes"""
     tags = [f"appointment_{appointment.id}", "appointment_data"]
-    if hasattr(appointment, 'patient_id') and appointment.patient_id:
+    if hasattr(appointment, "patient_id") and appointment.patient_id:
         tags.append(f"patient_appointments_{appointment.patient_id}")
-    if hasattr(appointment, 'hospital_id') and appointment.hospital_id:
+    if hasattr(appointment, "hospital_id") and appointment.hospital_id:
         tags.append(f"hospital_appointments_{appointment.hospital_id}")
     return tags
 
 
 # Advanced cache decorators
-def cache_with_strategy(strategy: str = "cache_aside", timeout: int = None, key_prefix: str = "", tags: list = None):
+def cache_with_strategy(
+    strategy: str = "cache_aside",
+    timeout: int = None,
+    key_prefix: str = "",
+    tags: list = None,
+):
     """Cache decorator with configurable strategy"""
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
             enhanced_cache = EnhancedCache()
-            cache_key = enhanced_cache.generate_cache_key(f"{key_prefix}:{func.__name__}", *args, **kwargs)
+            cache_key = enhanced_cache.generate_cache_key(
+                f"{key_prefix}:{func.__name__}", *args, **kwargs
+            )
 
             # Try to get from cache first
             result = enhanced_cache.cache.get(cache_key)
@@ -387,14 +445,18 @@ def cache_with_strategy(strategy: str = "cache_aside", timeout: int = None, key_
             result = func(*args, **kwargs)
 
             # Apply caching strategy
-            enhanced_cache.implement_cache_strategy(strategy, cache_key, result, timeout or CacheConfig.MEDIUM_TIMEOUT)
+            enhanced_cache.implement_cache_strategy(
+                strategy, cache_key, result, timeout or CacheConfig.MEDIUM_TIMEOUT
+            )
 
             # Set tags if available
             if tags and enhanced_cache.redis:
                 for tag in tags:
                     tag_key = f"tag:{tag}"
                     enhanced_cache.redis.sadd(tag_key, cache_key)
-                    enhanced_cache.redis.expire(tag_key, timeout or CacheConfig.MEDIUM_TIMEOUT)
+                    enhanced_cache.redis.expire(
+                        tag_key, timeout or CacheConfig.MEDIUM_TIMEOUT
+                    )
 
             logger.debug(f"Cache miss and set for {cache_key} (strategy: {strategy})")
             return result
@@ -404,13 +466,18 @@ def cache_with_strategy(strategy: str = "cache_aside", timeout: int = None, key_
     return decorator
 
 
-def cache_queryset_results(timeout: int = CacheConfig.MEDIUM_TIMEOUT, tags: list = None):
+def cache_queryset_results(
+    timeout: int = CacheConfig.MEDIUM_TIMEOUT, tags: list = None
+):
     """Decorator for caching queryset results"""
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
             enhanced_cache = EnhancedCache()
-            cache_key = enhanced_cache.generate_cache_key(f"qs:{func.__name__}", *args, **kwargs)
+            cache_key = enhanced_cache.generate_cache_key(
+                f"qs:{func.__name__}", *args, **kwargs
+            )
 
             # Try to get cached queryset
             cached_result = enhanced_cache.get_cached_queryset(cache_key)
@@ -435,38 +502,61 @@ def cache_queryset_results(timeout: int = CacheConfig.MEDIUM_TIMEOUT, tags: list
 def setup_cache_invalidation():
     """Setup automatic cache invalidation for models"""
     try:
-        from patients.models import Patient
-        from hospitals.models import Hospital
-        from appointments.models import Appointment
+        # Lazy imports to avoid circular dependencies
+        from appointments.models import Appointment  # noqa: F401
+        from hospitals.models import Hospital  # noqa: F401
+        from patients.models import Patient  # noqa: F401
 
-        cache_invalidation_manager.register_model_signals(Patient, get_patient_cache_tags)
-        cache_invalidation_manager.register_model_signals(Hospital, get_hospital_cache_tags)
-        cache_invalidation_manager.register_model_signals(Appointment, get_appointment_cache_tags)
+        cache_invalidation_manager.register_model_signals(
+            Patient, get_patient_cache_tags
+        )
+        cache_invalidation_manager.register_model_signals(
+            Hospital, get_hospital_cache_tags
+        )
+        cache_invalidation_manager.register_model_signals(
+            Appointment, get_appointment_cache_tags
+        )
 
-        logger.info("Cache invalidation signals registered for Patient, Hospital, and Appointment models")
+        logger.info(
+            "Cache invalidation signals registered for Patient, Hospital, and Appointment models"
+        )
     except ImportError as e:
         logger.warning(f"Could not register cache invalidation signals: {str(e)}")
 
 
 # Enhanced cache decorators with better defaults
-def cache_result(timeout: int = None, key_prefix: str = "", tags: list = None, strategy: str = "cache_aside"):
+def cache_result(
+    timeout: int = None,
+    key_prefix: str = "",
+    tags: list = None,
+    strategy: str = "cache_aside",
+):
     """Enhanced cache result decorator with strategy support"""
-    return cache_with_strategy(strategy=strategy, timeout=timeout, key_prefix=key_prefix, tags=tags)
+    return cache_with_strategy(
+        strategy=strategy, timeout=timeout, key_prefix=key_prefix, tags=tags
+    )
 
 
 def cache_patient_view(timeout: int = CacheConfig.LONG_TIMEOUT):
-    return cache_result(timeout=timeout, key_prefix="patient_view", tags=["patient_data"], strategy="write_through")
+    return cache_result(
+        timeout=timeout,
+        key_prefix="patient_view",
+        tags=["patient_data"],
+        strategy="write_through",
+    )
 
 
 def cache_analytics_view(timeout: int = CacheConfig.SHORT_TIMEOUT):
-    return cache_result(timeout=timeout, key_prefix="analytics_view", tags=["analytics_data"], strategy="refresh_ahead")
+    return cache_result(
+        timeout=timeout,
+        key_prefix="analytics_view",
+        tags=["analytics_data"],
+        strategy="refresh_ahead",
+    )
 
 
-# Initialize cache invalidation on module load
-try:
-    setup_cache_invalidation()
-except Exception as e:
-    logger.error(f"Error setting up cache invalidation: {str(e)}")
+# Cache invalidation setup is deferred to avoid circular imports
+# It will be called when the apps are ready
 
 
 # Global enhanced cache instance

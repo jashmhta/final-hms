@@ -1,3 +1,7 @@
+"""
+models module
+"""
+
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError
@@ -11,8 +15,12 @@ class Medication(TenantModel):
     name = models.CharField(max_length=255)
     generic_name = models.CharField(max_length=255, blank=True)
     brand_name = models.CharField(max_length=255, blank=True)
-    category = models.ForeignKey("DrugCategory", on_delete=models.SET_NULL, null=True, blank=True)
-    manufacturer = models.ForeignKey("Manufacturer", on_delete=models.SET_NULL, null=True, blank=True)
+    category = models.ForeignKey(
+        "DrugCategory", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    manufacturer = models.ForeignKey(
+        "Manufacturer", on_delete=models.SET_NULL, null=True, blank=True
+    )
     strength = models.CharField(max_length=100, blank=True)
     form = models.CharField(max_length=100, blank=True)
     route = models.CharField(max_length=50, blank=True)
@@ -22,7 +30,9 @@ class Medication(TenantModel):
     reorder_level = models.IntegerField(default=0)
     unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     selling_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    preferred_supplier = models.ForeignKey("Supplier", on_delete=models.SET_NULL, null=True, blank=True)
+    preferred_supplier = models.ForeignKey(
+        "Supplier", on_delete=models.SET_NULL, null=True, blank=True
+    )
     is_active = models.BooleanField(default=True)
     is_discontinued = models.BooleanField(default=False)
     ndc_code = models.CharField(max_length=20, blank=True, unique=True)
@@ -50,15 +60,25 @@ class Medication(TenantModel):
         return soon_expiry
 
     def update_total_stock(self):
-        self.total_stock_quantity = sum(batch.quantity_remaining for batch in self.batches.all())
+        self.total_stock_quantity = sum(
+            batch.quantity_remaining for batch in self.batches.all()
+        )
         self.save(update_fields=["total_stock_quantity"])
 
 
 class Prescription(TenantModel):
-    encounter = models.ForeignKey("ehr.Encounter", on_delete=models.CASCADE, related_name="prescriptions")
-    patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="prescriptions")
-    doctor = models.ForeignKey("users.User", on_delete=models.SET_NULL, null=True, related_name="prescriptions")
-    medication = models.ForeignKey(Medication, on_delete=models.PROTECT, related_name="prescriptions")
+    encounter = models.ForeignKey(
+        "ehr.Encounter", on_delete=models.CASCADE, related_name="prescriptions"
+    )
+    patient = models.ForeignKey(
+        "patients.Patient", on_delete=models.CASCADE, related_name="prescriptions"
+    )
+    doctor = models.ForeignKey(
+        "users.User", on_delete=models.SET_NULL, null=True, related_name="prescriptions"
+    )
+    medication = models.ForeignKey(
+        Medication, on_delete=models.PROTECT, related_name="prescriptions"
+    )
     dosage_instructions = models.CharField(max_length=255)
     quantity = models.IntegerField(default=1)
     is_dispensed = models.BooleanField(default=False)
@@ -66,7 +86,9 @@ class Prescription(TenantModel):
 
 
 class InventoryTransaction(TenantModel):
-    medication = models.ForeignKey(Medication, on_delete=models.CASCADE, related_name="transactions")
+    medication = models.ForeignKey(
+        Medication, on_delete=models.CASCADE, related_name="transactions"
+    )
     change = models.IntegerField()
     reason = models.CharField(max_length=255, blank=True)
     performed_by = models.ForeignKey("users.User", on_delete=models.SET_NULL, null=True)
@@ -122,7 +144,9 @@ class Supplier(TenantModel):
 
 
 class MedicationBatch(TenantModel):
-    medication = models.ForeignKey(Medication, on_delete=models.CASCADE, related_name="batches")
+    medication = models.ForeignKey(
+        Medication, on_delete=models.CASCADE, related_name="batches"
+    )
     batch_number = models.CharField(max_length=100, unique=True)
     expiry_date = models.DateField()
     quantity_received = models.PositiveIntegerField()
@@ -135,7 +159,9 @@ class MedicationBatch(TenantModel):
         null=True,
         related_name="received_batches",
     )
-    manufacturer = models.ForeignKey(Manufacturer, on_delete=models.SET_NULL, null=True, blank=True)
+    manufacturer = models.ForeignKey(
+        Manufacturer, on_delete=models.SET_NULL, null=True, blank=True
+    )
 
     class Meta:
         ordering = ["-received_date"]
@@ -145,7 +171,9 @@ class MedicationBatch(TenantModel):
         ]
 
     def __str__(self):
-        return f"{self.medication} - Batch {self.batch_number} (Exp: {self.expiry_date})"
+        return (
+            f"{self.medication} - Batch {self.batch_number} (Exp: {self.expiry_date})"
+        )
 
     def is_expired(self):
         return self.expiry_date < timezone.now().date()
@@ -189,7 +217,9 @@ class PharmacyOrder(TenantModel):
 
 
 class OrderItem(TenantModel):
-    order = models.ForeignKey(PharmacyOrder, on_delete=models.CASCADE, related_name="items")
+    order = models.ForeignKey(
+        PharmacyOrder, on_delete=models.CASCADE, related_name="items"
+    )
     medication = models.ForeignKey(Medication, on_delete=models.PROTECT)
     quantity_ordered = models.PositiveIntegerField()
     quantity_received = models.PositiveIntegerField(default=0)
@@ -213,10 +243,16 @@ class OrderItem(TenantModel):
 
 
 class Dispensation(TenantModel):
-    prescription = models.ForeignKey(Prescription, on_delete=models.CASCADE, related_name="dispensations")
-    medication_batch = models.ForeignKey(MedicationBatch, on_delete=models.PROTECT, related_name="dispensations")
+    prescription = models.ForeignKey(
+        Prescription, on_delete=models.CASCADE, related_name="dispensations"
+    )
+    medication_batch = models.ForeignKey(
+        MedicationBatch, on_delete=models.PROTECT, related_name="dispensations"
+    )
     quantity_dispensed = models.PositiveIntegerField()
-    dispensed_by = models.ForeignKey("users.User", on_delete=models.SET_NULL, null=True, related_name="dispensations")
+    dispensed_by = models.ForeignKey(
+        "users.User", on_delete=models.SET_NULL, null=True, related_name="dispensations"
+    )
     dispensed_at = models.DateTimeField(auto_now_add=True)
     instructions_given = models.TextField(blank=True)
     patient_education_provided = models.BooleanField(default=False)
@@ -240,7 +276,9 @@ class Dispensation(TenantModel):
 
 class StockAdjustment(TenantModel):
     medication = models.ForeignKey(Medication, on_delete=models.CASCADE)
-    medication_batch = models.ForeignKey(MedicationBatch, on_delete=models.SET_NULL, null=True, blank=True)
+    medication_batch = models.ForeignKey(
+        MedicationBatch, on_delete=models.SET_NULL, null=True, blank=True
+    )
     quantity_adjusted = models.IntegerField()
     reason = models.CharField(max_length=255)
     adjustment_type = models.CharField(
@@ -278,5 +316,8 @@ class StockAdjustment(TenantModel):
     def clean(self):
         if self.quantity_adjusted == 0:
             raise ValidationError("Quantity adjusted cannot be zero.")
-        if self.medication_batch and self.medication_batch.medication != self.medication:
+        if (
+            self.medication_batch
+            and self.medication_batch.medication != self.medication
+        ):
             raise ValidationError("Batch must belong to the selected medication.")

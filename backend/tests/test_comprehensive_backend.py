@@ -1,3 +1,7 @@
+"""
+test_comprehensive_backend module
+"""
+
 import json
 from unittest.mock import MagicMock, patch
 
@@ -82,7 +86,9 @@ class AuthenticationSystemTest(TestCase):
 
     def test_user_authentication(self):
         user = User.objects.create_user(**self.user_data)
-        login_success = self.client.login(username=self.user_data["username"], password=self.user_data["password"])
+        login_success = self.client.login(
+            username=self.user_data["username"], password=self.user_data["password"]
+        )
         self.assertTrue(login_success)
 
     def test_jwt_authentication(self):
@@ -165,7 +171,11 @@ class PatientManagementTest(TestCase):
 
 class AppointmentSystemTest(TestCase):
     def setUp(self):
-        self.hospital_data = {"name": "Test Hospital", "code": "TEST001", "address": "123 Test St"}
+        self.hospital_data = {
+            "name": "Test Hospital",
+            "code": "TEST001",
+            "address": "123 Test St",
+        }
         from hospitals.models import Hospital
 
         self.hospital = Hospital.objects.create(**self.hospital_data)
@@ -219,7 +229,11 @@ class AppointmentSystemTest(TestCase):
 
 class EHRSystemTest(TestCase):
     def setUp(self):
-        self.hospital_data = {"name": "Test Hospital", "code": "TEST001", "address": "123 Test St"}
+        self.hospital_data = {
+            "name": "Test Hospital",
+            "code": "TEST001",
+            "address": "123 Test St",
+        }
         from hospitals.models import Hospital
 
         self.hospital = Hospital.objects.create(**self.hospital_data)
@@ -283,7 +297,11 @@ class EHRSystemTest(TestCase):
 
 class BillingSystemTest(TestCase):
     def setUp(self):
-        self.hospital_data = {"name": "Test Hospital", "code": "TEST001", "address": "123 Test St"}
+        self.hospital_data = {
+            "name": "Test Hospital",
+            "code": "TEST001",
+            "address": "123 Test St",
+        }
         from hospitals.models import Hospital
 
         self.hospital = Hospital.objects.create(**self.hospital_data)
@@ -333,7 +351,11 @@ class BillingSystemTest(TestCase):
 
 class PharmacySystemTest(TestCase):
     def setUp(self):
-        self.hospital_data = {"name": "Test Hospital", "code": "TEST001", "address": "123 Test St"}
+        self.hospital_data = {
+            "name": "Test Hospital",
+            "code": "TEST001",
+            "address": "123 Test St",
+        }
         from hospitals.models import Hospital
 
         self.hospital = Hospital.objects.create(**self.hospital_data)
@@ -403,7 +425,11 @@ class PharmacySystemTest(TestCase):
 
 class LabSystemTest(TestCase):
     def setUp(self):
-        self.hospital_data = {"name": "Test Hospital", "code": "TEST001", "address": "123 Test St"}
+        self.hospital_data = {
+            "name": "Test Hospital",
+            "code": "TEST001",
+            "address": "123 Test St",
+        }
         from hospitals.models import Hospital
 
         self.hospital = Hospital.objects.create(**self.hospital_data)
@@ -467,7 +493,11 @@ class LabSystemTest(TestCase):
 
 class AnalyticsSystemTest(TestCase):
     def setUp(self):
-        self.hospital_data = {"name": "Test Hospital", "code": "TEST001", "address": "123 Test St"}
+        self.hospital_data = {
+            "name": "Test Hospital",
+            "code": "TEST001",
+            "address": "123 Test St",
+        }
         from hospitals.models import Hospital
 
         self.hospital = Hospital.objects.create(**self.hospital_data)
@@ -573,18 +603,24 @@ class APIIntegrationTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
         response = self.client.get("/api/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
 
     def test_user_api_endpoints(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
         response = self.client.get("/api/users/profile/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
 
     def test_api_rate_limiting(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
         for i in range(5):
             response = self.client.get("/api/")
-            self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+            self.assertIn(
+                response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+            )
 
 
 class PerformanceTest(TestCase):
@@ -592,7 +628,11 @@ class PerformanceTest(TestCase):
         from django.db import connection
         from django.test.utils import override_settings
 
-        hospital_data = {"name": "Test Hospital", "code": "TEST001", "address": "123 Test St"}
+        hospital_data = {
+            "name": "Test Hospital",
+            "code": "TEST001",
+            "address": "123 Test St",
+        }
         from hospitals.models import Hospital
 
         hospital = Hospital.objects.create(**hospital_data)
@@ -625,7 +665,11 @@ class PerformanceTest(TestCase):
 
 class HMSIntegrationTest(TestCase):
     def setUp(self):
-        self.hospital_data = {"name": "Test Hospital", "code": "TEST001", "address": "123 Test St"}
+        self.hospital_data = {
+            "name": "Test Hospital",
+            "code": "TEST001",
+            "address": "123 Test St",
+        }
         from hospitals.models import Hospital
 
         self.hospital = Hospital.objects.create(**self.hospital_data)

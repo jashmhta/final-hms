@@ -1,0 +1,163 @@
+{
+  "metadata": {
+    "generated_at": "2025-09-26T07:13:25.974272",
+    "analysis_duration": 1089.73905,
+    "version": "1.0.0",
+    "tool": "HMS Enterprise-Grade Code Quality Enforcer"
+  },
+  "metrics": {
+    "total_issues": 0,
+    "critical_issues": 0,
+    "high_issues": 0,
+    "medium_issues": 0,
+    "low_issues": 0,
+    "coverage_percentage": 85.0,
+    "complexity_score": 0.0,
+    "maintainability_index": 0.0,
+    "security_score": 0.0,
+    "performance_score": 0.0,
+    "documentation_score": 0.0,
+    "test_quality_score": 0.0,
+    "duplication_percentage": 0.0,
+    "technical_debt_score": 0.0,
+    "healthcare_compliance_score": 0.0,
+    "overall_quality_score": 0,
+    "files_analyzed": 100,
+    "lines_of_code": 0,
+    "test_count": 0,
+    "last_analysis": "2025-09-26 07:13:25.973897"
+  },
+  "quality_gates": {
+    "passed": false,
+    "gates": {
+      "critical_issues": true,
+      "high_issues": true,
+      "coverage": false,
+      "maintainability": false,
+      "security": false,
+      "performance": false,
+      "duplication": true,
+      "healthcare_compliance": false,
+      "test_quality": false,
+      "healthcare_violations": true
+    },
+    "healthcare_violations": 0,
+    "total_gates": 10,
+    "passed_gates": 4
+  },
+  "issues": [],
+  "configuration": {
+    "enforcement": {
+      "enabled": true,
+      "strict_mode": true,
+      "auto_fix": true,
+      "fail_on_critical": true,
+      "fail_on_healthcare_violation": true
+    },
+    "thresholds": {
+      "max_critical_issues": 0,
+      "max_high_issues": 5,
+      "min_coverage": 95.0,
+      "min_maintainability": 70.0,
+      "min_security_score": 90.0,
+      "min_performance_score": 80.0,
+      "max_duplication": 5.0,
+      "min_healthcare_compliance": 100.0,
+      "min_test_quality": 85.0
+    },
+    "tools": {
+      "static_analysis": [
+        "sonarqube",
+        "codeql",
+        "semgrep",
+        "bandit",
+        "pylint",
+        "flake8"
+      ],
+      "complexity_analysis": [
+        "lizard",
+        "radon",
+        "pmd"
+      ],
+      "coverage_analysis": [
+        "coverage.py",
+        "pytest"
+      ],
+      "security_analysis": [
+        "snyk",
+        "safety",
+        "trufflehog"
+      ],
+      "performance_analysis": [
+        "cProfile",
+        "memory_profiler",
+        "py-spy"
+      ],
+      "documentation_analysis": [
+        "pydocstyle",
+        "interrogate"
+      ],
+      "duplication_analysis": [
+        "jscpd",
+        "duplicate_code_detection"
+      ]
+    },
+    "healthcare": {
+      "strict_compliance": true,
+      "patient_data_protection": true,
+      "hipaa_compliance": true,
+      "gdpr_compliance": true,
+      "audit_trail_required": true
+    },
+    "reporting": {
+      "generate_html": true,
+      "generate_json": true,
+      "generate_xml": true,
+      "email_notifications": true,
+      "slack_notifications": true
+    },
+    "automation": {
+      "continuous_analysis": true,
+      "auto_refactoring": true,
+      "self_healing": true,
+      "predictive_analysis": true
+    }
+  },
+  "recommendations": [
+    {
+      "priority": "high",
+      "category": "coverage",
+      "title": "Improve Test Coverage",
+      "description": "Code coverage is 85.0% (target: 95%)",
+      "action": "Add comprehensive tests for uncovered code paths"
+    },
+    {
+      "priority": "high",
+      "category": "security",
+      "title": "Improve Security Posture",
+      "description": "Security score is 0.0% (target: 90%)",
+      "action": "Address security vulnerabilities and implement security best practices"
+    },
+    {
+      "priority": "critical",
+      "category": "healthcare_compliance",
+      "title": "Healthcare Compliance Issues",
+      "description": "Healthcare compliance score is 0.0% (target: 100%)",
+      "action": "Address all healthcare compliance violations for regulatory requirements"
+    },
+    {
+      "priority": "medium",
+      "category": "performance",
+      "title": "Performance Optimization",
+      "description": "Performance score is 0.0% (target: 80%)",
+      "action": "Optimize code performance and implement performance monitoring"
+    },
+    {
+      "priority": "medium",
+      "category": "maintainability",
+      "title": "Improve Code Maintainability",
+      "description": "Maintainability index is 0.0 (target: 70)",
+      "action": "Refactor complex code and improve code structure"
+    }
+  ]
+}

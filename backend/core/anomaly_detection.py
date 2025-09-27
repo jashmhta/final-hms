@@ -1,3 +1,7 @@
+"""
+anomaly_detection module
+"""
+
 import logging
 import os
 from datetime import datetime, timedelta
@@ -21,13 +25,17 @@ class MLAnomalyDetector:
         os.makedirs(self.model_path, exist_ok=True)
         self.scaler = StandardScaler()
 
-    def train_user_behavior_model(self, user_id: int, behavior_data: List[Dict]) -> bool:
+    def train_user_behavior_model(
+        self, user_id: int, behavior_data: List[Dict]
+    ) -> bool:
         try:
             if len(behavior_data) < 10:
                 logger.warning(f"Insufficient data for user {user_id}")
                 return False
             features = self._extract_behavior_features(behavior_data)
-            model = IsolationForest(contamination=0.1, random_state=42, n_estimators=100)
+            model = IsolationForest(
+                contamination=0.1, random_state=42, n_estimators=100
+            )
             scaled_features = self.scaler.fit_transform(features)
             model.fit(scaled_features)
             model_file = os.path.join(self.model_path, f"user_{user_id}_behavior.pkl")
@@ -38,7 +46,9 @@ class MLAnomalyDetector:
             logger.error(f"Failed to train model for user {user_id}: {e}")
             return False
 
-    def detect_anomalies(self, user_id: int, current_behavior: Dict) -> Tuple[bool, float]:
+    def detect_anomalies(
+        self, user_id: int, current_behavior: Dict
+    ) -> Tuple[bool, float]:
         try:
             model_file = os.path.join(self.model_path, f"user_{user_id}_behavior.pkl")
             if not os.path.exists(model_file):
@@ -104,15 +114,21 @@ class BehavioralAnalytics:
         if time_anomaly:
             analysis["anomalies"].append(time_anomaly)
             analysis["risk_score"] += 20
-        location_anomaly = self._analyze_location_patterns(current_session, historical_sessions)
+        location_anomaly = self._analyze_location_patterns(
+            current_session, historical_sessions
+        )
         if location_anomaly:
             analysis["anomalies"].append(location_anomaly)
             analysis["risk_score"] += 25
-        device_anomaly = self._analyze_device_patterns(current_session, historical_sessions)
+        device_anomaly = self._analyze_device_patterns(
+            current_session, historical_sessions
+        )
         if device_anomaly:
             analysis["anomalies"].append(device_anomaly)
             analysis["risk_score"] += 15
-        activity_anomaly = self._analyze_activity_patterns(current_session, historical_sessions)
+        activity_anomaly = self._analyze_activity_patterns(
+            current_session, historical_sessions
+        )
         if activity_anomaly:
             analysis["anomalies"].append(activity_anomaly)
             analysis["risk_score"] += 20
@@ -127,7 +143,9 @@ class BehavioralAnalytics:
             cache.set(cache_key, sessions, self.cache_timeout)
         return sessions
 
-    def _analyze_time_patterns(self, current: Dict, historical: List[Dict]) -> Optional[str]:
+    def _analyze_time_patterns(
+        self, current: Dict, historical: List[Dict]
+    ) -> Optional[str]:
         current_hour = current.get("hour", 12)
         historical_hours = [s.get("hour", 12) for s in historical]
         if not historical_hours:
@@ -138,7 +156,9 @@ class BehavioralAnalytics:
             return f"Unusual login time: {current_hour}:00 (typical: {avg_hour:.1f}:00)"
         return None
 
-    def _analyze_location_patterns(self, current: Dict, historical: List[Dict]) -> Optional[str]:
+    def _analyze_location_patterns(
+        self, current: Dict, historical: List[Dict]
+    ) -> Optional[str]:
         current_location = current.get("location")
         if not current_location:
             return None
@@ -149,16 +169,24 @@ class BehavioralAnalytics:
             return "Unusual location detected"
         return None
 
-    def _analyze_device_patterns(self, current: Dict, historical: List[Dict]) -> Optional[str]:
+    def _analyze_device_patterns(
+        self, current: Dict, historical: List[Dict]
+    ) -> Optional[str]:
         current_device = current.get("device_fingerprint")
         if not current_device:
             return None
-        known_devices = [s.get("device_fingerprint") for s in historical if s.get("device_fingerprint")]
+        known_devices = [
+            s.get("device_fingerprint")
+            for s in historical
+            if s.get("device_fingerprint")
+        ]
         if current_device not in known_devices:
             return "Unrecognized device"
         return None
 
-    def _analyze_activity_patterns(self, current: Dict, historical: List[Dict]) -> Optional[str]:
+    def _analyze_activity_patterns(
+        self, current: Dict, historical: List[Dict]
+    ) -> Optional[str]:
         current_requests = current.get("requests_count", 0)
         historical_requests = [s.get("requests_count", 0) for s in historical]
         if not historical_requests:

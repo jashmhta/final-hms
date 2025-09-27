@@ -1,14 +1,31 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text, JSON, Float, Enum
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime
 import enum
+from datetime import datetime
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+
 Base = declarative_base()
+
+
 class PatientStatus(enum.Enum):
     ACTIVE = "active"
     INACTIVE = "inactive"
     DISCHARGED = "discharged"
     DECEASED = "deceased"
+
+
 class BloodGroup(enum.Enum):
     A_POSITIVE = "A+"
     A_NEGATIVE = "A-"
@@ -18,6 +35,8 @@ class BloodGroup(enum.Enum):
     AB_NEGATIVE = "AB-"
     O_POSITIVE = "O+"
     O_NEGATIVE = "O-"
+
+
 class Patient(Base):
     __tablename__ = "patients"
     id = Column(Integer, primary_key=True, index=True)
@@ -38,6 +57,8 @@ class Patient(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class PatientLogin(Base):
     __tablename__ = "patient_logins"
     id = Column(Integer, primary_key=True, index=True)
@@ -49,6 +70,8 @@ class PatientLogin(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     patient = relationship("Patient")
+
+
 class PatientAppointment(Base):
     __tablename__ = "patient_appointments"
     id = Column(Integer, primary_key=True, index=True)
@@ -56,18 +79,20 @@ class PatientAppointment(Base):
     appointment_id = Column(String, unique=True)
     doctor_id = Column(Integer)
     appointment_date = Column(DateTime)
-    status = Column(String)  
+    status = Column(String)
     reason_for_visit = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     patient = relationship("Patient")
+
+
 class PatientMedicalRecord(Base):
     __tablename__ = "patient_medical_records"
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id"))
     record_id = Column(String, unique=True)
-    record_type = Column(String)  
+    record_type = Column(String)
     doctor_id = Column(Integer, nullable=True)
     date = Column(DateTime)
     diagnosis = Column(Text, nullable=True)
@@ -78,19 +103,23 @@ class PatientMedicalRecord(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     patient = relationship("Patient")
+
+
 class PatientFeedback(Base):
     __tablename__ = "patient_feedback"
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id"))
     feedback_id = Column(String, unique=True)
-    rating = Column(Integer)  
+    rating = Column(Integer)
     feedback_text = Column(Text, nullable=True)
-    service_type = Column(String)  
+    service_type = Column(String)
     doctor_id = Column(Integer, nullable=True)
     is_anonymous = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     patient = relationship("Patient")
+
+
 class PatientNotification(Base):
     __tablename__ = "patient_notifications"
     id = Column(Integer, primary_key=True, index=True)
@@ -98,7 +127,7 @@ class PatientNotification(Base):
     notification_id = Column(String, unique=True)
     title = Column(String)
     message = Column(Text)
-    notification_type = Column(String)  
+    notification_type = Column(String)
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

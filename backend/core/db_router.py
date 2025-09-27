@@ -1,3 +1,8 @@
+"""
+db_router module
+"""
+
+
 class DatabaseRouter:
     def db_for_read(self, model, **hints):
         if hasattr(model, "_meta") and model._meta.app_label in [

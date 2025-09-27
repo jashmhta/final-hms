@@ -1,3 +1,7 @@
+"""
+serializers module
+"""
+
 from rest_framework import serializers
 
 from .models import Hospital, HospitalPlan, Plan
@@ -38,7 +42,9 @@ class PlanSerializer(serializers.ModelSerializer):
 
 class HospitalPlanSerializer(serializers.ModelSerializer):
     plan = PlanSerializer(read_only=True)
-    plan_id = serializers.PrimaryKeyRelatedField(source="plan", queryset=Plan.objects.all(), write_only=True)
+    plan_id = serializers.PrimaryKeyRelatedField(
+        source="plan", queryset=Plan.objects.all(), write_only=True
+    )
 
     class Meta:
         model = HospitalPlan
@@ -54,3 +60,8 @@ class HospitalPlanSerializer(serializers.ModelSerializer):
             "enable_accounting",
         ]
         read_only_fields = ["id"]
+
+    def validate_name(self, value):
+        if len(value) < 2:
+            raise serializers.ValidationError("Name must be at least 2 characters")
+        return value

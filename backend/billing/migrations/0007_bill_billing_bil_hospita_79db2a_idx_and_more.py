@@ -36,7 +36,9 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="bill",
-            index=models.Index(fields=["hospital", "net_cents"], name="billing_bil_hospita_ea5ceb_idx"),
+            index=models.Index(
+                fields=["hospital", "net_cents"], name="billing_bil_hospita_ea5ceb_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="bill",
@@ -58,7 +60,9 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="billlineitem",
-            index=models.Index(fields=["hospital", "department"], name="billing_bil_hospita_2ff083_idx"),
+            index=models.Index(
+                fields=["hospital", "department"], name="billing_bil_hospita_2ff083_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="billlineitem",
@@ -90,11 +94,15 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="departmentbudget",
-            index=models.Index(fields=["hospital", "period"], name="billing_dep_hospita_78ea8a_idx"),
+            index=models.Index(
+                fields=["hospital", "period"], name="billing_dep_hospita_78ea8a_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="departmentbudget",
-            index=models.Index(fields=["hospital", "department"], name="billing_dep_hospita_afea2d_idx"),
+            index=models.Index(
+                fields=["hospital", "department"], name="billing_dep_hospita_afea2d_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="departmentbudget",
@@ -116,7 +124,9 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="payment",
-            index=models.Index(fields=["hospital", "method"], name="billing_pay_hospita_ec19ff_idx"),
+            index=models.Index(
+                fields=["hospital", "method"], name="billing_pay_hospita_ec19ff_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="payment",
@@ -134,11 +144,15 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="servicecatalog",
-            index=models.Index(fields=["hospital", "code"], name="billing_ser_hospita_136d3d_idx"),
+            index=models.Index(
+                fields=["hospital", "code"], name="billing_ser_hospita_136d3d_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="servicecatalog",
-            index=models.Index(fields=["hospital", "active"], name="billing_ser_hospita_d7e46c_idx"),
+            index=models.Index(
+                fields=["hospital", "active"], name="billing_ser_hospita_d7e46c_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="servicecatalog",

@@ -1,3 +1,7 @@
+"""
+views module
+"""
+
 import logging
 import secrets
 from datetime import timedelta
@@ -69,7 +73,9 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 user_agent=request.META.get("HTTP_USER_AGENT", ""),
                 metadata={"username": username},
             )
-            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
+            )
         if user.is_account_locked():
             SecurityEvent.objects.create(
                 user=user,
@@ -87,7 +93,9 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         if not user:
             user.failed_login_attempts += 1
             user.save()
-            policy = PasswordPolicy.objects.filter(is_active=True, is_default=True).first()
+            policy = PasswordPolicy.objects.filter(
+                is_active=True, is_default=True
+            ).first()
             max_attempts = policy.max_failed_attempts if policy else 5
             if user.failed_login_attempts >= max_attempts:
                 lock_duration = policy.lockout_duration_minutes if policy else 30
@@ -117,7 +125,9 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 user_agent=request.META.get("HTTP_USER_AGENT", ""),
                 metadata={"attempts": user.failed_login_attempts},
             )
-            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
+            )
         user.failed_login_attempts = 0
         user.save()
         if user.mfa_enabled:
@@ -213,7 +223,9 @@ class MFAAuthenticationView(APIView):
         try:
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
-            return Response({"error": "Invalid user"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Invalid user"}, status=status.HTTP_400_BAD_REQUEST
+            )
         device = None
         if device_id:
             try:
@@ -232,7 +244,9 @@ class MFAAuthenticationView(APIView):
                     ip_address=self.get_client_ip(request),
                     user_agent=request.META.get("HTTP_USER_AGENT", ""),
                 )
-                return Response({"error": "Invalid MFA token"}, status=status.HTTP_401_UNAUTHORIZED)
+                return Response(
+                    {"error": "Invalid MFA token"}, status=status.HTTP_401_UNAUTHORIZED
+                )
         for mfa_device in user.mfa_devices.filter(is_active=True):
             if mfa_device.verify_token(token):
                 return self.create_session_and_tokens(request, user, mfa_device)
@@ -244,10 +258,16 @@ class MFAAuthenticationView(APIView):
             ip_address=self.get_client_ip(request),
             user_agent=request.META.get("HTTP_USER_AGENT", ""),
         )
-        return Response({"error": "Invalid MFA token"}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response(
+            {"error": "Invalid MFA token"}, status=status.HTTP_401_UNAUTHORIZED
+        )
 
     def create_session_and_tokens(self, request, user, mfa_device):
-        session = LoginSession.objects.filter(user=user, is_active=True).order_by("-created_at").first()
+        session = (
+            LoginSession.objects.filter(user=user, is_active=True)
+            .order_by("-created_at")
+            .first()
+        )
         if session:
             session.mfa_verified = True
             session.mfa_device_used = mfa_device
@@ -303,7 +323,9 @@ class MFASetupViewSet(ModelViewSet):
         device = self.get_object()
         token = request.data.get("token")
         if not token:
-            return Response({"error": "Token required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Token required"}, status=status.HTTP_400_BAD_REQUEST
+            )
         if device.verify_token(token):
             device.is_active = True
             device.save()
@@ -318,7 +340,9 @@ class MFASetupViewSet(ModelViewSet):
             )
             return Response({"message": "MFA setup verified successfully"})
         else:
-            return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
     @action(detail=True, methods=["post"])
     def generate_backup_codes(self, request, pk=None):
@@ -529,7 +553,9 @@ class SessionManagementView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        sessions = LoginSession.objects.filter(user=request.user, is_active=True).order_by("-last_activity")
+        sessions = LoginSession.objects.filter(
+            user=request.user, is_active=True
+        ).order_by("-last_activity")
         session_data = []
         for session in sessions:
             session_data.append(
@@ -549,7 +575,9 @@ class SessionManagementView(APIView):
     @action(detail=True, methods=["post"])
     def terminate(self, request, session_id):
         try:
-            session = LoginSession.objects.get(session_id=session_id, user=request.user, is_active=True)
+            session = LoginSession.objects.get(
+                session_id=session_id, user=request.user, is_active=True
+            )
             session.is_active = False
             session.logout_time = timezone.now()
             session.save()
@@ -564,7 +592,9 @@ class SessionManagementView(APIView):
             )
             return Response({"message": "Session terminated"})
         except LoginSession.DoesNotExist:
-            return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")

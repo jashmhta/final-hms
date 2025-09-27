@@ -81,7 +81,9 @@ class RateLimiter:
     def __init__(self):
         self.cache_prefix = "rate_limit:"
 
-    def check_rate_limit(self, key: str, limit: int, window: int, strategy: str = "fixed_window") -> bool:
+    def check_rate_limit(
+        self, key: str, limit: int, window: int, strategy: str = "fixed_window"
+    ) -> bool:
         """
         Check if rate limit is exceeded
 
@@ -217,7 +219,9 @@ class SecurityMiddleware(MiddlewareMixin):
 
         return None
 
-    def process_response(self, request: HttpRequest, response: HttpResponse) -> HttpResponse:
+    def process_response(
+        self, request: HttpRequest, response: HttpResponse
+    ) -> HttpResponse:
         """Process outgoing response with security headers"""
 
         # Add security headers
@@ -273,7 +277,9 @@ class SecurityMiddleware(MiddlewareMixin):
         path = request.path
 
         # IP-based rate limiting
-        if not self.rate_limiter.check_rate_limit(f"ip:{ip}", self.rate_limits["IP_PER_MINUTE"], 60):  # 1 minute
+        if not self.rate_limiter.check_rate_limit(
+            f"ip:{ip}", self.rate_limits["IP_PER_MINUTE"], 60
+        ):  # 1 minute
             log_security_event(
                 event_type="RATE_LIMIT_EXCEEDED",
                 description=f"IP {ip} exceeded rate limit",
@@ -283,13 +289,17 @@ class SecurityMiddleware(MiddlewareMixin):
             return False
 
         # Path-based rate limiting
-        if not self.rate_limiter.check_rate_limit(f"path:{path}", self.rate_limits["ENDPOINT_PER_MINUTE"], 60):
+        if not self.rate_limiter.check_rate_limit(
+            f"path:{path}", self.rate_limits["ENDPOINT_PER_MINUTE"], 60
+        ):
             return False
 
         # User-based rate limiting (if authenticated)
         if request.user.is_authenticated:
             user_id = request.user.id
-            if not self.rate_limiter.check_rate_limit(f"user:{user_id}", self.rate_limits["USER_PER_MINUTE"], 60):
+            if not self.rate_limiter.check_rate_limit(
+                f"user:{user_id}", self.rate_limits["USER_PER_MINUTE"], 60
+            ):
                 return False
 
         return True

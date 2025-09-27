@@ -1,3 +1,8 @@
+"""
+routers module
+"""
+
+
 class DatabaseRouter:
     route_app_labels = {
         "accounting": "accounting",

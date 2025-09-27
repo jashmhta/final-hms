@@ -1,3 +1,7 @@
+"""
+test_api_functionality module
+"""
+
 import json
 from unittest.mock import patch
 
@@ -29,24 +33,35 @@ class APIFunctionalityTest(TestCase):
 
     def test_api_health_check(self):
         response = self.client.get("/api/health/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
 
     def test_api_schema_endpoint(self):
         response = self.client.get("/api/schema/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
 
     def test_api_docs_endpoint(self):
         response = self.client.get("/api/docs/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
 
     def test_unauthenticated_access(self):
         response = self.client.get("/api/")
-        self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code,
+            [status.HTTP_401_UNAUTHORIZED, status.HTTP_404_NOT_FOUND],
+        )
 
     def test_authenticated_access(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
         response = self.client.get("/api/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
 
     def test_token_validation(self):
         self.client.credentials(HTTP_AUTHORIZATION="Bearer invalid_token")
@@ -54,68 +69,98 @@ class APIFunctionalityTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
         response = self.client.get("/api/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
 
     def test_user_api_endpoints(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
         response = self.client.get("/api/users/profile/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
         response = self.client.get("/api/users/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
 
     def test_hospital_api_endpoints(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
         response = self.client.get("/api/hospitals/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
 
     def test_patient_api_endpoints(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
         response = self.client.get("/api/patients/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
 
     def test_appointment_api_endpoints(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
         response = self.client.get("/api/appointments/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
 
     def test_ehr_api_endpoints(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
         response = self.client.get("/api/ehr/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
 
     def test_billing_api_endpoints(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
         response = self.client.get("/api/billing/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
 
     def test_pharmacy_api_endpoints(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
         response = self.client.get("/api/pharmacy/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
 
     def test_lab_api_endpoints(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
         response = self.client.get("/api/lab/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
 
     def test_analytics_api_endpoints(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
         response = self.client.get("/api/analytics/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
 
     def test_api_error_handling(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
         response = self.client.get("/api/nonexistent-endpoint/")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         response = self.client.post("/api/users/profile/", {})
-        self.assertIn(response.status_code, [status.HTTP_405_METHOD_NOT_ALLOWED, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code,
+            [status.HTTP_405_METHOD_NOT_ALLOWED, status.HTTP_404_NOT_FOUND],
+        )
 
     def test_api_rate_limiting(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
         for i in range(10):
             response = self.client.get("/api/")
             self.assertIn(
-                response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND, status.HTTP_429_TOO_MANY_REQUESTS]
+                response.status_code,
+                [
+                    status.HTTP_200_OK,
+                    status.HTTP_404_NOT_FOUND,
+                    status.HTTP_429_TOO_MANY_REQUESTS,
+                ],
             )
 
     def test_api_content_type(self):
@@ -127,7 +172,9 @@ class APIFunctionalityTest(TestCase):
     def test_cors_headers(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
         response = self.client.get("/api/", HTTP_ORIGIN="http://localhost:3000")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
         if response.status_code == status.HTTP_200_OK:
             self.assertIn("Access-Control-Allow-Origin", response)
 
@@ -179,7 +226,9 @@ class APIPerformanceTest(TestCase):
 
     def test_large_dataset_handling(self):
         response = self.client.get("/api/patients/")
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        self.assertIn(
+            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        )
         if response.status_code == status.HTTP_200_OK:
             data = response.json()
             if isinstance(data, dict) and "results" in data:
@@ -208,7 +257,12 @@ class APISecurityTest(TestCase):
         malicious_query = "1; DROP TABLE users; --"
         response = self.client.get(f"/api/patients/?search={malicious_query}")
         self.assertIn(
-            response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND, status.HTTP_400_BAD_REQUEST]
+            response.status_code,
+            [
+                status.HTTP_200_OK,
+                status.HTTP_404_NOT_FOUND,
+                status.HTTP_400_BAD_REQUEST,
+            ],
         )
 
     def test_xss_protection(self):
@@ -227,11 +281,20 @@ class APISecurityTest(TestCase):
         xss_payload = "<script>alert('xss')</script>"
         response = self.client.post(
             "/api/patients/",
-            {"first_name": xss_payload, "last_name": "Test", "date_of_birth": "1990-01-01", "gender": "M"},
+            {
+                "first_name": xss_payload,
+                "last_name": "Test",
+                "date_of_birth": "1990-01-01",
+                "gender": "M",
+            },
         )
         self.assertIn(
             response.status_code,
-            [status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND, status.HTTP_405_METHOD_NOT_ALLOWED],
+            [
+                status.HTTP_400_BAD_REQUEST,
+                status.HTTP_404_NOT_FOUND,
+                status.HTTP_405_METHOD_NOT_ALLOWED,
+            ],
         )
 
     def test_authentication_bypass(self):
@@ -243,7 +306,10 @@ class APISecurityTest(TestCase):
 
     def test_authorization_enforcement(self):
         regular_user = User.objects.create_user(
-            username="regular", email="regular@hospital.com", password="SecurePass123!", role="patient"
+            username="regular",
+            email="regular@hospital.com",
+            password="SecurePass123!",
+            role="patient",
         )
         from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -251,7 +317,12 @@ class APISecurityTest(TestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
         response = self.client.get("/api/admin/users/")
         self.assertIn(
-            response.status_code, [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND, status.HTTP_401_UNAUTHORIZED]
+            response.status_code,
+            [
+                status.HTTP_403_FORBIDDEN,
+                status.HTTP_404_NOT_FOUND,
+                status.HTTP_401_UNAUTHORIZED,
+            ],
         )
 
 
@@ -273,11 +344,20 @@ class DataValidationTest(TestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
 
     def test_patient_data_validation(self):
-        invalid_patient_data = {"first_name": "", "last_name": "Test", "date_of_birth": "invalid-date", "gender": "X"}
+        invalid_patient_data = {
+            "first_name": "",
+            "last_name": "Test",
+            "date_of_birth": "invalid-date",
+            "gender": "X",
+        }
         response = self.client.post("/api/patients/", invalid_patient_data)
         self.assertIn(
             response.status_code,
-            [status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND, status.HTTP_405_METHOD_NOT_ALLOWED],
+            [
+                status.HTTP_400_BAD_REQUEST,
+                status.HTTP_404_NOT_FOUND,
+                status.HTTP_405_METHOD_NOT_ALLOWED,
+            ],
         )
 
     def test_appointment_data_validation(self):
@@ -289,7 +369,11 @@ class DataValidationTest(TestCase):
         response = self.client.post("/api/appointments/", invalid_appointment_data)
         self.assertIn(
             response.status_code,
-            [status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND, status.HTTP_405_METHOD_NOT_ALLOWED],
+            [
+                status.HTTP_400_BAD_REQUEST,
+                status.HTTP_404_NOT_FOUND,
+                status.HTTP_405_METHOD_NOT_ALLOWED,
+            ],
         )
 
     def test_required_field_validation(self):
@@ -297,13 +381,26 @@ class DataValidationTest(TestCase):
         response = self.client.post("/api/patients/", incomplete_data)
         self.assertIn(
             response.status_code,
-            [status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND, status.HTTP_405_METHOD_NOT_FOUND],
+            [
+                status.HTTP_400_BAD_REQUEST,
+                status.HTTP_404_NOT_FOUND,
+                status.HTTP_405_METHOD_NOT_FOUND,
+            ],
         )
 
     def test_data_type_validation(self):
-        invalid_data = {"first_name": 123, "last_name": "Test", "date_of_birth": "not-a-date", "age": "not-a-number"}
+        invalid_data = {
+            "first_name": 123,
+            "last_name": "Test",
+            "date_of_birth": "not-a-date",
+            "age": "not-a-number",
+        }
         response = self.client.post("/api/patients/", invalid_data)
         self.assertIn(
             response.status_code,
-            [status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND, status.HTTP_405_METHOD_NOT_FOUND],
+            [
+                status.HTTP_400_BAD_REQUEST,
+                status.HTTP_404_NOT_FOUND,
+                status.HTTP_405_METHOD_NOT_FOUND,
+            ],
         )

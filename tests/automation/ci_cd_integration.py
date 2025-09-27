@@ -5,17 +5,18 @@ This module provides CI/CD pipeline integration, automated testing workflows,
 and deployment automation for the healthcare management system.
 """
 
-import os
 import json
-import yaml
 import logging
-from pathlib import Path
-from typing import Dict, List, Any, Optional
-from dataclasses import dataclass, field
-from enum import Enum
-from datetime import datetime
-import subprocess
+import os
 import shutil
+import subprocess
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -790,9 +791,9 @@ deploy-{self.config.environment.value}:
   script:
     - apk add --no-cache openssh-client
     - chmod 600 ${{SSH_PRIVATE_KEY}}
-    - ssh -o StrictHostKeyChecking=no ${{SSH_USER}}@${{SSH_HOST}} "mkdir -p /tmp/deploy"
-    - scp -o StrictHostKeyChecking=no docker-compose.yml ${{SSH_USER}}@${{SSH_HOST}}:/tmp/deploy/
-    - ssh -o StrictHostKeyChecking=no ${{SSH_USER}}@${{SSH_HOST}} "cd /tmp/deploy && docker-compose pull && docker-compose up -d"
+    - ssh ${{SSH_USER}}@${{SSH_HOST}} "mkdir -p /tmp/deploy"
+    - scp docker-compose.yml ${{SSH_USER}}@${{SSH_HOST}}:/tmp/deploy/
+    - ssh ${{SSH_USER}}@${{SSH_HOST}} "cd /tmp/deploy && docker-compose pull && docker-compose up -d"
   only:
     - {self.config.branch}
   when: manual

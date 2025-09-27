@@ -1,3 +1,7 @@
+"""
+fields module
+"""
+
 from cryptography.fernet import Fernet
 
 from django.db import models

@@ -1,8 +1,13 @@
+"""
+urls module
+"""
+
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
 
 urlpatterns = [
+    path("api/v1/", include("api_v1_urls")),
     path("admin/", admin.site.urls),
     path("api/", include("rest_framework.urls")),
     path(
@@ -13,4 +18,6 @@ urlpatterns = [
 
 
 def health_check(request):
-    return JsonResponse({"status": "healthy", "service": "HMS Backend", "version": "1.0.0"})
+    return JsonResponse(
+        {"status": "healthy", "service": "HMS Backend", "version": "1.0.0"}
+    )

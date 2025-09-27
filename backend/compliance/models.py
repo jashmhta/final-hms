@@ -1,23 +1,27 @@
+"""
+models module
+"""
+
 import logging
 import uuid
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Union
-
-from django.conf import settings
-from django.contrib.auth import get_user_model
-from django.core.cache import cache
-from django.db import models, transaction
-from django.db.models import Q, F
-from django.utils import timezone
-from django.utils.crypto import get_random_string
-from django.utils.functional import cached_property
-from django.utils.translation import gettext_lazy as _
 
 from encrypted_model_fields.fields import (
     EncryptedCharField,
     EncryptedEmailField,
     EncryptedTextField,
 )
+
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.db import models, transaction
+from django.db.models import F, Q
+from django.utils import timezone
+from django.utils.crypto import get_random_string
+from django.utils.functional import cached_property
+from django.utils.translation import gettext_lazy as _
 
 from core.models import TenantModel
 
@@ -30,6 +34,7 @@ class DataRetentionPolicy(models.TextChoices):
     """
     HIPAA compliant data retention policies
     """
+
     IMMEDIATE_DELETE = "IMMEDIATE_DELETE", _("Immediate Delete")
     RETAIN_1_YEAR = "RETAIN_1_YEAR", _("Retain 1 Year")
     RETAIN_2_YEARS = "RETAIN_2_YEARS", _("Retain 2 Years")
@@ -44,6 +49,7 @@ class ConsentType(models.TextChoices):
     """
     GDPR Article 7 compliant consent types
     """
+
     GENERAL_TREATMENT = "GENERAL_TREATMENT", _("General Treatment Consent")
     SPECIFIC_PROCEDURE = "SPECIFIC_PROCEDURE", _("Specific Procedure Consent")
     RESEARCH_PARTICIPATION = "RESEARCH_PARTICIPATION", _("Research Participation")
@@ -62,6 +68,7 @@ class ConsentStatus(models.TextChoices):
     """
     Consent lifecycle status
     """
+
     ACTIVE = "ACTIVE", _("Active")
     EXPIRED = "EXPIRED", _("Expired")
     REVOKED = "REVOKED", _("Revoked")
@@ -73,6 +80,7 @@ class DataAccessType(models.TextChoices):
     """
     HIPAA compliant access type classification
     """
+
     VIEW = "VIEW", _("View PHI")
     MODIFY = "MODIFY", _("Modify PHI")
     SHARE = "SHARE", _("Share PHI")
@@ -85,15 +93,22 @@ class AccessPurpose(models.TextChoices):
     """
     HIPAA Treatment, Payment, and Healthcare Operations (TPO)
     """
+
     TREATMENT = "TREATMENT", _("Treatment")
     PAYMENT = "PAYMENT", _("Payment Operations")
     HEALTHCARE_OPERATIONS = "HEALTHCARE_OPERATIONS", _("Healthcare Operations")
     PUBLIC_HEALTH = "PUBLIC_HEALTH", _("Public Health Activities")
-    VICTIMS_ABUSE = "VICTIMS_ABUSE", _("Victims of Abuse, Neglect, or Domestic Violence")
+    VICTIMS_ABUSE = "VICTIMS_ABUSE", _(
+        "Victims of Abuse, Neglect, or Domestic Violence"
+    )
     HEALTH_OVERSIGHT = "HEALTH_OVERSIGHT", _("Health Oversight Activities")
-    JUDICIAL_PROCEEDINGS = "JUDICIAL_PROCEEDINGS", _("Judicial and Administrative Proceedings")
+    JUDICIAL_PROCEEDINGS = "JUDICIAL_PROCEEDINGS", _(
+        "Judicial and Administrative Proceedings"
+    )
     LAW_ENFORCEMENT = "LAW_ENFORCEMENT", _("Law Enforcement Purposes")
-    CORONERS_MEDICAL_EXAMINERS = "CORONERS_MEDICAL_EXAMINERS", _("Coroners, Medical Examiners, and Funeral Directors")
+    CORONERS_MEDICAL_EXAMINERS = "CORONERS_MEDICAL_EXAMINERS", _(
+        "Coroners, Medical Examiners, and Funeral Directors"
+    )
     ORGAN_DONATION = "ORGAN_DONATION", _("Organ, Eye, or Tissue Donation")
     RESEARCH = "RESEARCH", _("Research")
     SERIOUS_THREAT = "SERIOUS_THREAT", _("Serious Threat to Health or Safety")
@@ -105,19 +120,30 @@ class ConsentManagement(TenantModel):
     """
     GDPR Article 7 compliant consent management system
     """
+
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    patient = models.ForeignKey('patients.Patient', on_delete=models.CASCADE, related_name='consents')
+    patient = models.ForeignKey(
+        "patients.Patient", on_delete=models.CASCADE, related_name="consents"
+    )
     consent_type = models.CharField(max_length=50, choices=ConsentType.choices)
-    status = models.CharField(max_length=20, choices=ConsentStatus.choices, default=ConsentStatus.PENDING)
+    status = models.CharField(
+        max_length=20, choices=ConsentStatus.choices, default=ConsentStatus.PENDING
+    )
     version = models.PositiveIntegerField(default=1)
 
     # Consent Details
     title = models.CharField(max_length=200)
     description = EncryptedTextField()
     purpose = EncryptedTextField()
-    data_categories = models.JSONField(default=list, help_text="Categories of data covered by consent")
-    third_parties = models.JSONField(default=list, help_text="Third parties who may receive data")
-    retention_period = models.CharField(max_length=30, choices=DataRetentionPolicy.choices)
+    data_categories = models.JSONField(
+        default=list, help_text="Categories of data covered by consent"
+    )
+    third_parties = models.JSONField(
+        default=list, help_text="Third parties who may receive data"
+    )
+    retention_period = models.CharField(
+        max_length=30, choices=DataRetentionPolicy.choices
+    )
 
     # Consent Lifecycle
     consent_date = models.DateTimeField(null=True, blank=True)
@@ -131,24 +157,26 @@ class ConsentManagement(TenantModel):
     witness_name = models.CharField(max_length=100, blank=True)
     interpreter_used = models.BooleanField(default=False)
     interpreter_name = models.CharField(max_length=100, blank=True)
-    language_preference = models.CharField(max_length=10, default='EN')
+    language_preference = models.CharField(max_length=10, default="EN")
 
     # Metadata
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_consents')
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="created_consents"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
         indexes = [
-            models.Index(fields=['patient', 'consent_type', 'status']),
-            models.Index(fields=['patient', 'is_active', 'consent_date']),
-            models.Index(fields=['expiry_date']),
-            models.Index(fields=['status', 'created_at']),
-            models.Index(fields=['hospital', 'consent_type']),
+            models.Index(fields=["patient", "consent_type", "status"]),
+            models.Index(fields=["patient", "is_active", "consent_date"]),
+            models.Index(fields=["expiry_date"]),
+            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["hospital", "consent_type"]),
         ]
-        unique_together = ['patient', 'consent_type', 'version']
-        ordering = ['-created_at']
+        unique_together = ["patient", "consent_type", "version"]
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"{self.patient} - {self.get_consent_type_display()} (v{self.version})"
@@ -157,10 +185,10 @@ class ConsentManagement(TenantModel):
         """Check if consent is currently valid"""
         now = timezone.now()
         return (
-            self.status == ConsentStatus.ACTIVE and
-            self.consent_date and
-            self.consent_date <= now and
-            (not self.expiry_date or self.expiry_date > now)
+            self.status == ConsentStatus.ACTIVE
+            and self.consent_date
+            and self.consent_date <= now
+            and (not self.expiry_date or self.expiry_date > now)
         )
 
     def revoke(self, reason: str = "", revoked_by: Optional[User] = None) -> None:
@@ -177,10 +205,10 @@ class ConsentManagement(TenantModel):
                 action="REVOKED",
                 action_by=revoked_by,
                 details=f"Consent revoked: {reason}",
-                ip_address=self._get_client_ip()
+                ip_address=self._get_client_ip(),
             )
 
-    def renew(self, new_expiry_date: datetime, renewed_by: User) -> 'ConsentManagement':
+    def renew(self, new_expiry_date: datetime, renewed_by: User) -> "ConsentManagement":
         """Create new version of consent with updated expiry"""
         with transaction.atomic():
             # Archive current version
@@ -203,7 +231,7 @@ class ConsentManagement(TenantModel):
                 consent_form_url=self.consent_form_url,
                 language_preference=self.language_preference,
                 created_by=renewed_by,
-                hospital=self.hospital
+                hospital=self.hospital,
             )
 
             # Log renewal
@@ -213,23 +241,21 @@ class ConsentManagement(TenantModel):
                 action="RENEWED",
                 action_by=renewed_by,
                 details=f"Consent renewed, new expiry: {new_expiry_date}",
-                ip_address=self._get_client_ip()
+                ip_address=self._get_client_ip(),
             )
 
             return new_consent
 
     @classmethod
-    def get_active_consents(cls, patient_id: int) -> List['ConsentManagement']:
+    def get_active_consents(cls, patient_id: int) -> List["ConsentManagement"]:
         """Get all currently valid consents for a patient"""
         now = timezone.now()
         return cls.objects.filter(
             patient_id=patient_id,
             status=ConsentStatus.ACTIVE,
             consent_date__lte=now,
-            is_active=True
-        ).filter(
-            Q(expiry_date__isnull=True) | Q(expiry_date__gt=now)
-        )
+            is_active=True,
+        ).filter(Q(expiry_date__isnull=True) | Q(expiry_date__gt=now))
 
     @staticmethod
     def _get_client_ip() -> str:
@@ -242,12 +268,19 @@ class ConsentAuditLog(TenantModel):
     """
     Complete audit trail for consent management (GDPR Article 7.3)
     """
+
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    patient = models.ForeignKey('patients.Patient', on_delete=models.CASCADE, related_name='consent_audit_logs')
-    consent = models.ForeignKey(ConsentManagement, on_delete=models.CASCADE, related_name='audit_logs')
+    patient = models.ForeignKey(
+        "patients.Patient", on_delete=models.CASCADE, related_name="consent_audit_logs"
+    )
+    consent = models.ForeignKey(
+        ConsentManagement, on_delete=models.CASCADE, related_name="audit_logs"
+    )
 
     action = models.CharField(max_length=50, help_text="Action performed")
-    action_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='consent_audit_actions')
+    action_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="consent_audit_actions"
+    )
     action_date = models.DateTimeField(auto_now_add=True)
     details = models.TextField()
     ip_address = models.GenericIPAddressField()
@@ -264,12 +297,12 @@ class ConsentAuditLog(TenantModel):
 
     class Meta:
         indexes = [
-            models.Index(fields=['patient', 'action_date']),
-            models.Index(fields=['consent', 'action_date']),
-            models.Index(fields=['action_by', 'action_date']),
-            models.Index(fields=['hospital', 'action_date']),
+            models.Index(fields=["patient", "action_date"]),
+            models.Index(fields=["consent", "action_date"]),
+            models.Index(fields=["action_by", "action_date"]),
+            models.Index(fields=["hospital", "action_date"]),
         ]
-        ordering = ['-action_date']
+        ordering = ["-action_date"]
 
     def __str__(self):
         return f"{self.patient} - {self.action} by {self.action_by}"
@@ -279,8 +312,11 @@ class DataSubjectRequest(TenantModel):
     """
     GDPR Articles 15, 16, 17, 18, 20, 21 compliant data subject requests
     """
+
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    patient = models.ForeignKey('patients.Patient', on_delete=models.CASCADE, related_name='data_requests')
+    patient = models.ForeignKey(
+        "patients.Patient", on_delete=models.CASCADE, related_name="data_requests"
+    )
     request_type = models.CharField(
         max_length=50,
         choices=[
@@ -291,7 +327,7 @@ class DataSubjectRequest(TenantModel):
             ("DATA_PORTABILITY", "Right to Data Portability"),
             ("OBJECT", "Right to Object"),
             ("AUTOMATED_DECISION", "Right Regarding Automated Decision Making"),
-        ]
+        ],
     )
     status = models.CharField(
         max_length=30,
@@ -302,12 +338,14 @@ class DataSubjectRequest(TenantModel):
             ("REJECTED", "Rejected"),
             ("ESCALATED", "Escalated"),
         ],
-        default="PENDING"
+        default="PENDING",
     )
 
     # Request details
     description = models.TextField()
-    scope = models.JSONField(default=list, help_text="Specific data categories requested")
+    scope = models.JSONField(
+        default=list, help_text="Specific data categories requested"
+    )
     timeframe = models.JSONField(default=dict, help_text="Timeframe for data requested")
 
     # Processing timeline
@@ -321,22 +359,30 @@ class DataSubjectRequest(TenantModel):
     rejection_reason = models.TextField(blank=True)
 
     # Handling
-    assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='assigned_requests')
-    completed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='completed_requests')
+    assigned_to = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="assigned_requests"
+    )
+    completed_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="completed_requests"
+    )
 
     # Metadata
-    priority = models.CharField(max_length=20, choices=[("NORMAL", "Normal"), ("URGENT", "Urgent")], default="NORMAL")
+    priority = models.CharField(
+        max_length=20,
+        choices=[("NORMAL", "Normal"), ("URGENT", "Urgent")],
+        default="NORMAL",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         indexes = [
-            models.Index(fields=['patient', 'request_type', 'status']),
-            models.Index(fields=['status', 'due_date']),
-            models.Index(fields=['assigned_to', 'status']),
-            models.Index(fields=['hospital', 'received_date']),
+            models.Index(fields=["patient", "request_type", "status"]),
+            models.Index(fields=["status", "due_date"]),
+            models.Index(fields=["assigned_to", "status"]),
+            models.Index(fields=["hospital", "received_date"]),
         ]
-        ordering = ['-received_date']
+        ordering = ["-received_date"]
 
     def __str__(self):
         return f"{self.patient} - {self.get_request_type_display()}"
@@ -353,13 +399,15 @@ class DataSubjectRequest(TenantModel):
 
         try:
             data_access_service = DataAccessService()
-            accessible_data = data_access_service.get_patient_data_summary(self.patient.id, self.scope)
+            accessible_data = data_access_service.get_patient_data_summary(
+                self.patient.id, self.scope
+            )
 
             self.response_data = {
-                'data_summary': accessible_data,
-                'data_sources': data_access_service.get_data_sources(),
-                'data_processors': data_access_service.get_data_processors(),
-                'retention_policies': data_access_service.get_retention_policies(),
+                "data_summary": accessible_data,
+                "data_sources": data_access_service.get_data_sources(),
+                "data_processors": data_access_service.get_data_processors(),
+                "retention_policies": data_access_service.get_retention_policies(),
             }
             self.status = "COMPLETED"
             self.completed_date = timezone.now()
@@ -378,15 +426,15 @@ class DataSubjectRequest(TenantModel):
         try:
             erasure_service = DataErasureService()
             success = erasure_service.erase_patient_data(
-                self.patient.id,
-                self.scope,
-                preserve_legal_obligations=True
+                self.patient.id, self.scope, preserve_legal_obligations=True
             )
 
             if success:
                 self.status = "COMPLETED"
                 self.completed_date = timezone.now()
-                self.response_message = "Data has been successfully erased in accordance with your request."
+                self.response_message = (
+                    "Data has been successfully erased in accordance with your request."
+                )
             else:
                 self.status = "REJECTED"
                 self.rejection_reason = "Unable to complete erasure due to legal or contractual obligations."
@@ -403,8 +451,11 @@ class DataSubjectRequestAudit(TenantModel):
     """
     Audit trail for data subject requests
     """
+
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    request = models.ForeignKey(DataSubjectRequest, on_delete=models.CASCADE, related_name='audit_logs')
+    request = models.ForeignKey(
+        DataSubjectRequest, on_delete=models.CASCADE, related_name="audit_logs"
+    )
     action = models.CharField(max_length=50)
     action_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     action_date = models.DateTimeField(auto_now_add=True)
@@ -412,7 +463,7 @@ class DataSubjectRequestAudit(TenantModel):
 
     class Meta:
         indexes = [
-            models.Index(fields=['request', 'action_date']),
-            models.Index(fields=['hospital', 'action_date']),
+            models.Index(fields=["request", "action_date"]),
+            models.Index(fields=["hospital", "action_date"]),
         ]
-        ordering = ['-action_date']
+        ordering = ["-action_date"]

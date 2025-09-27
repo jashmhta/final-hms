@@ -1,3 +1,7 @@
+"""
+test_property_based module
+"""
+
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st

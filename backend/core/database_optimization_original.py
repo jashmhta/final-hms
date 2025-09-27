@@ -1,3 +1,7 @@
+"""
+database_optimization_original module
+"""
+
 import asyncio
 import logging
 import os
@@ -135,7 +139,10 @@ class DatabaseIndexManager:
     def analyze_table_indexes(self, alias: str, table_name: str) -> Dict:
         try:
             with connection_pool.get_cursor(alias) as cursor:
-                cursor.execute("SELECT indexname, indexdef FROM pg_indexes WHERE tablename = %s", (table_name,))
+                cursor.execute(
+                    "SELECT indexname, indexdef FROM pg_indexes WHERE tablename = %s",
+                    (table_name,),
+                )
                 indexes = cursor.fetchall()
                 cursor.execute(
                     "SELECT schemaname, tablename, attname, n_distinct FROM pg_stats WHERE tablename = %s",
@@ -147,12 +154,19 @@ class DatabaseIndexManager:
                     (table_name,),
                 )
                 table_info = cursor.fetchall()
-                return {"table": table_name, "indexes": indexes, "index_stats": stats, "table_info": table_info}
+                return {
+                    "table": table_name,
+                    "indexes": indexes,
+                    "index_stats": stats,
+                    "table_info": table_info,
+                }
         except Exception as e:
             logging.error(f"Failed to analyze indexes for {table_name}: {e}")
             return {}
 
-    def recommend_indexes(self, alias: str, table_name: str, query_patterns: List[str]) -> List[Dict]:
+    def recommend_indexes(
+        self, alias: str, table_name: str, query_patterns: List[str]
+    ) -> List[Dict]:
         recommendations = []
         for pattern in query_patterns:
             if "WHERE" in pattern:
@@ -174,7 +188,11 @@ class DatabaseIndexManager:
     def _extract_where_conditions(self, query: str) -> List[str]:
         import re
 
-        where_match = re.search(r"WHERE\s+(.*?)(?:\s+ORDER\s+BY|\s+GROUP\s+BY|\s+LIMIT|$)", query, re.IGNORECASE)
+        where_match = re.search(
+            r"WHERE\s+(.*?)(?:\s+ORDER\s+BY|\s+GROUP\s+BY|\s+LIMIT|$)",
+            query,
+            re.IGNORECASE,
+        )
         if where_match:
             conditions = where_match.group(1)
             columns = re.findall(r"(\w+)\s*[=<>]", conditions)
@@ -229,12 +247,18 @@ class DatabaseIndexManager:
             logging.error(f"Failed to check foreign key indexes for {table_name}: {e}")
         return recommendations
 
-    def create_index(self, alias: str, table_name: str, column_name: str, index_type: str = "btree"):
+    def create_index(
+        self, alias: str, table_name: str, column_name: str, index_type: str = "btree"
+    ):
         try:
             index_name = f"idx_{table_name}_{column_name}"
             with connection_pool.get_cursor(alias) as cursor:
-                cursor.execute(f"CREATE INDEX {index_name} ON {table_name} ({column_name}) USING {index_type}")
-                logging.info(f"Created index {index_name} on {table_name}.{column_name}")
+                cursor.execute(
+                    f"CREATE INDEX {index_name} ON {table_name} ({column_name}) USING {index_type}"
+                )
+                logging.info(
+                    f"Created index {index_name} on {table_name}.{column_name}"
+                )
         except Exception as e:
             logging.error(f"Failed to create index on {table_name}.{column_name}: {e}")
 
@@ -248,16 +272,26 @@ class DatabaseQueryOptimizer:
     def analyze_query(self, alias: str, query: str, params: Dict = None) -> Dict:
         try:
             with connection_pool.get_cursor(alias) as cursor:
-                cursor.execute("EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) " + query, params or {})
+                cursor.execute(
+                    "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) " + query, params or {}
+                )
                 plan = cursor.fetchone()[0][0]
                 execution_time = plan.get("Execution Time", 0)
                 planning_time = plan.get("Planning Time", 0)
                 total_cost = plan.get("Total Cost", 0)
                 expensive_operations = []
                 for node in plan.get("Plan", {}).get("Plans", []):
-                    if "Seq Scan" in node.get("Node Type", "") and node.get("Actual Rows", 0) > 10000:
-                        expensive_operations.append(f"Sequential scan on {node.get('Relation Name')}")
-                    elif "Nested Loop" in node.get("Node Type", "") and node.get("Actual Rows", 0) > 1000:
+                    if (
+                        "Seq Scan" in node.get("Node Type", "")
+                        and node.get("Actual Rows", 0) > 10000
+                    ):
+                        expensive_operations.append(
+                            f"Sequential scan on {node.get('Relation Name')}"
+                        )
+                    elif (
+                        "Nested Loop" in node.get("Node Type", "")
+                        and node.get("Actual Rows", 0) > 1000
+                    ):
                         expensive_operations.append("Expensive nested loop")
                 return {
                     "query": query,
@@ -290,7 +324,11 @@ class DatabaseQueryOptimizer:
     def _extract_conditions(self, query: str) -> List[str]:
         import re
 
-        where_match = re.search(r"WHERE\s+(.*?)(?:\s+ORDER\s+BY|\s+GROUP\s+BY|\s+LIMIT|$)", query, re.IGNORECASE)
+        where_match = re.search(
+            r"WHERE\s+(.*?)(?:\s+ORDER\s+BY|\s+GROUP\s+BY|\s+LIMIT|$)",
+            query,
+            re.IGNORECASE,
+        )
         if where_match:
             conditions = where_match.group(1)
             columns = re.findall(r"(\w+)\s*[=<>]", conditions)
@@ -300,7 +338,9 @@ class DatabaseQueryOptimizer:
     def _extract_order_columns(self, query: str) -> List[str]:
         import re
 
-        order_match = re.search(r"ORDER\s+BY\s+(.*?)(?:\s+LIMIT|$)", query, re.IGNORECASE)
+        order_match = re.search(
+            r"ORDER\s+BY\s+(.*?)(?:\s+LIMIT|$)", query, re.IGNORECASE
+        )
         if order_match:
             columns = order_match.group(1).split(",")
             return [col.strip().split()[0] for col in columns]
@@ -359,7 +399,9 @@ class DatabaseCacheManager:
             if keys:
                 self.redis_client.delete(*keys)
                 self.cache_stats["evictions"] += len(keys)
-                logging.info(f"Invalidated {len(keys)} cache entries for pattern: {pattern}")
+                logging.info(
+                    f"Invalidated {len(keys)} cache entries for pattern: {pattern}"
+                )
         except Exception as e:
             logging.error(f"Failed to invalidate cache: {e}")
 
@@ -370,7 +412,11 @@ class DatabaseShardingManager:
         self.shard_connections: Dict[str, DatabaseConnectionPool] = {}
 
     def configure_sharding(self, table_name: str, shard_key: str, shard_count: int):
-        self.shard_configs[table_name] = {"shard_key": shard_key, "shard_count": shard_count, "shards": {}}
+        self.shard_configs[table_name] = {
+            "shard_key": shard_key,
+            "shard_count": shard_count,
+            "shards": {},
+        }
         for i in range(shard_count):
             shard_name = f"{table_name}_shard_{i}"
             self.shard_configs[table_name]["shards"][i] = {
@@ -392,7 +438,9 @@ class DatabaseShardingManager:
         else:
             return hash(str(shard_value)) % shard_count
 
-    def execute_on_shard(self, table_name: str, shard_value: Any, query: str, params: Dict = None):
+    def execute_on_shard(
+        self, table_name: str, shard_value: Any, query: str, params: Dict = None
+    ):
         shard_num = self.get_shard_for_value(table_name, shard_value)
         shard_config = self.shard_configs[table_name]["shards"][shard_num]
         shard_name = shard_config["name"]
@@ -446,7 +494,11 @@ class DatabaseBackupManager:
                     "backup_type": backup_type,
                     "filename": backup_name,
                     "timestamp": timestamp,
-                    "size": os.path.getsize(backup_name) if os.path.exists(backup_name) else 0,
+                    "size": (
+                        os.path.getsize(backup_name)
+                        if os.path.exists(backup_name)
+                        else 0
+                    ),
                 }
                 self.backup_history.append(backup_info)
                 logging.info(f"Backup created successfully: {backup_name}")
@@ -533,7 +585,11 @@ class DatabasePerformanceMonitor:
                     rows_affected=0,
                     connection_time_ms=0.0,
                     cache_hit_rate=(
-                        (db_stats["blks_hit"] / (db_stats["blks_hit"] + db_stats["blks_read"])) * 100
+                        (
+                            db_stats["blks_hit"]
+                            / (db_stats["blks_hit"] + db_stats["blks_read"])
+                        )
+                        * 100
                         if (db_stats["blks_hit"] + db_stats["blks_read"]) > 0
                         else 0
                     ),
@@ -543,7 +599,8 @@ class DatabasePerformanceMonitor:
                     active_connections=db_stats["numbackends"],
                     max_connections=100,
                     slow_query_count=slow_query_count,
-                    total_query_count=db_stats["xact_commit"] + db_stats["xact_rollback"],
+                    total_query_count=db_stats["xact_commit"]
+                    + db_stats["xact_rollback"],
                 )
                 self.metrics_history.append(metrics)
                 return metrics
@@ -625,7 +682,12 @@ class DatabaseOptimizer:
             if alerts:
                 logging.warning(f"Database alerts for {alias}: {alerts}")
             logging.info(f"Database optimization completed for {alias}")
-            return {"status": "success", "alias": alias, "metrics": metrics, "alerts": alerts}
+            return {
+                "status": "success",
+                "alias": alias,
+                "metrics": metrics,
+                "alerts": alerts,
+            }
         except Exception as e:
             logging.error(f"Database optimization failed for {alias}: {e}")
             return {"status": "error", "error": str(e)}
@@ -638,11 +700,17 @@ class DatabaseOptimizer:
                 for table in tables:
                     table_name = table[0]
                     logging.info(f"Analyzing indexes for table {table_name}")
-                    index_analysis = index_manager.analyze_table_indexes(alias, table_name)
+                    index_analysis = index_manager.analyze_table_indexes(
+                        alias, table_name
+                    )
                     query_patterns = self._get_query_patterns_for_table(table_name)
-                    recommendations = index_manager.recommend_indexes(alias, table_name, query_patterns)
+                    recommendations = index_manager.recommend_indexes(
+                        alias, table_name, query_patterns
+                    )
                     if recommendations:
-                        logging.info(f"Index recommendations for {table_name}: {recommendations}")
+                        logging.info(
+                            f"Index recommendations for {table_name}: {recommendations}"
+                        )
         except Exception as e:
             logging.error(f"Failed to optimize indexes: {e}")
 
@@ -655,10 +723,14 @@ class DatabaseOptimizer:
                     query = query_info[0]
                     mean_time = query_info[3]
                     if mean_time > 100:
-                        logging.info(f"Analyzing slow query (avg {mean_time:.2f}ms): {query[:100]}...")
+                        logging.info(
+                            f"Analyzing slow query (avg {mean_time:.2f}ms): {query[:100]}..."
+                        )
                         optimizations = query_optimizer.optimize_query(alias, query)
                         if optimizations:
-                            logging.info(f"Optimizations for slow query: {optimizations}")
+                            logging.info(
+                                f"Optimizations for slow query: {optimizations}"
+                            )
         except Exception as e:
             logging.error(f"Failed to optimize queries: {e}")
 

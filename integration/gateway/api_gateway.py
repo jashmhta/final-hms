@@ -1,36 +1,55 @@
+"""
+api_gateway module
+"""
+
 import asyncio
 import json
 import logging
 import secrets
 import time
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Any, Union, Tuple
-from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import aiofiles
 import aiohttp
 import asyncpg
 import jwt
-from fastapi import FastAPI, HTTPException, Depends, Request, Response, BackgroundTasks
+from cryptography.fernet import Fernet
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import JSONResponse
 from fastapi.openapi.utils import get_openapi
-from pydantic import BaseModel, Field, validator, EmailStr
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from prometheus_fastapi_instrumentator import Instrumentator
+from pydantic import BaseModel, EmailStr, Field, validator
 from redis.asyncio import redis
-from sqlalchemy import Column, String, DateTime, Text, Boolean, Integer, JSON, ForeignKey, Float
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from cryptography.fernet import Fernet
-from prometheus_fastapi_instrumentator import Instrumentator
+
 from ..orchestrator import IntegrationOrchestrator
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 Base = declarative_base()
+
+
 class APIGatewayMode(Enum):
     PROXY = "PROXY"
     ROUTE = "ROUTE"
@@ -38,6 +57,8 @@ class APIGatewayMode(Enum):
     TRANSFORM = "TRANSFORM"
     CACHE = "CACHE"
     SECURITY = "SECURITY"
+
+
 class AuthenticationType(Enum):
     JWT = "JWT"
     API_KEY = "API_KEY"
@@ -46,23 +67,31 @@ class AuthenticationType(Enum):
     CLIENT_CERT = "CLIENT_CERT"
     SAML = "SAML"
     OPENID_CONNECT = "OPENID_CONNECT"
+
+
 class AuthorizationType(Enum):
-    RBAC = "RBAC"  
-    ABAC = "ABAC"  
-    ACL = "ACL"   
+    RBAC = "RBAC"
+    ABAC = "ABAC"
+    ACL = "ACL"
     POLICY_BASED = "POLICY_BASED"
+
+
 class SecurityLevel(Enum):
-    PUBLIC = "PUBLIC"           
-    BASIC = "BASIC"             
-    STANDARD = "STANDARD"       
-    ENHANCED = "ENHANCED"       
-    RESTRICTED = "RESTRICTED"    
-    ADMIN = "ADMIN"             
+    PUBLIC = "PUBLIC"
+    BASIC = "BASIC"
+    STANDARD = "STANDARD"
+    ENHANCED = "ENHANCED"
+    RESTRICTED = "RESTRICTED"
+    ADMIN = "ADMIN"
+
+
 class RateLimitStrategy(Enum):
     FIXED_WINDOW = "FIXED_WINDOW"
     SLIDING_WINDOW = "SLIDING_WINDOW"
     TOKEN_BUCKET = "TOKEN_BUCKET"
     LEAKY_BUCKET = "LEAKY_BUCKET"
+
+
 @dataclass
 class RouteConfig:
     path: str
@@ -71,15 +100,17 @@ class RouteConfig:
     target_path: str
     authentication_required: bool = True
     security_level: SecurityLevel = SecurityLevel.STANDARD
-    rate_limit: int = 1000  
+    rate_limit: int = 1000
     cache_enabled: bool = True
-    cache_ttl: int = 300  
+    cache_ttl: int = 300
     transformation_enabled: bool = False
     validation_enabled: bool = True
     allowed_roles: List[str] = field(default_factory=list)
     allowed_ip_ranges: List[str] = field(default_factory=list)
     request_headers: Dict[str, str] = field(default_factory=dict)
     response_headers: Dict[str, str] = field(default_factory=dict)
+
+
 @dataclass
 class UserContext:
     user_id: str
@@ -95,7 +126,11 @@ class UserContext:
     client_ip: str = ""
     user_agent: str = ""
     created_at: datetime = field(default_factory=datetime.utcnow)
-    expires_at: datetime = field(default_factory=lambda: datetime.utcnow() + timedelta(hours=1))
+    expires_at: datetime = field(
+        default_factory=lambda: datetime.utcnow() + timedelta(hours=1)
+    )
+
+
 class APIGatewayConfig(Base):
     __tablename__ = "api_gateway_config"
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -105,6 +140,8 @@ class APIGatewayConfig(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class APIRoute(Base):
     __tablename__ = "api_routes"
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -126,6 +163,8 @@ class APIRoute(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class APIKey(Base):
     __tablename__ = "api_keys"
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -140,6 +179,8 @@ class APIKey(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(100))
+
+
 class RateLimitLog(Base):
     __tablename__ = "rate_limit_log"
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -151,6 +192,8 @@ class RateLimitLog(Base):
     window_end = Column(DateTime, nullable=False)
     exceeded_limit = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class SecurityAuditLog(Base):
     __tablename__ = "security_audit_log"
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -168,25 +211,34 @@ class SecurityAuditLog(Base):
     error_message = Column(Text)
     processing_time = Column(Float)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class APIGateway:
     def __init__(self, orchestrator: IntegrationOrchestrator):
         self.orchestrator = orchestrator
         self.redis_client: Optional[redis.Redis] = None
-        self.db_url = os.getenv("GATEWAY_DB_URL", "postgresql+asyncpg://hms:hms@localhost:5432/gateway")
+        self.db_url = os.getenv(
+            "GATEWAY_DB_URL", "postgresql+asyncpg://hms:hms@localhost:5432/gateway"
+        )
         self.engine = create_async_engine(self.db_url)
-        self.SessionLocal = sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)
+        self.SessionLocal = sessionmaker(
+            self.engine, class_=AsyncSession, expire_on_commit=False
+        )
         self.jwt_secret = os.getenv("JWT_SECRET", secrets.token_urlsafe(32))
         self.jwt_algorithm = "HS256"
         self.jwt_expiration = timedelta(hours=1)
-        self.encryption_key = os.getenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+        self.encryption_key = os.getenv(
+            "ENCRYPTION_KEY", Fernet.generate_key().decode()
+        )
         self.fernet = Fernet(self.encryption_key.encode())
         self.rate_limit_strategy = RateLimitStrategy.SLIDING_WINDOW
         self.rate_limiters = {}
-        self.cache_ttl = 300  
+        self.cache_ttl = 300
         self.routes: Dict[str, RouteConfig] = {}
         self.middleware_chain = []
         self._initialize_routes()
         self._initialize_middleware()
+
     async def initialize(self):
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self.redis_client = redis.from_url(redis_url)
@@ -196,6 +248,7 @@ class APIGateway:
         asyncio.create_task(self._cleanup_task())
         asyncio.create_task(self._metrics_collector())
         logger.info("API Gateway initialized successfully")
+
     def _initialize_routes(self):
         default_routes = [
             RouteConfig(
@@ -204,7 +257,7 @@ class APIGateway:
                 target_service="patients_service",
                 target_path="/api/patients",
                 security_level=SecurityLevel.STANDARD,
-                allowed_roles=["DOCTOR", "NURSE", "ADMIN", "RECEPTIONIST"]
+                allowed_roles=["DOCTOR", "NURSE", "ADMIN", "RECEPTIONIST"],
             ),
             RouteConfig(
                 path="/api/patients",
@@ -212,7 +265,7 @@ class APIGateway:
                 target_service="patients_service",
                 target_path="/api/patients",
                 security_level=SecurityLevel.STANDARD,
-                allowed_roles=["DOCTOR", "ADMIN", "RECEPTIONIST"]
+                allowed_roles=["DOCTOR", "ADMIN", "RECEPTIONIST"],
             ),
             RouteConfig(
                 path="/api/encounters",
@@ -220,7 +273,7 @@ class APIGateway:
                 target_service="ehr_service",
                 target_path="/api/encounters",
                 security_level=SecurityLevel.STANDARD,
-                allowed_roles=["DOCTOR", "NURSE", "ADMIN"]
+                allowed_roles=["DOCTOR", "NURSE", "ADMIN"],
             ),
             RouteConfig(
                 path="/api/observations",
@@ -228,7 +281,7 @@ class APIGateway:
                 target_service="ehr_service",
                 target_path="/api/observations",
                 security_level=SecurityLevel.STANDARD,
-                allowed_roles=["DOCTOR", "NURSE", "LAB_TECH"]
+                allowed_roles=["DOCTOR", "NURSE", "LAB_TECH"],
             ),
             RouteConfig(
                 path="/api/medications",
@@ -236,7 +289,7 @@ class APIGateway:
                 target_service="pharmacy_service",
                 target_path="/api/medications",
                 security_level=SecurityLevel.STANDARD,
-                allowed_roles=["DOCTOR", "PHARMACIST", "NURSE"]
+                allowed_roles=["DOCTOR", "PHARMACIST", "NURSE"],
             ),
             RouteConfig(
                 path="/api/lab/orders",
@@ -244,7 +297,7 @@ class APIGateway:
                 target_service="lab_service",
                 target_path="/api/lab/orders",
                 security_level=SecurityLevel.STANDARD,
-                allowed_roles=["DOCTOR", "NURSE"]
+                allowed_roles=["DOCTOR", "NURSE"],
             ),
             RouteConfig(
                 path="/api/billing/claims",
@@ -252,7 +305,7 @@ class APIGateway:
                 target_service="billing_service",
                 target_path="/api/billing/claims",
                 security_level=SecurityLevel.ENHANCED,
-                allowed_roles=["BILLING_ADMIN", "ADMIN"]
+                allowed_roles=["BILLING_ADMIN", "ADMIN"],
             ),
             RouteConfig(
                 path="/api/admin/**",
@@ -260,7 +313,7 @@ class APIGateway:
                 target_service="admin_service",
                 target_path="/api/admin",
                 security_level=SecurityLevel.ADMIN,
-                allowed_roles=["SUPER_ADMIN", "ADMIN"]
+                allowed_roles=["SUPER_ADMIN", "ADMIN"],
             ),
             RouteConfig(
                 path="/health",
@@ -268,12 +321,13 @@ class APIGateway:
                 target_service="gateway",
                 target_path="/health",
                 authentication_required=False,
-                security_level=SecurityLevel.PUBLIC
-            )
+                security_level=SecurityLevel.PUBLIC,
+            ),
         ]
         for route in default_routes:
             route_key = f"{route.method}:{route.path}"
             self.routes[route_key] = route
+
     def _initialize_middleware(self):
         self.middleware_chain = [
             self._cors_middleware,
@@ -284,8 +338,9 @@ class APIGateway:
             self._cache_middleware,
             self._transformation_middleware,
             self._validation_middleware,
-            self._proxy_middleware
+            self._proxy_middleware,
         ]
+
     async def _load_routes(self):
         async with self.SessionLocal() as session:
             routes = await session.execute(
@@ -308,10 +363,11 @@ class APIGateway:
                     allowed_roles=db_route.allowed_roles or [],
                     allowed_ip_ranges=db_route.allowed_ip_ranges or [],
                     request_headers=db_route.request_headers or {},
-                    response_headers=db_route.response_headers or {}
+                    response_headers=db_route.response_headers or {},
                 )
                 route_key = f"{db_route.method}:{db_route.path}"
                 self.routes[route_key] = route_config
+
     async def process_request(self, request: Request) -> Response:
         start_time = time.time()
         try:
@@ -321,7 +377,7 @@ class APIGateway:
                 "user_context": None,
                 "route_config": None,
                 "cache_key": None,
-                "rate_limit_key": None
+                "rate_limit_key": None,
             }
             for middleware in self.middleware_chain:
                 response = await middleware(request, context)
@@ -329,14 +385,13 @@ class APIGateway:
                     break
             if response is None:
                 response = JSONResponse(
-                    status_code=404,
-                    content={"error": "Endpoint not found"}
+                    status_code=404, content={"error": "Endpoint not found"}
                 )
             await self._log_security_event(
                 request=request,
                 context=context,
                 status_code=response.status_code,
-                processing_time=time.time() - start_time
+                processing_time=time.time() - start_time,
             )
             return response
         except Exception as e:
@@ -345,25 +400,34 @@ class APIGateway:
                 request=request,
                 context=context or {},
                 status_code=500,
-                error_message=str(e)
+                error_message=str(e),
             )
             return JSONResponse(
-                status_code=500,
-                content={"error": "Internal server error"}
+                status_code=500, content={"error": "Internal server error"}
             )
-    async def _cors_middleware(self, request: Request, context: Dict) -> Optional[Response]:
+
+    async def _cors_middleware(
+        self, request: Request, context: Dict
+    ) -> Optional[Response]:
         return None
-    async def _security_middleware(self, request: Request, context: Dict) -> Optional[Response]:
+
+    async def _security_middleware(
+        self, request: Request, context: Dict
+    ) -> Optional[Response]:
         if not request.headers.get("X-Content-Type-Options"):
             pass
         content_type = request.headers.get("content-type", "")
-        if request.method in ["POST", "PUT", "PATCH"] and not content_type.startswith("application/"):
+        if request.method in ["POST", "PUT", "PATCH"] and not content_type.startswith(
+            "application/"
+        ):
             return JSONResponse(
-                status_code=415,
-                content={"error": "Unsupported Media Type"}
+                status_code=415, content={"error": "Unsupported Media Type"}
             )
         return None
-    async def _rate_limit_middleware(self, request: Request, context: Dict) -> Optional[Response]:
+
+    async def _rate_limit_middleware(
+        self, request: Request, context: Dict
+    ) -> Optional[Response]:
         client_ip = request.client.host
         endpoint = f"{request.method}:{request.url.path}"
         route_key = f"{request.method}:{request.url.path}"
@@ -371,7 +435,11 @@ class APIGateway:
         if not route_config:
             return None
         context["route_config"] = route_config
-        user_id = getattr(context.get("user_context"), "user_id", None) if context.get("user_context") else None
+        user_id = (
+            getattr(context.get("user_context"), "user_id", None)
+            if context.get("user_context")
+            else None
+        )
         rate_limit_key = f"rate_limit:{client_ip}:{endpoint}:{user_id or 'anonymous'}"
         context["rate_limit_key"] = rate_limit_key
         if self.redis_client:
@@ -387,31 +455,32 @@ class APIGateway:
                     endpoint=endpoint,
                     user_id=user_id,
                     window_start=window_start,
-                    window_end=window_end
+                    window_end=window_end,
                 )
                 return JSONResponse(
-                    status_code=429,
-                    content={"error": "Rate limit exceeded"}
+                    status_code=429, content={"error": "Rate limit exceeded"}
                 )
             await self.redis_client.incr(rate_limit_key)
-            await self.redis_client.expireat(rate_limit_key, int(window_end.timestamp()))
+            await self.redis_client.expireat(
+                rate_limit_key, int(window_end.timestamp())
+            )
         return None
-    async def _authentication_middleware(self, request: Request, context: Dict) -> Optional[Response]:
+
+    async def _authentication_middleware(
+        self, request: Request, context: Dict
+    ) -> Optional[Response]:
         route_config = context.get("route_config")
         if not route_config or not route_config.authentication_required:
             return None
         authorization = request.headers.get("Authorization")
         if not authorization or not authorization.startswith("Bearer "):
             return JSONResponse(
-                status_code=401,
-                content={"error": "Authentication required"}
+                status_code=401, content={"error": "Authentication required"}
             )
         token = authorization.split(" ")[1]
         try:
             payload = jwt.decode(
-                token,
-                self.jwt_secret,
-                algorithms=[self.jwt_algorithm]
+                token, self.jwt_secret, algorithms=[self.jwt_algorithm]
             )
             user_context = UserContext(
                 user_id=payload["user_id"],
@@ -422,64 +491,71 @@ class APIGateway:
                 tenant_id=payload["tenant_id"],
                 client_ip=request.client.host,
                 user_agent=request.headers.get("user-agent", ""),
-                authentication_type=AuthenticationType.JWT
+                authentication_type=AuthenticationType.JWT,
             )
             context["user_context"] = user_context
             if self.redis_client:
                 await self.redis_client.setex(
                     f"user_session:{user_context.user_id}",
                     3600,
-                    json.dumps({
-                        "username": user_context.username,
-                        "roles": user_context.roles,
-                        "last_activity": datetime.utcnow().isoformat()
-                    })
+                    json.dumps(
+                        {
+                            "username": user_context.username,
+                            "roles": user_context.roles,
+                            "last_activity": datetime.utcnow().isoformat(),
+                        }
+                    ),
                 )
         except jwt.ExpiredSignatureError:
-            return JSONResponse(
-                status_code=401,
-                content={"error": "Token expired"}
-            )
+            return JSONResponse(status_code=401, content={"error": "Token expired"})
         except jwt.InvalidTokenError:
-            return JSONResponse(
-                status_code=401,
-                content={"error": "Invalid token"}
-            )
+            return JSONResponse(status_code=401, content={"error": "Invalid token"})
         return None
-    async def _authorization_middleware(self, request: Request, context: Dict) -> Optional[Response]:
+
+    async def _authorization_middleware(
+        self, request: Request, context: Dict
+    ) -> Optional[Response]:
         route_config = context.get("route_config")
         user_context = context.get("user_context")
         if not route_config or not user_context:
             return None
-        if route_config.security_level == SecurityLevel.ADMIN and "ADMIN" not in user_context.roles:
+        if (
+            route_config.security_level == SecurityLevel.ADMIN
+            and "ADMIN" not in user_context.roles
+        ):
             return JSONResponse(
-                status_code=403,
-                content={"error": "Administrator access required"}
+                status_code=403, content={"error": "Administrator access required"}
             )
         if route_config.allowed_roles:
             user_roles = set(user_context.roles)
             allowed_roles = set(route_config.allowed_roles)
             if not user_roles.intersection(allowed_roles):
                 return JSONResponse(
-                    status_code=403,
-                    content={"error": "Insufficient permissions"}
+                    status_code=403, content={"error": "Insufficient permissions"}
                 )
         if route_config.allowed_ip_ranges:
             client_ip = request.client.host
             allowed_ips = route_config.allowed_ip_ranges
             if not self._is_ip_allowed(client_ip, allowed_ips):
                 return JSONResponse(
-                    status_code=403,
-                    content={"error": "IP address not allowed"}
+                    status_code=403, content={"error": "IP address not allowed"}
                 )
         return None
+
     def _is_ip_allowed(self, client_ip: str, allowed_ranges: List[str]) -> bool:
         if "*" in allowed_ranges:
             return True
         return client_ip in allowed_ranges
-    async def _cache_middleware(self, request: Request, context: Dict) -> Optional[Response]:
+
+    async def _cache_middleware(
+        self, request: Request, context: Dict
+    ) -> Optional[Response]:
         route_config = context.get("route_config")
-        if not route_config or not route_config.cache_enabled or request.method != "GET":
+        if (
+            not route_config
+            or not route_config.cache_enabled
+            or request.method != "GET"
+        ):
             return None
         cache_key = f"cache:{request.url.path}:{request.query_params}"
         context["cache_key"] = cache_key
@@ -487,14 +563,17 @@ class APIGateway:
             cached_response = await self.redis_client.get(cache_key)
             if cached_response:
                 response_data = json.loads(cached_response)
-                return JSONResponse(
-                    content=response_data,
-                    headers={"X-Cache": "HIT"}
-                )
+                return JSONResponse(content=response_data, headers={"X-Cache": "HIT"})
         return None
-    async def _transformation_middleware(self, request: Request, context: Dict) -> Optional[Response]:
+
+    async def _transformation_middleware(
+        self, request: Request, context: Dict
+    ) -> Optional[Response]:
         return None
-    async def _validation_middleware(self, request: Request, context: Dict) -> Optional[Response]:
+
+    async def _validation_middleware(
+        self, request: Request, context: Dict
+    ) -> Optional[Response]:
         route_config = context.get("route_config")
         if not route_config or not route_config.validation_enabled:
             return None
@@ -502,17 +581,22 @@ class APIGateway:
             if request.headers.get(header_name) != header_value:
                 return JSONResponse(
                     status_code=400,
-                    content={"error": f"Required header '{header_name}' missing or invalid"}
+                    content={
+                        "error": f"Required header '{header_name}' missing or invalid"
+                    },
                 )
         return None
-    async def _proxy_middleware(self, request: Request, context: Dict) -> Optional[Response]:
+
+    async def _proxy_middleware(
+        self, request: Request, context: Dict
+    ) -> Optional[Response]:
         route_config = context.get("route_config")
         if not route_config:
             return None
         try:
             target_url = f"{self._get_service_url(route_config.target_service)}{route_config.target_path}"
             headers = dict(request.headers)
-            headers.pop("host", None)  
+            headers.pop("host", None)
             if context.get("user_context"):
                 headers["X-User-ID"] = context["user_context"].user_id
                 headers["X-User-Roles"] = ",".join(context["user_context"].roles)
@@ -522,27 +606,32 @@ class APIGateway:
                         response_data = await response.json()
                 elif request.method == "POST":
                     request_body = await request.json()
-                    async with session.post(target_url, json=request_body, headers=headers) as response:
+                    async with session.post(
+                        target_url, json=request_body, headers=headers
+                    ) as response:
                         response_data = await response.json()
                 elif request.method == "PUT":
                     request_body = await request.json()
-                    async with session.put(target_url, json=request_body, headers=headers) as response:
+                    async with session.put(
+                        target_url, json=request_body, headers=headers
+                    ) as response:
                         response_data = await response.json()
                 elif request.method == "DELETE":
                     async with session.delete(target_url, headers=headers) as response:
                         response_data = await response.json()
                 else:
                     return JSONResponse(
-                        status_code=405,
-                        content={"error": "Method not allowed"}
+                        status_code=405, content={"error": "Method not allowed"}
                     )
-            if route_config.cache_enabled and request.method == "GET" and response.status == 200:
+            if (
+                route_config.cache_enabled
+                and request.method == "GET"
+                and response.status == 200
+            ):
                 cache_key = context.get("cache_key")
                 if cache_key and self.redis_client:
                     await self.redis_client.setex(
-                        cache_key,
-                        route_config.cache_ttl,
-                        json.dumps(response_data)
+                        cache_key, route_config.cache_ttl, json.dumps(response_data)
                     )
             response_headers = {}
             for header_name, header_value in route_config.response_headers.items():
@@ -550,14 +639,12 @@ class APIGateway:
             return JSONResponse(
                 content=response_data,
                 status_code=response.status,
-                headers=response_headers
+                headers=response_headers,
             )
         except Exception as e:
             logger.error(f"Error proxying request: {e}")
-            return JSONResponse(
-                status_code=502,
-                content={"error": "Bad Gateway"}
-            )
+            return JSONResponse(status_code=502, content={"error": "Bad Gateway"})
+
     def _get_service_url(self, service_name: str) -> str:
         service_urls = {
             "patients_service": "http://localhost:8001",
@@ -565,11 +652,18 @@ class APIGateway:
             "pharmacy_service": "http://localhost:8003",
             "lab_service": "http://localhost:8004",
             "billing_service": "http://localhost:8005",
-            "admin_service": "http://localhost:8006"
+            "admin_service": "http://localhost:8006",
         }
         return service_urls.get(service_name, f"http://localhost:8000")
-    async def _log_security_event(self, request: Request, context: Dict, status_code: int,
-                                 processing_time: float = 0.0, error_message: str = None):
+
+    async def _log_security_event(
+        self,
+        request: Request,
+        context: Dict,
+        status_code: int,
+        processing_time: float = 0.0,
+        error_message: str = None,
+    ):
         user_context = context.get("user_context")
         route_config = context.get("route_config")
         async with self.SessionLocal() as session:
@@ -580,15 +674,24 @@ class APIGateway:
                 resource=request.url.path,
                 method=request.method,
                 status_code=status_code,
-                auth_type=user_context.authentication_type.value if user_context else None,
+                auth_type=(
+                    user_context.authentication_type.value if user_context else None
+                ),
                 auth_result="SUCCESS" if status_code < 400 else "FAILURE",
                 processing_time=processing_time,
-                error_message=error_message
+                error_message=error_message,
             )
             session.add(audit_log)
             await session.commit()
-    async def _log_rate_limit_exceeded(self, client_ip: str, endpoint: str, user_id: str,
-                                       window_start: datetime, window_end: datetime):
+
+    async def _log_rate_limit_exceeded(
+        self,
+        client_ip: str,
+        endpoint: str,
+        user_id: str,
+        window_start: datetime,
+        window_end: datetime,
+    ):
         async with self.SessionLocal() as session:
             rate_limit_log = RateLimitLog(
                 client_ip=client_ip,
@@ -596,10 +699,11 @@ class APIGateway:
                 user_id=user_id,
                 window_start=window_start,
                 window_end=window_end,
-                exceeded_limit=True
+                exceeded_limit=True,
             )
             session.add(rate_limit_log)
             await session.commit()
+
     async def _cleanup_task(self):
         while True:
             try:
@@ -619,18 +723,21 @@ class APIGateway:
                         .delete()
                     )
                     await session.commit()
-                await asyncio.sleep(86400)  
+                await asyncio.sleep(86400)
             except Exception as e:
                 logger.error(f"Error in cleanup task: {e}")
+
     async def _metrics_collector(self):
         while True:
             try:
                 await self._collect_gateway_metrics()
-                await asyncio.sleep(300)  
+                await asyncio.sleep(300)
             except Exception as e:
                 logger.error(f"Error in metrics collector: {e}")
+
     async def _collect_gateway_metrics(self):
         pass
+
     def generate_jwt_token(self, user_context: UserContext) -> str:
         payload = {
             "user_id": user_context.user_id,
@@ -640,15 +747,14 @@ class APIGateway:
             "permissions": user_context.permissions,
             "tenant_id": user_context.tenant_id,
             "exp": datetime.utcnow() + self.jwt_expiration,
-            "iat": datetime.utcnow()
+            "iat": datetime.utcnow(),
         }
         return jwt.encode(payload, self.jwt_secret, algorithm=self.jwt_algorithm)
+
     def validate_jwt_token(self, token: str) -> Optional[UserContext]:
         try:
             payload = jwt.decode(
-                token,
-                self.jwt_secret,
-                algorithms=[self.jwt_algorithm]
+                token, self.jwt_secret, algorithms=[self.jwt_algorithm]
             )
             return UserContext(
                 user_id=payload["user_id"],
@@ -657,18 +763,20 @@ class APIGateway:
                 roles=payload.get("roles", []),
                 permissions=payload.get("permissions", []),
                 tenant_id=payload["tenant_id"],
-                authentication_type=AuthenticationType.JWT
+                authentication_type=AuthenticationType.JWT,
             )
         except jwt.ExpiredSignatureError:
             return None
         except jwt.InvalidTokenError:
             return None
+
+
 gateway_app = FastAPI(
     title="HMS API Gateway",
     description="Secure API Gateway for Hospital Management System",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 gateway_app.add_middleware(
     CORSMiddleware,
@@ -681,44 +789,64 @@ gateway_app.add_middleware(GZipMiddleware, minimum_size=1000)
 gateway_app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 Instrumentator().instrument(gateway_app).expose(gateway_app)
 gateway: Optional[APIGateway] = None
+
+
 async def get_gateway() -> APIGateway:
     global gateway
     if gateway is None:
         from ..orchestrator import orchestrator
+
         gateway = APIGateway(orchestrator)
         await gateway.initialize()
     return gateway
+
+
 @gateway_app.on_event("startup")
 async def startup_event():
     global gateway
     if gateway is None:
         from ..orchestrator import orchestrator
+
         gateway = APIGateway(orchestrator)
         await gateway.initialize()
+
+
 @gateway_app.on_event("shutdown")
 async def shutdown_event():
     if gateway and gateway.redis_client:
         await gateway.redis_client.close()
+
+
 @gateway_app.get("/health")
 async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
-        "version": "1.0.0"
+        "version": "1.0.0",
     }
-@gateway_app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+
+
+@gateway_app.api_route(
+    "/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"]
+)
 async def gateway_route(request: Request, gateway: APIGateway = Depends(get_gateway)):
     return await gateway.process_request(request)
+
+
 @gateway_app.post("/gateway/auth/login")
-async def login(username: str, password: str, gateway: APIGateway = Depends(get_gateway)):
-    if username == "admin" and password == os.getenv("DEMO_ADMIN_PASSWORD", secrets.token_urlsafe(12)):
+async def login(
+    username: str, password: str, gateway: APIGateway = Depends(get_gateway)
+):
+    if username == "admin" and password == os.getenv(
+        "DEMO_ADMIN_PASSWORD", secrets.token_urlsafe(12)
+    ):
         user_context = UserContext(
             user_id="1",
             username=username,
             email="admin@hms.com",
             roles=["ADMIN"],
             permissions=["*"],
-            tenant_id="default"
+            tenant_id="default",
         )
         token = gateway.generate_jwt_token(user_context)
         return {
@@ -729,26 +857,32 @@ async def login(username: str, password: str, gateway: APIGateway = Depends(get_
                 "user_id": user_context.user_id,
                 "username": user_context.username,
                 "email": user_context.email,
-                "roles": user_context.roles
-            }
+                "roles": user_context.roles,
+            },
         }
     else:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+
+
 @gateway_app.get("/gateway/routes")
 async def get_routes(gateway: APIGateway = Depends(get_gateway)):
     routes_info = []
     for route_key, route_config in gateway.routes.items():
-        routes_info.append({
-            "path": route_config.path,
-            "method": route_config.method,
-            "target_service": route_config.target_service,
-            "target_path": route_config.target_path,
-            "security_level": route_config.security_level.value,
-            "rate_limit": route_config.rate_limit,
-            "cache_enabled": route_config.cache_enabled,
-            "allowed_roles": route_config.allowed_roles
-        })
+        routes_info.append(
+            {
+                "path": route_config.path,
+                "method": route_config.method,
+                "target_service": route_config.target_service,
+                "target_path": route_config.target_path,
+                "security_level": route_config.security_level.value,
+                "rate_limit": route_config.rate_limit,
+                "cache_enabled": route_config.cache_enabled,
+                "allowed_roles": route_config.allowed_roles,
+            }
+        )
     return {"routes": routes_info}
+
+
 @gateway_app.get("/gateway/metrics")
 async def get_gateway_metrics(gateway: APIGateway = Depends(get_gateway)):
     return {
@@ -756,8 +890,11 @@ async def get_gateway_metrics(gateway: APIGateway = Depends(get_gateway)):
         "successful_requests": 0,
         "failed_requests": 0,
         "avg_response_time": 0.0,
-        "active_connections": 0
+        "active_connections": 0,
     }
+
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(gateway_app, host="0.0.0.0", port=8000)

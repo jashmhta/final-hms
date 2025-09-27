@@ -1,17 +1,22 @@
+"""
+__init__ module
+"""
+
 from .test_framework import (
-    IntegrationTestFramework,
-    TestType,
-    TestStatus,
-    TestPriority,
     ComplianceStandard,
+    ComplianceTestResult,
+    IntegrationTestFramework,
+    PerformanceMetrics,
     TestCase,
     TestExecution,
-    TestSuite,
-    PerformanceMetrics,
+    TestPriority,
     TestResult,
+    TestStatus,
+    TestSuite,
     TestSuiteResult,
-    ComplianceTestResult
+    TestType,
 )
+
 __version__ = "1.0.0"
 __author__ = "Integration Specialist"
 __email__ = "integration@hms-enterprise.com"
@@ -27,11 +32,13 @@ __all__ = [
     "PerformanceMetrics",
     "TestResult",
     "TestSuiteResult",
-    "ComplianceTestResult"
+    "ComplianceTestResult",
 ]
 import logging
 import os
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
+
+
 def configure_logging(log_level: str = "INFO", log_file: str = None):
     handlers = [logging.StreamHandler()]
     if log_file:
@@ -41,23 +48,25 @@ def configure_logging(log_level: str = "INFO", log_file: str = None):
         handlers.append(logging.FileHandler(log_file))
     logging.basicConfig(
         level=getattr(logging, log_level.upper()),
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=handlers
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=handlers,
     )
+
+
 configure_logging(
     log_level=os.getenv("TEST_LOG_LEVEL", "INFO"),
-    log_file=os.getenv("TEST_LOG_FILE", "/var/log/hms/integration_testing.log")
+    log_file=os.getenv("TEST_LOG_FILE", "/var/log/hms/integration_testing.log"),
 )
 logger = logging.getLogger(__name__)
 logger.info(f"Integration Testing Package initialized (v{__version__})")
 DEFAULT_PERFORMANCE_THRESHOLDS = {
-    "max_response_time": 5.0,  
-    "max_error_rate": 0.01,    
-    "min_throughput": 100,      
-    "max_memory_usage": 512,    
-    "max_cpu_usage": 80,       
-    "max_network_latency": 1.0, 
-    "max_database_time": 2.0   
+    "max_response_time": 5.0,
+    "max_error_rate": 0.01,
+    "min_throughput": 100,
+    "max_memory_usage": 512,
+    "max_cpu_usage": 80,
+    "max_network_latency": 1.0,
+    "max_database_time": 2.0,
 }
 TEST_TYPES = [
     "INTEGRATION",
@@ -69,7 +78,7 @@ TEST_TYPES = [
     "COMPLIANCE",
     "DATA_INTEGRITY",
     "END_TO_END",
-    "WORKFLOW"
+    "WORKFLOW",
 ]
 COMPLIANCE_STANDARDS = [
     "HIPAA",
@@ -81,8 +90,10 @@ COMPLIANCE_STANDARDS = [
     "CPT",
     "NDC",
     "GDPR",
-    "PCI_DSS"
+    "PCI_DSS",
 ]
+
+
 def create_test_case(
     test_id: str,
     name: str,
@@ -93,7 +104,7 @@ def create_test_case(
     test_data: Dict = None,
     expected_results: Dict = None,
     timeout: int = 300,
-    tags: List[str] = None
+    tags: List[str] = None,
 ) -> TestCase:
     return TestCase(
         test_id=test_id,
@@ -105,15 +116,17 @@ def create_test_case(
         test_data=test_data or {},
         expected_results=expected_results or {},
         timeout=timeout,
-        tags=tags or []
+        tags=tags or [],
     )
+
+
 def create_test_suite(
     suite_id: str,
     name: str,
     description: str,
     test_cases: List[TestCase],
     parallel_execution: bool = True,
-    max_workers: int = 4
+    max_workers: int = 4,
 ) -> TestSuite:
     return TestSuite(
         suite_id=suite_id,
@@ -121,24 +134,39 @@ def create_test_suite(
         description=description,
         test_cases=test_cases,
         parallel_execution=parallel_execution,
-        max_workers=max_workers
+        max_workers=max_workers,
     )
-def validate_test_performance(performance_metrics: Dict,
-                           thresholds: Dict = None) -> Dict[str, bool]:
+
+
+def validate_test_performance(
+    performance_metrics: Dict, thresholds: Dict = None
+) -> Dict[str, bool]:
     if thresholds is None:
         thresholds = DEFAULT_PERFORMANCE_THRESHOLDS
     results = {}
     if "response_time" in performance_metrics:
-        results["response_time"] = performance_metrics["response_time"] <= thresholds["max_response_time"]
+        results["response_time"] = (
+            performance_metrics["response_time"] <= thresholds["max_response_time"]
+        )
     if "error_rate" in performance_metrics:
-        results["error_rate"] = performance_metrics["error_rate"] <= thresholds["max_error_rate"]
+        results["error_rate"] = (
+            performance_metrics["error_rate"] <= thresholds["max_error_rate"]
+        )
     if "throughput" in performance_metrics:
-        results["throughput"] = performance_metrics["throughput"] >= thresholds["min_throughput"]
+        results["throughput"] = (
+            performance_metrics["throughput"] >= thresholds["min_throughput"]
+        )
     if "memory_usage" in performance_metrics:
-        results["memory_usage"] = performance_metrics["memory_usage"] <= thresholds["max_memory_usage"]
+        results["memory_usage"] = (
+            performance_metrics["memory_usage"] <= thresholds["max_memory_usage"]
+        )
     if "cpu_usage" in performance_metrics:
-        results["cpu_usage"] = performance_metrics["cpu_usage"] <= thresholds["max_cpu_usage"]
+        results["cpu_usage"] = (
+            performance_metrics["cpu_usage"] <= thresholds["max_cpu_usage"]
+        )
     return results
+
+
 def calculate_test_score(test_results: List[Dict]) -> Dict[str, float]:
     if not test_results:
         return {"success_rate": 0.0, "performance_score": 0.0, "overall_score": 0.0}
@@ -146,8 +174,10 @@ def calculate_test_score(test_results: List[Dict]) -> Dict[str, float]:
     passed_tests = sum(1 for result in test_results if result.get("status") == "PASSED")
     success_rate = (passed_tests / total_tests) * 100 if total_tests > 0 else 0.0
     response_times = [result.get("duration", 0) for result in test_results]
-    avg_response_time = sum(response_times) / len(response_times) if response_times else 0.0
-    performance_score = max(0.0, 100.0 - (avg_response_time * 10))  
+    avg_response_time = (
+        sum(response_times) / len(response_times) if response_times else 0.0
+    )
+    performance_score = max(0.0, 100.0 - (avg_response_time * 10))
     overall_score = (success_rate * 0.7) + (performance_score * 0.3)
     return {
         "success_rate": success_rate,
@@ -155,13 +185,17 @@ def calculate_test_score(test_results: List[Dict]) -> Dict[str, float]:
         "overall_score": overall_score,
         "total_tests": total_tests,
         "passed_tests": passed_tests,
-        "average_response_time": avg_response_time
+        "average_response_time": avg_response_time,
     }
+
+
 def generate_test_recommendations(test_results: List[Dict]) -> List[str]:
     recommendations = []
     if not test_results:
         return ["No test results available for analysis"]
-    failed_tests = [result for result in test_results if result.get("status") == "FAILED"]
+    failed_tests = [
+        result for result in test_results if result.get("status") == "FAILED"
+    ]
     error_tests = [result for result in test_results if result.get("status") == "ERROR"]
     if failed_tests:
         failure_by_type = {}
@@ -169,30 +203,48 @@ def generate_test_recommendations(test_results: List[Dict]) -> List[str]:
             test_type = test.get("test_type", "UNKNOWN")
             failure_by_type[test_type] = failure_by_type.get(test_type, 0) + 1
         most_failed_type = max(failure_by_type, key=failure_by_type.get)
-        recommendations.append(f"Focus on fixing {failure_by_type[most_failed_type]} {most_failed_type} tests")
+        recommendations.append(
+            f"Focus on fixing {failure_by_type[most_failed_type]} {most_failed_type} tests"
+        )
     if error_tests:
-        recommendations.append(f"Investigate {len(error_tests)} tests that encountered errors")
+        recommendations.append(
+            f"Investigate {len(error_tests)} tests that encountered errors"
+        )
     slow_tests = [result for result in test_results if result.get("duration", 0) > 5.0]
     if slow_tests:
-        recommendations.append(f"Optimize {len(slow_tests)} slow tests (>5s execution time)")
+        recommendations.append(
+            f"Optimize {len(slow_tests)} slow tests (>5s execution time)"
+        )
     test_types = set(result.get("test_type") for result in test_results)
     for test_type in test_types:
-        type_results = [result for result in test_results if result.get("test_type") == test_type]
+        type_results = [
+            result for result in test_results if result.get("test_type") == test_type
+        ]
         if len(type_results) > 1:
-            success_rate = sum(1 for r in type_results if r.get("status") == "PASSED") / len(type_results)
-            if success_rate < 0.8:  
-                recommendations.append(f"Improve {test_type} test reliability (current: {success_rate:.1%})")
+            success_rate = sum(
+                1 for r in type_results if r.get("status") == "PASSED"
+            ) / len(type_results)
+            if success_rate < 0.8:
+                recommendations.append(
+                    f"Improve {test_type} test reliability (current: {success_rate:.1%})"
+                )
     return recommendations
+
+
 class TestResultAnalyzer:
     def __init__(self):
         self.test_history = []
+
     def add_test_result(self, test_result: Dict):
         self.test_history.append(test_result)
+
     def get_trends(self, days: int = 7) -> Dict:
         cutoff_date = datetime.utcnow() - timedelta(days=days)
         recent_tests = [
-            test for test in self.test_history
-            if test.get("start_time") and datetime.fromisoformat(test["start_time"]) > cutoff_date
+            test
+            for test in self.test_history
+            if test.get("start_time")
+            and datetime.fromisoformat(test["start_time"]) > cutoff_date
         ]
         if not recent_tests:
             return {"trend": "insufficient_data"}
@@ -223,10 +275,15 @@ class TestResultAnalyzer:
             "trend": trend,
             "daily_success_rates": daily_rates,
             "total_tests": len(recent_tests),
-            "average_success_rate": sum(daily_rates) / len(daily_rates) if daily_rates else 0
+            "average_success_rate": (
+                sum(daily_rates) / len(daily_rates) if daily_rates else 0
+            ),
         }
+
     def get_failure_analysis(self) -> Dict:
-        failed_tests = [test for test in self.test_history if test.get("status") == "FAILED"]
+        failed_tests = [
+            test for test in self.test_history if test.get("status") == "FAILED"
+        ]
         if not failed_tests:
             return {"message": "No failed tests found"}
         failure_by_type = {}
@@ -241,17 +298,29 @@ class TestResultAnalyzer:
             elif "connection" in error_msg.lower():
                 error_patterns["connection"] = error_patterns.get("connection", 0) + 1
             elif "authentication" in error_msg.lower():
-                error_patterns["authentication"] = error_patterns.get("authentication", 0) + 1
+                error_patterns["authentication"] = (
+                    error_patterns.get("authentication", 0) + 1
+                )
             else:
                 error_patterns["other"] = error_patterns.get("other", 0) + 1
         return {
             "total_failures": len(failed_tests),
             "failure_by_type": failure_by_type,
             "error_patterns": error_patterns,
-            "most_problematic_type": max(failure_by_type, key=failure_by_type.get) if failure_by_type else None,
-            "most_common_error": max(error_patterns, key=error_patterns.get) if error_patterns else None
+            "most_problematic_type": (
+                max(failure_by_type, key=failure_by_type.get)
+                if failure_by_type
+                else None
+            ),
+            "most_common_error": (
+                max(error_patterns, key=error_patterns.get) if error_patterns else None
+            ),
         }
+
+
 result_analyzer = TestResultAnalyzer()
+
+
 class TestFrameworkConfig:
     def __init__(self):
         self.config = {
@@ -260,43 +329,46 @@ class TestFrameworkConfig:
                 "max_retries": 3,
                 "parallel_execution": True,
                 "max_workers": 4,
-                "cleanup_after_test": True
+                "cleanup_after_test": True,
             },
             "reporting": {
                 "generate_html_reports": True,
                 "generate_json_reports": True,
                 "include_screenshots": False,
                 "include_logs": True,
-                "report_retention_days": 30
+                "report_retention_days": 30,
             },
             "performance": {
                 "enable_performance_tracking": True,
                 "collect_system_metrics": True,
                 "performance_thresholds": DEFAULT_PERFORMANCE_THRESHOLDS,
-                "generate_performance_reports": True
+                "generate_performance_reports": True,
             },
             "security": {
                 "enable_security_scanning": True,
                 "vulnerability_scanning": True,
                 "penetration_testing": False,
-                "compliance_validation": True
+                "compliance_validation": True,
             },
             "notifications": {
                 "email_notifications": False,
                 "webhook_notifications": False,
                 "slack_notifications": False,
-                "failure_only": True
-            }
+                "failure_only": True,
+            },
         }
+
     def get_config(self, section: str = None):
         if section:
             return self.config.get(section, {})
         return self.config
+
     def update_config(self, section: str, updates: Dict):
         if section in self.config:
             self.config[section].update(updates)
         else:
             self.config[section] = updates
+
     def validate_config(self) -> bool:
         try:
             execution = self.config.get("execution", {})
@@ -313,6 +385,8 @@ class TestFrameworkConfig:
             return True
         except Exception:
             return False
+
+
 config = TestFrameworkConfig()
 logger.info("Integration Testing Package fully initialized")
 logger.info(f"Supported test types: {TEST_TYPES}")

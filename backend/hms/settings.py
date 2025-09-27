@@ -1,34 +1,41 @@
 import base64
 import hashlib
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-import sys
 
-sys.path.insert(0, str(BASE_DIR.parent))
-import sys
+# Add libs directory to path for encrypted_model_fields
+sys.path.insert(0, str(BASE_DIR / "libs"))
 
-sys.path.insert(0, str(BASE_DIR.parent))
 load_dotenv(BASE_DIR / ".env")
-import os
 
+# Conditional imports for optional dependencies
 if os.getenv("REDIS_URL"):
-    import django_redis
+    try:
+        import django_redis
 
-    from core.middleware import PerformanceMonitoringMiddleware
+        from core.middleware import PerformanceMonitoringMiddleware
+    except ImportError:
+        pass
 
 # Enterprise-Grade Configuration
 ENTERPRISE_CONFIG = {
     "SECURITY_LEVEL": os.getenv("ENTERPRISE_SECURITY_LEVEL", "enterprise"),
     "PERFORMANCE_LEVEL": os.getenv("ENTERPRISE_PERFORMANCE_LEVEL", "enterprise"),
     "AI_ENABLED": os.getenv("ENTERPRISE_AI_ENABLED", "true").lower() == "true",
-    "MONITORING_ENABLED": os.getenv("ENTERPRISE_MONITORING_ENABLED", "true").lower() == "true",
-    "AUTO_SCALING_ENABLED": os.getenv("ENTERPRISE_AUTO_SCALING_ENABLED", "true").lower() == "true",
-    "MICROSERVICES_ENABLED": os.getenv("ENTERPRISE_MICROSERVICES_ENABLED", "true").lower() == "true",
+    "MONITORING_ENABLED": os.getenv("ENTERPRISE_MONITORING_ENABLED", "true").lower()
+    == "true",
+    "AUTO_SCALING_ENABLED": os.getenv("ENTERPRISE_AUTO_SCALING_ENABLED", "true").lower()
+    == "true",
+    "MICROSERVICES_ENABLED": os.getenv(
+        "ENTERPRISE_MICROSERVICES_ENABLED", "true"
+    ).lower()
+    == "true",
 }
 
 # Enterprise Security Configuration
@@ -123,6 +130,16 @@ else:
             "NAME": str(BASE_DIR / "db.sqlite3"),
         }
     }
+
+# Rate limiting configuration
+RATELIMIT_ENABLE = True
+RATELIMIT_USE_CACHE = "default"
+
+# Authentication rate limiting
+AUTH_RATELIMIT = "5/h"
+LOGIN_RATELIMIT = "3/m"
+PASSWORD_RESET_RATELIMIT = "2/h"
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "strong-django-secret-key-2024")
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
@@ -139,6 +156,8 @@ INSTALLED_APPS = [
     "django_filters",
     "corsheaders",
     "django_prometheus",
+    "django_celery_beat",
+    # Core HMS apps - uncomment as dependencies are resolved
     "core",
     "hospitals",
     "users",
@@ -150,12 +169,21 @@ INSTALLED_APPS = [
     "billing",
     "accounting",
     "accounting_advanced",
-    "analytics",
     "feedback",
+    "analytics",
     "hr",
     "facilities",
     "superadmin",
     "authentication",
+    "ai_ml",
+    # "accounting",
+    # "accounting_advanced",
+    # "analytics",
+    # "feedback",
+    # "hr",
+    # "facilities",
+    # "superadmin",
+    # "authentication",
     # "ai_ml",  # Disabled for testing
     # "enterprise_core",  # Disabled for testing
 ]
@@ -204,7 +232,9 @@ TEMPLATES = [
 WSGI_APPLICATION = "hms.wsgi.application"
 FERNET_KEYS = [os.getenv("FERNET_SECRET_KEY", SECRET_KEY)]
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
         "OPTIONS": {"min_length": 12},
@@ -228,7 +258,9 @@ MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "users.User"
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_FILTER_BACKENDS": (
@@ -319,16 +351,30 @@ SPECTACULAR_SETTINGS = {
 _cors_all = os.getenv("CORS_ALLOW_ALL_ORIGINS", "false").lower() == "true"
 CORS_ALLOW_ALL_ORIGINS = _cors_all and DEBUG
 if not CORS_ALLOW_ALL_ORIGINS:
-    CORS_ALLOWED_ORIGINS = [o for o in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if o]
-CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if os.getenv("CSRF_TRUSTED_ORIGINS") else []
-DEFAULT_APPOINTMENT_SLOT_MINUTES = int(os.getenv("DEFAULT_APPOINTMENT_SLOT_MINUTES", "30"))
+    CORS_ALLOWED_ORIGINS = [
+        o for o in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if o
+    ]
+CSRF_TRUSTED_ORIGINS = (
+    os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if os.getenv("CSRF_TRUSTED_ORIGINS")
+    else []
+)
+DEFAULT_APPOINTMENT_SLOT_MINUTES = int(
+    os.getenv("DEFAULT_APPOINTMENT_SLOT_MINUTES", "30")
+)
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000")) if not DEBUG else 0
-SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG and os.getenv("SECURE_HSTS_INCLUDE_SUBDOMAINS", "true").lower() == "true"
-SECURE_HSTS_PRELOAD = not DEBUG and os.getenv("SECURE_HSTS_PRELOAD", "true").lower() == "true"
+SECURE_HSTS_SECONDS = (
+    int(os.getenv("SECURE_HSTS_SECONDS", "31536000")) if not DEBUG else 0
+)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = (
+    not DEBUG and os.getenv("SECURE_HSTS_INCLUDE_SUBDOMAINS", "true").lower() == "true"
+)
+SECURE_HSTS_PRELOAD = (
+    not DEBUG and os.getenv("SECURE_HSTS_PRELOAD", "true").lower() == "true"
+)
 SECURE_SSL_REDIRECT = False
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@example.com")
 ADMINS = [("Admin", os.getenv("ADMIN_EMAIL", "admin@example.com"))]
@@ -341,7 +387,8 @@ LOGGING = {
             "style": "{",
         },
         "json": {
-            "()": "core.logging_monitoring.JsonFormatter",
+            "format": '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "message": "%(message)s"}',
+            "datefmt": "%Y-%m-%dT%H:%M:%S%z",
         },
         "simple": {
             "format": "{levelname} {message}",
@@ -506,9 +553,13 @@ if os.getenv("REDIS_URL"):
     CACHE_MIDDLEWARE_ALIAS = "default"
     CACHE_MIDDLEWARE_SECONDS = 600
     CACHE_MIDDLEWARE_KEY_PREFIX = "middleware"
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+CELERY_BROKER_URL = os.getenv(
+    "CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0")
+)
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
-CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "false").lower() == "true"
+CELERY_TASK_ALWAYS_EAGER = (
+    os.getenv("CELERY_TASK_ALWAYS_EAGER", "false").lower() == "true"
+)
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
@@ -549,7 +600,9 @@ REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"].update(
         "inventory": os.getenv("THROTTLE_INVENTORY", "60/min"),
     }
 )
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
+)
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "25")) if os.getenv("EMAIL_HOST") else None
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
@@ -566,10 +619,11 @@ if os.getenv("SENTRY_DSN"):
         traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.0")),
         send_default_pii=False,
     )
-INSTALLED_APPS.append("django_celery_beat")
+# django_celery_beat already included above
 X_FRAME_OPTIONS = "DENY"
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Strict"
+# Reduced from default 2 weeks to 15 minutes for security
 SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", "900"))
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_HTTPONLY = True

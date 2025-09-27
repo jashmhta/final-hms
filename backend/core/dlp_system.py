@@ -373,14 +373,25 @@ class DLPPolicy:
             "policy_actions": policy_actions,
         }
 
-    def _policy_applies(self, policy: Dict, classification: Dict, request: HttpRequest) -> bool:
+    def _policy_applies(
+        self, policy: Dict, classification: Dict, request: HttpRequest
+    ) -> bool:
         """Check if a policy applies to the current request"""
         # Check data types
-        if not any(data_type in classification["data_types"] for data_type in policy["data_types"]):
+        if not any(
+            data_type in classification["data_types"]
+            for data_type in policy["data_types"]
+        ):
             return False
 
         # Check sensitivity threshold
-        sensitivity_order = ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED", "CRITICAL"]
+        sensitivity_order = [
+            "PUBLIC",
+            "INTERNAL",
+            "CONFIDENTIAL",
+            "RESTRICTED",
+            "CRITICAL",
+        ]
         policy_threshold = sensitivity_order.index(policy["sensitivity_threshold"])
         data_sensitivity = sensitivity_order.index(classification["sensitivity"])
 
@@ -488,7 +499,9 @@ class DLPScanner:
             result["findings"].append(
                 {
                     "type": data_type,
-                    "count": len([m for m in classification["matches"] if data_type in m]),
+                    "count": len(
+                        [m for m in classification["matches"] if data_type in m]
+                    ),
                     "sensitivity": classification["sensitivity"],
                     "risk_score": classification["risk_score"],
                 }
@@ -516,7 +529,9 @@ class DLPScanner:
                         findings.append(
                             {
                                 "record_id": obj.pk,
-                                "field_value": str(field_value)[:100],  # Truncate for logging
+                                "field_value": str(field_value)[
+                                    :100
+                                ],  # Truncate for logging
                                 "classification": classification,
                             }
                         )
@@ -572,7 +587,9 @@ class DLPLogger:
             ip_address=details.get("ip_address"),
         )
 
-    def get_violations(self, event_type: str = None, time_range: int = 3600) -> List[Dict]:
+    def get_violations(
+        self, event_type: str = None, time_range: int = 3600
+    ) -> List[Dict]:
         """Get DLP violations"""
         violations = []
 
@@ -586,7 +603,11 @@ class DLPLogger:
 
         # Filter by time range
         cutoff_time = datetime.now() - timedelta(seconds=time_range)
-        violations = [v for v in violations if datetime.fromisoformat(v["timestamp"]) > cutoff_time]
+        violations = [
+            v
+            for v in violations
+            if datetime.fromisoformat(v["timestamp"]) > cutoff_time
+        ]
 
         return violations
 
@@ -618,7 +639,9 @@ class DLPLogger:
             hour_end = datetime.now() - timedelta(hours=hour)
 
             hour_violations = [
-                v for v in all_violations if hour_start <= datetime.fromisoformat(v["timestamp"]) < hour_end
+                v
+                for v in all_violations
+                if hour_start <= datetime.fromisoformat(v["timestamp"]) < hour_end
             ]
 
             stats["recent_trend"].append(
@@ -657,7 +680,11 @@ class DLPMiddleware:
                     event_type="REQUEST_BLOCKED",
                     details={
                         "description": dlp_result["reason"],
-                        "user_id": getattr(request.user, "id", None) if hasattr(request, "user") else None,
+                        "user_id": (
+                            getattr(request.user, "id", None)
+                            if hasattr(request, "user")
+                            else None
+                        ),
                         "ip_address": self._get_client_ip(request),
                         "path": request.path,
                         "classification": dlp_result["classification"],
@@ -666,7 +693,9 @@ class DLPMiddleware:
                 )
 
                 return HttpResponse(
-                    json.dumps({"error": "Request blocked by DLP policy"}), content_type="application/json", status=403
+                    json.dumps({"error": "Request blocked by DLP policy"}),
+                    content_type="application/json",
+                    status=403,
                 )
 
         # Process request
@@ -675,8 +704,14 @@ class DLPMiddleware:
         # Check response data
         if hasattr(response, "data") and isinstance(response.data, dict):
             # Mask sensitive data in response
-            user_permissions = getattr(request.user, "permissions", []) if hasattr(request, "user") else []
-            masked_data = self.policy.mask_sensitive_data(json.dumps(response.data), user_permissions)
+            user_permissions = (
+                getattr(request.user, "permissions", [])
+                if hasattr(request, "user")
+                else []
+            )
+            masked_data = self.policy.mask_sensitive_data(
+                json.dumps(response.data), user_permissions
+            )
             response.data = json.loads(masked_data)
 
         return response
@@ -717,7 +752,9 @@ def run_dlp_scan(model: models.Model, fields: List[str]) -> Dict:
     return results
 
 
-def mask_sensitive_fields(obj: models.Model, fields: List[str], user_permissions: List[str] = None) -> Dict:
+def mask_sensitive_fields(
+    obj: models.Model, fields: List[str], user_permissions: List[str] = None
+) -> Dict:
     """Mask sensitive fields in model instance"""
     policy = DLPPolicy()
     masked_data = {}
@@ -725,6 +762,8 @@ def mask_sensitive_fields(obj: models.Model, fields: List[str], user_permissions
     for field in fields:
         field_value = getattr(obj, field)
         if field_value:
-            masked_data[field] = policy.mask_sensitive_data(str(field_value), user_permissions)
+            masked_data[field] = policy.mask_sensitive_data(
+                str(field_value), user_permissions
+            )
 
     return masked_data

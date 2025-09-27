@@ -1,12 +1,17 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
+
+
 class EquipmentStatus(str, Enum):
     OPERATIONAL = "operational"
     MAINTENANCE = "maintenance"
     OUT_OF_ORDER = "out_of_order"
     RETIRED = "retired"
+
+
 class EquipmentCategory(str, Enum):
     DIAGNOSTIC = "diagnostic"
     THERAPEUTIC = "therapeutic"
@@ -14,11 +19,15 @@ class EquipmentCategory(str, Enum):
     SURGICAL = "surgical"
     LABORATORY = "laboratory"
     IMAGING = "imaging"
+
+
 class MaintenanceType(str, Enum):
     PREVENTIVE = "preventive"
     CORRECTIVE = "corrective"
     EMERGENCY = "emergency"
     CALIBRATION = "calibration"
+
+
 class BiomedicalEquipmentBase(BaseModel):
     equipment_id: str
     equipment_name: str
@@ -31,16 +40,23 @@ class BiomedicalEquipmentBase(BaseModel):
     purchase_date: datetime
     warranty_expiry: Optional[datetime] = None
     specifications: Optional[Dict[str, Any]] = None
+
+
 class BiomedicalEquipmentCreate(BiomedicalEquipmentBase):
     pass
+
+
 class BiomedicalEquipment(BiomedicalEquipmentBase):
     id: int
     status: EquipmentStatus
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
     class Config:
         from_attributes = True
+
+
 class EquipmentMaintenanceBase(BaseModel):
     maintenance_id: str
     equipment_id: int
@@ -49,8 +65,12 @@ class EquipmentMaintenanceBase(BaseModel):
     performed_by: str
     description: str
     cost: Optional[float] = None
+
+
 class EquipmentMaintenanceCreate(EquipmentMaintenanceBase):
     pass
+
+
 class EquipmentMaintenance(EquipmentMaintenanceBase):
     id: int
     completed_date: Optional[datetime] = None
@@ -60,8 +80,11 @@ class EquipmentMaintenance(EquipmentMaintenanceBase):
     next_maintenance_date: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+
     class Config:
         from_attributes = True
+
+
 class EquipmentCalibrationBase(BaseModel):
     calibration_id: str
     equipment_id: int
@@ -71,15 +94,22 @@ class EquipmentCalibrationBase(BaseModel):
     results: Dict[str, Any]
     next_calibration_date: datetime
     certificate_number: Optional[str] = None
+
+
 class EquipmentCalibrationCreate(EquipmentCalibrationBase):
     pass
+
+
 class EquipmentCalibration(EquipmentCalibrationBase):
     id: int
     status: str
     created_at: datetime
     updated_at: datetime
+
     class Config:
         from_attributes = True
+
+
 class EquipmentIncidentBase(BaseModel):
     incident_id: str
     equipment_id: int
@@ -88,16 +118,23 @@ class EquipmentIncidentBase(BaseModel):
     description: str
     severity: str
     impact: Optional[str] = None
+
+
 class EquipmentIncidentCreate(EquipmentIncidentBase):
     pass
+
+
 class EquipmentIncident(EquipmentIncidentBase):
     id: int
     resolution: Optional[str] = None
     status: str
     created_at: datetime
     updated_at: datetime
+
     class Config:
         from_attributes = True
+
+
 class EquipmentTrainingBase(BaseModel):
     training_id: str
     equipment_id: int
@@ -107,15 +144,22 @@ class EquipmentTrainingBase(BaseModel):
     training_type: str
     certificate_number: Optional[str] = None
     expiry_date: Optional[datetime] = None
+
+
 class EquipmentTrainingCreate(EquipmentTrainingBase):
     pass
+
+
 class EquipmentTraining(EquipmentTrainingBase):
     id: int
     status: str
     created_at: datetime
     updated_at: datetime
+
     class Config:
         from_attributes = True
+
+
 class VendorBase(BaseModel):
     vendor_id: str
     vendor_name: str
@@ -124,15 +168,22 @@ class VendorBase(BaseModel):
     phone: str
     address: str
     service_type: str
+
+
 class VendorCreate(VendorBase):
     pass
+
+
 class Vendor(VendorBase):
     id: int
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
     class Config:
         from_attributes = True
+
+
 class EquipmentStatistics(BaseModel):
     total_equipment: int
     operational_equipment: int
@@ -142,6 +193,8 @@ class EquipmentStatistics(BaseModel):
     overdue_calibration: int
     total_incidents: int
     open_incidents: int
+
+
 class EquipmentDashboard(BaseModel):
     equipment_status_summary: Dict[str, int]
     upcoming_maintenance: int

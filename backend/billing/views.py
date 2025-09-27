@@ -1,3 +1,7 @@
+"""
+views module
+"""
+
 import csv
 import os
 
@@ -44,7 +48,9 @@ class TenantScopedViewSet(viewsets.ModelViewSet):
         user = self.request.user
         provided_hospital = serializer.validated_data.get("hospital")
         if not (
-            user.is_superuser or getattr(user, "hospital_id", None) or getattr(user, "role", None) == "SUPER_ADMIN"
+            user.is_superuser
+            or getattr(user, "hospital_id", None)
+            or getattr(user, "role", None) == "SUPER_ADMIN"
         ):
             raise PermissionDenied("User must belong to a hospital to create")
         if (
@@ -53,7 +59,11 @@ class TenantScopedViewSet(viewsets.ModelViewSet):
             and provided_hospital.id != user.hospital_id
         ):
             raise PermissionDenied("Cannot create for another hospital")
-        serializer.save(hospital_id=(provided_hospital.id if provided_hospital else user.hospital_id))
+        serializer.save(
+            hospital_id=(
+                provided_hospital.id if provided_hospital else user.hospital_id
+            )
+        )
 
 
 class BillViewSet(TenantScopedViewSet):
@@ -65,11 +75,15 @@ class BillViewSet(TenantScopedViewSet):
             "payments",
             Prefetch(
                 "patient",
-                queryset=Patient.objects.only("id", "first_name", "last_name", "medical_record_number"),
+                queryset=Patient.objects.only(
+                    "id", "first_name", "last_name", "medical_record_number"
+                ),
             ),
             Prefetch(
                 "appointment",
-                queryset=Appointment.objects.only("id", "appointment_number", "start_at"),
+                queryset=Appointment.objects.only(
+                    "id", "appointment_number", "start_at"
+                ),
             ),
         )
         .all()
@@ -89,7 +103,11 @@ class BillViewSet(TenantScopedViewSet):
     @decorators.action(detail=True, methods=["post"])
     def set_discount(self, request, pk=None):
         user = request.user
-        if not (user.is_superuser or getattr(user, "role", None) in ["SUPER_ADMIN", "HOSPITAL_ADMIN", "BILLING_CLERK"]):
+        if not (
+            user.is_superuser
+            or getattr(user, "role", None)
+            in ["SUPER_ADMIN", "HOSPITAL_ADMIN", "BILLING_CLERK"]
+        ):
             raise PermissionDenied("Not allowed to set discount")
         opa_url = os.getenv("OPA_URL")
         if opa_url:
@@ -150,7 +168,9 @@ class ServiceCatalogViewSet(TenantScopedViewSet):
     def export_csv(self, request):
         qs = self.get_queryset()
         response_obj = HttpResponse(content_type="text/csv")
-        response_obj["Content-Disposition"] = 'attachment; filename="service_catalog.csv"'
+        response_obj["Content-Disposition"] = (
+            'attachment; filename="service_catalog.csv"'
+        )
         writer = csv.writer(response_obj)
         writer.writerow(["Code", "Name", "Price (cents)", "Active"])
         for item in qs:
@@ -167,7 +187,11 @@ class AccountingViewSet(TenantScopedViewSet):
     def department_pl(self, request):
         qs = self.get_queryset()
         qs = qs.prefetch_related("items")
-        dept_totals = BillLineItem.objects.filter(bill__in=qs).values("department").annotate(total=Sum("amount_cents"))
+        dept_totals = (
+            BillLineItem.objects.filter(bill__in=qs)
+            .values("department")
+            .annotate(total=Sum("amount_cents"))
+        )
         data = {row["department"]: row["total"] or 0 for row in dept_totals}
         return response.Response({"department_totals_cents": data})
 
@@ -177,7 +201,9 @@ class AccountingViewSet(TenantScopedViewSet):
         response_obj = HttpResponse(content_type="text/csv")
         response_obj["Content-Disposition"] = 'attachment; filename="bills.csv"'
         writer = csv.writer(response_obj)
-        writer.writerow(["Bill ID", "Patient ID", "Total", "Discount", "Net", "Paid", "Status"])
+        writer.writerow(
+            ["Bill ID", "Patient ID", "Total", "Discount", "Net", "Paid", "Status"]
+        )
         for b in qs:
             writer.writerow(
                 [
@@ -198,7 +224,9 @@ class AccountingViewSet(TenantScopedViewSet):
         wb = Workbook()
         ws = wb.active
         ws.title = "Bills"
-        ws.append(["Bill ID", "Patient ID", "Total", "Discount", "Net", "Paid", "Status"])
+        ws.append(
+            ["Bill ID", "Patient ID", "Total", "Discount", "Net", "Paid", "Status"]
+        )
         for b in qs:
             ws.append(
                 [
@@ -211,7 +239,9 @@ class AccountingViewSet(TenantScopedViewSet):
                     b.status,
                 ]
             )
-        resp = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        resp = HttpResponse(
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
         resp["Content-Disposition"] = 'attachment; filename="bills.xlsx"'
         wb.save(resp)
         return resp
@@ -244,8 +274,12 @@ class AccountingViewSet(TenantScopedViewSet):
         user = request.user
         assets = Asset.objects.filter(hospital_id=getattr(user, "hospital_id", None))
         depreciation = sum(a.annual_depreciation_cents() for a in assets)
-        total_beds = Bed.objects.filter(hospital_id=getattr(user, "hospital_id", None)).count()
-        occupied_beds = Bed.objects.filter(hospital_id=getattr(user, "hospital_id", None), is_occupied=True).count()
+        total_beds = Bed.objects.filter(
+            hospital_id=getattr(user, "hospital_id", None)
+        ).count()
+        occupied_beds = Bed.objects.filter(
+            hospital_id=getattr(user, "hospital_id", None), is_occupied=True
+        ).count()
         occupancy_rate = (occupied_beds / total_beds) if total_beds else 0.0
         pl = revenue - depreciation
         return response.Response(
@@ -261,21 +295,32 @@ class AccountingViewSet(TenantScopedViewSet):
 
     @decorators.action(detail=False, methods=["get"], url_path="referral-income")
     def referral_income(self, request):
-        total = self.get_queryset().exclude(referral_source="").aggregate(total=Sum("net_cents"))["total"] or 0
+        total = (
+            self.get_queryset()
+            .exclude(referral_source="")
+            .aggregate(total=Sum("net_cents"))["total"]
+            or 0
+        )
         return response.Response({"referral_income_cents": int(total)})
 
     @decorators.action(detail=False, methods=["get"], url_path="outsourced-breakdown")
     def outsourced_breakdown(self, request):
         qs = self.get_queryset()
         outsourced = (
-            BillLineItem.objects.filter(bill__in=qs, is_outsourced=True).aggregate(total=Sum("amount_cents"))["total"]
+            BillLineItem.objects.filter(bill__in=qs, is_outsourced=True).aggregate(
+                total=Sum("amount_cents")
+            )["total"]
             or 0
         )
         inhouse = (
-            BillLineItem.objects.filter(bill__in=qs, is_outsourced=False).aggregate(total=Sum("amount_cents"))["total"]
+            BillLineItem.objects.filter(bill__in=qs, is_outsourced=False).aggregate(
+                total=Sum("amount_cents")
+            )["total"]
             or 0
         )
-        return response.Response({"outsourced_cents": int(outsourced), "inhouse_cents": int(inhouse)})
+        return response.Response(
+            {"outsourced_cents": int(outsourced), "inhouse_cents": int(inhouse)}
+        )
 
 
 class DepartmentBudgetViewSet(TenantScopedViewSet):

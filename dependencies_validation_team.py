@@ -1,14 +1,21 @@
+"""
+dependencies_validation_team module
+"""
+
 import json
 import os
+import re
 import subprocess
 import sys
 import time
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple
-import re
+from typing import Any, Dict, List, Optional, Tuple
+
 import requests
-import xml.etree.ElementTree as ET
+
+
 class DependenciesValidator:
     def __init__(self, base_path: str = "/home/azureuser/hms-enterprise-grade"):
         self.base_path = Path(base_path)

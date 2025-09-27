@@ -1,16 +1,23 @@
-import os
-import sys
+"""
+coverage_config module
+"""
+
 import json
-import yaml
 import logging
+import os
 import subprocess
-import coverage
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Set, Tuple
-from dataclasses import dataclass, asdict
-from datetime import datetime
+import sys
 import unittest
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
+
 import pytest
+import yaml
+
+import coverage
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',

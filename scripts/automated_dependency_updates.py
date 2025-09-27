@@ -1,14 +1,19 @@
+"""
+automated_dependency_updates module
+"""
+
+import argparse
 import json
+import logging
 import os
-import sys
-import subprocess
 import shutil
+import subprocess
+import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-import logging
-import argparse
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'

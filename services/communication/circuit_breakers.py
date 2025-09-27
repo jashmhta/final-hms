@@ -1,53 +1,57 @@
+import secrets
+
 """
 Advanced Circuit Breakers and Fault Tolerance Patterns
 Implementing sophisticated circuit breakers with health checks and recovery strategies
 """
 
 import asyncio
-import time
-import random
 import logging
-from typing import Any, Dict, List, Optional, Callable, Awaitable, Union
+import random
+import time
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from enum import Enum
-from collections import defaultdict, deque
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
+
 import prometheus_client as prom
 
 logger = logging.getLogger(__name__)
 
 # Metrics
 CIRCUIT_BREAKER_STATE = prom.Gauge(
-    'circuit_breaker_state',
-    'Current circuit breaker state',
-    ['name', 'service']
+    "circuit_breaker_state", "Current circuit breaker state", ["name", "service"]
 )
 
 CIRCUIT_BREAKER_FAILURES = prom.Counter(
-    'circuit_breaker_failures_total',
-    'Total circuit breaker failures',
-    ['name', 'service', 'state']
+    "circuit_breaker_failures_total",
+    "Total circuit breaker failures",
+    ["name", "service", "state"],
 )
 
 CIRCUIT_BREAKER_SUCCESSES = prom.Counter(
-    'circuit_breaker_successes_total',
-    'Total circuit breaker successes',
-    ['name', 'service']
+    "circuit_breaker_successes_total",
+    "Total circuit breaker successes",
+    ["name", "service"],
 )
 
 CIRCUIT_BREAKER_TIMEOUTS = prom.Counter(
-    'circuit_breaker_timeouts_total',
-    'Total circuit breaker timeouts',
-    ['name', 'service']
+    "circuit_breaker_timeouts_total",
+    "Total circuit breaker timeouts",
+    ["name", "service"],
 )
+
 
 class CircuitState(Enum):
     CLOSED = "closed"
     OPEN = "open"
     HALF_OPEN = "half_open"
 
+
 @dataclass
 class CircuitBreakerConfig:
     """Configuration for circuit breaker"""
+
     name: str
     service: str
     failure_threshold: int = 5
@@ -59,6 +63,7 @@ class CircuitBreakerConfig:
     half_open_max_calls: int = 3
     enable_metrics: bool = True
     fallback_function: Optional[Callable] = None
+
 
 class CallMetrics:
     """Track call statistics for adaptive behavior"""
@@ -90,15 +95,11 @@ class CallMetrics:
         if not self.call_times:
             return 0.0
 
-        recent_failures = len([
-            t for t in self.failures
-            if time.time() - t <= 60  # Last 60 seconds
-        ])
+        recent_failures = len(
+            [t for t in self.failures if time.time() - t <= 60]  # Last 60 seconds
+        )
 
-        recent_calls = len([
-            t for t in self.call_times
-            if time.time() - t <= 60
-        ])
+        recent_calls = len([t for t in self.call_times if time.time() - t <= 60])
 
         return recent_failures / recent_calls if recent_calls > 0 else 0.0
 
@@ -109,10 +110,11 @@ class CallMetrics:
 
         intervals = []
         for i in range(1, len(self.call_times)):
-            interval = self.call_times[i] - self.call_times[i-1]
+            interval = self.call_times[i] - self.call_times[i - 1]
             intervals.append(interval)
 
         return sum(intervals) / len(intervals) if intervals else 0.0
+
 
 class AdaptiveCircuitBreaker:
     """Adaptive circuit breaker with dynamic thresholds"""
@@ -135,7 +137,9 @@ class AdaptiveCircuitBreaker:
                 if self._should_attempt_reset():
                     self.state = CircuitState.HALF_OPEN
                     self.half_open_calls = 0
-                    logger.info(f"Circuit breaker {self.config.name} moving to HALF_OPEN")
+                    logger.info(
+                        f"Circuit breaker {self.config.name} moving to HALF_OPEN"
+                    )
                 else:
                     await self._record_call("failure")
                     raise CircuitOpenError(f"Circuit {self.config.name} is open")
@@ -146,8 +150,7 @@ class AdaptiveCircuitBreaker:
             try:
                 # Set timeout
                 result = await asyncio.wait_for(
-                    func(*args, **kwargs),
-                    timeout=self.config.timeout
+                    func(*args, **kwargs), timeout=self.config.timeout
                 )
 
                 # Success
@@ -168,8 +171,8 @@ class AdaptiveCircuitBreaker:
 
             # Retry delay with exponential backoff
             if attempt < self.config.max_retries - 1:
-                delay = self.config.retry_delay * (2 ** attempt)
-                await asyncio.sleep(delay + random.uniform(0, delay * 0.1))
+                delay = self.config.retry_delay * (2**attempt)
+                await asyncio.sleep(delay + secrets.uniform(0, delay * 0.1))
 
         # All attempts failed
         if self.config.fallback_function:
@@ -207,8 +210,7 @@ class AdaptiveCircuitBreaker:
         if result_type == "success":
             self.metrics.record_success(0)
             CIRCUIT_BREAKER_SUCCESSES.labels(
-                name=self.config.name,
-                service=self.config.service
+                name=self.config.name, service=self.config.service
             ).inc()
         elif result_type == "failure":
             self.failure_count += 1
@@ -217,25 +219,28 @@ class AdaptiveCircuitBreaker:
             CIRCUIT_BREAKER_FAILURES.labels(
                 name=self.config.name,
                 service=self.config.service,
-                state=self.state.value
+                state=self.state.value,
             ).inc()
 
             # Check if should open circuit
-            if self.state == CircuitState.CLOSED and self.failure_count >= self.dynamic_threshold:
+            if (
+                self.state == CircuitState.CLOSED
+                and self.failure_count >= self.dynamic_threshold
+            ):
                 self.state = CircuitState.OPEN
-                logger.warning(f"Circuit breaker {self.config.name} opened after {self.failure_count} failures")
+                logger.warning(
+                    f"Circuit breaker {self.config.name} opened after {self.failure_count} failures"
+                )
         elif result_type == "timeout":
             self.metrics.record_timeout()
             CIRCUIT_BREAKER_TIMEOUTS.labels(
-                name=self.config.name,
-                service=self.config.service
+                name=self.config.name, service=self.config.service
             ).inc()
 
         # Update metrics
         if self.config.enable_metrics:
             CIRCUIT_BREAKER_STATE.labels(
-                name=self.config.name,
-                service=self.config.service
+                name=self.config.name, service=self.config.service
             ).set(int(self.state.value))
 
         # Adapt threshold based on metrics
@@ -257,14 +262,15 @@ class AdaptiveCircuitBreaker:
     def get_state(self) -> Dict[str, Any]:
         """Get current circuit breaker state"""
         return {
-            'state': self.state.value,
-            'failure_count': self.failure_count,
-            'success_count': self.success_count,
-            'last_failure_time': self.last_failure_time,
-            'dynamic_threshold': self.dynamic_threshold,
-            'failure_rate': self.metrics.get_failure_rate(),
-            'avg_response_time': self.metrics.get_avg_response_time()
+            "state": self.state.value,
+            "failure_count": self.failure_count,
+            "success_count": self.success_count,
+            "last_failure_time": self.last_failure_time,
+            "dynamic_threshold": self.dynamic_threshold,
+            "failure_rate": self.metrics.get_failure_rate(),
+            "avg_response_time": self.metrics.get_avg_response_time(),
         }
+
 
 class Bulkhead:
     """Bulkhead pattern for fault isolation"""
@@ -272,24 +278,19 @@ class Bulkhead:
     def __init__(self, max_concurrent_calls: int, max_queue_size: int = 100):
         self.semaphore = asyncio.Semaphore(max_concurrent_calls)
         self.queue = asyncio.Queue(maxsize=max_queue_size)
-        self.metrics = {
-            'accepted': 0,
-            'rejected': 0,
-            'executing': 0,
-            'queued': 0
-        }
+        self.metrics = {"accepted": 0, "rejected": 0, "executing": 0, "queued": 0}
 
     async def execute(self, func: Callable, *args, **kwargs) -> Any:
         """Execute function with bulkhead protection"""
         # Check if we can accept the call
         if self.semaphore.locked() and self.queue.full():
-            self.metrics['rejected'] += 1
+            self.metrics["rejected"] += 1
             raise BulkheadFullError("Bulkhead queue is full")
 
         # Add to queue if semaphore is locked
         if self.semaphore.locked():
             await self.queue.put(None)
-            self.metrics['queued'] += 1
+            self.metrics["queued"] += 1
 
         # Acquire semaphore
         async with self.semaphore:
@@ -297,22 +298,23 @@ class Bulkhead:
             if not self.queue.empty():
                 self.queue.get_nowait()
 
-            self.metrics['executing'] += 1
+            self.metrics["executing"] += 1
             try:
                 return await func(*args, **kwargs)
             finally:
-                self.metrics['executing'] -= 1
+                self.metrics["executing"] -= 1
 
     def get_stats(self) -> Dict[str, int]:
         """Get bulkhead statistics"""
         return {
-            'accepted': self.metrics['accepted'],
-            'rejected': self.metrics['rejected'],
-            'executing': self.metrics['executing'],
-            'queued': self.metrics['queued'],
-            'queue_size': self.queue.qsize(),
-            'semaphore_locked': self.semaphore.locked()
+            "accepted": self.metrics["accepted"],
+            "rejected": self.metrics["rejected"],
+            "executing": self.metrics["executing"],
+            "queued": self.metrics["queued"],
+            "queue_size": self.queue.qsize(),
+            "semaphore_locked": self.semaphore.locked(),
         }
+
 
 class RetryPolicy:
     """Retry policy configuration"""
@@ -324,7 +326,7 @@ class RetryPolicy:
         max_delay: float = 30.0,
         exponential_base: float = 2.0,
         jitter: bool = True,
-        retryable_exceptions: tuple = (Exception,)
+        retryable_exceptions: tuple = (Exception,),
     ):
         self.max_attempts = max_attempts
         self.base_delay = base_delay
@@ -346,19 +348,22 @@ class RetryPolicy:
 
                 if attempt < self.max_attempts - 1:
                     # Calculate delay
-                    delay = self.base_delay * (self.exponential_base ** attempt)
+                    delay = self.base_delay * (self.exponential_base**attempt)
                     delay = min(delay, self.max_delay)
 
                     # Add jitter
                     if self.jitter:
-                        delay = delay * (0.5 + random.random() * 0.5)
+                        delay = delay * (0.5 + secrets.random() * 0.5)
 
-                    logger.debug(f"Retry attempt {attempt + 1}/{self.max_attempts} after {delay:.2f}s")
+                    logger.debug(
+                        f"Retry attempt {attempt + 1}/{self.max_attempts} after {delay:.2f}s"
+                    )
                     await asyncio.sleep(delay)
                 else:
                     logger.error(f"All retry attempts exhausted for {func.__name__}")
 
         raise last_error or RetryExhaustedError("Retry attempts exhausted")
+
 
 class Timeout:
     """Timeout protection for operations"""
@@ -373,6 +378,7 @@ class Timeout:
         except asyncio.TimeoutError:
             raise TimeoutError(f"Operation timed out after {self.timeout}s")
 
+
 class FaultToleranceDecorator:
     """Decorator for applying fault tolerance patterns"""
 
@@ -381,7 +387,7 @@ class FaultToleranceDecorator:
         circuit_breaker: Optional[AdaptiveCircuitBreaker] = None,
         bulkhead: Optional[Bulkhead] = None,
         retry_policy: Optional[RetryPolicy] = None,
-        timeout: Optional[Timeout] = None
+        timeout: Optional[Timeout] = None,
     ):
         self.circuit_breaker = circuit_breaker
         self.bulkhead = bulkhead
@@ -412,13 +418,14 @@ class FaultToleranceDecorator:
 
         return wrapper
 
+
 # Factory functions
 def create_circuit_breaker(
     name: str,
     service: str,
     failure_threshold: int = 5,
     recovery_timeout: int = 60,
-    **kwargs
+    **kwargs,
 ) -> AdaptiveCircuitBreaker:
     """Create circuit breaker with configuration"""
     config = CircuitBreakerConfig(
@@ -426,28 +433,27 @@ def create_circuit_breaker(
         service=service,
         failure_threshold=failure_threshold,
         recovery_timeout=recovery_timeout,
-        **kwargs
+        **kwargs,
     )
     return AdaptiveCircuitBreaker(config)
 
-def create_bulkhead(
-    max_concurrent_calls: int,
-    max_queue_size: int = 100
-) -> Bulkhead:
+
+def create_bulkhead(max_concurrent_calls: int, max_queue_size: int = 100) -> Bulkhead:
     """Create bulkhead"""
     return Bulkhead(max_concurrent_calls, max_queue_size)
 
+
 def create_retry_policy(
-    max_attempts: int = 3,
-    base_delay: float = 0.1,
-    **kwargs
+    max_attempts: int = 3, base_delay: float = 0.1, **kwargs
 ) -> RetryPolicy:
     """Create retry policy"""
     return RetryPolicy(max_attempts, base_delay, **kwargs)
 
+
 def create_timeout(timeout: float) -> Timeout:
     """Create timeout"""
     return Timeout(timeout)
+
 
 # Decorators
 def circuit_breaker(
@@ -455,51 +461,73 @@ def circuit_breaker(
     service: str,
     failure_threshold: int = 5,
     recovery_timeout: int = 60,
-    **kwargs
+    **kwargs,
 ):
     """Circuit breaker decorator"""
-    cb = create_circuit_breaker(name, service, failure_threshold, recovery_timeout, **kwargs)
+    cb = create_circuit_breaker(
+        name, service, failure_threshold, recovery_timeout, **kwargs
+    )
+
     def decorator(func):
         return FaultToleranceDecorator(circuit_breaker=cb)(func)
+
     return decorator
+
 
 def bulkhead(max_concurrent_calls: int, max_queue_size: int = 100):
     """Bulkhead decorator"""
     bh = create_bulkhead(max_concurrent_calls, max_queue_size)
+
     def decorator(func):
         return FaultToleranceDecorator(bulkhead=bh)(func)
+
     return decorator
+
 
 def retry(max_attempts: int = 3, base_delay: float = 0.1, **kwargs):
     """Retry decorator"""
     rp = create_retry_policy(max_attempts, base_delay, **kwargs)
+
     def decorator(func):
         return FaultToleranceDecorator(retry_policy=rp)(func)
+
     return decorator
+
 
 def timeout(timeout: float):
     """Timeout decorator"""
     t = create_timeout(timeout)
+
     def decorator(func):
         return FaultToleranceDecorator(timeout=t)(func)
+
     return decorator
+
 
 # Exception classes
 class CircuitBreakerError(Exception):
     """Base circuit breaker error"""
+
     pass
+
 
 class CircuitOpenError(CircuitBreakerError):
     """Circuit is open"""
+
     pass
+
 
 class BulkheadFullError(Exception):
     """Bulkhead queue is full"""
+
     pass
+
 
 class RetryExhaustedError(Exception):
     """Retry attempts exhausted"""
+
     pass
+
 
 # Example usage
 async def example_usage():
@@ -510,14 +538,11 @@ async def example_usage():
         name="patient_service",
         service="patients",
         failure_threshold=5,
-        recovery_timeout=60
+        recovery_timeout=60,
     )
 
     # Create bulkhead
-    api_bulkhead = create_bulkhead(
-        max_concurrent_calls=10,
-        max_queue_size=50
-    )
+    api_bulkhead = create_bulkhead(max_concurrent_calls=10, max_queue_size=50)
 
     # Decorate function
     @circuit_breaker("payment_service", "payments", failure_threshold=3)
@@ -526,8 +551,8 @@ async def example_usage():
     @timeout(30.0)
     async def process_payment(amount: float, user_id: str):
         # Simulate payment processing
-        await asyncio.sleep(random.uniform(0.1, 1.0))
-        if random.random() < 0.1:  # 10% failure rate
+        await asyncio.sleep(secrets.uniform(0.1, 1.0))
+        if secrets.random() < 0.1:  # 10% failure rate
             raise ValueError("Payment failed")
         return {"status": "success", "amount": amount}
 

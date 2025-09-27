@@ -32,4 +32,8 @@ urlpatterns = [
     path("api/", include("authentication.urls")),
     path("api/", include("ai_ml.urls")),
     path("", include("core.urls")),
-] + (static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) if settings.DEBUG else [])
+] + (
+    static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    if settings.DEBUG
+    else []
+)

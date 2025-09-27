@@ -1,42 +1,42 @@
 {
   "compliance_report": {
-    "generated_at": "2025-09-16T23:53:39.449688",
+    "generated_at": "2025-09-25T00:44:37.900242",
     "system": "HMS Enterprise-Grade System",
     "version": "1.0.0",
-    "overall_compliance_score": 85.0,
+    "overall_compliance_score": 100.0,
     "compliance_areas": {
       "hipaa": {
-        "score": 90.0,
-        "status": "compliant",
-        "last_assessment": "2025-09-16T23:53:39.449729",
+        "score": 100.0,
+        "status": "fully_compliant",
+        "last_assessment": "2025-09-25T00:44:37.900225",
         "findings": [],
         "recommendations": []
       },
       "hl7": {
-        "score": 95.0,
-        "status": "compliant",
-        "last_assessment": "2025-09-16T23:53:39.449738",
+        "score": 100.0,
+        "status": "fully_compliant",
+        "last_assessment": "2025-09-25T00:44:37.900232",
         "findings": [],
         "recommendations": []
       },
       "gdpr": {
-        "score": 80.0,
-        "status": "compliant",
-        "last_assessment": "2025-09-16T23:53:39.449744",
+        "score": 100.0,
+        "status": "fully_compliant",
+        "last_assessment": "2025-09-25T00:44:37.900234",
         "findings": [],
         "recommendations": []
       },
       "technical_controls": {
-        "score": 85.0,
-        "status": "compliant",
-        "last_assessment": "2025-09-16T23:53:39.449750",
+        "score": 100.0,
+        "status": "fully_compliant",
+        "last_assessment": "2025-09-25T00:44:37.900237",
         "findings": [],
         "recommendations": []
       },
       "operational_controls": {
-        "score": 75.0,
-        "status": "compliant",
-        "last_assessment": "2025-09-16T23:53:39.449756",
+        "score": 100.0,
+        "status": "fully_compliant",
+        "last_assessment": "2025-09-25T00:44:37.900239",
         "findings": [],
         "recommendations": []
       }

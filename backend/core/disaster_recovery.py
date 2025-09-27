@@ -88,7 +88,9 @@ class DisasterRecoveryMetrics:
 
     def __init__(self):
         self.backup_duration = Histogram(
-            "backup_duration_seconds", "Time taken for backup operations", ["system", "backup_type", "location"]
+            "backup_duration_seconds",
+            "Time taken for backup operations",
+            ["system", "backup_type", "location"],
         )
         self.recovery_duration = Histogram(
             "recovery_duration_seconds",
@@ -96,16 +98,24 @@ class DisasterRecoveryMetrics:
             ["system", "disaster_type", "recovery_level"],
         )
         self.data_loss_bytes = Counter(
-            "data_loss_bytes_total", "Amount of data lost during disaster", ["system", "disaster_type"]
+            "data_loss_bytes_total",
+            "Amount of data lost during disaster",
+            ["system", "disaster_type"],
         )
         self.downtime_duration = Histogram(
-            "downtime_duration_seconds", "System downtime during disasters", ["system", "impact_level"]
+            "downtime_duration_seconds",
+            "System downtime during disasters",
+            ["system", "impact_level"],
         )
         self.recovery_success = Counter(
-            "recovery_success_total", "Number of successful recoveries", ["system", "disaster_type"]
+            "recovery_success_total",
+            "Number of successful recoveries",
+            ["system", "disaster_type"],
         )
         self.recovery_failures = Counter(
-            "recovery_failures_total", "Number of failed recoveries", ["system", "disaster_type", "failure_reason"]
+            "recovery_failures_total",
+            "Number of failed recoveries",
+            ["system", "disaster_type", "failure_reason"],
         )
 
 
@@ -132,7 +142,11 @@ class DisasterRecoveryFramework:
 
         # Disaster recovery sites
         self.recovery_sites = {
-            "primary": {"location": "us-east-1", "status": "active", "capabilities": ["production", "development"]},
+            "primary": {
+                "location": "us-east-1",
+                "status": "active",
+                "capabilities": ["production", "development"],
+            },
             "secondary": {
                 "location": "us-west-2",
                 "status": "standby",
@@ -156,7 +170,10 @@ class DisasterRecoveryFramework:
                 system_name="patient_records",
                 business_impact=BusinessImpactLevel.CRITICAL,
                 recovery_objective=RecoveryObjective(
-                    rpo_minutes=5, rto_minutes=15, mtd_hours=1, data_loss_tolerance=0.001
+                    rpo_minutes=5,
+                    rto_minutes=15,
+                    mtd_hours=1,
+                    data_loss_tolerance=0.001,
                 ),
                 dependencies=["database", "authentication"],
                 priority=1,
@@ -168,7 +185,10 @@ class DisasterRecoveryFramework:
                 system_name="medication_management",
                 business_impact=BusinessImpactLevel.CRITICAL,
                 recovery_objective=RecoveryObjective(
-                    rpo_minutes=1, rto_minutes=10, mtd_hours=1, data_loss_tolerance=0.0001
+                    rpo_minutes=1,
+                    rto_minutes=10,
+                    mtd_hours=1,
+                    data_loss_tolerance=0.0001,
                 ),
                 dependencies=["pharmacy_database", "patient_records"],
                 priority=1,
@@ -181,7 +201,10 @@ class DisasterRecoveryFramework:
                 system_name="appointment_scheduling",
                 business_impact=BusinessImpactLevel.HIGH,
                 recovery_objective=RecoveryObjective(
-                    rpo_minutes=15, rto_minutes=60, mtd_hours=4, data_loss_tolerance=0.01
+                    rpo_minutes=15,
+                    rto_minutes=60,
+                    mtd_hours=4,
+                    data_loss_tolerance=0.01,
                 ),
                 dependencies=["patient_records", "notification_system"],
                 priority=2,
@@ -193,7 +216,10 @@ class DisasterRecoveryFramework:
                 system_name="billing_system",
                 business_impact=BusinessImpactLevel.HIGH,
                 recovery_objective=RecoveryObjective(
-                    rpo_minutes=30, rto_minutes=120, mtd_hours=8, data_loss_tolerance=0.05
+                    rpo_minutes=30,
+                    rto_minutes=120,
+                    mtd_hours=8,
+                    data_loss_tolerance=0.05,
                 ),
                 dependencies=["patient_records", "insurance_systems"],
                 priority=2,
@@ -206,7 +232,10 @@ class DisasterRecoveryFramework:
                 system_name="hr_management",
                 business_impact=BusinessImpactLevel.MEDIUM,
                 recovery_objective=RecoveryObjective(
-                    rpo_minutes=120, rto_minutes=480, mtd_hours=24, data_loss_tolerance=0.1
+                    rpo_minutes=120,
+                    rto_minutes=480,
+                    mtd_hours=24,
+                    data_loss_tolerance=0.1,
                 ),
                 dependencies=["authentication", "database"],
                 priority=3,
@@ -234,11 +263,15 @@ class DisasterRecoveryFramework:
 
             # Implement high availability
             high_availability = await self._implement_high_availability()
-            implementation_results["components"]["high_availability"] = high_availability
+            implementation_results["components"][
+                "high_availability"
+            ] = high_availability
 
             # Implement failover mechanism
             failover_mechanism = await self._implement_failover_mechanism()
-            implementation_results["components"]["failover_mechanism"] = failover_mechanism
+            implementation_results["components"][
+                "failover_mechanism"
+            ] = failover_mechanism
 
             # Implement data replication
             data_replication = await self._implement_data_replication()
@@ -387,7 +420,11 @@ class DisasterRecoveryFramework:
         # Detection
         failover_mechanism["detection"] = {
             "monitoring": "multi_layer",
-            "thresholds": {"response_time": "5_seconds", "error_rate": "1%", "availability": "99.9%"},
+            "thresholds": {
+                "response_time": "5_seconds",
+                "error_rate": "1%",
+                "availability": "99.9%",
+            },
             "confirmation": "quorum_based",
             "false_positive_prevention": "enabled",
         }
@@ -451,7 +488,12 @@ class DisasterRecoveryFramework:
     async def _implement_disaster_monitoring(self) -> Dict[str, Any]:
         """Implement comprehensive disaster monitoring."""
 
-        monitoring = {"monitoring_system": "prometheus_grafana", "alerting": {}, "dashboards": {}, "reporting": {}}
+        monitoring = {
+            "monitoring_system": "prometheus_grafana",
+            "alerting": {},
+            "dashboards": {},
+            "reporting": {},
+        }
 
         # Alerting
         monitoring["alerting"] = {
@@ -591,7 +633,12 @@ class DisasterRecoveryFramework:
     async def _prepare_drill_scenario(self, scenario: str) -> Dict[str, Any]:
         """Prepare disaster recovery drill scenario."""
 
-        preparation = {"phase": "preparation", "status": "running", "scenario": scenario, "pre_checks": []}
+        preparation = {
+            "phase": "preparation",
+            "status": "running",
+            "scenario": scenario,
+            "pre_checks": [],
+        }
 
         # System health checks
         pre_checks = [
@@ -608,7 +655,9 @@ class DisasterRecoveryFramework:
             preparation["pre_checks"].append(result)
 
         # Determine overall status
-        all_passed = all(check.get("status") == "passed" for check in preparation["pre_checks"])
+        all_passed = all(
+            check.get("status") == "passed" for check in preparation["pre_checks"]
+        )
         preparation["status"] = "passed" if all_passed else "failed"
 
         return preparation
@@ -616,7 +665,12 @@ class DisasterRecoveryFramework:
     async def _simulate_disaster(self, scenario: str) -> Dict[str, Any]:
         """Simulate disaster scenario."""
 
-        simulation = {"phase": "simulation", "status": "running", "scenario": scenario, "simulation_steps": []}
+        simulation = {
+            "phase": "simulation",
+            "status": "running",
+            "scenario": scenario,
+            "simulation_steps": [],
+        }
 
         # Simulation steps based on disaster type
         if scenario == "data_center_outage":
@@ -681,7 +735,12 @@ class DisasterRecoveryFramework:
     async def _validate_recovery(self, scenario: str) -> Dict[str, Any]:
         """Validate recovery success."""
 
-        validation = {"phase": "validation", "status": "running", "scenario": scenario, "validations": []}
+        validation = {
+            "phase": "validation",
+            "status": "running",
+            "scenario": scenario,
+            "validations": [],
+        }
 
         # Validation steps
         validations = [
@@ -698,7 +757,9 @@ class DisasterRecoveryFramework:
             validation["validations"].append(result)
 
         # Calculate validation score
-        passed_validations = sum(1 for v in validation["validations"] if v.get("status") == "passed")
+        passed_validations = sum(
+            1 for v in validation["validations"] if v.get("status") == "passed"
+        )
         validation_score = (passed_validations / len(validations)) * 100
 
         validation["validation_score"] = validation_score
@@ -706,7 +767,9 @@ class DisasterRecoveryFramework:
 
         return validation
 
-    async def _calculate_drill_metrics(self, phases: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def _calculate_drill_metrics(
+        self, phases: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """Calculate drill performance metrics."""
 
         metrics = {
@@ -725,7 +788,9 @@ class DisasterRecoveryFramework:
         # Extract RTO and RPO
         recovery_phase = next((p for p in phases if p["phase"] == "recovery"), None)
         if recovery_phase:
-            metrics["recovery_time_objective"] = recovery_phase.get("duration_seconds", 0)
+            metrics["recovery_time_objective"] = recovery_phase.get(
+                "duration_seconds", 0
+            )
 
         # Extract validation score
         validation_phase = next((p for p in phases if p["phase"] == "validation"), None)
@@ -734,12 +799,15 @@ class DisasterRecoveryFramework:
 
         # Determine overall success
         metrics["overall_success"] = (
-            metrics["validation_score"] >= 95 and metrics["recovery_time_objective"] <= 60  # 1 minute RTO target
+            metrics["validation_score"] >= 95
+            and metrics["recovery_time_objective"] <= 60  # 1 minute RTO target
         )
 
         return metrics
 
-    async def _generate_drill_findings(self, phases: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def _generate_drill_findings(
+        self, phases: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """Generate drill findings and recommendations."""
 
         findings = []
@@ -805,7 +873,12 @@ class DisasterRecoveryFramework:
     async def _verify_backup_integrity(self) -> Dict[str, Any]:
         """Verify backup integrity and availability."""
 
-        verification = {"status": "running", "backups_checked": 0, "integrity_issues": 0, "latest_backup": None}
+        verification = {
+            "status": "running",
+            "backups_checked": 0,
+            "integrity_issues": 0,
+            "latest_backup": None,
+        }
 
         # Simulate backup verification
         verification["backups_checked"] = 100
@@ -816,7 +889,9 @@ class DisasterRecoveryFramework:
             "integrity": "verified",
         }
 
-        verification["status"] = "passed" if verification["integrity_issues"] == 0 else "failed"
+        verification["status"] = (
+            "passed" if verification["integrity_issues"] == 0 else "failed"
+        )
 
         return verification
 
@@ -831,7 +906,11 @@ class DisasterRecoveryFramework:
         }
 
         # Check failover sites
-        verification["failover_sites"] = {"primary": "active", "secondary": "standby", "tertiary": "available"}
+        verification["failover_sites"] = {
+            "primary": "active",
+            "secondary": "standby",
+            "tertiary": "available",
+        }
 
         # Check network connectivity
         verification["network_connectivity"] = {
@@ -841,7 +920,11 @@ class DisasterRecoveryFramework:
         }
 
         # Check data synchronization
-        verification["data_synchronization"] = {"lag_seconds": 0.5, "consistency": "verified", "throughput_mbps": 100}
+        verification["data_synchronization"] = {
+            "lag_seconds": 0.5,
+            "consistency": "verified",
+            "throughput_mbps": 100,
+        }
 
         verification["status"] = "passed"
 
@@ -872,7 +955,11 @@ class DisasterRecoveryFramework:
         }
 
         # Check performance metrics
-        verification["performance_metrics"] = {"throughput_mbps": 95, "latency_ms": 12, "error_rate": 0.01}
+        verification["performance_metrics"] = {
+            "throughput_mbps": 95,
+            "latency_ms": 12,
+            "error_rate": 0.01,
+        }
 
         verification["status"] = "passed"
 
@@ -915,7 +1002,9 @@ class BusinessContinuityManager:
         }
 
         # Business impact analysis
-        plan["business_impact_analysis"] = await self._conduct_business_impact_analysis()
+        plan["business_impact_analysis"] = (
+            await self._conduct_business_impact_analysis()
+        )
 
         # Recovery strategies
         plan["recovery_strategies"] = await self._define_recovery_strategies()
@@ -962,7 +1051,11 @@ class BusinessContinuityManager:
                 "impact": "life_threatening",
                 "rto_hours": 0.5,
                 "rpo_minutes": 1,
-                "dependencies": ["Triage Systems", "Bed Management", "Staff Scheduling"],
+                "dependencies": [
+                    "Triage Systems",
+                    "Bed Management",
+                    "Staff Scheduling",
+                ],
             },
             {
                 "process": "Pharmacy Operations",
@@ -1030,7 +1123,11 @@ class BusinessContinuityManager:
                 "implement_alternate_workflows",
                 "coordinate_with_external_partners",
             ],
-            "resources": ["alternate_facilities", "temporary_equipment", "vendor_support"],
+            "resources": [
+                "alternate_facilities",
+                "temporary_equipment",
+                "vendor_support",
+            ],
         }
 
         # Long-term recovery (24+ hours)
@@ -1042,7 +1139,11 @@ class BusinessContinuityManager:
                 "coordinate_with_emergency_services",
                 "initiate_long_term_recovery_plan",
             ],
-            "resources": ["relocation_funding", "long_term_vendors", "government_support"],
+            "resources": [
+                "relocation_funding",
+                "long_term_vendors",
+                "government_support",
+            ],
         }
 
         # Communication plan
@@ -1075,7 +1176,9 @@ async def implement_enterprise_disaster_recovery() -> Dict[str, Any]:
     bc_plan = await bc_manager.develop_continuity_plan()
 
     # Execute disaster recovery drill
-    drill_results = await dr_framework.execute_disaster_recovery_drill("data_center_outage")
+    drill_results = await dr_framework.execute_disaster_recovery_drill(
+        "data_center_outage"
+    )
 
     return {
         "disaster_recovery_implementation": dr_implementation,
@@ -1087,7 +1190,8 @@ async def implement_enterprise_disaster_recovery() -> Dict[str, Any]:
             "system_availability": dr_implementation["metrics"]["system_availability"],
             "compliance_score": dr_implementation["metrics"]["compliance_score"],
             "overall_score": (
-                dr_implementation["metrics"]["system_availability"] + dr_implementation["metrics"]["compliance_score"]
+                dr_implementation["metrics"]["system_availability"]
+                + dr_implementation["metrics"]["compliance_score"]
             )
             / 2,
         },
@@ -1113,8 +1217,12 @@ if __name__ == "__main__":
     results = asyncio.run(implement_enterprise_disaster_recovery())
 
     print("=== Enterprise Disaster Recovery Implementation Results ===")
-    print(f"Overall Readiness Score: {results['overall_readiness']['overall_score']:.2f}%")
-    print(f"System Availability: {results['overall_readiness']['system_availability']:.3f}%")
+    print(
+        f"Overall Readiness Score: {results['overall_readiness']['overall_score']:.2f}%"
+    )
+    print(
+        f"System Availability: {results['overall_readiness']['system_availability']:.3f}%"
+    )
     print(f"Compliance Score: {results['overall_readiness']['compliance_score']:.2f}%")
     print(f"RPO Achievement: {results['overall_readiness']['rpo_achievement']} minutes")
     print(f"RTO Achievement: {results['overall_readiness']['rto_achievement']} minutes")
@@ -1128,7 +1236,10 @@ if __name__ == "__main__":
         print(f"  • {step}")
 
     # Save detailed results to file
-    with open("/home/azureuser/hms-enterprise-grade/disaster_recovery_implementation.json", "w") as f:
+    with open(
+        "/home/azureuser/hms-enterprise-grade/disaster_recovery_implementation.json",
+        "w",
+    ) as f:
         json.dump(results, f, indent=2, default=str)
 
     print("\nDetailed results saved to disaster_recovery_implementation.json")

@@ -1,3 +1,7 @@
+"""
+database_optimization module
+"""
+
 import asyncio
 import logging
 import os
@@ -9,18 +13,19 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import redis
+from rest_framework import serializers
+
 from django.conf import settings
 from django.core.cache import cache
-from django.db import connections, transaction, models
+from django.db import connections, models, transaction
 from django.db.backends.postgresql.base import DatabaseWrapper
 from django.db.models import QuerySet
-from django.db.models.signals import pre_save, post_save, pre_delete, post_delete
+from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
-from rest_framework import serializers
 
 
 class DatabaseOptimizationLevel(Enum):
@@ -112,7 +117,10 @@ class DatabaseOptimizer:
         cls._instances.add(instance)
         return instance
 
-    def __init__(self, optimization_level: DatabaseOptimizationLevel = DatabaseOptimizationLevel.ENTERPRISE):
+    def __init__(
+        self,
+        optimization_level: DatabaseOptimizationLevel = DatabaseOptimizationLevel.ENTERPRISE,
+    ):
         self.optimization_level = optimization_level
         self.logger = logging.getLogger(__name__)
         self.redis_client = None
@@ -127,18 +135,22 @@ class DatabaseOptimizer:
         self._cache_lock = threading.RLock()
         self._redis_connection_count = 0
         self._max_cache_size = 10000  # Prevent unbounded cache growth
-        self._query_analysis_enabled = os.getenv("QUERY_ANALYSIS_ENABLED", "true").lower() == "true"
-        self._healthcare_optimization_enabled = os.getenv("HEALTHCARE_OPTIMIZATION_ENABLED", "true").lower() == "true"
+        self._query_analysis_enabled = (
+            os.getenv("QUERY_ANALYSIS_ENABLED", "true").lower() == "true"
+        )
+        self._healthcare_optimization_enabled = (
+            os.getenv("HEALTHCARE_OPTIMIZATION_ENABLED", "true").lower() == "true"
+        )
         self._n_plus_one_threshold = int(os.getenv("N_PLUS_ONE_THRESHOLD", "5"))
-        self._slow_query_threshold_ms = int(os.getenv("SLOW_QUERY_THRESHOLD_MS", "1000"))
+        self._slow_query_threshold_ms = int(
+            os.getenv("SLOW_QUERY_THRESHOLD_MS", "1000")
+        )
         self._large_result_threshold = int(os.getenv("LARGE_RESULT_THRESHOLD", "1000"))
 
         if os.getenv("REDIS_URL"):
             try:
                 self.redis_client = redis.ConnectionPool.from_url(
-                    os.getenv("REDIS_URL"),
-                    decode_responses=True,
-                    max_connections=10
+                    os.getenv("REDIS_URL"), decode_responses=True, max_connections=10
                 )
             except Exception as e:
                 self.logger.warning(f"Redis connection failed: {e}")
@@ -147,8 +159,8 @@ class DatabaseOptimizer:
     def _detect_database_backend(self) -> bool:
         """Detect if using PostgreSQL backend."""
         try:
-            db_config = settings.DATABASES['default']
-            return 'postgresql' in db_config['ENGINE']
+            db_config = settings.DATABASES["default"]
+            return "postgresql" in db_config["ENGINE"]
         except (KeyError, AttributeError):
             return False
 
@@ -160,7 +172,7 @@ class DatabaseOptimizer:
             return "SQLite"
 
     @contextmanager
-    def get_database_connection(self, db_alias: str = 'default'):
+    def get_database_connection(self, db_alias: str = "default"):
         """Context manager for database connections with automatic cleanup."""
         with self._connection_lock:
             connection = connections[db_alias]
@@ -168,7 +180,7 @@ class DatabaseOptimizer:
                 yield connection
             finally:
                 # Ensure connection is returned to pool
-                if hasattr(connection, 'close') and not connection.connection:
+                if hasattr(connection, "close") and not connection.connection:
                     connection.close()
 
     def _get_redis_connection(self):
@@ -193,7 +205,9 @@ class DatabaseOptimizer:
                     del self.query_cache[key]
                 self.logger.info(f"Cleaned up {items_to_remove} old cache entries")
 
-    def analyze_n_plus_one_patterns(self, queryset: QuerySet) -> List[QueryAnalysisResult]:
+    def analyze_n_plus_one_patterns(
+        self, queryset: QuerySet
+    ) -> List[QueryAnalysisResult]:
         """Analyze queryset for N+1 query patterns."""
         results = []
 
@@ -211,25 +225,32 @@ class DatabaseOptimizer:
             has_many_relationships = any(
                 field.many_to_many or field.one_to_many
                 for field in queryset.model._meta.get_fields()
-                if hasattr(field, 'many_to_many')
+                if hasattr(field, "many_to_many")
             )
 
             if has_many_relationships and not has_joins:
-                results.append(QueryAnalysisResult(
-                    query_text=query,
-                    execution_time_ms=0,
-                    rows_returned=queryset.count(),
-                    table_name=table_name,
-                    pattern_detected=QueryPattern.N_PLUS_ONE,
-                    severity="high",
-                    recommendation="Add select_related() or prefetch_related() to avoid N+1 queries",
-                    estimated_impact="High - significant performance improvement expected",
-                    context={"model": queryset.model.__name__, "count": queryset.count()}
-                ))
+                results.append(
+                    QueryAnalysisResult(
+                        query_text=query,
+                        execution_time_ms=0,
+                        rows_returned=queryset.count(),
+                        table_name=table_name,
+                        pattern_detected=QueryPattern.N_PLUS_ONE,
+                        severity="high",
+                        recommendation="Add select_related() or prefetch_related() to avoid N+1 queries",
+                        estimated_impact="High - significant performance improvement expected",
+                        context={
+                            "model": queryset.model.__name__,
+                            "count": queryset.count(),
+                        },
+                    )
+                )
 
         return results
 
-    def optimize_queryset(self, queryset: QuerySet, use_healthcare_optimization: bool = True) -> QuerySet:
+    def optimize_queryset(
+        self, queryset: QuerySet, use_healthcare_optimization: bool = True
+    ) -> QuerySet:
         """Automatically optimize queryset based on analysis."""
         if not self._query_analysis_enabled:
             return queryset
@@ -250,7 +271,13 @@ class DatabaseOptimizer:
         # Apply healthcare-specific optimizations
         if use_healthcare_optimization and self._healthcare_optimization_enabled:
             # Common healthcare fields that should be optimized
-            healthcare_fields = ['hospital', 'patient', 'doctor', 'encounter', 'appointment']
+            healthcare_fields = [
+                "hospital",
+                "patient",
+                "doctor",
+                "encounter",
+                "appointment",
+            ]
             for field in healthcare_fields:
                 if hasattr(model, field) and field not in select_fields:
                     select_fields.append(field)
@@ -263,11 +290,15 @@ class DatabaseOptimizer:
 
         return queryset
 
-    def analyze_serializer_performance(self, serializer_class) -> List[QueryAnalysisResult]:
+    def analyze_serializer_performance(
+        self, serializer_class
+    ) -> List[QueryAnalysisResult]:
         """Analyze Django REST Framework serializer for N+1 query patterns."""
         results = []
 
-        if not hasattr(serializer_class, 'Meta') or not hasattr(serializer_class.Meta, 'model'):
+        if not hasattr(serializer_class, "Meta") or not hasattr(
+            serializer_class.Meta, "model"
+        ):
             return results
 
         model = serializer_class.Meta.model
@@ -275,23 +306,29 @@ class DatabaseOptimizer:
         # Check for nested serializers that might cause N+1 queries
         for field_name, field in serializer_class._declared_fields.items():
             if isinstance(field, serializers.ModelSerializer):
-                if hasattr(field.Meta, 'model') and hasattr(field.Meta, 'many') and field.many:
+                if (
+                    hasattr(field.Meta, "model")
+                    and hasattr(field.Meta, "many")
+                    and field.many
+                ):
                     # This is a nested serializer with many=True - potential N+1
-                    results.append(QueryAnalysisResult(
-                        query_text=f"Serializer: {serializer_class.__name__}.{field_name}",
-                        execution_time_ms=0,
-                        rows_returned=0,
-                        table_name=model._meta.db_table,
-                        pattern_detected=QueryPattern.N_PLUS_ONE,
-                        severity="high",
-                        recommendation=f"Add prefetch_related for '{field_name}' in view",
-                        estimated_impact="High - eliminates N+1 queries in API responses",
-                        context={
-                            "serializer": serializer_class.__name__,
-                            "field": field_name,
-                            "nested_model": field.Meta.model.__name__
-                        }
-                    ))
+                    results.append(
+                        QueryAnalysisResult(
+                            query_text=f"Serializer: {serializer_class.__name__}.{field_name}",
+                            execution_time_ms=0,
+                            rows_returned=0,
+                            table_name=model._meta.db_table,
+                            pattern_detected=QueryPattern.N_PLUS_ONE,
+                            severity="high",
+                            recommendation=f"Add prefetch_related for '{field_name}' in view",
+                            estimated_impact="High - eliminates N+1 queries in API responses",
+                            context={
+                                "serializer": serializer_class.__name__,
+                                "field": field_name,
+                                "nested_model": field.Meta.model.__name__,
+                            },
+                        )
+                    )
 
         return results
 
@@ -305,13 +342,13 @@ class DatabaseOptimizer:
                     "(hospital_id, last_name, first_name)",
                     "(hospital_id, date_of_birth)",
                     "(medical_record_number)",
-                    "(uuid)"
+                    "(uuid)",
                 ],
                 "cache_strategies": {
                     "patient_demographics": "1_hour",
                     "patient_medical_history": "5_minutes",
-                    "patient_active_medications": "30_minutes"
-                }
+                    "patient_active_medications": "30_minutes",
+                },
             },
             "appointment_query_patterns": {
                 "common_filters": ["hospital", "doctor", "patient", "date", "status"],
@@ -319,27 +356,27 @@ class DatabaseOptimizer:
                     "(hospital_id, doctor_id, appointment_date)",
                     "(hospital_id, patient_id, appointment_date)",
                     "(hospital_id, status, appointment_date)",
-                    "(appointment_number)"
+                    "(appointment_number)",
                 ],
                 "cache_strategies": {
                     "today_appointments": "5_minutes",
                     "doctor_schedule": "15_minutes",
-                    "patient_upcoming": "30_minutes"
-                }
+                    "patient_upcoming": "30_minutes",
+                },
             },
             "ehr_query_patterns": {
                 "common_filters": ["hospital", "patient", "encounter_type", "date"],
                 "recommended_indexes": [
                     "(hospital_id, patient_id, encounter_date)",
                     "(hospital_id, encounter_type, created_at)",
-                    "(hospital_id, doctor_id, created_at)"
+                    "(hospital_id, doctor_id, created_at)",
                 ],
                 "cache_strategies": {
                     "active_encounters": "5_minutes",
                     "patient_history": "1_hour",
-                    "recent_vitals": "15_minutes"
-                }
-            }
+                    "recent_vitals": "15_minutes",
+                },
+            },
         }
 
     def recommend_healthcare_indexes(self) -> List[IndexRecommendation]:
@@ -352,25 +389,29 @@ class DatabaseOptimizer:
                     if self.is_postgres:
                         # Check for missing healthcare-related indexes
                         healthcare_tables = [
-                            'patients_patient',
-                            'appointments_appointment',
-                            'ehr_encounter',
-                            'pharmacy_prescription',
-                            'lab_laborder'
+                            "patients_patient",
+                            "appointments_appointment",
+                            "ehr_encounter",
+                            "pharmacy_prescription",
+                            "lab_laborder",
                         ]
 
                         for table in healthcare_tables:
                             # Check if table exists
-                            cursor.execute("""
+                            cursor.execute(
+                                """
                                 SELECT EXISTS (
                                     SELECT FROM information_schema.tables
                                     WHERE table_name = %s
                                 )
-                            """, (table,))
+                            """,
+                                (table,),
+                            )
 
                             if cursor.fetchone()[0]:
                                 # Analyze table for missing indexes
-                                cursor.execute(f"""
+                                cursor.execute(
+                                    f"""
                                     SELECT
                                         schemaname,
                                         tablename,
@@ -378,21 +419,31 @@ class DatabaseOptimizer:
                                         indexdef
                                     FROM pg_indexes
                                     WHERE tablename = %s
-                                """, (table,))
+                                """,
+                                    (table,),
+                                )
 
                                 existing_indexes = [row[2] for row in cursor.fetchall()]
 
                                 # Recommend common healthcare indexes
-                                if table == 'patients_patient' and 'patients_patient_hospital_idx' not in existing_indexes:
-                                    recommendations.append(IndexRecommendation(
-                                        table_name=table,
-                                        column_name="hospital_id",
-                                        index_type="btree",
-                                        estimated_benefit=0.9,
-                                        current_queries_affected=self._estimate_queries_affected(table, "hospital_id"),
-                                        recommendation_reason="Critical for multi-tenant healthcare system",
-                                        priority="critical"
-                                    ))
+                                if (
+                                    table == "patients_patient"
+                                    and "patients_patient_hospital_idx"
+                                    not in existing_indexes
+                                ):
+                                    recommendations.append(
+                                        IndexRecommendation(
+                                            table_name=table,
+                                            column_name="hospital_id",
+                                            index_type="btree",
+                                            estimated_benefit=0.9,
+                                            current_queries_affected=self._estimate_queries_affected(
+                                                table, "hospital_id"
+                                            ),
+                                            recommendation_reason="Critical for multi-tenant healthcare system",
+                                            priority="critical",
+                                        )
+                                    )
 
         except Exception as e:
             self.logger.error(f"Error generating healthcare index recommendations: {e}")
@@ -405,11 +456,14 @@ class DatabaseOptimizer:
             with self.get_database_connection() as connection:
                 with connection.cursor() as cursor:
                     if self.is_postgres:
-                        cursor.execute(f"""
+                        cursor.execute(
+                            f"""
                             SELECT SUM(seq_scan)
                             FROM pg_stat_user_tables
                             WHERE relname = %s
-                        """, (table_name,))
+                        """,
+                            (table_name,),
+                        )
                         result = cursor.fetchone()
                         return result[0] if result[0] else 0
         except Exception:
@@ -423,11 +477,14 @@ class DatabaseOptimizer:
             "backend": self.get_database_backend(),
             "query_patterns": dict(self.query_patterns),
             "slow_queries_count": len(self.slow_queries),
-            "n_plus_one_count": sum(len(patterns) for patterns in self.query_patterns.values()
-                                if any(p.pattern_detected == QueryPattern.N_PLUS_ONE for p in patterns)),
+            "n_plus_one_count": sum(
+                len(patterns)
+                for patterns in self.query_patterns.values()
+                if any(p.pattern_detected == QueryPattern.N_PLUS_ONE for p in patterns)
+            ),
             "index_recommendations": len(self.index_recommendations),
             "health_score": self._calculate_health_score(),
-            "optimization_suggestions": []
+            "optimization_suggestions": [],
         }
 
         # Generate optimization suggestions
@@ -453,8 +510,11 @@ class DatabaseOptimizer:
         score = 100.0
 
         # Deduct points for N+1 queries
-        n_plus_one_count = sum(len(patterns) for patterns in self.query_patterns.values()
-                              if any(p.pattern_detected == QueryPattern.N_PLUS_ONE for p in patterns))
+        n_plus_one_count = sum(
+            len(patterns)
+            for patterns in self.query_patterns.values()
+            if any(p.pattern_detected == QueryPattern.N_PLUS_ONE for p in patterns)
+        )
         score -= min(n_plus_one_count * 5, 30)  # Max 30 point deduction
 
         # Deduct points for slow queries
@@ -480,15 +540,15 @@ class DatabaseOptimizer:
     def get_database_stats(self) -> Dict[str, Any]:
         """Get comprehensive database statistics - cross-database compatible."""
         stats = {
-            'backend': self.get_database_backend(),
-            'database_name': settings.DATABASES['default'].get('NAME', 'unknown'),
-            'tables': 0,
-            'total_indexes': 0,
-            'database_size_mb': 0,
-            'active_connections': 0,
-            'max_connections': 100,  # Default for SQLite
-            'slow_queries': 0,
-            'total_queries': 0,
+            "backend": self.get_database_backend(),
+            "database_name": settings.DATABASES["default"].get("NAME", "unknown"),
+            "tables": 0,
+            "total_indexes": 0,
+            "database_size_mb": 0,
+            "active_connections": 0,
+            "max_connections": 100,  # Default for SQLite
+            "slow_queries": 0,
+            "total_queries": 0,
         }
 
         try:
@@ -496,44 +556,58 @@ class DatabaseOptimizer:
                 with connection.cursor() as cursor:
                     if self.is_postgres:
                         # PostgreSQL specific queries
-                        cursor.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'")
-                        stats['tables'] = cursor.fetchone()[0]
+                        cursor.execute(
+                            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'"
+                        )
+                        stats["tables"] = cursor.fetchone()[0]
 
-                        cursor.execute("SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public'")
-                        stats['total_indexes'] = cursor.fetchone()[0]
+                        cursor.execute(
+                            "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public'"
+                        )
+                        stats["total_indexes"] = cursor.fetchone()[0]
 
                         cursor.execute("SELECT pg_database_size(current_database())")
-                        stats['database_size_mb'] = cursor.fetchone()[0] / (1024 * 1024)
+                        stats["database_size_mb"] = cursor.fetchone()[0] / (1024 * 1024)
 
-                        cursor.execute("SELECT COUNT(*) FROM pg_stat_activity WHERE state = 'active'")
-                        stats['active_connections'] = cursor.fetchone()[0]
+                        cursor.execute(
+                            "SELECT COUNT(*) FROM pg_stat_activity WHERE state = 'active'"
+                        )
+                        stats["active_connections"] = cursor.fetchone()[0]
 
                         cursor.execute("SHOW max_connections")
-                        stats['max_connections'] = int(cursor.fetchone()[0])
+                        stats["max_connections"] = int(cursor.fetchone()[0])
 
-                        cursor.execute("SELECT COUNT(*) FROM pg_stat_statements WHERE total_time > 1000")
-                        stats['slow_queries'] = cursor.fetchone()[0]
+                        cursor.execute(
+                            "SELECT COUNT(*) FROM pg_stat_statements WHERE total_time > 1000"
+                        )
+                        stats["slow_queries"] = cursor.fetchone()[0]
 
                         cursor.execute("SELECT SUM(calls) FROM pg_stat_statements")
                         result = cursor.fetchone()
-                        stats['total_queries'] = result[0] if result[0] else 0
+                        stats["total_queries"] = result[0] if result[0] else 0
                     else:
                         # SQLite specific queries
-                        cursor.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table'")
-                        stats['tables'] = cursor.fetchone()[0]
+                        cursor.execute(
+                            "SELECT COUNT(*) FROM sqlite_master WHERE type='table'"
+                        )
+                        stats["tables"] = cursor.fetchone()[0]
 
-                        cursor.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='index'")
-                        stats['total_indexes'] = cursor.fetchone()[0]
+                        cursor.execute(
+                            "SELECT COUNT(*) FROM sqlite_master WHERE type='index'"
+                        )
+                        stats["total_indexes"] = cursor.fetchone()[0]
 
                         # Get database file size for SQLite
-                        db_path = settings.DATABASES['default']['NAME']
+                        db_path = settings.DATABASES["default"]["NAME"]
                         if os.path.exists(db_path):
-                            stats['database_size_mb'] = os.path.getsize(db_path) / (1024 * 1024)
+                            stats["database_size_mb"] = os.path.getsize(db_path) / (
+                                1024 * 1024
+                            )
 
                         # SQLite doesn't have connection limits or query stats
-                        stats['active_connections'] = 1
-                        stats['slow_queries'] = 0
-                        stats['total_queries'] = 0
+                        stats["active_connections"] = 1
+                        stats["slow_queries"] = 0
+                        stats["total_queries"] = 0
 
         except Exception as e:
             self.logger.error(f"Error getting database stats: {e}")
@@ -543,13 +617,13 @@ class DatabaseOptimizer:
     def analyze_table_performance(self, table_name: str) -> Dict[str, Any]:
         """Analyze performance metrics for a specific table."""
         analysis = {
-            'table_name': table_name,
-            'row_count': 0,
-            'table_size_mb': 0,
-            'indexes': [],
-            'slow_queries': 0,
-            'avg_query_time_ms': 0,
-            'recommendations': []
+            "table_name": table_name,
+            "row_count": 0,
+            "table_size_mb": 0,
+            "indexes": [],
+            "slow_queries": 0,
+            "avg_query_time_ms": 0,
+            "recommendations": [],
         }
 
         try:
@@ -558,57 +632,66 @@ class DatabaseOptimizer:
                     if self.is_postgres:
                         # PostgreSQL table analysis
                         cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
-                        analysis['row_count'] = cursor.fetchone()[0]
+                        analysis["row_count"] = cursor.fetchone()[0]
 
-                        cursor.execute(f"""
+                        cursor.execute(
+                            f"""
                             SELECT
                                 pg_total_relation_size('{table_name}') as size,
                                 pg_indexes_size('{table_name}') as index_size
-                        """)
+                        """
+                        )
                         result = cursor.fetchone()
                         if result:
-                            analysis['table_size_mb'] = result[0] / (1024 * 1024)
+                            analysis["table_size_mb"] = result[0] / (1024 * 1024)
 
-                        cursor.execute(f"""
+                        cursor.execute(
+                            f"""
                             SELECT indexname, indexdef
                             FROM pg_indexes
                             WHERE tablename = %s
-                        """, (table_name,))
-                        analysis['indexes'] = cursor.fetchall()
+                        """,
+                            (table_name,),
+                        )
+                        analysis["indexes"] = cursor.fetchall()
 
                         # Check for slow queries on this table
-                        cursor.execute(f"""
+                        cursor.execute(
+                            f"""
                             SELECT COUNT(*)
                             FROM pg_stat_statements
                             WHERE query LIKE '%{table_name}%'
                             AND total_time > 1000
-                        """)
-                        analysis['slow_queries'] = cursor.fetchone()[0]
+                        """
+                        )
+                        analysis["slow_queries"] = cursor.fetchone()[0]
 
                     else:
                         # SQLite table analysis
                         cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
-                        analysis['row_count'] = cursor.fetchone()[0]
+                        analysis["row_count"] = cursor.fetchone()[0]
 
                         # Get indexes for SQLite
-                        cursor.execute(f"""
+                        cursor.execute(
+                            f"""
                             SELECT name, sql
                             FROM sqlite_master
                             WHERE type='index'
                             AND tbl_name='{table_name}'
-                        """)
-                        analysis['indexes'] = cursor.fetchall()
+                        """
+                        )
+                        analysis["indexes"] = cursor.fetchall()
 
                         # SQLite doesn't have detailed performance stats
-                        analysis['slow_queries'] = 0
-                        analysis['avg_query_time_ms'] = 0
+                        analysis["slow_queries"] = 0
+                        analysis["avg_query_time_ms"] = 0
 
             # Generate recommendations
-            analysis['recommendations'] = self._generate_table_recommendations(analysis)
+            analysis["recommendations"] = self._generate_table_recommendations(analysis)
 
         except Exception as e:
             self.logger.error(f"Error analyzing table {table_name}: {e}")
-            analysis['error'] = str(e)
+            analysis["error"] = str(e)
 
         return analysis
 
@@ -616,32 +699,36 @@ class DatabaseOptimizer:
         """Generate optimization recommendations for a table."""
         recommendations = []
 
-        if analysis['row_count'] > 100000 and len(analysis['indexes']) < 3:
+        if analysis["row_count"] > 100000 and len(analysis["indexes"]) < 3:
             recommendations.append("Consider adding more indexes for large tables")
 
-        if analysis['table_size_mb'] > 1000:
+        if analysis["table_size_mb"] > 1000:
             recommendations.append("Consider table partitioning for very large tables")
 
-        if analysis['slow_queries'] > 10:
-            recommendations.append("High number of slow queries detected - review query optimization")
+        if analysis["slow_queries"] > 10:
+            recommendations.append(
+                "High number of slow queries detected - review query optimization"
+            )
 
-        if not analysis['indexes']:
-            recommendations.append("No indexes found - consider adding primary key and commonly queried columns")
+        if not analysis["indexes"]:
+            recommendations.append(
+                "No indexes found - consider adding primary key and commonly queried columns"
+            )
 
         return recommendations
 
     def optimize_database(self, dry_run: bool = True) -> Dict[str, Any]:
         """Run comprehensive database optimization."""
         results = {
-            'timestamp': datetime.now().isoformat(),
-            'backend': self.get_database_backend(),
-            'tables_optimized': 0,
-            'indexes_created': 0,
-            'indexes_dropped': 0,
-            'space_reclaimed_mb': 0,
-            'performance_improvement': 0,
-            'actions': [],
-            'recommendations': []
+            "timestamp": datetime.now().isoformat(),
+            "backend": self.get_database_backend(),
+            "tables_optimized": 0,
+            "indexes_created": 0,
+            "indexes_dropped": 0,
+            "space_reclaimed_mb": 0,
+            "performance_improvement": 0,
+            "actions": [],
+            "recommendations": [],
         }
 
         try:
@@ -651,43 +738,43 @@ class DatabaseOptimizer:
                         # PostgreSQL optimization
                         if not dry_run:
                             cursor.execute("VACUUM ANALYZE")
-                            results['actions'].append("VACUUM ANALYZE executed")
+                            results["actions"].append("VACUUM ANALYZE executed")
 
                             cursor.execute("REINDEX DATABASE")
-                            results['actions'].append("REINDEX DATABASE executed")
+                            results["actions"].append("REINDEX DATABASE executed")
 
                         # Update statistics
                         cursor.execute("ANALYZE")
-                        results['actions'].append("Statistics updated")
+                        results["actions"].append("Statistics updated")
 
                     else:
                         # SQLite optimization
                         if not dry_run:
                             cursor.execute("VACUUM")
-                            results['actions'].append("VACUUM executed")
+                            results["actions"].append("VACUUM executed")
 
                         cursor.execute("ANALYZE")
-                        results['actions'].append("Statistics updated")
+                        results["actions"].append("Statistics updated")
 
             # Get optimization results
             stats_after = self.get_database_stats()
-            results['final_stats'] = stats_after
+            results["final_stats"] = stats_after
 
         except Exception as e:
             self.logger.error(f"Error during database optimization: {e}")
-            results['error'] = str(e)
+            results["error"] = str(e)
 
         return results
 
     def create_optimization_report(self) -> Dict[str, Any]:
         """Generate comprehensive database optimization report."""
         report = {
-            'timestamp': datetime.now().isoformat(),
-            'backend': self.get_database_backend(),
-            'database_stats': self.get_database_stats(),
-            'table_analyses': {},
-            'optimization_level': self.optimization_level.value,
-            'recommendations': []
+            "timestamp": datetime.now().isoformat(),
+            "backend": self.get_database_backend(),
+            "database_stats": self.get_database_stats(),
+            "table_analyses": {},
+            "optimization_level": self.optimization_level.value,
+            "recommendations": [],
         }
 
         # Get list of tables
@@ -695,33 +782,39 @@ class DatabaseOptimizer:
             with self.get_database_connection() as connection:
                 with connection.cursor() as cursor:
                     if self.is_postgres:
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             SELECT tablename
                             FROM pg_tables
                             WHERE schemaname = 'public'
                             ORDER BY tablename
-                        """)
+                        """
+                        )
                     else:
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             SELECT name
                             FROM sqlite_master
                             WHERE type='table'
                             AND name NOT LIKE 'sqlite_%'
                             ORDER BY name
-                        """)
+                        """
+                        )
 
                     tables = [row[0] for row in cursor.fetchall()]
 
                     # Analyze each table (limit to first 10 for performance)
                     for table in tables[:10]:
-                        report['table_analyses'][table] = self.analyze_table_performance(table)
+                        report["table_analyses"][table] = (
+                            self.analyze_table_performance(table)
+                        )
 
         except Exception as e:
             self.logger.error(f"Error generating optimization report: {e}")
-            report['error'] = str(e)
+            report["error"] = str(e)
 
         # Generate overall recommendations
-        report['recommendations'] = self._generate_overall_recommendations(report)
+        report["recommendations"] = self._generate_overall_recommendations(report)
 
         return report
 
@@ -729,23 +822,35 @@ class DatabaseOptimizer:
         """Generate overall database optimization recommendations."""
         recommendations = []
 
-        stats = report.get('database_stats', {})
+        stats = report.get("database_stats", {})
 
-        if stats.get('slow_queries', 0) > 50:
-            recommendations.append("High number of slow queries - consider query optimization and indexing")
+        if stats.get("slow_queries", 0) > 50:
+            recommendations.append(
+                "High number of slow queries - consider query optimization and indexing"
+            )
 
-        if stats.get('database_size_mb', 0) > 10000:
-            recommendations.append("Large database size - consider archiving old data or partitioning")
+        if stats.get("database_size_mb", 0) > 10000:
+            recommendations.append(
+                "Large database size - consider archiving old data or partitioning"
+            )
 
-        if stats.get('active_connections', 0) / max(stats.get('max_connections', 100), 1) > 0.8:
-            recommendations.append("High connection usage - consider connection pooling optimization")
+        if (
+            stats.get("active_connections", 0)
+            / max(stats.get("max_connections", 100), 1)
+            > 0.8
+        ):
+            recommendations.append(
+                "High connection usage - consider connection pooling optimization"
+            )
 
         if self.optimization_level == DatabaseOptimizationLevel.ENTERPRISE:
-            recommendations.extend([
-                "Consider implementing read replicas for better performance",
-                "Implement regular database maintenance schedule",
-                "Consider upgrading to PostgreSQL for enterprise features"
-            ])
+            recommendations.extend(
+                [
+                    "Consider implementing read replicas for better performance",
+                    "Implement regular database maintenance schedule",
+                    "Consider upgrading to PostgreSQL for enterprise features",
+                ]
+            )
 
         return recommendations
 

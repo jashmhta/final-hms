@@ -1,5 +1,6 @@
 import enum
 from datetime import datetime
+
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -14,7 +15,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
+
 Base = declarative_base()
+
+
 class AppointmentStatus(enum.Enum):
     SCHEDULED = "scheduled"
     CONFIRMED = "confirmed"
@@ -22,11 +26,15 @@ class AppointmentStatus(enum.Enum):
     COMPLETED = "completed"
     CANCELLED = "cancelled"
     NO_SHOW = "no_show"
+
+
 class ConsultationType(enum.Enum):
     GENERAL = "general"
     SPECIALIST = "specialist"
     FOLLOW_UP = "follow_up"
     EMERGENCY = "emergency"
+
+
 class Patient(Base):
     __tablename__ = "patients"
     id = Column(Integer, primary_key=True, index=True)
@@ -46,6 +54,8 @@ class Patient(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class Doctor(Base):
     __tablename__ = "doctors"
     id = Column(Integer, primary_key=True, index=True)
@@ -61,6 +71,8 @@ class Doctor(Base):
     working_hours = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class Appointment(Base):
     __tablename__ = "appointments"
     id = Column(Integer, primary_key=True, index=True)
@@ -78,6 +90,8 @@ class Appointment(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     patient = relationship("Patient")
     doctor = relationship("Doctor")
+
+
 class Consultation(Base):
     __tablename__ = "consultations"
     id = Column(Integer, primary_key=True, index=True)
@@ -99,6 +113,8 @@ class Consultation(Base):
     appointment = relationship("Appointment")
     patient = relationship("Patient")
     doctor = relationship("Doctor")
+
+
 class OPDBill(Base):
     __tablename__ = "opd_bills"
     id = Column(Integer, primary_key=True, index=True)
@@ -109,7 +125,7 @@ class OPDBill(Base):
     discount = Column(Float, default=0)
     tax_amount = Column(Float)
     final_amount = Column(Float)
-    payment_status = Column(String)  
+    payment_status = Column(String)
     payment_method = Column(String, nullable=True)
     insurance_claim_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -10,35 +10,40 @@ This module provides comprehensive security testing capabilities including:
 - Security audit logging and monitoring
 """
 
-import pytest
-import json
-import requests
 import hashlib
+import json
 import secrets
-import jwt
-import ssl
 import socket
+import ssl
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, List, Any, Optional
-from django.test import TestCase, Client
-from django.urls import reverse
-from django.contrib.auth import get_user_model
-from django.conf import settings
-from django.core.management import call_command
-from rest_framework.test import APIClient
-from rest_framework import status
+from typing import Any, Dict, List, Optional
+from unittest.mock import MagicMock, Mock, patch
+
 import bandit
+import jwt
+import pytest
+import requests
 from bandit.core import manager
+from rest_framework import status
+from rest_framework.test import APIClient
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core.management import call_command
+from django.test import Client, TestCase
+from django.urls import reverse
 
 # Import healthcare testing utilities
 from .conftest import (
-    HMSTestCase, HealthcareDataMixin, PerformanceTestingMixin,
-    SecurityTestingMixin, ComplianceTestingMixin
+    ComplianceTestingMixin,
+    HealthcareDataMixin,
+    HMSTestCase,
+    PerformanceTestingMixin,
+    SecurityTestingMixin,
 )
 
 User = get_user_model()
@@ -61,15 +66,15 @@ class SecurityTestResult:
     def to_dict(self) -> Dict[str, Any]:
         """Convert test result to dictionary"""
         return {
-            'test_name': self.test_name,
-            'vulnerability_type': self.vulnerability_type,
-            'severity': self.severity,
-            'description': self.description,
-            'affected_components': self.affected_components,
-            'remediation_steps': self.remediation_steps,
-            'cve_references': self.cve_references,
-            'owasp_category': self.owasp_category,
-            'timestamp': self.timestamp.isoformat()
+            "test_name": self.test_name,
+            "vulnerability_type": self.vulnerability_type,
+            "severity": self.severity,
+            "description": self.description,
+            "affected_components": self.affected_components,
+            "remediation_steps": self.remediation_steps,
+            "cve_references": self.cve_references,
+            "owasp_category": self.owasp_category,
+            "timestamp": self.timestamp.isoformat(),
         }
 
 
@@ -80,62 +85,75 @@ class SecurityTestingFramework:
         self.test_results = []
         self.vulnerability_database = self._initialize_vulnerability_database()
         self.security_headers = {
-            'X-Content-Type-Options': 'nosniff',
-            'X-Frame-Options': 'DENY',
-            'X-XSS-Protection': '1; mode=block',
-            'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-            'Content-Security-Policy': "default-src 'self'",
-            'Referrer-Policy': 'strict-origin-when-cross-origin',
-            'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+            "Content-Security-Policy": "default-src 'self'",
+            "Referrer-Policy": "strict-origin-when-cross-origin",
+            "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
         }
 
     def _initialize_vulnerability_database(self) -> Dict[str, List[Dict]]:
         """Initialize healthcare-specific vulnerability database"""
         return {
-            'HIPAA_VIOLATIONS': [
+            "HIPAA_VIOLATIONS": [
                 {
-                    'cve': 'CVE-2023-HIPAA-001',
-                    'description': 'Unencrypted PHI transmission',
-                    'severity': 'CRITICAL',
-                    'remediation': 'Implement TLS 1.3 for all data transmissions'
+                    "cve": "CVE-2023-HIPAA-001",
+                    "description": "Unencrypted PHI transmission",
+                    "severity": "CRITICAL",
+                    "remediation": "Implement TLS 1.3 for all data transmissions",
                 },
                 {
-                    'cve': 'CVE-2023-HIPAA-002',
-                    'description': 'Insufficient access controls',
-                    'severity': 'HIGH',
-                    'remediation': 'Implement role-based access control with least privilege'
-                }
+                    "cve": "CVE-2023-HIPAA-002",
+                    "description": "Insufficient access controls",
+                    "severity": "HIGH",
+                    "remediation": "Implement role-based access control with least privilege",
+                },
             ],
-            'OWASP_TOP_10': [
+            "OWASP_TOP_10": [
                 {
-                    'category': 'A01:2021-Broken Access Control',
-                    'patterns': ['IDOR', 'privilege_escalation', 'unauthorized_access'],
-                    'severity': 'HIGH'
+                    "category": "A01:2021-Broken Access Control",
+                    "patterns": ["IDOR", "privilege_escalation", "unauthorized_access"],
+                    "severity": "HIGH",
                 },
                 {
-                    'category': 'A02:2021-Cryptographic Failures',
-                    'patterns': ['weak_encryption', 'plaintext_passwords', 'insecure_storage'],
-                    'severity': 'CRITICAL'
+                    "category": "A02:2021-Cryptographic Failures",
+                    "patterns": [
+                        "weak_encryption",
+                        "plaintext_passwords",
+                        "insecure_storage",
+                    ],
+                    "severity": "CRITICAL",
                 },
                 {
-                    'category': 'A03:2021-Injection',
-                    'patterns': ['sql_injection', 'xss', 'command_injection'],
-                    'severity': 'CRITICAL'
+                    "category": "A03:2021-Injection",
+                    "patterns": ["sql_injection", "xss", "command_injection"],
+                    "severity": "CRITICAL",
                 },
                 {
-                    'category': 'A04:2021-Insecure Design',
-                    'patterns': ['flawed_authentication', 'insecure_session_management'],
-                    'severity': 'HIGH'
+                    "category": "A04:2021-Insecure Design",
+                    "patterns": [
+                        "flawed_authentication",
+                        "insecure_session_management",
+                    ],
+                    "severity": "HIGH",
                 },
                 {
-                    'category': 'A05:2021-Security Misconfiguration',
-                    'patterns': ['exposed_admin', 'verbose_errors', 'default_credentials'],
-                    'severity': 'MEDIUM'
-                }
-            ]
+                    "category": "A05:2021-Security Misconfiguration",
+                    "patterns": [
+                        "exposed_admin",
+                        "verbose_errors",
+                        "default_credentials",
+                    ],
+                    "severity": "MEDIUM",
+                },
+            ],
         }
 
-    def run_comprehensive_security_scan(self, target_url: str) -> List[SecurityTestResult]:
+    def run_comprehensive_security_scan(
+        self, target_url: str
+    ) -> List[SecurityTestResult]:
         """Run comprehensive security scan on target system"""
         results = []
 
@@ -187,9 +205,7 @@ class SecurityTestingFramework:
 
         # Test patient record access
         idor_result = SecurityTestResult(
-            "IDOR - Patient Record Access",
-            "Insecure Direct Object Reference",
-            "HIGH"
+            "IDOR - Patient Record Access", "Insecure Direct Object Reference", "HIGH"
         )
 
         try:
@@ -200,18 +216,22 @@ class SecurityTestingFramework:
                 test_url = f"{target_url}/api/patients/{patient_id}/"
 
                 # Test with different user roles
-                for user_role in ['patient', 'doctor', 'admin', 'unauthorized']:
+                for user_role in ["patient", "doctor", "admin", "unauthorized"]:
                     headers = self._get_auth_headers_for_role(user_role)
 
                     response = requests.get(test_url, headers=headers, verify=False)
 
-                    if response.status_code == 200 and user_role in ['unauthorized']:
-                        idor_result.description = f"Unauthorized access to patient record {patient_id}"
-                        idor_result.affected_components.append(f"Patient API - ID {patient_id}")
+                    if response.status_code == 200 and user_role in ["unauthorized"]:
+                        idor_result.description = (
+                            f"Unauthorized access to patient record {patient_id}"
+                        )
+                        idor_result.affected_components.append(
+                            f"Patient API - ID {patient_id}"
+                        )
                         idor_result.remediation_steps = [
                             "Implement proper authorization checks",
                             "Use UUIDs instead of sequential IDs",
-                            "Add ownership verification"
+                            "Add ownership verification",
                         ]
                         idor_result.owasp_category = "A01:2021-Broken Access Control"
 
@@ -229,7 +249,7 @@ class SecurityTestingFramework:
         crypto_result = SecurityTestResult(
             "Cryptographic Failures - Password Storage",
             "Cryptographic Failures",
-            "CRITICAL"
+            "CRITICAL",
         )
 
         try:
@@ -237,13 +257,17 @@ class SecurityTestingFramework:
             test_users = User.objects.all()[:5]
 
             for user in test_users:
-                if user.password.startswith('md5$') or user.password.startswith('sha1$'):
-                    crypto_result.description = f"Weak password hash detected for user {user.username}"
+                if user.password.startswith("md5$") or user.password.startswith(
+                    "sha1$"
+                ):
+                    crypto_result.description = (
+                        f"Weak password hash detected for user {user.username}"
+                    )
                     crypto_result.affected_components.append(f"User - {user.username}")
                     crypto_result.remediation_steps = [
                         "Use bcrypt or Argon2 for password hashing",
                         "Implement proper password policies",
-                        "Add salting mechanism"
+                        "Add salting mechanism",
                     ]
                     crypto_result.owasp_category = "A02:2021-Cryptographic Failures"
                     break
@@ -254,7 +278,9 @@ class SecurityTestingFramework:
         results.append(crypto_result)
         return results
 
-    def _test_injection_vulnerabilities(self, target_url: str) -> List[SecurityTestResult]:
+    def _test_injection_vulnerabilities(
+        self, target_url: str
+    ) -> List[SecurityTestResult]:
         """Test for injection vulnerabilities"""
         results = []
 
@@ -274,11 +300,7 @@ class SecurityTestingFramework:
 
     def _test_sql_injection(self, target_url: str) -> SecurityTestResult:
         """Test for SQL injection vulnerabilities"""
-        result = SecurityTestResult(
-            "SQL Injection",
-            "Injection",
-            "CRITICAL"
-        )
+        result = SecurityTestResult("SQL Injection", "Injection", "CRITICAL")
 
         sql_payloads = [
             "' OR '1'='1",
@@ -286,14 +308,14 @@ class SecurityTestingFramework:
             "'; DROP TABLE users; --",
             "1' OR '1'='1",
             "admin'--",
-            "' OR SLEEP(10)--"
+            "' OR SLEEP(10)--",
         ]
 
         vulnerable_endpoints = [
-            '/api/patients/',
-            '/api/users/',
-            '/api/appointments/',
-            '/api/medical-records/'
+            "/api/patients/",
+            "/api/users/",
+            "/api/appointments/",
+            "/api/medical-records/",
         ]
 
         try:
@@ -302,33 +324,37 @@ class SecurityTestingFramework:
                     test_url = f"{target_url}{endpoint}"
 
                     # Test GET parameter injection
-                    params = {'search': payload}
+                    params = {"search": payload}
                     response = requests.get(test_url, params=params, verify=False)
 
-                    if response.status_code == 500 or 'error' in response.text.lower():
-                        result.description = f"SQL injection vulnerability in {endpoint}"
+                    if response.status_code == 500 or "error" in response.text.lower():
+                        result.description = (
+                            f"SQL injection vulnerability in {endpoint}"
+                        )
                         result.affected_components.append(endpoint)
                         result.remediation_steps = [
                             "Use parameterized queries",
                             "Implement input validation",
                             "Use Django ORM properly",
-                            "Add WAF protection"
+                            "Add WAF protection",
                         ]
                         result.owasp_category = "A03:2021-Injection"
                         break
 
                     # Test POST parameter injection
-                    data = {'query': payload}
+                    data = {"query": payload}
                     response = requests.post(test_url, json=data, verify=False)
 
-                    if response.status_code == 500 or 'error' in response.text.lower():
-                        result.description = f"SQL injection vulnerability in {endpoint}"
+                    if response.status_code == 500 or "error" in response.text.lower():
+                        result.description = (
+                            f"SQL injection vulnerability in {endpoint}"
+                        )
                         result.affected_components.append(endpoint)
                         result.remediation_steps = [
                             "Use parameterized queries",
                             "Implement input validation",
                             "Use Django ORM properly",
-                            "Add WAF protection"
+                            "Add WAF protection",
                         ]
                         result.owasp_category = "A03:2021-Injection"
                         break
@@ -340,24 +366,20 @@ class SecurityTestingFramework:
 
     def _test_xss_vulnerabilities(self, target_url: str) -> SecurityTestResult:
         """Test for XSS vulnerabilities"""
-        result = SecurityTestResult(
-            "Cross-Site Scripting (XSS)",
-            "Injection",
-            "HIGH"
-        )
+        result = SecurityTestResult("Cross-Site Scripting (XSS)", "Injection", "HIGH")
 
         xss_payloads = [
             "<script>alert('XSS')</script>",
             "<img src=x onerror=alert('XSS')>",
             "javascript:alert('XSS')",
             "<svg onload=alert('XSS')>",
-            "'\"><script>alert('XSS')</script>"
+            "'\"><script>alert('XSS')</script>",
         ]
 
         vulnerable_endpoints = [
-            '/api/patients/',
-            '/api/appointments/',
-            '/api/feedback/'
+            "/api/patients/",
+            "/api/appointments/",
+            "/api/feedback/",
         ]
 
         try:
@@ -367,9 +389,9 @@ class SecurityTestingFramework:
 
                     # Test input fields
                     test_data = {
-                        'first_name': payload,
-                        'last_name': 'Test',
-                        'notes': payload
+                        "first_name": payload,
+                        "last_name": "Test",
+                        "notes": payload,
                     }
 
                     response = requests.post(test_url, json=test_data, verify=False)
@@ -381,7 +403,7 @@ class SecurityTestingFramework:
                             "Implement input sanitization",
                             "Use output encoding",
                             "Implement CSP headers",
-                            "Use HTML escaping"
+                            "Use HTML escaping",
                         ]
                         result.owasp_category = "A03:2021-Injection"
                         break
@@ -393,24 +415,14 @@ class SecurityTestingFramework:
 
     def _test_command_injection(self, target_url: str) -> SecurityTestResult:
         """Test for command injection vulnerabilities"""
-        result = SecurityTestResult(
-            "Command Injection",
-            "Injection",
-            "CRITICAL"
-        )
+        result = SecurityTestResult("Command Injection", "Injection", "CRITICAL")
 
-        cmd_payloads = [
-            "; ls -la",
-            "| whoami",
-            "&& cat /etc/passwd",
-            "$(id)",
-            "`id`"
-        ]
+        cmd_payloads = ["; ls -la", "| whoami", "&& cat /etc/passwd", "$(id)", "`id`"]
 
         vulnerable_endpoints = [
-            '/api/system/backup/',
-            '/api/reports/generate/',
-            '/api/admin/execute/'
+            "/api/system/backup/",
+            "/api/reports/generate/",
+            "/api/admin/execute/",
         ]
 
         try:
@@ -418,21 +430,20 @@ class SecurityTestingFramework:
                 for payload in cmd_payloads:
                     test_url = f"{target_url}{endpoint}"
 
-                    test_data = {
-                        'command': payload,
-                        'filename': payload
-                    }
+                    test_data = {"command": payload, "filename": payload}
 
                     response = requests.post(test_url, json=test_data, verify=False)
 
-                    if 'root:' in response.text or 'uid=' in response.text:
-                        result.description = f"Command injection vulnerability in {endpoint}"
+                    if "root:" in response.text or "uid=" in response.text:
+                        result.description = (
+                            f"Command injection vulnerability in {endpoint}"
+                        )
                         result.affected_components.append(endpoint)
                         result.remediation_steps = [
                             "Avoid shell commands",
                             "Use subprocess with proper arguments",
                             "Implement input validation",
-                            "Use principle of least privilege"
+                            "Use principle of least privilege",
                         ]
                         result.owasp_category = "A03:2021-Injection"
                         break
@@ -463,22 +474,20 @@ class SecurityTestingFramework:
     def _test_phi_encryption(self, target_url: str) -> SecurityTestResult:
         """Test for proper PHI encryption"""
         result = SecurityTestResult(
-            "HIPAA Compliance - PHI Encryption",
-            "HIPAA Violation",
-            "CRITICAL"
+            "HIPAA Compliance - PHI Encryption", "HIPAA Violation", "CRITICAL"
         )
 
         try:
             # Test data transmission encryption
             response = requests.get(target_url, verify=False)
 
-            if not response.url.startswith('https://'):
+            if not response.url.startswith("https://"):
                 result.description = "Unencrypted HTTP connection detected"
                 result.affected_components.append("Network Layer")
                 result.remediation_steps = [
                     "Implement HTTPS for all connections",
                     "Use TLS 1.3",
-                    "Disable HTTP traffic"
+                    "Disable HTTP traffic",
                 ]
                 result.cve_references.append("CVE-2023-HIPAA-001")
 
@@ -493,19 +502,17 @@ class SecurityTestingFramework:
     def _test_audit_trail_completeness(self, target_url: str) -> SecurityTestResult:
         """Test for audit trail completeness"""
         result = SecurityTestResult(
-            "HIPAA Compliance - Audit Trail",
-            "HIPAA Violation",
-            "HIGH"
+            "HIPAA Compliance - Audit Trail", "HIPAA Violation", "HIGH"
         )
 
         try:
             # Test audit log creation
             test_actions = [
-                'patient_create',
-                'patient_update',
-                'patient_delete',
-                'medical_record_access',
-                'appointment_create'
+                "patient_create",
+                "patient_update",
+                "patient_delete",
+                "medical_record_access",
+                "appointment_create",
             ]
 
             for action in test_actions:
@@ -514,13 +521,15 @@ class SecurityTestingFramework:
                 response = requests.get(test_url, verify=False)
 
                 if response.status_code != 200:
-                    result.description = f"Audit trail not accessible or incomplete for {action}"
+                    result.description = (
+                        f"Audit trail not accessible or incomplete for {action}"
+                    )
                     result.affected_components.append("Audit System")
                     result.remediation_steps = [
                         "Implement comprehensive audit logging",
                         "Log all PHI access",
                         "Maintain audit logs for 6+ years",
-                        "Implement audit log protection"
+                        "Implement audit log protection",
                     ]
                     break
 
@@ -533,17 +542,17 @@ class SecurityTestingFramework:
         """Get authentication headers for different roles"""
         headers = {}
 
-        if role != 'unauthorized':
+        if role != "unauthorized":
             # Generate mock JWT token for testing
             payload = {
-                'user_id': 1,
-                'role': role,
-                'exp': datetime.now() + timedelta(hours=1)
+                "user_id": 1,
+                "role": role,
+                "exp": datetime.now() + timedelta(hours=1),
             }
 
             # This would normally use proper JWT secret
-            token = jwt.encode(payload, 'test-secret', algorithm='HS256')
-            headers['Authorization'] = f'Bearer {token}'
+            token = jwt.encode(payload, "test-secret", algorithm="HS256")
+            headers["Authorization"] = f"Bearer {token}"
 
         return headers
 
@@ -562,47 +571,49 @@ class HMSSecurityTestCase(HMSTestCase, SecurityTestingMixin, HealthcareDataMixin
     def create_test_users(self):
         """Create test users with different roles"""
         self.admin_user = User.objects.create_user(
-            username='admin',
-            password='securepassword123!',
-            role='admin',
-            email='admin@hms.com'
+            username="admin",
+            password="securepassword123!",
+            role="admin",
+            email="admin@hms.com",
         )
 
         self.doctor_user = User.objects.create_user(
-            username='doctor',
-            password='securepassword123!',
-            role='doctor',
-            email='doctor@hms.com'
+            username="doctor",
+            password="securepassword123!",
+            role="doctor",
+            email="doctor@hms.com",
         )
 
         self.patient_user = User.objects.create_user(
-            username='patient',
-            password='securepassword123!',
-            role='patient',
-            email='patient@hms.com'
+            username="patient",
+            password="securepassword123!",
+            role="patient",
+            email="patient@hms.com",
         )
 
         self.unauthorized_user = User.objects.create_user(
-            username='unauthorized',
-            password='securepassword123!',
-            role='unauthorized',
-            email='unauthorized@hms.com'
+            username="unauthorized",
+            password="securepassword123!",
+            role="unauthorized",
+            email="unauthorized@hms.com",
         )
 
     def run_security_scan(self):
         """Run comprehensive security scan"""
-        results = self.security_framework.run_comprehensive_security_scan(self.target_url)
+        results = self.security_framework.run_comprehensive_security_scan(
+            self.target_url
+        )
 
         # Log results
         for result in results:
             self.log_security_result(result)
 
         # Assert no critical vulnerabilities
-        critical_vulnerabilities = [r for r in results if r.severity == 'CRITICAL']
+        critical_vulnerabilities = [r for r in results if r.severity == "CRITICAL"]
         self.assertEqual(
             len(critical_vulnerabilities),
             0,
-            f"Found {len(critical_vulnerabilities)} critical security vulnerabilities"
+            f"Found {len(critical_vulnerabilities)} critical security vulnerabilities",
         )
 
         return results
@@ -640,25 +651,25 @@ def test_users():
     users = {}
 
     # Create test users
-    users['admin'] = User.objects.create_user(
-        username='security_admin',
-        password='SecurePass123!',
-        role='admin',
-        email='admin@security.test'
+    users["admin"] = User.objects.create_user(
+        username="security_admin",
+        password="SecurePass123!",
+        role="admin",
+        email="admin@security.test",
     )
 
-    users['doctor'] = User.objects.create_user(
-        username='security_doctor',
-        password='SecurePass123!',
-        role='doctor',
-        email='doctor@security.test'
+    users["doctor"] = User.objects.create_user(
+        username="security_doctor",
+        password="SecurePass123!",
+        role="doctor",
+        email="doctor@security.test",
     )
 
-    users['patient'] = User.objects.create_user(
-        username='security_patient',
-        password='SecurePass123!',
-        role='patient',
-        email='patient@security.test'
+    users["patient"] = User.objects.create_user(
+        username="security_patient",
+        password="SecurePass123!",
+        role="patient",
+        email="patient@security.test",
     )
 
     return users
@@ -667,19 +678,7 @@ def test_users():
 # Security test markers
 def pytest_configure(config):
     """Configure pytest with security markers"""
-    config.addinivalue_line(
-        "markers",
-        "security: Mark test as security test"
-    )
-    config.addinivalue_line(
-        "markers",
-        "penetration: Mark test as penetration test"
-    )
-    config.addinivalue_line(
-        "markers",
-        "hipaa: Mark test as HIPAA compliance test"
-    )
-    config.addinivalue_line(
-        "markers",
-        "owasp: Mark test as OWASP Top 10 test"
-    )
+    config.addinivalue_line("markers", "security: Mark test as security test")
+    config.addinivalue_line("markers", "penetration: Mark test as penetration test")
+    config.addinivalue_line("markers", "hipaa: Mark test as HIPAA compliance test")
+    config.addinivalue_line("markers", "owasp: Mark test as OWASP Top 10 test")

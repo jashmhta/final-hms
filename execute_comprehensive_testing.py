@@ -1,17 +1,24 @@
+"""
+execute_comprehensive_testing module
+"""
+
 import asyncio
 import json
 import logging
 import os
-import sys
-import time
-import subprocess
-import threading
-import requests
 import sqlite3
-import pandas as pd
+import subprocess
+import sys
+import threading
+import time
 from datetime import datetime
-from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import pandas as pd
+import requests
+
+
 class ComprehensiveTestingExecutor:
     def __init__(self):
         self.base_url = os.getenv('HMS_BASE_URL', 'http://localhost:8000')
@@ -325,10 +332,11 @@ class ComprehensiveTestingExecutor:
         self.logger.info("🔄 Testing basic workflows")
         workflow_tests = []
         try:
-            import subprocess
             import json
-            import requests
             import sqlite3
+            import subprocess
+
+            import requests
             workflow_tests.append({
                 'test': 'Python imports',
                 'status': 'passed'
@@ -516,7 +524,6 @@ class ComprehensiveTestingExecutor:
     async def test_basic_security(self):
         self.logger.info("🔍 Testing basic security")
         security_checks = []
-        sensitive_patterns = ['*.key', '*.pem', '*.p12', 'password', 'secret', 'token']
         sensitive_files = []
         for pattern in sensitive_patterns:
             if '*' in pattern:
@@ -535,8 +542,6 @@ class ComprehensiveTestingExecutor:
             'sensitive_files': sensitive_files[:10]  
         })
         python_files = list(self.project_root.rglob("*.py"))
-        secret_patterns = ['password', 'secret', 'key', 'token', 'api_key']
-        files_with_secrets = []
         for py_file in python_files:
             try:
                 with open(py_file, 'r') as f:
@@ -640,9 +645,6 @@ class ComprehensiveTestingExecutor:
         documentation_score = 0
         if doc_files:
             documentation_score += 50
-            key_docs = ['README.md', 'LICENSE', 'CONTRIBUTING.md', 'CHANGELOG.md']
-            existing_key_docs = sum(1 for doc in key_docs if (self.project_root / doc).exists())
-            documentation_score += (existing_key_docs / len(key_docs)) * 50
         self.test_results['accessibility']['documentation'] = {
             'status': 'passed' if documentation_score >= 70 else 'failed',
             'documentation_score': documentation_score,
@@ -657,8 +659,19 @@ class ComprehensiveTestingExecutor:
             try:
                 with open(py_file, 'r') as f:
                     content = f.read()
-                if 'Execute database testsTest database filesTest database schemasTest database migrationsExecute API testsTest API filesTest API documentationTest API structureExecute code quality testsTest code styleTest code complexityTest test coverageExecute deployment testsTest deployment configurationTest deployment scriptsTest deployment readinessCalculate comprehensive quality metricsGenerate comprehensive final reportGenerate HTML report
-        <!DOCTYPE html>
+                if "accessibility" in content.lower() or "docstring" in content.lower():
+                    accessible_files += 1
+            except Exception as e:
+                self.logger.warning(f"Could not read file {py_file}: {e}")
+        accessibility_score = (
+            (accessible_files / len(python_files) * 100) if python_files else 0
+        )
+        self.test_results["accessibility_testing"]["code_accessibility"] = {
+            "status": "passed" if accessibility_score >= 70 else "failed",
+            "accessibility_score": accessibility_score,
+            "accessible_files": accessible_files,
+            "total_files": len(python_files),
+        }
         <html>
         <head>
             <title>HMS Enterprise-Grade System - Comprehensive Quality Report</title>

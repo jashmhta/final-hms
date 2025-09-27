@@ -1,10 +1,18 @@
+"""
+c39aff43830c_init_biomedical_equipment module
+"""
+
 from typing import Sequence, Union
+
 import sqlalchemy as sa
 from alembic import op
+
 revision: str = "c39aff43830c"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
+
+
 def upgrade() -> None:
     op.create_table(
         "users",
@@ -12,5 +20,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
+
+
 def downgrade() -> None:
     op.drop_table("users")

@@ -72,7 +72,7 @@ repos:
     rev: v2.11
     hooks:
       - id: vulture
-        args: [--min-confidence, 70, --ignore-names, test_*]
+        args: [--min-confidence=70, --ignore-names=test_*]
   - repo: https://github.com/asottile/dead
     rev: v1.5.2
     hooks:

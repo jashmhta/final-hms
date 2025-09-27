@@ -1,4 +1,8 @@
-from rest_framework.permissions import BasePermission
+"""
+permissions module
+"""
+
+from rest_framework.permissions import BasePermission, IsAuthenticated
 
 
 class RolePermission(BasePermission):
@@ -9,9 +13,21 @@ class RolePermission(BasePermission):
         user = request.user
         if not user or not user.is_authenticated:
             return False
-        if getattr(user, "is_superuser", False) or getattr(user, "role", None) == "SUPER_ADMIN":
+        if (
+            getattr(user, "is_superuser", False)
+            or getattr(user, "role", None) == "SUPER_ADMIN"
+        ):
             return True
         return getattr(user, "role", None) in roles
+
+
+class IsSuperAdmin(IsAuthenticated):
+    def has_permission(self, request, view):
+        base = super().has_permission(request, view)
+        return base and (
+            request.user.is_superuser
+            or getattr(request.user, "role", None) == "SUPER_ADMIN"
+        )
 
 
 class ModuleEnabledPermission(BasePermission):
@@ -22,7 +38,10 @@ class ModuleEnabledPermission(BasePermission):
         user = request.user
         if not user or not user.is_authenticated:
             return False
-        if getattr(user, "is_superuser", False) or getattr(user, "role", None) == "SUPER_ADMIN":
+        if (
+            getattr(user, "is_superuser", False)
+            or getattr(user, "role", None) == "SUPER_ADMIN"
+        ):
             return True
         hospital = getattr(user, "hospital", None)
         if not hospital:

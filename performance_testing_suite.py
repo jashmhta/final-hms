@@ -1,26 +1,34 @@
+"""
+performance_testing_suite module
+"""
+
 import asyncio
 import json
 import logging
-import time
+import multiprocessing
+import os
+import secrets
+import sqlite3
 import statistics
+import subprocess
+import sys
 import threading
+import time
+import timeit
 import tracemalloc
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from contextlib import contextmanager
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Tuple
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-import requests
-import psutil
+from typing import Any, Dict, List, Optional, Tuple
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from dataclasses import dataclass, asdict
-import sqlite3
-import os
-import sys
-import subprocess
-import multiprocessing
-import timeit
-from contextlib import contextmanager
+import psutil
+import requests
+
+
 @dataclass
 class PerformanceMetrics:
     timestamp: str
@@ -204,7 +212,7 @@ class PerformanceTestSuite:
             ('/api/billing/', 0.05)
         ]
         import random
-        rand_val = random.random()
+        rand_val = secrets.random()
         cumulative = 0
         for endpoint, probability in endpoints:
             cumulative += probability
@@ -216,50 +224,50 @@ class PerformanceTestSuite:
         import uuid
         payloads = {
             '/api/auth/login/': {
-                'username': f'doctor{random.randint(1, 100)}@hospital.com',
+                'username': f'doctor{secrets.secrets.randbelow(1, 100)}@hospital.com',
                 'password': 'securepassword123'
             },
             '/api/patients/': {
-                'first_name': f'Patient{random.randint(1, 1000)}',
-                'last_name': f'Test{random.randint(1, 1000)}',
+                'first_name': f'Patient{secrets.secrets.randbelow(1, 1000)}',
+                'last_name': f'Test{secrets.secrets.randbelow(1, 1000)}',
                 'date_of_birth': '1990-01-01',
-                'gender': random.choice(['M', 'F']),
-                'phone': f'555-{random.randint(100, 999)}-{random.randint(1000, 9999)}',
-                'email': f'patient{random.randint(1, 1000)}@example.com'
+                'gender': secrets.choice(['M', 'F']),
+                'phone': f'555-{secrets.secrets.randbelow(100, 999)}-{secrets.secrets.randbelow(1000, 9999)}',
+                'email': f'patient{secrets.secrets.randbelow(1, 1000)}@example.com'
             },
             '/api/appointments/': {
-                'patient_id': random.randint(1, 1000),
-                'doctor_id': random.randint(1, 100),
+                'patient_id': secrets.secrets.randbelow(1, 1000),
+                'doctor_id': secrets.secrets.randbelow(1, 100),
                 'appointment_date': '2024-01-15T10:00:00Z',
-                'appointment_type': random.choice(['CONSULTATION', 'FOLLOW_UP', 'EMERGENCY']),
+                'appointment_type': secrets.choice(['CONSULTATION', 'FOLLOW_UP', 'EMERGENCY']),
                 'reason': 'Regular checkup'
             },
             '/api/ehr/': {
-                'patient_id': random.randint(1, 1000),
-                'diagnosis': f'Diagnosis {random.randint(1, 50)}',
-                'treatment': f'Treatment {random.randint(1, 30)}',
+                'patient_id': secrets.secrets.randbelow(1, 1000),
+                'diagnosis': f'Diagnosis {secrets.secrets.randbelow(1, 50)}',
+                'treatment': f'Treatment {secrets.secrets.randbelow(1, 30)}',
                 'notes': 'Patient condition stable'
             },
             '/api/pharmacy/': {
-                'patient_id': random.randint(1, 1000),
-                'medication': f'Medication {random.randint(1, 100)}',
-                'dosage': f'{random.randint(1, 10)}mg',
-                'frequency': random.choice(['daily', 'twice_daily', 'three_times_daily']),
-                'duration': f'{random.randint(1, 30)} days'
+                'patient_id': secrets.secrets.randbelow(1, 1000),
+                'medication': f'Medication {secrets.secrets.randbelow(1, 100)}',
+                'dosage': f'{secrets.secrets.randbelow(1, 10)}mg',
+                'frequency': secrets.choice(['daily', 'twice_daily', 'three_times_daily']),
+                'duration': f'{secrets.secrets.randbelow(1, 30)} days'
             },
             '/api/lab/': {
-                'patient_id': random.randint(1, 1000),
-                'test_type': random.choice(['CBC', 'CMP', 'LIPID_PANEL', 'TSH', 'HBA1C']),
+                'patient_id': secrets.secrets.randbelow(1, 1000),
+                'test_type': secrets.choice(['CBC', 'CMP', 'LIPID_PANEL', 'TSH', 'HBA1C']),
                 'test_date': '2024-01-15',
                 'results': 'Normal range',
                 'status': 'COMPLETED'
             },
             '/api/billing/': {
-                'patient_id': random.randint(1, 1000),
-                'appointment_id': random.randint(1, 500),
-                'amount': round(random.uniform(100, 1000), 2),
-                'insurance_provider': random.choice(['BLUE_CROSS', 'AETNA', 'UNITED', 'CIGNA']),
-                'billing_status': random.choice(['PENDING', 'APPROVED', 'PAID'])
+                'patient_id': secrets.secrets.randbelow(1, 1000),
+                'appointment_id': secrets.secrets.randbelow(1, 500),
+                'amount': round(secrets.uniform(100, 1000), 2),
+                'insurance_provider': secrets.choice(['BLUE_CROSS', 'AETNA', 'UNITED', 'CIGNA']),
+                'billing_status': secrets.choice(['PENDING', 'APPROVED', 'PAID'])
             }
         }
         return payloads.get(endpoint, {'test': 'data'})
@@ -595,7 +603,7 @@ class ResourceMonitor:
                 host="localhost",
                 database="hms_enterprise",
                 user="hms_user",
-                password="password"
+                password = os.getenv(\'PASSWORD\', \'password\')
             )
             cursor = conn.cursor()
             cursor.execute("SELECT count(*) FROM pg_stat_activity;")

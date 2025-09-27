@@ -1,59 +1,18 @@
 version: '3.8'
+
 services:
-  db:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: hms_enterprise
-      POSTGRES_USER: hms_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure-postgres-password}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hms_user -d hms_enterprise"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-  backend:
+  web:
     build: .
     ports:
       - "8000:8000"
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     environment:
-      - DEBUG=True
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_NAME=hms_enterprise
-      - DB_USER=hms_user
-      - DB_PASSWORD=${DB_PASSWORD:-secure-postgres-password}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-    volumes:
-      - .:/app
-    command: python manage.py runserver 0.0.0.0:8000
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
+      - DJANGO_SETTINGS_MODULE=hms.settings
     depends_on:
-      - backend
+      - db
+
+  db:
+    image: postgres:13
     environment:
-      - REACT_APP_API_URL=http://localhost:8000
-volumes:
-  postgres_data:
+      - POSTGRES_DB=hms
+      - POSTGRES_USER=hms_user
+      - POSTGRES_PASSWORD=hms_password

@@ -1,10 +1,16 @@
+"""
+main module
+"""
+
 import os
 from datetime import datetime, timedelta
+
 import requests
 from fastapi import Depends, FastAPI, Header, HTTPException
 from jose import JWTError, jwt
 from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy import create_engine, text
+
 app = FastAPI(title="Analytics Service", version="1.2.0")
 Instrumentator().instrument(app).expose(app)
 JWT_SECRET = os.getenv("JWT_SECRET", "change-me")
@@ -14,6 +20,8 @@ DATABASE_URL = os.getenv(
 )
 OPA_URL = os.getenv("OPA_URL")
 engine = create_engine(DATABASE_URL)
+
+
 def require_auth(authorization: str | None = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -22,9 +30,13 @@ def require_auth(authorization: str | None = Header(None)):
         return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
 @app.get("/api/analytics/overview")
 def overview(_: dict = Depends(require_auth)):
     if OPA_URL:
@@ -64,6 +76,8 @@ def overview(_: dict = Depends(require_auth)):
         "appointments_today": int(appt_today),
         "revenue_cents": int(revenue),
     }
+
+
 @app.get("/api/analytics/appointments_trend")
 def appointments_trend(days: int = 14, _: dict = Depends(require_auth)):
     if days <= 0 or days > 60:
@@ -86,6 +100,8 @@ def appointments_trend(days: int = 14, _: dict = Depends(require_auth)):
             out.append({"date": d.isoformat(), "appointments": int(cnt)})
             d = d + timedelta(days=1)
     return out
+
+
 @app.get("/api/analytics/revenue_trend")
 def revenue_trend(days: int = 14, _: dict = Depends(require_auth)):
     if days <= 0 or days > 60:
@@ -108,6 +124,8 @@ def revenue_trend(days: int = 14, _: dict = Depends(require_auth)):
             out.append({"date": d.isoformat(), "revenue_cents": int(rev)})
             d = d + timedelta(days=1)
     return out
+
+
 @app.get("/api/analytics/department_revenue")
 def department_revenue(_: dict = Depends(require_auth)):
     with engine.connect() as conn:

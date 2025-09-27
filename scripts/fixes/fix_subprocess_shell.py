@@ -1,8 +1,14 @@
+"""
+fix_subprocess_shell module
+"""
+
 import ast
 import os
 import re
 import shutil
 from pathlib import Path
+
+
 def fix_subprocess_shell(filepath):
     try:
         with open(filepath, "r") as f:
@@ -10,6 +16,7 @@ def fix_subprocess_shell(filepath):
         backup_path = filepath.with_suffix(".py.backup")
         shutil.copy2(filepath, backup_path)
         patterns = [
+            r"subprocess\.run\(([^)]*)shell=True([^)]*)\)",
             r"subprocess\.call\(([^)]*)shell=True([^)]*)\)",
             r"subprocess\.check_call\(([^)]*)shell=True([^)]*)\)",
             r"subprocess\.check_output\(([^)]*)shell=True([^)]*)\)",
@@ -31,11 +38,9 @@ def fix_subprocess_shell(filepath):
             print(f"Fixed subprocess shell=True in {filepath} (backup: {backup_path})")
     except Exception as e:
         print(f"Error fixing {filepath}: {e}")
-root_dir = Path("/root/hms-enterprise-grade/backend")
-backend_services = ["appointments", "billing", "patients", "lab", "radiology", "ehr"]
-for service in backend_services:
-    service_path = root_dir / service
-    if service_path.exists():
-        for py_file in service_path.rglob("*.py"):
-            fix_subprocess_shell(py_file)
+
+
+root_dir = Path(".")
+for py_file in root_dir.rglob("*.py"):
+    fix_subprocess_shell(py_file)
 print("Subprocess shell fix complete")

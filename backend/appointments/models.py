@@ -1,3 +1,7 @@
+"""
+models module
+"""
+
 import uuid
 from datetime import timedelta
 
@@ -72,7 +76,9 @@ class AppointmentTemplate(TenantModel):
     equipment_required = models.JSONField(default=list, blank=True)
     advance_booking_days = models.PositiveIntegerField(default=1)
     cancellation_hours = models.PositiveIntegerField(default=24)
-    base_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    base_cost = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -105,9 +111,15 @@ class Resource(TenantModel):
     capacity = models.PositiveIntegerField(default=1)
     is_bookable = models.BooleanField(default=True)
     requires_approval = models.BooleanField(default=False)
-    min_booking_duration = models.PositiveIntegerField(default=15, help_text="Minimum booking duration in minutes")
-    max_booking_duration = models.PositiveIntegerField(default=480, help_text="Maximum booking duration in minutes")
-    hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    min_booking_duration = models.PositiveIntegerField(
+        default=15, help_text="Minimum booking duration in minutes"
+    )
+    max_booking_duration = models.PositiveIntegerField(
+        default=480, help_text="Maximum booking duration in minutes"
+    )
+    hourly_rate = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -136,13 +148,17 @@ class Appointment(TenantModel):
         related_name="primary_appointments",
         null=True,
     )
-    additional_providers = models.ManyToManyField("users.User", blank=True, related_name="additional_appointments")
+    additional_providers = models.ManyToManyField(
+        "users.User", blank=True, related_name="additional_appointments"
+    )
     appointment_type = models.CharField(
         max_length=20,
         choices=AppointmentType.choices,
         default=AppointmentType.ROUTINE,
     )
-    template = models.ForeignKey(AppointmentTemplate, on_delete=models.SET_NULL, null=True, blank=True)
+    template = models.ForeignKey(
+        AppointmentTemplate, on_delete=models.SET_NULL, null=True, blank=True
+    )
     start_at = models.DateTimeField()
     end_at = models.DateTimeField()
     duration_minutes = models.PositiveIntegerField(default=30)
@@ -151,7 +167,9 @@ class Appointment(TenantModel):
         choices=AppointmentStatus.choices,
         default=AppointmentStatus.SCHEDULED,
     )
-    priority = models.CharField(max_length=10, choices=Priority.choices, default=Priority.NORMAL)
+    priority = models.CharField(
+        max_length=10, choices=Priority.choices, default=Priority.NORMAL
+    )
     reason = models.CharField(max_length=255, blank=True)
     chief_complaint = EncryptedTextField(blank=True)
     clinical_notes = EncryptedTextField(blank=True)
@@ -181,10 +199,16 @@ class Appointment(TenantModel):
     )
     location = models.CharField(max_length=200, blank=True)
     room = models.CharField(max_length=100, blank=True)
-    resources = models.ManyToManyField(Resource, blank=True, through="AppointmentResource")
+    resources = models.ManyToManyField(
+        Resource, blank=True, through="AppointmentResource"
+    )
     insurance_authorization = models.CharField(max_length=100, blank=True)
-    copay_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    estimated_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    copay_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    estimated_cost = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
     reminder_sent = models.BooleanField(default=False)
     reminder_sent_at = models.DateTimeField(null=True, blank=True)
     patient_instructions = models.TextField(blank=True)
@@ -218,7 +242,9 @@ class Appointment(TenantModel):
     cancellation_reason = models.CharField(max_length=200, blank=True)
     cancellation_notes = models.TextField(blank=True)
     no_show_at = models.DateTimeField(null=True, blank=True)
-    no_show_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    no_show_fee = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
     is_confidential = models.BooleanField(default=False)
     special_instructions = models.TextField(blank=True)
     internal_notes = models.TextField(blank=True)
@@ -266,7 +292,9 @@ class Appointment(TenantModel):
                     AppointmentStatus.IN_PROGRESS,
                 ],
             ).exclude(pk=self.pk)
-            overlapping = overlapping.filter(start_at__lt=self.end_at, end_at__gt=self.start_at)
+            overlapping = overlapping.filter(
+                start_at__lt=self.end_at, end_at__gt=self.start_at
+            )
             if overlapping.exists():
                 raise ValidationError("Overlapping appointment for this provider")
 
@@ -284,7 +312,10 @@ class Appointment(TenantModel):
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
-        return f"{self.patient} with {self.primary_provider} at " f"{timezone.localtime(self.start_at)}"
+        return (
+            f"{self.patient} with {self.primary_provider} at "
+            f"{timezone.localtime(self.start_at)}"
+        )
 
     def get_duration_display(self):
         hours = self.duration_minutes // 60
@@ -356,7 +387,9 @@ class AppointmentResource(models.Model):
             end_time__gt=self.start_time,
         ).exclude(pk=self.pk)
         if overlapping.exists():
-            raise ValidationError(f"Resource {self.resource.name} is not available during this time")
+            raise ValidationError(
+                f"Resource {self.resource.name} is not available during this time"
+            )
 
 
 class WaitList(TenantModel):
@@ -365,12 +398,18 @@ class WaitList(TenantModel):
         on_delete=models.CASCADE,
         related_name="waitlist_entries",
     )
-    provider = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="waitlist_entries")
+    provider = models.ForeignKey(
+        "users.User", on_delete=models.CASCADE, related_name="waitlist_entries"
+    )
     appointment_type = models.CharField(max_length=20, choices=AppointmentType.choices)
     preferred_date_from = models.DateField()
     preferred_date_to = models.DateField()
-    preferred_times = models.JSONField(default=list, help_text="List of preferred time slots")
-    priority = models.CharField(max_length=10, choices=Priority.choices, default=Priority.NORMAL)
+    preferred_times = models.JSONField(
+        default=list, help_text="List of preferred time slots"
+    )
+    priority = models.CharField(
+        max_length=10, choices=Priority.choices, default=Priority.NORMAL
+    )
     reason = models.CharField(max_length=255, blank=True)
     notes = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
@@ -397,7 +436,9 @@ class WaitList(TenantModel):
 
 
 class AppointmentReminder(models.Model):
-    appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name="reminders")
+    appointment = models.ForeignKey(
+        Appointment, on_delete=models.CASCADE, related_name="reminders"
+    )
     reminder_type = models.CharField(
         max_length=15,
         choices=[
@@ -450,7 +491,9 @@ class AppointmentReminder(models.Model):
 
 
 class AppointmentHistory(models.Model):
-    appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name="history")
+    appointment = models.ForeignKey(
+        Appointment, on_delete=models.CASCADE, related_name="history"
+    )
     action = models.CharField(
         max_length=15,
         choices=[
@@ -488,7 +531,9 @@ class SurgeryType(TenantModel):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     estimated_duration = models.PositiveIntegerField(default=60)
-    complexity_level = models.CharField(max_length=20, choices=[("LOW", "Low"), ("MEDIUM", "Medium"), ("HIGH", "High")])
+    complexity_level = models.CharField(
+        max_length=20, choices=[("LOW", "Low"), ("MEDIUM", "Medium"), ("HIGH", "High")]
+    )
     requires_anesthesia = models.BooleanField(default=True)
     anesthesia_type = models.CharField(max_length=50, blank=True)
     required_equipment = models.JSONField(default=list, blank=True)
@@ -529,7 +574,9 @@ class OTSlot(TenantModel):
     surgery_type_allowed = models.ManyToManyField(SurgeryType, blank=True)
     requires_anesthesia = models.BooleanField(default=True)
     equipment_needed = models.JSONField(default=list, blank=True)
-    scheduled_by = models.ForeignKey("users.User", on_delete=models.SET_NULL, null=True, blank=True)
+    scheduled_by = models.ForeignKey(
+        "users.User", on_delete=models.SET_NULL, null=True, blank=True
+    )
     notes = models.TextField(blank=True)
 
     class Meta:
@@ -547,7 +594,9 @@ class OTSlot(TenantModel):
 
     def save(self, *args, **kwargs):
         if self.start_time and self.end_time:
-            self.duration_minutes = int((self.end_time - self.start_time).total_seconds() / 60)
+            self.duration_minutes = int(
+                (self.end_time - self.start_time).total_seconds() / 60
+            )
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -572,8 +621,12 @@ class OTSlot(TenantModel):
 
 
 class OTBooking(TenantModel):
-    appointment = models.OneToOneField(Appointment, on_delete=models.CASCADE, related_name="ot_booking")
-    ot_slot = models.ForeignKey(OTSlot, on_delete=models.CASCADE, related_name="bookings")
+    appointment = models.OneToOneField(
+        Appointment, on_delete=models.CASCADE, related_name="ot_booking"
+    )
+    ot_slot = models.ForeignKey(
+        OTSlot, on_delete=models.CASCADE, related_name="bookings"
+    )
     lead_surgeon = models.ForeignKey(
         "users.User",
         on_delete=models.PROTECT,
@@ -632,7 +685,9 @@ class OTBooking(TenantModel):
     recovery_room_assigned = models.BooleanField(default=False)
     post_op_orders = models.TextField(blank=True)
     pain_management_plan = models.TextField(blank=True)
-    status = models.CharField(max_length=20, choices=OTStatus.choices, default=OTStatus.SCHEDULED)
+    status = models.CharField(
+        max_length=20, choices=OTStatus.choices, default=OTStatus.SCHEDULED
+    )
     booked_by = models.ForeignKey(
         "users.User",
         on_delete=models.SET_NULL,
@@ -648,7 +703,9 @@ class OTBooking(TenantModel):
         related_name="confirmed_ot_bookings",
     )
     confirmed_at = models.DateTimeField(null=True, blank=True)
-    priority = models.CharField(max_length=10, choices=Priority.choices, default=Priority.NORMAL)
+    priority = models.CharField(
+        max_length=10, choices=Priority.choices, default=Priority.NORMAL
+    )
     is_confidential = models.BooleanField(default=False)
     special_instructions = models.TextField(blank=True)
 
@@ -666,7 +723,10 @@ class OTBooking(TenantModel):
                 and self.appointment.end_at == self.ot_slot.end_time
             ):
                 raise ValidationError("Appointment timing must match OT slot")
-        if self.ot_slot and self.surgery_type not in self.ot_slot.surgery_type_allowed.all():
+        if (
+            self.ot_slot
+            and self.surgery_type not in self.ot_slot.surgery_type_allowed.all()
+        ):
             raise ValidationError("Surgery type not allowed in this OT slot")
         if self.estimated_duration > self.ot_slot.duration_minutes:
             raise ValidationError("Estimated duration exceeds slot time")
@@ -675,7 +735,9 @@ class OTBooking(TenantModel):
         if self.ot_slot:
             if self.pk is None:
                 self.ot_slot.scheduled_cases += 1
-                self.ot_slot.is_available = self.ot_slot.scheduled_cases < self.ot_slot.max_cases
+                self.ot_slot.is_available = (
+                    self.ot_slot.scheduled_cases < self.ot_slot.max_cases
+                )
                 self.ot_slot.save()
             else:
                 old = OTBooking.objects.get(pk=self.pk)
@@ -689,12 +751,16 @@ class OTBooking(TenantModel):
     def delete(self, *args, **kwargs):
         if self.ot_slot:
             self.ot_slot.scheduled_cases -= 1
-            self.ot_slot.is_available = self.ot_slot.scheduled_cases < self.ot_slot.max_cases
+            self.ot_slot.is_available = (
+                self.ot_slot.scheduled_cases < self.ot_slot.max_cases
+            )
             self.ot_slot.save()
         super().delete(*args, **kwargs)
 
     def __str__(self):
-        return f"OT Booking {self.appointment.appointment_number} - {self.procedure_name}"
+        return (
+            f"OT Booking {self.appointment.appointment_number} - {self.procedure_name}"
+        )
 
     def is_ready_for_surgery(self):
         return (

@@ -1,3 +1,7 @@
+"""
+test_hipaa_compliance module
+"""
+
 import pytest
 from encrypted_model_fields.fields import EncryptedCharField
 
@@ -31,7 +35,9 @@ class HIPAAComplianceTest(TestCase):
         )
         self.assertEqual(patient.phone_primary, "123-45-6789")
         with connection.cursor() as cursor:
-            cursor.execute("SELECT phone_primary FROM patients_patient WHERE id = %s", [patient.id])
+            cursor.execute(
+                "SELECT phone_primary FROM patients_patient WHERE id = %s", [patient.id]
+            )
             raw_value = cursor.fetchone()[0]
             self.assertNotEqual(raw_value, "123-45-6789")
             self.assertGreater(len(raw_value), len("123-45-6789"))

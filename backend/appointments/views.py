@@ -1,3 +1,7 @@
+"""
+views module
+"""
+
 from datetime import datetime, time, timedelta
 
 from django_filters.rest_framework import DjangoFilterBackend
@@ -170,7 +174,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     prefetch_related=[
                         Prefetch(
                             "patient",
-                            queryset=Patient.objects.only("id", "first_name", "last_name", "medical_record_number"),
+                            queryset=Patient.objects.only(
+                                "id", "first_name", "last_name", "medical_record_number"
+                            ),
                         ),
                         Prefetch(
                             "primary_provider",
@@ -184,11 +190,17 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     queryset = qs.none()
                 else:
                     queryset = qs.filter(hospital_id=user.hospital_id)
-                if not (user.is_superuser or getattr(user, "role", None) in ["SUPER_ADMIN", "HOSPITAL_ADMIN", "ADMIN"]):
+                if not (
+                    user.is_superuser
+                    or getattr(user, "role", None)
+                    in ["SUPER_ADMIN", "HOSPITAL_ADMIN", "ADMIN"]
+                ):
                     if hasattr(user, "patient_profile"):
                         queryset = queryset.filter(patient=user.patient_profile)
                     elif user.role in ["DOCTOR", "NURSE"]:
-                        queryset = queryset.filter(Q(primary_provider=user) | Q(additional_providers=user)).distinct()
+                        queryset = queryset.filter(
+                            Q(primary_provider=user) | Q(additional_providers=user)
+                        ).distinct()
                     else:
                         queryset = queryset.none()
                 cache.set(cache_key, queryset.query.where, timeout=300, version=1)
@@ -204,9 +216,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         user = self.request.user
         provided_hospital = serializer.validated_data.get("hospital")
         if not (
-            user.is_superuser or getattr(user, "hospital_id", None) or getattr(user, "role", None) == "SUPER_ADMIN"
+            user.is_superuser
+            or getattr(user, "hospital_id", None)
+            or getattr(user, "role", None) == "SUPER_ADMIN"
         ):
-            raise PermissionDenied("User must belong to a hospital to create appointments")
+            raise PermissionDenied(
+                "User must belong to a hospital to create appointments"
+            )
         if (
             provided_hospital
             and not (user.is_superuser or user.role == "SUPER_ADMIN")
@@ -214,7 +230,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         ):
             raise PermissionDenied("Cannot create appointment for another hospital")
         serializer.save(
-            hospital_id=(provided_hospital.id if provided_hospital else user.hospital_id),
+            hospital_id=(
+                provided_hospital.id if provided_hospital else user.hospital_id
+            ),
             scheduled_by=user,
         )
 
@@ -245,21 +263,35 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def statistics(self, request):
         queryset = self.get_queryset()
-        start_date = request.query_params.get("start_date", timezone.now().date() - timedelta(days=30))
+        start_date = request.query_params.get(
+            "start_date", timezone.now().date() - timedelta(days=30)
+        )
         end_date = request.query_params.get("end_date", timezone.now().date())
-        stats_queryset = queryset.filter(start_at__date__gte=start_date, start_at__date__lte=end_date)
+        stats_queryset = queryset.filter(
+            start_at__date__gte=start_date, start_at__date__lte=end_date
+        )
         stats = {
             "total_appointments": stats_queryset.count(),
-            "completed": stats_queryset.filter(status=AppointmentStatus.COMPLETED).count(),
-            "cancelled": stats_queryset.filter(status=AppointmentStatus.CANCELLED).count(),
+            "completed": stats_queryset.filter(
+                status=AppointmentStatus.COMPLETED
+            ).count(),
+            "cancelled": stats_queryset.filter(
+                status=AppointmentStatus.CANCELLED
+            ).count(),
             "no_shows": stats_queryset.filter(status=AppointmentStatus.NO_SHOW).count(),
-            "scheduled": stats_queryset.filter(status=AppointmentStatus.SCHEDULED).count(),
-            "confirmed": stats_queryset.filter(status=AppointmentStatus.CONFIRMED).count(),
-            "by_type": list(stats_queryset.values("appointment_type").annotate(count=Count("id"))),
+            "scheduled": stats_queryset.filter(
+                status=AppointmentStatus.SCHEDULED
+            ).count(),
+            "confirmed": stats_queryset.filter(
+                status=AppointmentStatus.CONFIRMED
+            ).count(),
+            "by_type": list(
+                stats_queryset.values("appointment_type").annotate(count=Count("id"))
+            ),
             "by_provider": list(
-                stats_queryset.values("primary_provider__first_name", "primary_provider__last_name").annotate(
-                    count=Count("id")
-                )[:10]
+                stats_queryset.values(
+                    "primary_provider__first_name", "primary_provider__last_name"
+                ).annotate(count=Count("id"))[:10]
             ),
         }
         return Response(stats)
@@ -458,7 +490,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         slot_minutes = settings.DEFAULT_APPOINTMENT_SLOT_MINUTES
         from hr.models import DutyRoster
 
-        roster = DutyRoster.objects.filter(user_id=doctor_id, date=target_date).select_related("shift").first()
+        roster = (
+            DutyRoster.objects.filter(user_id=doctor_id, date=target_date)
+            .select_related("shift")
+            .first()
+        )
         if roster and roster.shift:
             start_t: time = roster.shift.start_time
             end_t: time = roster.shift.end_time
@@ -487,7 +523,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     overlap = True
                     break
             if not overlap and current > timezone.now():
-                slots.append({"start_at": current.isoformat(), "end_at": next_dt.isoformat()})
+                slots.append(
+                    {"start_at": current.isoformat(), "end_at": next_dt.isoformat()}
+                )
             current = next_dt
         return Response({"doctor": int(doctor_id), "date": date_str, "slots": slots})
 
@@ -556,7 +594,9 @@ class AppointmentHistoryViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = AppointmentHistory.objects.select_related("appointment", "changed_by").all()
+        qs = AppointmentHistory.objects.select_related(
+            "appointment", "changed_by"
+        ).all()
         if user.is_superuser or getattr(user, "role", None) == "SUPER_ADMIN":
             return qs
         if getattr(user, "hospital_id", None) is None:

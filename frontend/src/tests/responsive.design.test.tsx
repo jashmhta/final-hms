@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
-import healthcareTheme from '../../theme/healthcareTheme'
+import healthcareTheme from '../theme/healthcareTheme'
 import PatientCard from '../components/healthcare/PatientCard'
 
 describe('Responsive Design Tests', () => {
@@ -29,9 +29,8 @@ describe('Responsive Design Tests', () => {
   const mockOnViewDetails = jest.fn()
 
   const renderWithTheme = (component) => {
-    const theme = createTheme(healthcareTheme)
     return render(
-      <ThemeProvider theme={theme}>
+      <ThemeProvider theme={healthcareTheme}>
         {component}
       </ThemeProvider>
     )

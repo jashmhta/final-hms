@@ -43,11 +43,23 @@ Usage:
     await projector.process_event(event)
 """
 
-from .event_store import EventStore, Event, EventType, get_event_store
-from .command_handler import Command, CommandResult, CommandHandler, CommandDispatcher, dispatch_command
-from .query_handler import Query, QueryResult, QueryHandler, QueryDispatcher, dispatch_query
-from .projector import Projector, Projection, ProjectionType, get_projector
+from .command_handler import (
+    Command,
+    CommandDispatcher,
+    CommandHandler,
+    CommandResult,
+    dispatch_command,
+)
 from .cqrs_api import app
+from .event_store import Event, EventStore, EventType, get_event_store
+from .projector import Projection, ProjectionType, Projector, get_projector
+from .query_handler import (
+    Query,
+    QueryDispatcher,
+    QueryHandler,
+    QueryResult,
+    dispatch_query,
+)
 
 __version__ = "1.0.0"
 __author__ = "HMS Enterprise Team"
@@ -59,27 +71,23 @@ __all__ = [
     "Event",
     "EventType",
     "get_event_store",
-
     # Command Handling
     "Command",
     "CommandResult",
     "CommandHandler",
     "CommandDispatcher",
     "dispatch_command",
-
     # Query Handling
     "Query",
     "QueryResult",
     "QueryHandler",
     "QueryDispatcher",
     "dispatch_query",
-
     # Projections
     "Projector",
     "Projection",
     "ProjectionType",
     "get_projector",
-
     # API
     "app",
 ]

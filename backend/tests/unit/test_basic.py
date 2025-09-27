@@ -1,3 +1,7 @@
+"""
+test_basic module
+"""
+
 from django.test import TestCase
 
 

@@ -1,3 +1,7 @@
+"""
+performance_middleware module
+"""
+
 import json
 import logging
 import time
@@ -20,9 +24,13 @@ class PerformanceMiddleware(MiddlewareMixin):
 
     def process_request(self, request):
         request.start_time = time.time()
-        request.META["HTTP_X_REQUEST_ID"] = request.META.get("HTTP_X_REQUEST_ID", f"req_{int(time.time() * 1000)}")
+        request.META["HTTP_X_REQUEST_ID"] = request.META.get(
+            "HTTP_X_REQUEST_ID", f"req_{int(time.time() * 1000)}"
+        )
         if hasattr(request, "user") and request.user.is_authenticated:
-            user_cache_key = self.cache.generate_cache_key("user_session", request.user.id)
+            user_cache_key = self.cache.generate_cache_key(
+                "user_session", request.user.id
+            )
             user_data = self.cache.cache.get(user_cache_key)
             if user_data is None:
                 user_data = {
@@ -66,9 +74,15 @@ class QueryOptimizationMiddleware(MiddlewareMixin):
 
     def process_response(self, request, response):
         if hasattr(request, "queries"):
-            slow_queries = [q for q in request.queries if float(q["time"]) > self.slow_query_threshold]
+            slow_queries = [
+                q
+                for q in request.queries
+                if float(q["time"]) > self.slow_query_threshold
+            ]
             if slow_queries:
-                logger.warning(f"Slow queries detected for {request.path}: {len(slow_queries)} queries")
+                logger.warning(
+                    f"Slow queries detected for {request.path}: {len(slow_queries)} queries"
+                )
                 for query in slow_queries:
                     logger.warning(f"Slow query: {query['sql']} took {query['time']}s")
         return response
@@ -78,9 +92,14 @@ class CompressionMiddleware(MiddlewareMixin):
     def process_response(self, request, response):
         if isinstance(response, HttpResponse):
             accept_encoding = request.META.get("HTTP_ACCEPT_ENCODING", "")
-            if "gzip" in accept_encoding and not response.has_header("Content-Encoding"):
+            if "gzip" in accept_encoding and not response.has_header(
+                "Content-Encoding"
+            ):
                 content_type = response.get("Content-Type", "")
-                if any(ct in content_type for ct in ["text/", "application/json", "application/xml"]):
+                if any(
+                    ct in content_type
+                    for ct in ["text/", "application/json", "application/xml"]
+                ):
                     try:
                         import gzip
 
@@ -108,7 +127,9 @@ class RateLimitingMiddleware(MiddlewareMixin):
             current_count = self.cache.cache.get(rate_key, 0)
             limit = self.rate_limits[endpoint_type]
             if current_count >= limit["requests"]:
-                logger.warning(f"Rate limit exceeded for {client_ip} on {endpoint_type}")
+                logger.warning(
+                    f"Rate limit exceeded for {client_ip} on {endpoint_type}"
+                )
                 from django.http import HttpResponseForbidden
 
                 return HttpResponseForbidden(
@@ -133,7 +154,9 @@ class CachingMiddleware(MiddlewareMixin):
         self.cacheable_paths = ["/api/analytics/", "/api/dashboard/"]
 
     def process_request(self, request):
-        if request.method == "GET" and any(request.path.startswith(path) for path in self.cacheable_paths):
+        if request.method == "GET" and any(
+            request.path.startswith(path) for path in self.cacheable_paths
+        ):
             cache_key = self.cache.generate_cache_key(
                 "response_cache",
                 request.path,

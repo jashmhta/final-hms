@@ -7,20 +7,21 @@ with AI-powered early warning and intervention recommendations
 import asyncio
 import json
 import logging
+import smtplib
+import time
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, AsyncGenerator
+from email.mime.text import MIMEText
+from typing import AsyncGenerator, Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from dataclasses import dataclass
+import prometheus_client
 import redis
 import websockets
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel, Field
-import prometheus_client
-import time
-import smtplib
-from email.mime.text import MIMEText
 from jinja2 import Template
+from pydantic import BaseModel, Field
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,26 +29,23 @@ logger = logging.getLogger(__name__)
 
 # Prometheus metrics
 PATIENTS_MONITORED = prometheus_client.Gauge(
-    'hms_patients_monitored_total',
-    'Total number of patients being monitored'
+    "hms_patients_monitored_total", "Total number of patients being monitored"
 )
 
 ALERTS_GENERATED = prometheus_client.Counter(
-    'hms_alerts_generated_total',
-    'Total alerts generated',
-    ['alert_type', 'severity']
+    "hms_alerts_generated_total", "Total alerts generated", ["alert_type", "severity"]
 )
 
 MONITORING_LATENCY = prometheus_client.Histogram(
-    'hms_monitoring_latency_seconds',
-    'Patient monitoring processing latency'
+    "hms_monitoring_latency_seconds", "Patient monitoring processing latency"
 )
 
 EARLY_WARNING_SCORES = prometheus_client.Gauge(
-    'hms_early_warning_scores',
-    'Early warning scores for monitored patients',
-    ['patient_id', 'score_type']
+    "hms_early_warning_scores",
+    "Early warning scores for monitored patients",
+    ["patient_id", "score_type"],
 )
+
 
 # Pydantic models
 class VitalSigns(BaseModel):
@@ -58,7 +56,10 @@ class VitalSigns(BaseModel):
     oxygen_saturation: Optional[float] = Field(None, ge=0, le=100)
     temperature: Optional[float] = Field(None, ge=20, le=45)
     respiratory_rate: Optional[float] = Field(None, ge=0, le=60)
-    consciousness_level: Optional[str] = None  # 'alert', 'voice', 'pain', 'unresponsive'
+    consciousness_level: Optional[str] = (
+        None  # 'alert', 'voice', 'pain', 'unresponsive'
+    )
+
 
 class PatientAlert(BaseModel):
     patient_id: str
@@ -74,6 +75,7 @@ class PatientAlert(BaseModel):
     acknowledged_time: Optional[datetime] = None
     resolved_time: Optional[datetime] = None
 
+
 class MonitoringConfig(BaseModel):
     patient_id: str
     monitoring_level: str  # 'basic', 'intermediate', 'intensive'
@@ -82,9 +84,11 @@ class MonitoringConfig(BaseModel):
     escalation_contacts: List[Dict]
     custom_rules: Optional[List[Dict]] = None
 
+
 @dataclass
 class PatientMonitoringState:
     """State tracking for a monitored patient"""
+
     patient_id: str
     vital_signs_history: List[VitalSigns]
     current_ews_score: float
@@ -93,8 +97,10 @@ class PatientMonitoringState:
     monitoring_config: MonitoringConfig
     trend_data: Dict[str, List[float]]  # For trend analysis
 
+
 class ConnectionManager:
     """Manages WebSocket connections for real-time alerts"""
+
     def __init__(self):
         self.active_connections: List[WebSocket] = []
 
@@ -113,6 +119,7 @@ class ConnectionManager:
                 # Connection might be closed
                 pass
 
+
 class RealtimePatientMonitoringSystem:
     """
     Advanced real-time patient monitoring system with AI-powered alerts
@@ -120,16 +127,14 @@ class RealtimePatientMonitoringSystem:
 
     def __init__(self, config: Dict):
         self.config = config
-        self.redis_host = config['redis']['host']
-        self.redis_port = config['redis']['port']
-        self.db_config = config['database']
-        self.email_config = config.get('email', {})
+        self.redis_host = config["redis"]["host"]
+        self.redis_port = config["redis"]["port"]
+        self.db_config = config["database"]
+        self.email_config = config.get("email", {})
 
         # Initialize Redis
         self.redis_client = redis.Redis(
-            host=self.redis_host,
-            port=self.redis_port,
-            decode_responses=True
+            host=self.redis_host, port=self.redis_port, decode_responses=True
         )
 
         # Initialize connection manager
@@ -140,20 +145,20 @@ class RealtimePatientMonitoringSystem:
 
         # Alert severity colors
         self.severity_colors = {
-            'low': 'green',
-            'medium': 'yellow',
-            'high': 'orange',
-            'critical': 'red'
+            "low": "green",
+            "medium": "yellow",
+            "high": "orange",
+            "critical": "red",
         }
 
         # Alert thresholds
         self.default_thresholds = {
-            'heart_rate': {'min': 60, 'max': 100},
-            'blood_pressure_systolic': {'min': 90, 'max': 140},
-            'blood_pressure_diastolic': {'min': 60, 'max': 90},
-            'oxygen_saturation': {'min': 95, 'max': 100},
-            'temperature': {'min': 36.1, 'max': 37.2},
-            'respiratory_rate': {'min': 12, 'max': 20}
+            "heart_rate": {"min": 60, "max": 100},
+            "blood_pressure_systolic": {"min": 90, "max": 140},
+            "blood_pressure_diastolic": {"min": 60, "max": 90},
+            "oxygen_saturation": {"min": 95, "max": 100},
+            "temperature": {"min": 36.1, "max": 37.2},
+            "respiratory_rate": {"min": 12, "max": 20},
         }
 
         # Initialize monitoring
@@ -178,12 +183,12 @@ class RealtimePatientMonitoringSystem:
             last_update=datetime.utcnow(),
             monitoring_config=config,
             trend_data={
-                'heart_rate': [],
-                'blood_pressure_systolic': [],
-                'oxygen_saturation': [],
-                'temperature': [],
-                'respiratory_rate': []
-            }
+                "heart_rate": [],
+                "blood_pressure_systolic": [],
+                "oxygen_saturation": [],
+                "temperature": [],
+                "respiratory_rate": [],
+            },
         )
 
         self.monitored_patients[patient_id] = monitoring_state
@@ -222,7 +227,9 @@ class RealtimePatientMonitoringSystem:
         state.current_ews_score = ews_score
 
         # Update Prometheus metrics
-        EARLY_WARNING_SCORES.labels(patient_id=patient_id, score_type='ews').set(ews_score)
+        EARLY_WARNING_SCORES.labels(patient_id=patient_id, score_type="ews").set(
+            ews_score
+        )
         MONITORING_LATENCY.observe(time.time() - start_time)
 
         # Check for alerts
@@ -238,17 +245,23 @@ class RealtimePatientMonitoringSystem:
 
         # Broadcast vital signs update
         update_message = {
-            'type': 'vital_signs_update',
-            'patient_id': patient_id,
-            'vital_signs': vital_signs.dict(),
-            'ews_score': ews_score,
-            'timestamp': datetime.utcnow().isoformat()
+            "type": "vital_signs_update",
+            "patient_id": patient_id,
+            "vital_signs": vital_signs.dict(),
+            "ews_score": ews_score,
+            "timestamp": datetime.utcnow().isoformat(),
         }
         await self.connection_manager.broadcast(json.dumps(update_message))
 
     def update_trend_data(self, state: PatientMonitoringState, vital_signs: VitalSigns):
         """Update trend data for analysis"""
-        for param in ['heart_rate', 'blood_pressure_systolic', 'oxygen_saturation', 'temperature', 'respiratory_rate']:
+        for param in [
+            "heart_rate",
+            "blood_pressure_systolic",
+            "oxygen_saturation",
+            "temperature",
+            "respiratory_rate",
+        ]:
             value = getattr(vital_signs, param)
             if value is not None:
                 state.trend_data[param].append(value)
@@ -326,33 +339,37 @@ class RealtimePatientMonitoringSystem:
         # Consciousness Level
         if vital_signs.consciousness_level:
             level = vital_signs.consciousness_level.lower()
-            if level == 'alert':
+            if level == "alert":
                 score += 0
-            elif level == 'voice':
+            elif level == "voice":
                 score += 1
-            elif level == 'pain':
+            elif level == "pain":
                 score += 2
-            elif level == 'unresponsive':
+            elif level == "unresponsive":
                 score += 3
 
         return score
 
-    async def check_for_alerts(self, state: PatientMonitoringState, vital_signs: VitalSigns, ews_score: float) -> List[PatientAlert]:
+    async def check_for_alerts(
+        self, state: PatientMonitoringState, vital_signs: VitalSigns, ews_score: float
+    ) -> List[PatientAlert]:
         """Check for alert conditions"""
         alerts = []
 
         # Check EWS score thresholds
         if ews_score >= 5:
-            severity = 'critical' if ews_score >= 7 else 'high' if ews_score >= 6 else 'medium'
+            severity = (
+                "critical" if ews_score >= 7 else "high" if ews_score >= 6 else "medium"
+            )
             alert = PatientAlert(
                 patient_id=state.patient_id,
-                alert_type='high_ews_score',
+                alert_type="high_ews_score",
                 severity=severity,
                 score=ews_score,
-                triggered_by=['ews_score'],
+                triggered_by=["ews_score"],
                 timestamp=datetime.utcnow(),
                 message=f"Early Warning Score elevated: {ews_score}",
-                recommendations=self.get_ews_recommendations(ews_score)
+                recommendations=self.get_ews_recommendations(ews_score),
             )
             alerts.append(alert)
 
@@ -362,17 +379,19 @@ class RealtimePatientMonitoringSystem:
         for param, limits in thresholds.items():
             value = getattr(vital_signs, param)
             if value is not None:
-                if value < limits['min'] or value > limits['max']:
+                if value < limits["min"] or value > limits["max"]:
                     severity = self.calculate_vital_sign_severity(param, value, limits)
                     alert = PatientAlert(
                         patient_id=state.patient_id,
-                        alert_type=f'{param}_abnormal',
+                        alert_type=f"{param}_abnormal",
                         severity=severity,
                         score=self.calculate_vital_sign_score(param, value, limits),
                         triggered_by=[param],
                         timestamp=datetime.utcnow(),
                         message=f"{param.replace('_', ' ').title()} abnormal: {value}",
-                        recommendations=self.get_vital_sign_recommendations(param, value, severity)
+                        recommendations=self.get_vital_sign_recommendations(
+                            param, value, severity
+                        ),
                     )
                     alerts.append(alert)
 
@@ -388,50 +407,56 @@ class RealtimePatientMonitoringSystem:
         # Add alerts to history
         for alert in alerts:
             state.alert_history.append(alert)
-            ALERTS_GENERATED.labels(alert_type=alert.alert_type, severity=alert.severity).inc()
+            ALERTS_GENERATED.labels(
+                alert_type=alert.alert_type, severity=alert.severity
+            ).inc()
 
         return alerts
 
-    def calculate_vital_sign_severity(self, param: str, value: float, limits: Dict[str, float]) -> str:
+    def calculate_vital_sign_severity(
+        self, param: str, value: float, limits: Dict[str, float]
+    ) -> str:
         """Calculate severity level for abnormal vital sign"""
-        min_val, max_val = limits['min'], limits['max']
+        min_val, max_val = limits["min"], limits["max"]
 
-        if param in ['heart_rate', 'blood_pressure_systolic', 'respiratory_rate']:
+        if param in ["heart_rate", "blood_pressure_systolic", "respiratory_rate"]:
             deviation = max(abs(value - min_val), abs(value - max_val))
             if deviation > 50:
-                return 'critical'
+                return "critical"
             elif deviation > 30:
-                return 'high'
+                return "high"
             elif deviation > 15:
-                return 'medium'
+                return "medium"
             else:
-                return 'low'
+                return "low"
 
-        elif param == 'oxygen_saturation':
+        elif param == "oxygen_saturation":
             if value < 90:
-                return 'critical'
+                return "critical"
             elif value < 93:
-                return 'high'
+                return "high"
             elif value < 95:
-                return 'medium'
+                return "medium"
             else:
-                return 'low'
+                return "low"
 
-        elif param == 'temperature':
+        elif param == "temperature":
             if value < 34 or value > 40:
-                return 'critical'
+                return "critical"
             elif value < 35 or value > 39:
-                return 'high'
+                return "high"
             elif value < 36 or value > 38.5:
-                return 'medium'
+                return "medium"
             else:
-                return 'low'
+                return "low"
 
-        return 'medium'
+        return "medium"
 
-    def calculate_vital_sign_score(self, param: str, value: float, limits: Dict[str, float]) -> float:
+    def calculate_vital_sign_score(
+        self, param: str, value: float, limits: Dict[str, float]
+    ) -> float:
         """Calculate score for abnormal vital sign"""
-        min_val, max_val = limits['min'], limits['max']
+        min_val, max_val = limits["min"], limits["max"]
 
         if value < min_val:
             return (min_val - value) / min_val * 10
@@ -450,35 +475,41 @@ class RealtimePatientMonitoringSystem:
                 trend = np.polyfit(range(len(recent_values)), recent_values, 1)[0]
 
                 # Check for concerning trends
-                if param == 'heart_rate' and trend > 5:
+                if param == "heart_rate" and trend > 5:
                     alert = PatientAlert(
                         patient_id=state.patient_id,
-                        alert_type=f'{param}_trend_up',
-                        severity='high',
+                        alert_type=f"{param}_trend_up",
+                        severity="high",
                         score=abs(trend),
-                        triggered_by=[f'{param}_trend'],
+                        triggered_by=[f"{param}_trend"],
                         timestamp=datetime.utcnow(),
                         message=f"Heart rate trending upward: {trend:.1f} beats/min increase",
-                        recommendations=["Check for pain, anxiety, or clinical deterioration"]
+                        recommendations=[
+                            "Check for pain, anxiety, or clinical deterioration"
+                        ],
                     )
                     alerts.append(alert)
 
-                elif param == 'oxygen_saturation' and trend < -2:
+                elif param == "oxygen_saturation" and trend < -2:
                     alert = PatientAlert(
                         patient_id=state.patient_id,
-                        alert_type=f'{param}_trend_down',
-                        severity='high',
+                        alert_type=f"{param}_trend_down",
+                        severity="high",
                         score=abs(trend),
-                        triggered_by=[f'{param}_trend'],
+                        triggered_by=[f"{param}_trend"],
                         timestamp=datetime.utcnow(),
                         message=f"Oxygen saturation trending downward: {trend:.1f}% decrease",
-                        recommendations=["Check respiratory status, consider oxygen therapy"]
+                        recommendations=[
+                            "Check respiratory status, consider oxygen therapy"
+                        ],
                     )
                     alerts.append(alert)
 
         return alerts
 
-    async def check_custom_rules(self, state: PatientMonitoringState, vital_signs: VitalSigns) -> List[PatientAlert]:
+    async def check_custom_rules(
+        self, state: PatientMonitoringState, vital_signs: VitalSigns
+    ) -> List[PatientAlert]:
         """Check custom alert rules"""
         alerts = []
 
@@ -488,37 +519,39 @@ class RealtimePatientMonitoringSystem:
             if self.evaluate_rule(rule, vital_signs, state):
                 alert = PatientAlert(
                     patient_id=state.patient_id,
-                    alert_type=rule['name'],
-                    severity=rule['severity'],
-                    score=rule.get('score', 5),
-                    triggered_by=rule.get('triggered_by', ['custom_rule']),
+                    alert_type=rule["name"],
+                    severity=rule["severity"],
+                    score=rule.get("score", 5),
+                    triggered_by=rule.get("triggered_by", ["custom_rule"]),
                     timestamp=datetime.utcnow(),
-                    message=rule['message'],
-                    recommendations=rule.get('recommendations', [])
+                    message=rule["message"],
+                    recommendations=rule.get("recommendations", []),
                 )
                 alerts.append(alert)
 
         return alerts
 
-    def evaluate_rule(self, rule: Dict, vital_signs: VitalSigns, state: PatientMonitoringState) -> bool:
+    def evaluate_rule(
+        self, rule: Dict, vital_signs: VitalSigns, state: PatientMonitoringState
+    ) -> bool:
         """Evaluate a custom rule"""
         # Simplified rule evaluation
-        conditions = rule.get('conditions', [])
+        conditions = rule.get("conditions", [])
 
         for condition in conditions:
-            param = condition['parameter']
-            operator = condition['operator']
-            value = condition['value']
+            param = condition["parameter"]
+            operator = condition["operator"]
+            value = condition["value"]
 
             current_value = getattr(vital_signs, param, None)
             if current_value is None:
                 return False
 
-            if operator == 'gt' and current_value <= value:
+            if operator == "gt" and current_value <= value:
                 return False
-            elif operator == 'lt' and current_value >= value:
+            elif operator == "lt" and current_value >= value:
                 return False
-            elif operator == 'eq' and current_value != value:
+            elif operator == "eq" and current_value != value:
                 return False
 
         return True
@@ -530,75 +563,89 @@ class RealtimePatientMonitoringSystem:
                 "Immediate medical review required",
                 "Consider ICU transfer",
                 "Continuous vital sign monitoring",
-                "Prepare for rapid response team activation"
+                "Prepare for rapid response team activation",
             ]
         elif score >= 5:
             return [
                 "Urgent medical review within 30 minutes",
                 "Increase monitoring frequency to every 15 minutes",
                 "Notify charge nurse",
-                "Prepare for potential deterioration"
+                "Prepare for potential deterioration",
             ]
         elif score >= 3:
             return [
                 "Medical review within 1 hour",
                 "Increase monitoring frequency to every 30 minutes",
-                "Document assessment findings"
+                "Document assessment findings",
             ]
         else:
             return ["Continue routine monitoring"]
 
-    def get_vital_sign_recommendations(self, param: str, value: float, severity: str) -> List[str]:
+    def get_vital_sign_recommendations(
+        self, param: str, value: float, severity: str
+    ) -> List[str]:
         """Get recommendations for abnormal vital signs"""
         recommendations = []
 
-        if param == 'heart_rate':
+        if param == "heart_rate":
             if value > 120:
-                recommendations.extend([
-                    "Check for pain, anxiety, or fever",
-                    "Assess for cardiac symptoms",
-                    "Consider ECG monitoring",
-                    "Review medications"
-                ])
+                recommendations.extend(
+                    [
+                        "Check for pain, anxiety, or fever",
+                        "Assess for cardiac symptoms",
+                        "Consider ECG monitoring",
+                        "Review medications",
+                    ]
+                )
             elif value < 50:
-                recommendations.extend([
-                    "Assess for symptoms of bradycardia",
-                    "Check medication effects",
-                    "Consider cardiac monitoring"
-                ])
+                recommendations.extend(
+                    [
+                        "Assess for symptoms of bradycardia",
+                        "Check medication effects",
+                        "Consider cardiac monitoring",
+                    ]
+                )
 
-        elif param == 'oxygen_saturation':
+        elif param == "oxygen_saturation":
             if value < 90:
-                recommendations.extend([
-                    "Immediate oxygen therapy",
-                    "Check airway and breathing",
-                    "Consider ABG analysis",
-                    "Prepare for intubation if severe"
-                ])
+                recommendations.extend(
+                    [
+                        "Immediate oxygen therapy",
+                        "Check airway and breathing",
+                        "Consider ABG analysis",
+                        "Prepare for intubation if severe",
+                    ]
+                )
             elif value < 95:
-                recommendations.extend([
-                    "Supplemental oxygen consideration",
-                    "Reposition patient",
-                    "Encourage deep breathing"
-                ])
+                recommendations.extend(
+                    [
+                        "Supplemental oxygen consideration",
+                        "Reposition patient",
+                        "Encourage deep breathing",
+                    ]
+                )
 
-        elif param == 'blood_pressure_systolic':
+        elif param == "blood_pressure_systolic":
             if value > 180:
-                recommendations.extend([
-                    "Check for hypertensive urgency",
-                    "Assess for headache, vision changes",
-                    "Review antihypertensive medications",
-                    "Consider immediate treatment"
-                ])
+                recommendations.extend(
+                    [
+                        "Check for hypertensive urgency",
+                        "Assess for headache, vision changes",
+                        "Review antihypertensive medications",
+                        "Consider immediate treatment",
+                    ]
+                )
             elif value < 90:
-                recommendations.extend([
-                    "Assess for shock symptoms",
-                    "Check fluid status",
-                    "Consider vasopressors if indicated"
-                ])
+                recommendations.extend(
+                    [
+                        "Assess for shock symptoms",
+                        "Check fluid status",
+                        "Consider vasopressors if indicated",
+                    ]
+                )
 
         # Add general recommendations based on severity
-        if severity in ['high', 'critical']:
+        if severity in ["high", "critical"]:
             recommendations.append("Notify physician immediately")
             recommendations.append("Document interventions")
 
@@ -610,18 +657,17 @@ class RealtimePatientMonitoringSystem:
         await self.store_alert(alert)
 
         # Send WebSocket notification
-        alert_message = {
-            'type': 'alert',
-            'alert': alert.dict()
-        }
+        alert_message = {"type": "alert", "alert": alert.dict()}
         await self.connection_manager.broadcast(json.dumps(alert_message))
 
         # Send email notification for critical alerts
-        if alert.severity == 'critical':
+        if alert.severity == "critical":
             await self.send_email_alert(alert)
 
         # Log alert
-        logger.warning(f"ALERT: {alert.alert_type} for patient {alert.patient_id} - {alert.severity}")
+        logger.warning(
+            f"ALERT: {alert.alert_type} for patient {alert.patient_id} - {alert.severity}"
+        )
 
     async def store_alert(self, alert: PatientAlert):
         """Store alert in Redis"""
@@ -640,7 +686,8 @@ class RealtimePatientMonitoringSystem:
             return
 
         # Create email template
-        template = Template("""
+        template = Template(
+            """
         Critical Patient Alert - HMS Monitoring System
 
         Patient ID: {{ patient_id }}
@@ -657,49 +704,54 @@ class RealtimePatientMonitoringSystem:
         {% endfor %}
 
         Please respond immediately.
-        """)
+        """
+        )
 
         # Render email
         email_body = template.render(
             patient_id=alert.patient_id,
             alert_type=alert.alert_type,
             severity=alert.severity,
-            timestamp=alert.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            timestamp=alert.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
             score=alert.score,
             message=alert.message,
-            recommendations=alert.recommendations
+            recommendations=alert.recommendations,
         )
 
         # Send email
         try:
             msg = MIMEText(email_body)
-            msg['Subject'] = f'CRITICAL ALERT: Patient {alert.patient_id}'
-            msg['From'] = self.email_config['from_email']
-            msg['To'] = ', '.join(self.email_config['to_emails'])
+            msg["Subject"] = f"CRITICAL ALERT: Patient {alert.patient_id}"
+            msg["From"] = self.email_config["from_email"]
+            msg["To"] = ", ".join(self.email_config["to_emails"])
 
-            with smtplib.SMTP(self.email_config['smtp_server'], self.email_config['smtp_port']) as server:
+            with smtplib.SMTP(
+                self.email_config["smtp_server"], self.email_config["smtp_port"]
+            ) as server:
                 server.starttls()
-                server.login(self.email_config['username'], self.email_config['password'])
+                server.login(
+                    self.email_config["username"], self.email_config["password"]
+                )
                 server.send_message(msg)
 
             logger.info(f"Email alert sent for patient {alert.patient_id}")
         except Exception as e:
             logger.error(f"Failed to send email alert: {e}")
 
-    async def store_monitoring_state(self, patient_id: str, state: PatientMonitoringState):
+    async def store_monitoring_state(
+        self, patient_id: str, state: PatientMonitoringState
+    ):
         """Store monitoring state in Redis"""
         # Convert to serializable format
         state_data = {
-            'vital_signs_history': [vs.dict() for vs in state.vital_signs_history],
-            'current_ews_score': state.current_ews_score,
-            'last_update': state.last_update.isoformat(),
-            'trend_data': state.trend_data
+            "vital_signs_history": [vs.dict() for vs in state.vital_signs_history],
+            "current_ews_score": state.current_ews_score,
+            "last_update": state.last_update.isoformat(),
+            "trend_data": state.trend_data,
         }
 
         self.redis_client.setex(
-            f"monitoring_state:{patient_id}",
-            3600,  # 1 hour TTL
-            json.dumps(state_data)
+            f"monitoring_state:{patient_id}", 3600, json.dumps(state_data)  # 1 hour TTL
         )
 
     async def monitor_patients(self):
@@ -708,8 +760,12 @@ class RealtimePatientMonitoringSystem:
             try:
                 for patient_id, state in self.monitored_patients.items():
                     # Check if patient needs update based on monitoring interval
-                    interval = state.monitoring_config.monitoring_intervals.get('vital_signs', 300)
-                    if (datetime.utcnow() - state.last_update).total_seconds() > interval:
+                    interval = state.monitoring_config.monitoring_intervals.get(
+                        "vital_signs", 300
+                    )
+                    if (
+                        datetime.utcnow() - state.last_update
+                    ).total_seconds() > interval:
                         # Request vital signs update
                         await self.request_vital_signs_update(patient_id)
 
@@ -732,7 +788,9 @@ class RealtimePatientMonitoringSystem:
                 self.redis_client.ping()
 
                 # Check number of monitored patients
-                logger.info(f"Currently monitoring {len(self.monitored_patients)} patients")
+                logger.info(
+                    f"Currently monitoring {len(self.monitored_patients)} patients"
+                )
 
                 await asyncio.sleep(300)  # Check every 5 minutes
             except Exception as e:
@@ -753,13 +811,18 @@ class RealtimePatientMonitoringSystem:
                 logger.error(f"Data cleanup failed: {e}")
                 await asyncio.sleep(3600)
 
-    async def acknowledge_alert(self, patient_id: str, alert_timestamp: str, acknowledged_by: str):
+    async def acknowledge_alert(
+        self, patient_id: str, alert_timestamp: str, acknowledged_by: str
+    ):
         """Acknowledge an alert"""
         # Find and update alert
         state = self.monitored_patients.get(patient_id)
         if state:
             for alert in state.alert_history:
-                if alert.timestamp.isoformat() == alert_timestamp and not alert.acknowledged:
+                if (
+                    alert.timestamp.isoformat() == alert_timestamp
+                    and not alert.acknowledged
+                ):
                     alert.acknowledged = True
                     alert.acknowledged_by = acknowledged_by
                     alert.acknowledged_time = datetime.utcnow()
@@ -769,10 +832,10 @@ class RealtimePatientMonitoringSystem:
 
                     # Broadcast update
                     update = {
-                        'type': 'alert_acknowledged',
-                        'patient_id': patient_id,
-                        'alert_timestamp': alert_timestamp,
-                        'acknowledged_by': acknowledged_by
+                        "type": "alert_acknowledged",
+                        "patient_id": patient_id,
+                        "alert_timestamp": alert_timestamp,
+                        "acknowledged_by": acknowledged_by,
                     }
                     await self.connection_manager.broadcast(json.dumps(update))
 
@@ -791,9 +854,9 @@ class RealtimePatientMonitoringSystem:
 
                     # Broadcast update
                     update = {
-                        'type': 'alert_resolved',
-                        'patient_id': patient_id,
-                        'alert_timestamp': alert_timestamp
+                        "type": "alert_resolved",
+                        "patient_id": patient_id,
+                        "alert_timestamp": alert_timestamp,
                     }
                     await self.connection_manager.broadcast(json.dumps(update))
 
@@ -806,32 +869,40 @@ class RealtimePatientMonitoringSystem:
             return None
 
         return {
-            'patient_id': patient_id,
-            'monitoring_level': state.monitoring_config.monitoring_level,
-            'current_ews_score': state.current_ews_score,
-            'last_update': state.last_update.isoformat(),
-            'active_alerts': len([a for a in state.alert_history if not a.resolved_time]),
-            'vital_signs': state.vital_signs_history[-1].dict() if state.vital_signs_history else None
+            "patient_id": patient_id,
+            "monitoring_level": state.monitoring_config.monitoring_level,
+            "current_ews_score": state.current_ews_score,
+            "last_update": state.last_update.isoformat(),
+            "active_alerts": len(
+                [a for a in state.alert_history if not a.resolved_time]
+            ),
+            "vital_signs": (
+                state.vital_signs_history[-1].dict()
+                if state.vital_signs_history
+                else None
+            ),
         }
+
 
 # FastAPI app
 app = FastAPI(title="HMS Real-time Patient Monitoring", version="1.0.0")
 
 # Initialize monitoring system
 monitoring_config = {
-    'redis': {'host': 'localhost', 'port': 6379},
-    'database': {'host': 'localhost', 'database': 'hms'},
-    'email': {
-        'smtp_server': 'smtp.gmail.com',
-        'smtp_port': 587,
-        'from_email': 'alerts@hospital.com',
-        'to_emails': ['doctor@hospital.com', 'nurse@hospital.com'],
-        'username': 'alerts@hospital.com',
-        'password': 'password'
-    }
+    "redis": {"host": "localhost", "port": 6379},
+    "database": {"host": "localhost", "database": "hms"},
+    "email": {
+        "smtp_server": "smtp.gmail.com",
+        "smtp_port": 587,
+        "from_email": "alerts@hospital.com",
+        "to_emails": ["doctor@hospital.com", "nurse@hospital.com"],
+        "username": "alerts@hospital.com",
+        "password": "password",
+    },
 }
 
 monitoring_system = RealtimePatientMonitoringSystem(monitoring_config)
+
 
 @app.websocket("/ws/monitoring")
 async def websocket_endpoint(websocket: WebSocket):
@@ -842,25 +913,29 @@ async def websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_text()
             # Handle incoming WebSocket messages
             message = json.loads(data)
-            if message['type'] == 'acknowledge_alert':
+            if message["type"] == "acknowledge_alert":
                 await monitoring_system.acknowledge_alert(
-                    message['patient_id'],
-                    message['alert_timestamp'],
-                    message['acknowledged_by']
+                    message["patient_id"],
+                    message["alert_timestamp"],
+                    message["acknowledged_by"],
                 )
-            elif message['type'] == 'resolve_alert':
+            elif message["type"] == "resolve_alert":
                 await monitoring_system.resolve_alert(
-                    message['patient_id'],
-                    message['alert_timestamp']
+                    message["patient_id"], message["alert_timestamp"]
                 )
     except WebSocketDisconnect:
         monitoring_system.connection_manager.disconnect(websocket)
+
 
 @app.post("/monitoring/add")
 async def add_patient_to_monitoring(config: MonitoringConfig):
     """Add patient to monitoring system"""
     await monitoring_system.add_patient_to_monitoring(config)
-    return {"status": "success", "message": f"Patient {config.patient_id} added to monitoring"}
+    return {
+        "status": "success",
+        "message": f"Patient {config.patient_id} added to monitoring",
+    }
+
 
 @app.post("/monitoring/update-vitals")
 async def update_vital_signs(patient_id: str, vital_signs: VitalSigns):
@@ -868,13 +943,17 @@ async def update_vital_signs(patient_id: str, vital_signs: VitalSigns):
     await monitoring_system.update_vital_signs(patient_id, vital_signs)
     return {"status": "success", "message": "Vital signs updated"}
 
+
 @app.get("/monitoring/status/{patient_id}")
 async def get_patient_status(patient_id: str):
     """Get patient monitoring status"""
     status = monitoring_system.get_patient_status(patient_id)
     if not status:
-        raise HTTPException(status_code=404, detail="Patient not found in monitoring system")
+        raise HTTPException(
+            status_code=404, detail="Patient not found in monitoring system"
+        )
     return status
+
 
 @app.get("/monitoring/alerts/{patient_id}")
 async def get_patient_alerts(patient_id: str, limit: int = 10):
@@ -884,17 +963,21 @@ async def get_patient_alerts(patient_id: str, limit: int = 10):
     alerts = [json.loads(data) for data in alerts_data]
     return {"alerts": alerts}
 
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+
 
 @app.get("/metrics")
 async def get_metrics():
     """Get Prometheus metrics"""
     return prometheus_client.generate_latest()
 
+
 # Example usage
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8003)

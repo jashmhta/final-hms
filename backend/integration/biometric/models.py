@@ -1,3 +1,7 @@
+"""
+models module
+"""
+
 import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -41,7 +45,9 @@ class BiometricDevice(TimeStampedModel):
         ("OFFLINE", "Offline"),
         ("ERROR", "Error State"),
     ]
-    hospital = models.ForeignKey("hospitals.Hospital", on_delete=models.CASCADE, related_name="biometric_devices")
+    hospital = models.ForeignKey(
+        "hospitals.Hospital", on_delete=models.CASCADE, related_name="biometric_devices"
+    )
     device_id = models.UUIDField(default=uuid.uuid4, unique=True)
     name = models.CharField(max_length=200)
     device_type = models.CharField(max_length=20, choices=DEVICE_TYPES)
@@ -126,19 +132,37 @@ class BiometricTemplate(TimeStampedModel):
         ("RIGHT_RING", "Right Ring"),
         ("RIGHT_PINKY", "Right Pinky"),
     ]
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name="biometric_templates")
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="biometric_templates",
+    )
     patient = models.ForeignKey(
-        "patients.Patient", on_delete=models.CASCADE, null=True, blank=True, related_name="biometric_templates"
+        "patients.Patient",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="biometric_templates",
     )
     template_type = models.CharField(max_length=20, choices=TEMPLATE_TYPES)
-    finger_position = models.CharField(max_length=20, choices=FINGERS, null=True, blank=True)
+    finger_position = models.CharField(
+        max_length=20, choices=FINGERS, null=True, blank=True
+    )
     template_data = EncryptedTextField()
     template_format = models.CharField(max_length=50, default="ISO_19794_2")
     quality_score = models.FloatField(default=0.0)
     image_data = models.BinaryField(null=True, blank=True)
-    enrolled_device = models.ForeignKey(BiometricDevice, on_delete=models.SET_NULL, null=True, blank=True)
+    enrolled_device = models.ForeignKey(
+        BiometricDevice, on_delete=models.SET_NULL, null=True, blank=True
+    )
     enrolled_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="enrolled_templates"
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="enrolled_templates",
     )
     is_active = models.BooleanField(default=True)
     is_verified = models.BooleanField(default=False)
@@ -191,11 +215,23 @@ class BiometricLog(TimeStampedModel):
     operation_type = models.CharField(max_length=20, choices=OPERATION_TYPES)
     result = models.CharField(max_length=20, choices=RESULT_CHOICES)
     device = models.ForeignKey(BiometricDevice, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="biometric_logs")
-    patient = models.ForeignKey(
-        "patients.Patient", on_delete=models.SET_NULL, null=True, blank=True, related_name="biometric_logs"
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="biometric_logs",
     )
-    template_used = models.ForeignKey(BiometricTemplate, on_delete=models.SET_NULL, null=True, blank=True)
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="biometric_logs",
+    )
+    template_used = models.ForeignKey(
+        BiometricTemplate, on_delete=models.SET_NULL, null=True, blank=True
+    )
     processing_time = models.FloatField(help_text="Processing time in seconds")
     confidence_score = models.FloatField(null=True, blank=True)
     error_message = models.TextField(blank=True)
@@ -226,6 +262,10 @@ class BiometricLog(TimeStampedModel):
             indicators.append("Anomaly detected")
         if self.processing_time > 10.0:
             indicators.append("Slow processing time")
-        if self.result == "FAILED" and self.confidence_score and self.confidence_score > 0.8:
+        if (
+            self.result == "FAILED"
+            and self.confidence_score
+            and self.confidence_score > 0.8
+        ):
             indicators.append("High confidence failure")
         return indicators

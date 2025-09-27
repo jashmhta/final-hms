@@ -1,10 +1,16 @@
+"""
+test_cybersecurity_enhancements module
+"""
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+
 from ..database import Base, get_db
 from ..main import app
+
 SQLITE_TEST_DB = "sqlite:///:memory:"
 engine = create_engine(
     SQLITE_TEST_DB,
@@ -13,18 +19,26 @@ engine = create_engine(
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
+
+
 def override_get_db():
     try:
         db = TestingSessionLocal()
         yield db
     finally:
         db.close()
+
+
 app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
+
+
 def test_health_check():
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
+
+
 def test_create_security_event():
     event_data = {
         "event_id": "sec-001",
@@ -42,10 +56,14 @@ def test_create_security_event():
     response = client.post("/security-events/", json=event_data)
     assert response.status_code == 200
     assert response.json()["event_id"] == "sec-001"
+
+
 def test_get_security_events():
     response = client.get("/security-events/")
     assert response.status_code == 200
     assert len(response.json()) > 0
+
+
 def test_create_audit_log():
     log_data = {
         "log_id": "audit-001",
@@ -65,6 +83,8 @@ def test_create_audit_log():
     response = client.post("/audit-logs/", json=log_data)
     assert response.status_code == 200
     assert response.json()["log_id"] == "audit-001"
+
+
 def test_create_security_policy():
     policy_data = {
         "policy_id": "policy-001",
@@ -77,6 +97,8 @@ def test_create_security_policy():
     response = client.post("/security-policies/", json=policy_data)
     assert response.status_code == 200
     assert response.json()["policy_id"] == "policy-001"
+
+
 def test_create_incident():
     incident_data = {
         "incident_id": "inc-001",

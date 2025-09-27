@@ -141,6 +141,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="laborder",
             name="test",
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to="lab.labtest"),
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT, to="lab.labtest"
+            ),
         ),
     ]

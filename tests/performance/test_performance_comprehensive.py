@@ -22,65 +22,102 @@ Author: HMS Testing Team
 License: Healthcare Enterprise License
 """
 
-import pytest
-import time
-import threading
 import asyncio
 import multiprocessing
+import statistics
+import threading
+import time
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from datetime import datetime, timedelta
 from decimal import Decimal
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-from typing import List, Dict, Any, Callable
-import statistics
-import psutil
-import requests
-from django.test import TestCase, override_settings
-from django.contrib.auth import get_user_model
-from django.urls import reverse
-from django.db import connection, transaction
-from django.core.cache import cache
-from rest_framework.test import APIClient
-from rest_framework import status
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
-from locust import HttpUser, task, between
-from locust.env import Environment
-from locust.stats import stats_printer, stats_history
-import prometheus_client as prom
-import grafana_api.grafana_face as grafana
+from typing import Any, Callable, Dict, List
 
-from tests.conftest import (
-    ComprehensiveHMSTestCase, HealthcareDataType, HealthcareDataMixin,
-    PerformanceTestingMixin, TestConfiguration
-)
-from patients.models import Patient, EmergencyContact, InsuranceInformation, PatientAlert
-from users.models import Department, UserCredential, UserLoginHistory
-from hospitals.models import Hospital, HospitalPlan
-from ehr.models import (
-    MedicalRecord, Allergy, Assessment, ClinicalNote, PlanOfCare,
-    EncounterAttachment, ERTriage, NotificationModel, QualityMetric
+import grafana_api.grafana_face as grafana
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import prometheus_client as prom
+import psutil
+import pytest
+import requests
+from locust import HttpUser, between, task
+from locust.env import Environment
+from locust.stats import stats_history, stats_printer
+from rest_framework import status
+from rest_framework.test import APIClient
+
+from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.db import connection, transaction
+from django.test import TestCase, override_settings
+from django.urls import reverse
+
+from analytics.models import (
+    CustomReport,
+    DashboardMetric,
+    ErrorLog,
+    SystemPerformance,
+    UserActivity,
 )
 from appointments.models import (
-    Appointment, AppointmentHistory, AppointmentReminder,
-    SurgeryType, OTSlot, OTBooking
+    Appointment,
+    AppointmentHistory,
+    AppointmentReminder,
+    OTBooking,
+    OTSlot,
+    SurgeryType,
 )
 from billing.models import (
-    Bill, ServiceCatalog, BillDiscount, DepartmentBudget,
-    BillItem, Payment, InsuranceClaim
+    Bill,
+    BillDiscount,
+    BillItem,
+    DepartmentBudget,
+    InsuranceClaim,
+    Payment,
+    ServiceCatalog,
+)
+from ehr.models import (
+    Allergy,
+    Assessment,
+    ClinicalNote,
+    EncounterAttachment,
+    ERTriage,
+    MedicalRecord,
+    NotificationModel,
+    PlanOfCare,
+    QualityMetric,
+)
+from hospitals.models import Hospital, HospitalPlan
+from lab.models import (
+    LabEquipment,
+    LabReport,
+    LabResult,
+    LabSchedule,
+    LabTechnician,
+    LabTest,
+)
+from patients.models import (
+    EmergencyContact,
+    InsuranceInformation,
+    Patient,
+    PatientAlert,
 )
 from pharmacy.models import (
-    Medication, MedicationBatch, Manufacturer, Prescription,
-    MedicationStock, InventoryAlert
+    InventoryAlert,
+    Manufacturer,
+    Medication,
+    MedicationBatch,
+    MedicationStock,
+    Prescription,
 )
-from lab.models import (
-    LabTest, LabResult, LabReport, LabEquipment,
-    LabTechnician, LabSchedule
+from tests.conftest import (
+    ComprehensiveHMSTestCase,
+    HealthcareDataMixin,
+    HealthcareDataType,
+    PerformanceTestingMixin,
+    TestConfiguration,
 )
-from analytics.models import (
-    DashboardMetric, UserActivity, SystemPerformance,
-    ErrorLog, CustomReport
-)
+from users.models import Department, UserCredential, UserLoginHistory
 
 User = get_user_model()
 

@@ -1,14 +1,19 @@
-from pydantic import BaseModel, Field, validator
-from typing import List, Optional, Dict, Any
 from datetime import datetime
-from enum import Enum
 from decimal import Decimal
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field, validator
+
+
 class TriageLevel(str, Enum):
-    LEVEL_1 = "LEVEL_1"  
-    LEVEL_2 = "LEVEL_2"  
-    LEVEL_3 = "LEVEL_3"  
-    LEVEL_4 = "LEVEL_4"  
-    LEVEL_5 = "LEVEL_5"  
+    LEVEL_1 = "LEVEL_1"
+    LEVEL_2 = "LEVEL_2"
+    LEVEL_3 = "LEVEL_3"
+    LEVEL_4 = "LEVEL_4"
+    LEVEL_5 = "LEVEL_5"
+
+
 class VisitStatus(str, Enum):
     REGISTERED = "REGISTERED"
     TRIAGED = "TRIAGED"
@@ -20,6 +25,8 @@ class VisitStatus(str, Enum):
     LEFT_AMA = "LEFT_AMA"
     LWBS = "LWBS"
     DECEASED = "DECEASED"
+
+
 class AlertType(str, Enum):
     CODE_BLUE = "CODE_BLUE"
     CODE_RED = "CODE_RED"
@@ -31,12 +38,18 @@ class AlertType(str, Enum):
     SEPSIS_ALERT = "SEPSIS_ALERT"
     MASS_CASUALTY = "MASS_CASUALTY"
     PANDEMIC = "PANDEMIC"
+
+
 class EmergencyVisitBase(BaseModel):
     patient_id: int
     chief_complaint: Optional[str] = None
     arrival_mode: Optional[str] = None
+
+
 class EmergencyVisitCreate(EmergencyVisitBase):
     pass
+
+
 class EmergencyVisit(EmergencyVisitBase):
     id: int
     visit_number: str
@@ -59,8 +72,11 @@ class EmergencyVisit(EmergencyVisitBase):
     insurance_verified: bool = False
     created_at: datetime
     updated_at: datetime
+
     class Config:
         from_attributes = True
+
+
 class TriageAssessmentBase(BaseModel):
     visit_id: int
     triage_level: TriageLevel
@@ -86,8 +102,12 @@ class TriageAssessmentBase(BaseModel):
     medical_history: Optional[str] = None
     assessment_notes: Optional[str] = None
     red_flags: Optional[str] = None
+
+
 class TriageAssessmentCreate(TriageAssessmentBase):
     assessor_id: int
+
+
 class TriageAssessment(TriageAssessmentBase):
     id: int
     assessor_id: int
@@ -95,13 +115,18 @@ class TriageAssessment(TriageAssessmentBase):
     reassessment_required: bool = False
     reassessment_interval: Optional[int] = None
     created_at: datetime
+
     class Config:
         from_attributes = True
+
+
 class TriageUpdate(BaseModel):
     triage_level: TriageLevel
     triage_notes: Optional[str] = None
     reassessment_required: Optional[bool] = False
     updated_by_id: int
+
+
 class VitalSignsBase(BaseModel):
     systolic_bp: Optional[int] = Field(None, ge=50, le=300)
     diastolic_bp: Optional[int] = Field(None, ge=30, le=200)
@@ -121,8 +146,12 @@ class VitalSignsBase(BaseModel):
     oxygen_flow_rate: Optional[Decimal] = None
     position_during_measurement: Optional[str] = None
     notes: Optional[str] = None
+
+
 class VitalSignsCreate(VitalSignsBase):
     recorded_by_id: int
+
+
 class VitalSigns(VitalSignsBase):
     id: int
     visit_id: int
@@ -134,8 +163,11 @@ class VitalSigns(VitalSignsBase):
     critical_values: bool = False
     alert_triggered: bool = False
     created_at: datetime
+
     class Config:
         from_attributes = True
+
+
 class EmergencyAlertBase(BaseModel):
     alert_type: AlertType
     severity: str = Field(..., regex="^(LOW|MEDIUM|HIGH|CRITICAL)$")
@@ -144,10 +176,14 @@ class EmergencyAlertBase(BaseModel):
     location: Optional[str] = None
     room_number: Optional[str] = None
     affected_area: Optional[str] = None
+
+
 class EmergencyAlertCreate(EmergencyAlertBase):
     visit_id: Optional[int] = None
     triggered_by_id: int
     response_required_by: Optional[datetime] = None
+
+
 class EmergencyAlert(EmergencyAlertBase):
     id: int
     visit_id: Optional[int] = None
@@ -164,11 +200,16 @@ class EmergencyAlert(EmergencyAlertBase):
     triggered_by_id: int
     created_at: datetime
     updated_at: datetime
+
     class Config:
         from_attributes = True
+
+
 class AlertAcknowledgment(BaseModel):
     acknowledged_by_id: int
     acknowledgment_notes: Optional[str] = None
+
+
 class EmergencyBedBase(BaseModel):
     bed_number: str
     bed_type: Optional[str] = None
@@ -179,6 +220,8 @@ class EmergencyBedBase(BaseModel):
     has_ventilator: bool = False
     has_isolation: bool = False
     max_weight_kg: Optional[int] = None
+
+
 class EmergencyBed(EmergencyBedBase):
     id: int
     is_available: bool = True
@@ -191,13 +234,18 @@ class EmergencyBed(EmergencyBedBase):
     next_maintenance_due: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+
     class Config:
         from_attributes = True
+
+
 class BedAssignment(BaseModel):
     patient_id: int
     assigned_by_id: int
     estimated_discharge: Optional[datetime] = None
     assignment_notes: Optional[str] = None
+
+
 class EmergencyStaffBase(BaseModel):
     user_id: int
     role: str
@@ -207,6 +255,8 @@ class EmergencyStaffBase(BaseModel):
     can_intubate: bool = False
     can_suture: bool = False
     max_patients: int = 4
+
+
 class EmergencyStaff(EmergencyStaffBase):
     id: int
     is_on_duty: bool = False
@@ -223,8 +273,11 @@ class EmergencyStaff(EmergencyStaffBase):
     overtime_hours: Optional[Decimal] = 0
     created_at: datetime
     updated_at: datetime
+
     class Config:
         from_attributes = True
+
+
 class EmergencyProtocolBase(BaseModel):
     name: str
     category: Optional[str] = None
@@ -232,6 +285,8 @@ class EmergencyProtocolBase(BaseModel):
     version: str = "1.0"
     description: Optional[str] = None
     target_response_time: Optional[int] = None
+
+
 class EmergencyProtocol(EmergencyProtocolBase):
     id: int
     activation_criteria: Optional[List[Dict[str, Any]]] = None
@@ -256,36 +311,47 @@ class EmergencyProtocol(EmergencyProtocolBase):
     expiry_date: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+
     class Config:
         from_attributes = True
+
+
 class ProtocolActivation(BaseModel):
     protocol_id: int
     visit_id: Optional[int] = None
     activated_by_id: int
     activation_reason: str
     response_team: Optional[List[int]] = None
+
+
 class TriageDistribution(BaseModel):
     level_1: int = 0
     level_2: int = 0
     level_3: int = 0
     level_4: int = 0
     level_5: int = 0
+
+
 class WaitTimeMetrics(BaseModel):
-    average_wait_time: Optional[int] = None  
+    average_wait_time: Optional[int] = None
     median_wait_time: Optional[int] = None
     percentile_90: Optional[int] = None
     door_to_triage_avg: Optional[int] = None
     door_to_provider_avg: Optional[int] = None
+
+
 class PatientFlowMetrics(BaseModel):
     arrivals_per_hour: List[Dict[str, int]]
     departures_per_hour: List[Dict[str, int]]
     peak_census: int
     current_census: int
     bed_turnover_rate: Optional[Decimal] = None
+
+
 class QualityMetrics(BaseModel):
-    door_to_doctor_time: Optional[int] = None  
-    left_without_being_seen_rate: Optional[Decimal] = None  
-    patient_satisfaction_score: Optional[Decimal] = None  
-    readmission_rate_72h: Optional[Decimal] = None  
-    mortality_rate: Optional[Decimal] = None  
+    door_to_doctor_time: Optional[int] = None
+    left_without_being_seen_rate: Optional[Decimal] = None
+    patient_satisfaction_score: Optional[Decimal] = None
+    readmission_rate_72h: Optional[Decimal] = None
+    mortality_rate: Optional[Decimal] = None
     compliance_scores: Optional[Dict[str, Decimal]] = None

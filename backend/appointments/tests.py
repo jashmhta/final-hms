@@ -1,3 +1,7 @@
+"""
+tests module
+"""
+
 from datetime import date, datetime, time, timedelta
 
 from django.contrib.auth import get_user_model
@@ -15,7 +19,9 @@ class AvailableSlotsTest(TestCase):
     def setUp(self):
         self.h = Hospital.objects.create(name="H", code="h")
         self.plan = Plan.objects.create(enable_opd=True)
-        self.hospital_plan = HospitalPlan.objects.create(hospital=self.h, plan=self.plan)
+        self.hospital_plan = HospitalPlan.objects.create(
+            hospital=self.h, plan=self.plan
+        )
         User = get_user_model()
         self.doctor = User.objects.create_user(
             username="doc",
@@ -29,9 +35,13 @@ class AvailableSlotsTest(TestCase):
             last_name="Ient",
             date_of_birth=date.today() - timedelta(days=365 * 30),
         )
-        self.shift = Shift.objects.create(hospital=self.h, name="Day", start_time=time(9, 0), end_time=time(10, 0))
+        self.shift = Shift.objects.create(
+            hospital=self.h, name="Day", start_time=time(9, 0), end_time=time(10, 0)
+        )
         self.target_date = date.today() + timedelta(days=1)
-        DutyRoster.objects.create(hospital=self.h, user=self.doctor, date=self.target_date, shift=self.shift)
+        DutyRoster.objects.create(
+            hospital=self.h, user=self.doctor, date=self.target_date, shift=self.shift
+        )
 
     def test_slots(self):
         tz = timezone.get_current_timezone()

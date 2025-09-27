@@ -42,13 +42,13 @@ class CacheOptimizer:
 
             try:
                 # Use connection pool for better performance
-                if hasattr(settings, 'CACHES') and 'default' in settings.CACHES:
+                if hasattr(settings, "CACHES") and "default" in settings.CACHES:
                     self._connection_pool = ConnectionPool.from_url(
                         settings.CACHES["default"]["LOCATION"],
                         max_connections=10,  # Reduced to prevent connection leaks
                         retry_on_timeout=True,
                         socket_connect_timeout=5,
-                        socket_timeout=5
+                        socket_timeout=5,
                     )
                 else:
                     self._connection_pool = ConnectionPool(
@@ -57,7 +57,7 @@ class CacheOptimizer:
                         max_connections=10,
                         retry_on_timeout=True,
                         socket_connect_timeout=5,
-                        socket_timeout=5
+                        socket_timeout=5,
                     )
 
                 self.redis_client = redis.Redis(connection_pool=self._connection_pool)
@@ -91,10 +91,15 @@ class CacheOptimizer:
         if kwargs:
             key_parts.extend(f"{k}={v}" for k, v in sorted(kwargs.items()))
         key_string = ":".join(key_parts)
-        return hashlib.md5(key_string.encode()).hexdigest()
+        return hashlib.hashlib.sha256(key_string.encode()).hexdigest()
 
     def smart_cache(
-        self, key: str, data_func: Callable, timeout: int = None, tier: str = "redis", compress: bool = True
+        self,
+        key: str,
+        data_func: Callable,
+        timeout: int = None,
+        tier: str = "redis",
+        compress: bool = True,
     ) -> Any:
         """
         Smart caching with automatic tier selection
@@ -149,7 +154,9 @@ class CacheOptimizer:
         if pattern and self.redis_client:
             try:
                 # Use SCAN for production safety
-                for key in self.redis_client.scan_iter(match=f"{self.key_prefix}{pattern}*"):
+                for key in self.redis_client.scan_iter(
+                    match=f"{self.key_prefix}{pattern}*"
+                ):
                     self.redis_client.delete(key)
             except Exception as e:
                 logger.warning(f"Cache invalidation failed: {e}")
@@ -187,7 +194,9 @@ class QueryCache:
         query_string = str(queryset.query)
         cache_key = self.optimizer.generate_cache_key("query", query_string)
 
-        return self.optimizer.smart_cache(cache_key, lambda: list(queryset), timeout=timeout)
+        return self.optimizer.smart_cache(
+            cache_key, lambda: list(queryset), timeout=timeout
+        )
 
     def cache_count(self, queryset, timeout: int = 60):
         """Cache count results"""
@@ -245,7 +254,9 @@ def cache_result(timeout: int = 300, tier: str = "redis", key_prefix: str = None
                 cache_key += f":{hash(str(args) + str(sorted(kwargs.items())))}"
 
             optimizer = CacheOptimizer()
-            return optimizer.smart_cache(cache_key, lambda: func(*args, **kwargs), timeout=timeout, tier=tier)
+            return optimizer.smart_cache(
+                cache_key, lambda: func(*args, **kwargs), timeout=timeout, tier=tier
+            )
 
         return wrapper
 
@@ -261,13 +272,21 @@ class CacheWarmer:
     def warm_common_data(self):
         """Warm cache with commonly accessed data"""
         # Active patients
-        self.optimizer.smart_cache("active_patients_count", lambda: self._get_active_patients_count(), timeout=60)
+        self.optimizer.smart_cache(
+            "active_patients_count",
+            lambda: self._get_active_patients_count(),
+            timeout=60,
+        )
 
         # Today's appointments
-        self.optimizer.smart_cache("todays_appointments", lambda: self._get_todays_appointments(), timeout=300)
+        self.optimizer.smart_cache(
+            "todays_appointments", lambda: self._get_todays_appointments(), timeout=300
+        )
 
         # Hospital statistics
-        self.optimizer.smart_cache("hospital_stats", lambda: self._get_hospital_stats(), timeout=600)
+        self.optimizer.smart_cache(
+            "hospital_stats", lambda: self._get_hospital_stats(), timeout=600
+        )
 
     def _get_active_patients_count(self):
         from patients.models import Patient
@@ -281,9 +300,9 @@ class CacheWarmer:
 
         today = timezone.now().date()
         return list(
-            Appointment.objects.filter(appointment_date=today, status__in=["SCHEDULED", "CHECKED_IN"]).values(
-                "id", "patient_id", "scheduled_time"
-            )
+            Appointment.objects.filter(
+                appointment_date=today, status__in=["SCHEDULED", "CHECKED_IN"]
+            ).values("id", "patient_id", "scheduled_time")
         )
 
     def _get_hospital_stats(self):
@@ -292,9 +311,9 @@ class CacheWarmer:
         from hospitals.models import Hospital
 
         return list(
-            Hospital.objects.annotate(patient_count=Count("patients"), appointment_count=Count("appointments")).values(
-                "id", "name", "patient_count", "appointment_count"
-            )
+            Hospital.objects.annotate(
+                patient_count=Count("patients"), appointment_count=Count("appointments")
+            ).values("id", "name", "patient_count", "appointment_count")
         )
 
 

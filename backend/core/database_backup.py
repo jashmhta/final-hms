@@ -156,7 +156,9 @@ class DatabaseBackupManager:
 
             # Execute backup
             logger.info(f"Starting full backup: {filename}")
-            result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=3600)  # 1 hour timeout
+            result = subprocess.run(
+                cmd, env=env, capture_output=True, text=True, timeout=3600
+            )  # 1 hour timeout
 
             if result.returncode == 0:
                 # Process backup file
@@ -315,7 +317,13 @@ class DatabaseBackupManager:
         recovery_method: RecoveryMethod = RecoveryMethod.POINT_IN_TIME,
     ) -> Dict[str, Any]:
         """Restore database from backup"""
-        result = {"success": False, "message": "", "steps": [], "restored_tables": [], "duration": 0}
+        result = {
+            "success": False,
+            "message": "",
+            "steps": [],
+            "restored_tables": [],
+            "duration": 0,
+        }
 
         start_time = time.time()
 
@@ -328,7 +336,9 @@ class DatabaseBackupManager:
             result["steps"].append(f"Found backup job: {backup_id}")
 
             # Create restore directory
-            restore_dir = os.path.join(self.config.backup_directory, "restore", backup_id)
+            restore_dir = os.path.join(
+                self.config.backup_directory, "restore", backup_id
+            )
             os.makedirs(restore_dir, exist_ok=True)
 
             # Copy backup file to restore directory
@@ -345,7 +355,10 @@ class DatabaseBackupManager:
                 restore_file = decompressed_file
 
             # Drop and recreate database (for full restore)
-            if recovery_method in [RecoveryMethod.FULL_RESTORE, RecoveryMethod.POINT_IN_TIME]:
+            if recovery_method in [
+                RecoveryMethod.FULL_RESTORE,
+                RecoveryMethod.POINT_IN_TIME,
+            ]:
                 result["steps"].append("Dropping existing database...")
                 self._drop_database()
 
@@ -358,7 +371,9 @@ class DatabaseBackupManager:
 
             if recovery_method == RecoveryMethod.POINT_IN_TIME and target_time:
                 # Point-in-time recovery using PITR
-                result["steps"].append(f"Performing point-in-time recovery to {target_time}")
+                result["steps"].append(
+                    f"Performing point-in-time recovery to {target_time}"
+                )
                 self._perform_pitr(restore_file, target_time)
             else:
                 # Full restore
@@ -377,7 +392,9 @@ class DatabaseBackupManager:
                 env = os.environ.copy()
                 env["PGPASSWORD"] = db_config["password"]
 
-                restore_result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=3600)
+                restore_result = subprocess.run(
+                    cmd, env=env, capture_output=True, text=True, timeout=3600
+                )
 
                 if restore_result.returncode != 0:
                     raise Exception(f"pg_restore failed: {restore_result.stderr}")
@@ -411,7 +428,9 @@ class DatabaseBackupManager:
                 raise Exception(f"Backup job not found: {backup_id}")
 
             # Create restore directory
-            restore_dir = os.path.join(self.config.backup_directory, "restore", backup_id)
+            restore_dir = os.path.join(
+                self.config.backup_directory, "restore", backup_id
+            )
             os.makedirs(restore_dir, exist_ok=True)
 
             # Copy and decompress backup
@@ -433,7 +452,9 @@ class DatabaseBackupManager:
                     for table in tables:
                         full_table = f"{schema}.{table}" if schema else table
                         cursor.execute(f"DROP TABLE IF EXISTS {full_table} CASCADE;")
-                        cursor.execute(f"CREATE TABLE {full_table} (LIKE {full_table} INCLUDING ALL);")
+                        cursor.execute(
+                            f"CREATE TABLE {full_table} (LIKE {full_table} INCLUDING ALL);"
+                        )
 
             # Restore specific tables
             for table in tables:
@@ -457,16 +478,24 @@ class DatabaseBackupManager:
                 env["PGPASSWORD"] = db_config["password"]
 
                 restore_result = subprocess.run(
-                    cmd, env=env, capture_output=True, text=True, timeout=1800  # 30 minutes
+                    cmd,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=1800,  # 30 minutes
                 )
 
                 if restore_result.returncode == 0:
                     result["restored_tables"].append(table)
                 else:
-                    logger.error(f"Failed to restore table {table}: {restore_result.stderr}")
+                    logger.error(
+                        f"Failed to restore table {table}: {restore_result.stderr}"
+                    )
 
             result["success"] = len(result["restored_tables"]) == len(tables)
-            result["message"] = f"Restored {len(result['restored_tables'])}/{len(tables)} tables"
+            result["message"] = (
+                f"Restored {len(result['restored_tables'])}/{len(tables)} tables"
+            )
             result["duration"] = time.time() - start_time
 
         except Exception as e:
@@ -477,7 +506,9 @@ class DatabaseBackupManager:
 
         return result
 
-    def create_database_clone(self, source_db: str, target_db: str, backup_id: Optional[str] = None) -> Dict[str, Any]:
+    def create_database_clone(
+        self, source_db: str, target_db: str, backup_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Create a clone of the database"""
         result = {"success": False, "message": "", "duration": 0}
 
@@ -538,7 +569,12 @@ class DatabaseBackupManager:
 
     def verify_backup_integrity(self, backup_id: str) -> Dict[str, Any]:
         """Verify backup file integrity"""
-        result = {"valid": False, "message": "", "checksum_verified": False, "tables_count": 0}
+        result = {
+            "valid": False,
+            "message": "",
+            "checksum_verified": False,
+            "tables_count": 0,
+        }
 
         try:
             backup_job = self._find_backup_job(backup_id)
@@ -561,10 +597,16 @@ class DatabaseBackupManager:
 
                 if list_result.returncode == 0:
                     # Count tables
-                    tables = [line for line in list_result.stdout.split("\n") if "TABLE" in line]
+                    tables = [
+                        line
+                        for line in list_result.stdout.split("\n")
+                        if "TABLE" in line
+                    ]
                     result["tables_count"] = len(tables)
                 else:
-                    raise Exception(f"Failed to list backup contents: {list_result.stderr}")
+                    raise Exception(
+                        f"Failed to list backup contents: {list_result.stderr}"
+                    )
 
             result["valid"] = True
             result["message"] = "Backup integrity verified"
@@ -577,17 +619,37 @@ class DatabaseBackupManager:
 
     def get_backup_status(self) -> Dict[str, Any]:
         """Get current backup status"""
-        recent_jobs = sorted(self.backup_jobs.values(), key=lambda x: x.start_time, reverse=True)[:10]  # Last 10 jobs
+        recent_jobs = sorted(
+            self.backup_jobs.values(), key=lambda x: x.start_time, reverse=True
+        )[
+            :10
+        ]  # Last 10 jobs
 
         stats = {
             "total_backups": len(self.backup_jobs),
-            "successful_backups": len([j for j in self.backup_jobs.values() if j.status == BackupStatus.COMPLETED]),
-            "failed_backups": len([j for j in self.backup_jobs.values() if j.status == BackupStatus.FAILED]),
+            "successful_backups": len(
+                [
+                    j
+                    for j in self.backup_jobs.values()
+                    if j.status == BackupStatus.COMPLETED
+                ]
+            ),
+            "failed_backups": len(
+                [
+                    j
+                    for j in self.backup_jobs.values()
+                    if j.status == BackupStatus.FAILED
+                ]
+            ),
             "total_size_gb": sum(
-                j.file_size for j in self.backup_jobs.values() if j.file_size and j.status == BackupStatus.COMPLETED
+                j.file_size
+                for j in self.backup_jobs.values()
+                if j.file_size and j.status == BackupStatus.COMPLETED
             )
             / (1024**3),
-            "last_backup": recent_jobs[0].start_time.isoformat() if recent_jobs else None,
+            "last_backup": (
+                recent_jobs[0].start_time.isoformat() if recent_jobs else None
+            ),
             "recent_jobs": [
                 {
                     "id": job.id,
@@ -705,11 +767,15 @@ class DatabaseBackupManager:
                 sftp = self.ssh_client.open_sftp()
                 remote_path = os.path.join(self.config.remote_path, backup_id)
                 sftp.mkdir(remote_path)
-                sftp.put(filepath, os.path.join(remote_path, os.path.basename(filepath)))
+                sftp.put(
+                    filepath, os.path.join(remote_path, os.path.basename(filepath))
+                )
                 sftp.close()
                 self.ssh_client.close()
 
-                logger.info(f"Uploaded backup to remote server: {self.config.remote_host}")
+                logger.info(
+                    f"Uploaded backup to remote server: {self.config.remote_host}"
+                )
 
         except Exception as e:
             logger.error(f"Failed to upload backup to remote storage: {e}")
@@ -719,12 +785,16 @@ class DatabaseBackupManager:
         try:
             if self.s3_client:
                 # List objects with backup_id prefix
-                objects = self.s3_client.list_objects_v2(Bucket=self.config.s3_bucket, Prefix=f"backups/{backup_id}/")
+                objects = self.s3_client.list_objects_v2(
+                    Bucket=self.config.s3_bucket, Prefix=f"backups/{backup_id}/"
+                )
 
                 # Delete objects
                 if "Contents" in objects:
                     delete_keys = [{"Key": obj["Key"]} for obj in objects["Contents"]]
-                    self.s3_client.delete_objects(Bucket=self.config.s3_bucket, Delete={"Objects": delete_keys})
+                    self.s3_client.delete_objects(
+                        Bucket=self.config.s3_bucket, Delete={"Objects": delete_keys}
+                    )
 
         except Exception as e:
             logger.error(f"Failed to delete backup from S3: {e}")

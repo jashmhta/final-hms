@@ -1,3 +1,7 @@
+"""
+model_monitoring module
+"""
+
 import json
 import logging
 import warnings
@@ -138,9 +142,14 @@ class ModelMonitoring:
             self.monitoring_data[model_id]["timestamps"].append(timestamp)
             self.monitoring_data[model_id]["latencies"].append(prediction_time or 0)
             self.monitoring_data[model_id]["metadata"].append(metadata or {})
-            if len(self.monitoring_data[model_id]["predictions"]) > self.monitoring_window:
+            if (
+                len(self.monitoring_data[model_id]["predictions"])
+                > self.monitoring_window
+            ):
                 for key in self.monitoring_data[model_id]:
-                    self.monitoring_data[model_id][key] = self.monitoring_data[model_id][key][-self.monitoring_window :]
+                    self.monitoring_data[model_id][key] = self.monitoring_data[
+                        model_id
+                    ][key][-self.monitoring_window :]
             if len(self.monitoring_data[model_id]["predictions"]) % 100 == 0:
                 self.analyze_model_health(model_id)
         except Exception as e:
@@ -190,13 +199,23 @@ class ModelMonitoring:
         metrics = {}
         try:
             if len(set(valid_ground_truths)) <= 10:
-                metrics["accuracy"] = accuracy_score(valid_ground_truths, valid_predictions)
-                metrics["precision"] = precision_score(valid_ground_truths, valid_predictions, average="weighted")
-                metrics["recall"] = recall_score(valid_ground_truths, valid_predictions, average="weighted")
-                metrics["f1_score"] = f1_score(valid_ground_truths, valid_predictions, average="weighted")
+                metrics["accuracy"] = accuracy_score(
+                    valid_ground_truths, valid_predictions
+                )
+                metrics["precision"] = precision_score(
+                    valid_ground_truths, valid_predictions, average="weighted"
+                )
+                metrics["recall"] = recall_score(
+                    valid_ground_truths, valid_predictions, average="weighted"
+                )
+                metrics["f1_score"] = f1_score(
+                    valid_ground_truths, valid_predictions, average="weighted"
+                )
                 if len(set(valid_ground_truths)) == 2:
                     try:
-                        metrics["roc_auc"] = roc_auc_score(valid_ground_truths, valid_predictions)
+                        metrics["roc_auc"] = roc_auc_score(
+                            valid_ground_truths, valid_predictions
+                        )
                     except:
                         metrics["roc_auc"] = 0.0
             else:
@@ -206,8 +225,12 @@ class ModelMonitoring:
                     r2_score,
                 )
 
-                metrics["mse"] = mean_squared_error(valid_ground_truths, valid_predictions)
-                metrics["mae"] = mean_absolute_error(valid_ground_truths, valid_predictions)
+                metrics["mse"] = mean_squared_error(
+                    valid_ground_truths, valid_predictions
+                )
+                metrics["mae"] = mean_absolute_error(
+                    valid_ground_truths, valid_predictions
+                )
                 metrics["r2_score"] = r2_score(valid_ground_truths, valid_predictions)
         except Exception as e:
             logger.error(f"Performance metric calculation failed: {e}")
@@ -238,7 +261,9 @@ class ModelMonitoring:
                 outliers = df[(df[col] < Q1 - 1.5 * IQR) | (df[col] > Q3 + 1.5 * IQR)]
                 outlier_count += len(outliers)
                 total_count += len(df[col])
-            metrics["outlier_rate"] = outlier_count / total_count if total_count > 0 else 0
+            metrics["outlier_rate"] = (
+                outlier_count / total_count if total_count > 0 else 0
+            )
             type_consistency = 1.0
             for col in df.columns:
                 unique_types = df[col].apply(type).nunique()
@@ -276,7 +301,9 @@ class ModelMonitoring:
             numeric_cols = current_df.select_dtypes(include=[np.number]).columns
             for col in numeric_cols:
                 if col in baseline_df.columns:
-                    ks_stat, ks_pvalue = stats.ks_2samp(baseline_df[col].dropna(), current_df[col].dropna())
+                    ks_stat, ks_pvalue = stats.ks_2samp(
+                        baseline_df[col].dropna(), current_df[col].dropna()
+                    )
                     drift_scores[f"{col}_ks_stat"] = ks_stat
                     drift_scores[f"{col}_ks_pvalue"] = ks_pvalue
                     try:
@@ -286,7 +313,9 @@ class ModelMonitoring:
                         drift_scores[f"{col}_js_divergence"] = js_divergence
                     except:
                         drift_scores[f"{col}_js_divergence"] = 0.0
-            overall_drift = np.mean([score for key, score in drift_scores.items() if "js_divergence" in key])
+            overall_drift = np.mean(
+                [score for key, score in drift_scores.items() if "js_divergence" in key]
+            )
             drift_scores["overall_data_drift"] = overall_drift
             return drift_scores
         except Exception as e:
@@ -306,8 +335,12 @@ class ModelMonitoring:
             recent_accuracy = accuracy_score(recent_ground_truths, recent_predictions)
             if len(valid_indices) > 200:
                 baseline_predictions = [predictions[i] for i in valid_indices[:-100]]
-                baseline_ground_truths = [ground_truths[i] for i in valid_indices[:-100]]
-                baseline_accuracy = accuracy_score(baseline_ground_truths, baseline_predictions)
+                baseline_ground_truths = [
+                    ground_truths[i] for i in valid_indices[:-100]
+                ]
+                baseline_accuracy = accuracy_score(
+                    baseline_ground_truths, baseline_predictions
+                )
                 performance_drop = baseline_accuracy - recent_accuracy
                 concept_drift_score = max(0, performance_drop)
                 return {
@@ -341,29 +374,39 @@ class ModelMonitoring:
                     "current_std": np.std(predictions),
                 }
             else:
-                baseline_unique, baseline_counts = np.unique(baseline_predictions, return_counts=True)
-                current_unique, current_counts = np.unique(predictions, return_counts=True)
+                baseline_unique, baseline_counts = np.unique(
+                    baseline_predictions, return_counts=True
+                )
+                current_unique, current_counts = np.unique(
+                    predictions, return_counts=True
+                )
                 all_categories = np.union1d(baseline_unique, current_unique)
                 baseline_probs = np.zeros(len(all_categories))
                 current_probs = np.zeros(len(all_categories))
                 for i, cat in enumerate(all_categories):
                     if cat in baseline_unique:
-                        baseline_probs[i] = baseline_counts[np.where(baseline_unique == cat)[0][0]] / len(
-                            baseline_predictions
-                        )
+                        baseline_probs[i] = baseline_counts[
+                            np.where(baseline_unique == cat)[0][0]
+                        ] / len(baseline_predictions)
                     if cat in current_unique:
-                        current_probs[i] = current_counts[np.where(current_unique == cat)[0][0]] / len(predictions)
+                        current_probs[i] = current_counts[
+                            np.where(current_unique == cat)[0][0]
+                        ] / len(predictions)
                 js_divergence = jensenshannon(baseline_probs, current_probs)
                 return {
                     "prediction_drift_js": js_divergence,
-                    "prediction_distribution_shift": js_divergence > self.alert_thresholds["prediction_drift"],
+                    "prediction_distribution_shift": js_divergence
+                    > self.alert_thresholds["prediction_drift"],
                 }
         except Exception as e:
             logger.error(f"Prediction drift detection failed: {e}")
         return {}
 
     def _detect_performance_drift(self, model_id: str) -> Dict[str, float]:
-        if model_id not in self.performance_history or len(self.performance_history[model_id]) < 10:
+        if (
+            model_id not in self.performance_history
+            or len(self.performance_history[model_id]) < 10
+        ):
             return {}
         try:
             history = self.performance_history[model_id]
@@ -373,8 +416,16 @@ class ModelMonitoring:
                 return {}
             performance_changes = {}
             for metric in ["accuracy", "precision", "recall", "f1_score"]:
-                recent_values = [m.performance_metrics.get(metric, 0) for m in recent_metrics if m.performance_metrics]
-                older_values = [m.performance_metrics.get(metric, 0) for m in older_metrics if m.performance_metrics]
+                recent_values = [
+                    m.performance_metrics.get(metric, 0)
+                    for m in recent_metrics
+                    if m.performance_metrics
+                ]
+                older_values = [
+                    m.performance_metrics.get(metric, 0)
+                    for m in older_metrics
+                    if m.performance_metrics
+                ]
                 if recent_values and older_values:
                     recent_avg = np.mean(recent_values)
                     older_avg = np.mean(older_values)
@@ -383,7 +434,11 @@ class ModelMonitoring:
                     performance_changes[f"{metric}_change"] = change
                     performance_changes[f"{metric}_relative_change"] = relative_change
             overall_drift = np.mean(
-                [abs(change) for key, change in performance_changes.items() if "relative_change" in key]
+                [
+                    abs(change)
+                    for key, change in performance_changes.items()
+                    if "relative_change" in key
+                ]
             )
             performance_changes["overall_performance_drift"] = overall_drift
             return performance_changes
@@ -429,7 +484,9 @@ class ModelMonitoring:
                 return {
                     "prediction_distribution": dict(zip(unique, counts)),
                     "most_common_prediction": unique[np.argmax(counts)],
-                    "prediction_entropy": self._calculate_entropy(counts / len(predictions)),
+                    "prediction_entropy": self._calculate_entropy(
+                        counts / len(predictions)
+                    ),
                 }
         except Exception as e:
             logger.error(f"Prediction metrics calculation failed: {e}")
@@ -465,20 +522,28 @@ class ModelMonitoring:
             return 0.0
         valid_predictions = [predictions[i] for i in valid_indices]
         valid_ground_truths = [ground_truths[i] for i in valid_indices]
-        errors = sum(1 for pred, true_val in zip(valid_predictions, valid_ground_truths) if pred != true_val)
+        errors = sum(
+            1
+            for pred, true_val in zip(valid_predictions, valid_ground_truths)
+            if pred != true_val
+        )
         return errors / len(valid_predictions)
 
     def _check_for_alerts(self, metrics: MonitoringMetrics):
         alerts = []
         if "data_drift" in metrics.drift_metrics:
-            data_drift_score = metrics.drift_metrics["data_drift"].get("overall_data_drift", 0)
+            data_drift_score = metrics.drift_metrics["data_drift"].get(
+                "overall_data_drift", 0
+            )
             if data_drift_score > self.alert_thresholds["data_drift"]:
                 alerts.append(
                     DriftAlert(
                         alert_id=f"data_drift_{int(timezone.now().timestamp())}",
                         model_id=metrics.model_id,
                         drift_type=DriftType.DATA_DRIFT,
-                        severity=self._calculate_severity(data_drift_score, self.alert_thresholds["data_drift"]),
+                        severity=self._calculate_severity(
+                            data_drift_score, self.alert_thresholds["data_drift"]
+                        ),
                         drift_score=data_drift_score,
                         threshold=self.alert_thresholds["data_drift"],
                         detected_at=timezone.now(),
@@ -491,14 +556,18 @@ class ModelMonitoring:
                     )
                 )
         if "performance_drift" in metrics.drift_metrics:
-            perf_drift_score = metrics.drift_metrics["performance_drift"].get("overall_performance_drift", 0)
+            perf_drift_score = metrics.drift_metrics["performance_drift"].get(
+                "overall_performance_drift", 0
+            )
             if perf_drift_score > self.alert_thresholds["performance_drift"]:
                 alerts.append(
                     DriftAlert(
                         alert_id=f"perf_drift_{int(timezone.now().timestamp())}",
                         model_id=metrics.model_id,
                         drift_type=DriftType.PERFORMANCE_DRIFT,
-                        severity=self._calculate_severity(perf_drift_score, self.alert_thresholds["performance_drift"]),
+                        severity=self._calculate_severity(
+                            perf_drift_score, self.alert_thresholds["performance_drift"]
+                        ),
                         drift_score=perf_drift_score,
                         threshold=self.alert_thresholds["performance_drift"],
                         detected_at=timezone.now(),
@@ -510,7 +579,10 @@ class ModelMonitoring:
                         ],
                     )
                 )
-        if metrics.system_metrics.get("avg_latency_ms", 0) > self.alert_thresholds["latency_threshold"]:
+        if (
+            metrics.system_metrics.get("avg_latency_ms", 0)
+            > self.alert_thresholds["latency_threshold"]
+        ):
             alerts.append(
                 DriftAlert(
                     alert_id=f"latency_{int(timezone.now().timestamp())}",
@@ -528,7 +600,10 @@ class ModelMonitoring:
                     ],
                 )
             )
-        if metrics.system_metrics.get("error_rate", 0) > self.alert_thresholds["error_rate_threshold"]:
+        if (
+            metrics.system_metrics.get("error_rate", 0)
+            > self.alert_thresholds["error_rate_threshold"]
+        ):
             alerts.append(
                 DriftAlert(
                     alert_id=f"error_rate_{int(timezone.now().timestamp())}",
@@ -590,7 +665,8 @@ class ModelMonitoring:
             recent_alerts = [
                 alert
                 for alert in self.alerts
-                if alert.model_id == model_id and (timezone.now() - alert.detected_at).days <= 7
+                if alert.model_id == model_id
+                and (timezone.now() - alert.detected_at).days <= 7
             ]
             performance_trends = self._get_performance_trends(model_id)
             health_score = self._calculate_health_score(metrics)
@@ -601,7 +677,9 @@ class ModelMonitoring:
                 "current_metrics": asdict(metrics),
                 "recent_alerts": [asdict(alert) for alert in recent_alerts],
                 "performance_trends": performance_trends,
-                "recommendations": self._generate_health_recommendations(metrics, health_score),
+                "recommendations": self._generate_health_recommendations(
+                    metrics, health_score
+                ),
                 "last_updated": timezone.now().isoformat(),
             }
         except Exception as e:
@@ -637,9 +715,12 @@ class ModelMonitoring:
                         "trend": "improving" if slope > 0 else "declining",
                         "slope": slope,
                         "current_value": values[-1],
-                        "change_from_baseline": (values[-1] - values[0] if len(values) > 1 else 0),
+                        "change_from_baseline": (
+                            values[-1] - values[0] if len(values) > 1 else 0
+                        ),
                         "timeline": [
-                            {"timestamp": ts.isoformat(), "value": val} for ts, val in zip(timestamps, values)
+                            {"timestamp": ts.isoformat(), "value": val}
+                            for ts, val in zip(timestamps, values)
                         ],
                     }
             return trends
@@ -656,7 +737,10 @@ class ModelMonitoring:
             if "overall_" + drift_type in drift_data:
                 drift_score = drift_data["overall_" + drift_type]
                 score -= min(drift_score * 50, 20)
-        if metrics.system_metrics.get("avg_latency_ms", 0) > self.alert_thresholds["latency_threshold"]:
+        if (
+            metrics.system_metrics.get("avg_latency_ms", 0)
+            > self.alert_thresholds["latency_threshold"]
+        ):
             score -= 10
         if metrics.data_quality_metrics.get("missing_value_rate", 0) > 0.1:
             score -= 10
@@ -674,19 +758,27 @@ class ModelMonitoring:
         else:
             return "Critical"
 
-    def _generate_health_recommendations(self, metrics: MonitoringMetrics, health_score: float) -> List[str]:
+    def _generate_health_recommendations(
+        self, metrics: MonitoringMetrics, health_score: float
+    ) -> List[str]:
         recommendations = []
         if health_score < 70:
-            recommendations.append("Model performance is suboptimal - consider retraining")
+            recommendations.append(
+                "Model performance is suboptimal - consider retraining"
+            )
         if metrics.system_metrics.get("avg_latency_ms", 0) > 500:
-            recommendations.append("High latency detected - optimize inference pipeline")
+            recommendations.append(
+                "High latency detected - optimize inference pipeline"
+            )
         if metrics.data_quality_metrics.get("missing_value_rate", 0) > 0.1:
             recommendations.append("High missing data rate - improve data quality")
         for drift_type, drift_data in metrics.drift_metrics.items():
             if "overall_" + drift_type in drift_data:
                 drift_score = drift_data["overall_" + drift_type]
                 if drift_score > self.alert_thresholds["data_drift"]:
-                    recommendations.append(f"Significant {drift_type} detected - investigate data changes")
+                    recommendations.append(
+                        f"Significant {drift_type} detected - investigate data changes"
+                    )
         return recommendations
 
     def get_monitoring_report(self, model_id: str, days: int = 30) -> Dict:
@@ -694,7 +786,9 @@ class ModelMonitoring:
             dashboard = self.get_model_health_dashboard(model_id)
             cutoff_date = timezone.now() - timedelta(days=days)
             historical_data = [
-                metrics for metrics in self.performance_history.get(model_id, []) if metrics.timestamp > cutoff_date
+                metrics
+                for metrics in self.performance_history.get(model_id, [])
+                if metrics.timestamp > cutoff_date
             ]
             report = {
                 "model_id": model_id,
@@ -702,7 +796,9 @@ class ModelMonitoring:
                 "summary": dashboard,
                 "statistics": self._calculate_monitoring_statistics(historical_data),
                 "alert_summary": self._summarize_alerts(model_id, days),
-                "recommendations": self._generate_monitoring_recommendations(dashboard, historical_data),
+                "recommendations": self._generate_monitoring_recommendations(
+                    dashboard, historical_data
+                ),
                 "generated_at": timezone.now().isoformat(),
             }
             return report
@@ -710,13 +806,19 @@ class ModelMonitoring:
             logger.error(f"Monitoring report generation failed: {e}")
             return {"error": str(e)}
 
-    def _calculate_monitoring_statistics(self, historical_data: List[MonitoringMetrics]) -> Dict:
+    def _calculate_monitoring_statistics(
+        self, historical_data: List[MonitoringMetrics]
+    ) -> Dict:
         if not historical_data:
             return {}
         stats = {}
         performance_metrics = ["accuracy", "precision", "recall", "f1_score"]
         for metric in performance_metrics:
-            values = [m.performance_metrics.get(metric, 0) for m in historical_data if metric in m.performance_metrics]
+            values = [
+                m.performance_metrics.get(metric, 0)
+                for m in historical_data
+                if metric in m.performance_metrics
+            ]
             if values:
                 stats[f"{metric}_stats"] = {
                     "mean": np.mean(values),
@@ -750,7 +852,9 @@ class ModelMonitoring:
     def _summarize_alerts(self, model_id: str, days: int) -> Dict:
         cutoff_date = timezone.now() - timedelta(days=days)
         recent_alerts = [
-            alert for alert in self.alerts if alert.model_id == model_id and alert.detected_at > cutoff_date
+            alert
+            for alert in self.alerts
+            if alert.model_id == model_id and alert.detected_at > cutoff_date
         ]
         summary = {
             "total_alerts": len(recent_alerts),
@@ -760,11 +864,15 @@ class ModelMonitoring:
         }
         for alert in recent_alerts:
             severity = alert.severity.value
-            summary["by_severity"][severity] = summary["by_severity"].get(severity, 0) + 1
+            summary["by_severity"][severity] = (
+                summary["by_severity"].get(severity, 0) + 1
+            )
             drift_type = alert.drift_type.value
             summary["by_type"][drift_type] = summary["by_type"].get(drift_type, 0) + 1
         if summary["by_type"]:
-            summary["most_common_issue"] = max(summary["by_type"].items(), key=lambda x: x[1])[0]
+            summary["most_common_issue"] = max(
+                summary["by_type"].items(), key=lambda x: x[1]
+            )[0]
         return summary
 
     def _generate_monitoring_recommendations(
@@ -774,17 +882,25 @@ class ModelMonitoring:
         if "health_score" in dashboard:
             health_score = dashboard["health_score"]
             if health_score < 70:
-                recommendations.append("Model health is poor - immediate attention required")
+                recommendations.append(
+                    "Model health is poor - immediate attention required"
+                )
         if "alert_summary" in dashboard:
             total_alerts = dashboard["alert_summary"].get("total_alerts", 0)
             if total_alerts > 10:
-                recommendations.append(f"High alert frequency ({total_alerts} alerts) - investigate root causes")
+                recommendations.append(
+                    f"High alert frequency ({total_alerts} alerts) - investigate root causes"
+                )
         if "statistics" in dashboard:
             for metric, stats in dashboard["statistics"].items():
                 if "trend" in stats and stats["trend"] == "declining":
-                    recommendations.append(f"Declining trend in {metric} - investigate and address")
+                    recommendations.append(
+                        f"Declining trend in {metric} - investigate and address"
+                    )
         recommendations.append("Continue regular monitoring and maintenance")
-        recommendations.append("Schedule periodic model retraining based on performance")
+        recommendations.append(
+            "Schedule periodic model retraining based on performance"
+        )
         return recommendations
 
     def clear_monitoring_data(self, model_id: str):

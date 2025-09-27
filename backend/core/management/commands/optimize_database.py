@@ -26,13 +26,31 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             "--action",
-            choices=["all", "indexes", "config", "monitoring", "backup", "analyze", "report"],
+            choices=[
+                "all",
+                "indexes",
+                "config",
+                "monitoring",
+                "backup",
+                "analyze",
+                "report",
+            ],
             default="all",
             help="Optimization action to perform",
         )
-        parser.add_argument("--dry-run", action="store_true", help="Show what would be done without executing")
-        parser.add_argument("--force", action="store_true", help="Force optimization even if checks fail")
-        parser.add_argument("--output-file", type=str, help="Output file for report generation")
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Show what would be done without executing",
+        )
+        parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Force optimization even if checks fail",
+        )
+        parser.add_argument(
+            "--output-file", type=str, help="Output file for report generation"
+        )
 
     def handle(self, *args, **options):
         self.action = options["action"]
@@ -41,11 +59,16 @@ class Command(BaseCommand):
         self.output_file = options.get("output_file")
 
         # Set up logging
-        logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        )
         self.logger = logging.getLogger(__name__)
 
         try:
-            self.stdout.write(self.style.SUCCESS("Starting HMS Database Optimization..."))
+            self.stdout.write(
+                self.style.SUCCESS("Starting HMS Database Optimization...")
+            )
 
             # Validate database connection
             self._validate_database()
@@ -66,7 +89,9 @@ class Command(BaseCommand):
             elif self.action == "report":
                 self._generate_report()
 
-            self.stdout.write(self.style.SUCCESS("Database optimization completed successfully!"))
+            self.stdout.write(
+                self.style.SUCCESS("Database optimization completed successfully!")
+            )
 
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"Optimization failed: {str(e)}"))
@@ -97,7 +122,8 @@ class Command(BaseCommand):
                 if cursor.fetchone()[0] == 0:
                     self.stdout.write(
                         self.style.WARNING(
-                            "pg_stat_statements extension not found. " "Some optimizations may not work."
+                            "pg_stat_statements extension not found. "
+                            "Some optimizations may not work."
                         )
                     )
 
@@ -139,17 +165,23 @@ class Command(BaseCommand):
 
         # Analyze Patient table as example
         result = index_manager.analyze_table_indexing_needs("patients_patient")
-        self.stdout.write(f"Found {len(result['recommendations'])} index recommendations")
+        self.stdout.write(
+            f"Found {len(result['recommendations'])} index recommendations"
+        )
 
         # Create smart indexes
         self.stdout.write("Creating smart indexes...")
         smart_results = index_manager.create_smart_indexes()
-        self.stdout.write(f"Created {len(smart_results['created_indexes'])} new indexes")
+        self.stdout.write(
+            f"Created {len(smart_results['created_indexes'])} new indexes"
+        )
 
         # Implement partial indexes
         self.stdout.write("Implementing partial indexes...")
         partial_results = index_manager.implement_partial_indexes()
-        self.stdout.write(f"Created {len(partial_results['partial_indexes'])} partial indexes")
+        self.stdout.write(
+            f"Created {len(partial_results['partial_indexes'])} partial indexes"
+        )
 
         # Optimize existing indexes
         self.stdout.write("Optimizing existing indexes...")
@@ -159,7 +191,9 @@ class Command(BaseCommand):
     def _optimize_config(self):
         """Optimize PostgreSQL configuration"""
         if self.dry_run:
-            self.stdout.write("DRY RUN: Would analyze and optimize PostgreSQL configuration")
+            self.stdout.write(
+                "DRY RUN: Would analyze and optimize PostgreSQL configuration"
+            )
             return
 
         self.stdout.write("Analyzing system resources...")
@@ -167,7 +201,9 @@ class Command(BaseCommand):
 
         # Generate optimized configuration
         config = configurator.generate_optimized_config()
-        self.stdout.write(f"Generated {len(config['configuration'])} configuration settings")
+        self.stdout.write(
+            f"Generated {len(config['configuration'])} configuration settings"
+        )
 
         # Generate config file
         config_content = configurator.generate_config_file()
@@ -209,7 +245,11 @@ class Command(BaseCommand):
         self.stdout.write(f"Active alerts: {report['alerts']['active']}")
 
         if report["alerts"]["critical"] > 0:
-            self.stdout.write(self.style.WARNING(f"Found {report['alerts']['critical']} critical alerts!"))
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Found {report['alerts']['critical']} critical alerts!"
+                )
+            )
 
         self.stdout.write("Monitoring is running in the background...")
 
@@ -226,7 +266,9 @@ class Command(BaseCommand):
         backup_job = backup_manager.create_full_backup()
 
         if backup_job.status.value == "completed":
-            self.stdout.write(self.style.SUCCESS(f"Backup successful: {backup_job.file_size} bytes"))
+            self.stdout.write(
+                self.style.SUCCESS(f"Backup successful: {backup_job.file_size} bytes")
+            )
 
             # Verify backup
             self.stdout.write("Verifying backup integrity...")
@@ -234,9 +276,15 @@ class Command(BaseCommand):
             if verify_result["valid"]:
                 self.stdout.write(self.style.SUCCESS("Backup verification passed"))
             else:
-                self.stdout.write(self.style.ERROR(f"Backup verification failed: {verify_result['message']}"))
+                self.stdout.write(
+                    self.style.ERROR(
+                        f"Backup verification failed: {verify_result['message']}"
+                    )
+                )
         else:
-            self.stdout.write(self.style.ERROR(f"Backup failed: {backup_job.error_message}"))
+            self.stdout.write(
+                self.style.ERROR(f"Backup failed: {backup_job.error_message}")
+            )
 
         # Show backup status
         status = backup_manager.get_backup_status()
@@ -262,7 +310,9 @@ class Command(BaseCommand):
         self.stdout.write(f"  Database size: {report['database_stats']['size']}")
         self.stdout.write(f"  Table count: {report['database_stats']['table_count']}")
         self.stdout.write(f"  Index count: {report['database_stats']['index_count']}")
-        self.stdout.write(f"  Active connections: {report['database_stats']['active_connections']}")
+        self.stdout.write(
+            f"  Active connections: {report['database_stats']['active_connections']}"
+        )
 
         if "query_performance" in report:
             qp = report["query_performance"]
@@ -270,7 +320,9 @@ class Command(BaseCommand):
             self.stdout.write(f"  Slow queries: {qp.get('slow_query_count', 0)}")
             if qp.get("slowest_queries"):
                 slowest = qp["slowest_queries"][0]
-                self.stdout.write(f"  Slowest: {slowest['mean_time']:.3f}s avg, {slowest['calls']} calls")
+                self.stdout.write(
+                    f"  Slowest: {slowest['mean_time']:.3f}s avg, {slowest['calls']} calls"
+                )
 
         if "recommendations" in report:
             self.stdout.write(f"\nRecommendations:")
@@ -348,7 +400,9 @@ class Command(BaseCommand):
         report_data["summary"] = {
             "optimization_applied": True,
             "estimated_improvement": "40-60% performance increase",
-            "next_review_date": (timezone.now() + timezone.timedelta(days=90)).isoformat(),
+            "next_review_date": (
+                timezone.now() + timezone.timedelta(days=90)
+            ).isoformat(),
         }
 
         # Write report
@@ -367,8 +421,12 @@ class Command(BaseCommand):
         self.stdout.write(f"  Database: {report_data['database_stats']['size']}")
         self.stdout.write(f"  Tables: {report_data['database_stats']['tables']}")
         self.stdout.write(f"  Indexes: {report_data['database_stats']['indexes']}")
-        self.stdout.write(f"  Slow queries: {report_data['performance_metrics']['slow_queries']}")
-        self.stdout.write(f"  Estimated improvement: {report_data['summary']['estimated_improvement']}")
+        self.stdout.write(
+            f"  Slow queries: {report_data['performance_metrics']['slow_queries']}"
+        )
+        self.stdout.write(
+            f"  Estimated improvement: {report_data['summary']['estimated_improvement']}"
+        )
 
 
 # Add imports for Django timezone

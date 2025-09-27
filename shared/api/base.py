@@ -3,14 +3,15 @@ Shared API Base Classes and Utilities
 Eliminates redundant API patterns across all services.
 """
 
-from typing import Generic, TypeVar, Optional, Dict, Any, List
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, Depends, status, BackgroundTasks
+from enum import Enum
+from typing import Any, Dict, Generic, List, Optional, TypeVar
+
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from enum import Enum
 
 # Type variables for generic responses
 T = TypeVar("T")
@@ -22,13 +23,13 @@ class APIResponse(BaseModel, Generic[T]):
     success: bool = Field(..., description="Whether the operation was successful")
     data: Optional[T] = Field(None, description="Response data")
     message: str = Field(..., description="Response message")
-    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Response timestamp")
+    timestamp: datetime = Field(
+        default_factory=datetime.utcnow, description="Response timestamp"
+    )
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
 
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class PaginatedResponse(APIResponse[List[T]], Generic[T]):
@@ -44,7 +45,7 @@ class PaginatedResponse(APIResponse[List[T]], Generic[T]):
         limit: int,
         total: int,
         message: str = "Success",
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ):
         """Create paginated response."""
         return cls(
@@ -58,9 +59,9 @@ class PaginatedResponse(APIResponse[List[T]], Generic[T]):
                 "pages": (total + limit - 1) // limit,
                 "current_page": (skip // limit) + 1,
                 "has_next": skip + limit < total,
-                "has_prev": skip > 0
+                "has_prev": skip > 0,
             },
-            metadata=metadata
+            metadata=metadata,
         )
 
 
@@ -71,7 +72,9 @@ class ErrorResponse(BaseModel):
     error: str = Field(..., description="Error type")
     message: str = Field(..., description="Error message")
     details: Optional[Dict[str, Any]] = Field(None, description="Error details")
-    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Error timestamp")
+    timestamp: datetime = Field(
+        default_factory=datetime.utcnow, description="Error timestamp"
+    )
     trace_id: Optional[str] = Field(None, description="Request trace ID")
 
 
@@ -89,8 +92,12 @@ class HealthResponse(BaseModel):
     status: HealthStatus = Field(..., description="Service health status")
     service: str = Field(..., description="Service name")
     version: str = Field(..., description="Service version")
-    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Check timestamp")
-    checks: Optional[Dict[str, Any]] = Field(None, description="Individual health checks")
+    timestamp: datetime = Field(
+        default_factory=datetime.utcnow, description="Check timestamp"
+    )
+    checks: Optional[Dict[str, Any]] = Field(
+        None, description="Individual health checks"
+    )
     uptime: Optional[float] = Field(None, description="Service uptime in seconds")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
 
@@ -103,7 +110,7 @@ class BaseServiceApp:
         service_name: str,
         service_description: str,
         version: str = "1.0.0",
-        cors_origins: List[str] = None
+        cors_origins: List[str] = None,
     ):
         self.service_name = service_name
         self.service_description = service_description
@@ -116,7 +123,7 @@ class BaseServiceApp:
             description=service_description,
             version=version,
             docs_url="/docs" if self.is_development() else None,
-            redoc_url="/redoc" if self.is_development() else None
+            redoc_url="/redoc" if self.is_development() else None,
         )
 
         self._setup_middleware()
@@ -144,10 +151,12 @@ class BaseServiceApp:
             data={
                 "service": self.service_name,
                 "version": self.version,
-                "description": self.service_description
+                "description": self.service_description,
             },
             message=f"{self.service_name} Service API is running",
-            metadata={"uptime_seconds": (datetime.utcnow() - self.start_time).total_seconds()}
+            metadata={
+                "uptime_seconds": (datetime.utcnow() - self.start_time).total_seconds()
+            },
         )
 
     async def health_check(self) -> HealthResponse:
@@ -162,8 +171,8 @@ class BaseServiceApp:
             checks={
                 "database": await self.check_database(),
                 "memory": await self.check_memory(),
-                "disk": await self.check_disk()
-            }
+                "disk": await self.check_disk(),
+            },
         )
 
     async def check_database(self) -> Dict[str, Any]:
@@ -173,25 +182,28 @@ class BaseServiceApp:
     async def check_memory(self) -> Dict[str, Any]:
         """Check memory usage."""
         import psutil
+
         memory = psutil.virtual_memory()
         return {
             "status": "healthy" if memory.percent < 80 else "degraded",
             "usage_percent": memory.percent,
-            "available_mb": memory.available / (1024 * 1024)
+            "available_mb": memory.available / (1024 * 1024),
         }
 
     async def check_disk(self) -> Dict[str, Any]:
         """Check disk usage."""
         import psutil
-        disk = psutil.disk_usage('/')
+
+        disk = psutil.disk_usage("/")
         return {
             "status": "healthy" if disk.percent < 80 else "degraded",
             "usage_percent": disk.percent,
-            "free_gb": disk.free / (1024 * 1024 * 1024)
+            "free_gb": disk.free / (1024 * 1024 * 1024),
         }
 
     def add_error_handlers(self):
         """Add standard error handlers."""
+
         @self.app.exception_handler(HTTPException)
         async def http_exception_handler(request, exc):
             return JSONResponse(
@@ -199,8 +211,8 @@ class BaseServiceApp:
                 content=ErrorResponse(
                     error="HTTP_ERROR",
                     message=exc.detail,
-                    details={"status_code": exc.status_code}
-                ).dict(exclude_none=True)
+                    details={"status_code": exc.status_code},
+                ).dict(exclude_none=True),
             )
 
         @self.app.exception_handler(Exception)
@@ -210,13 +222,14 @@ class BaseServiceApp:
                 content=ErrorResponse(
                     error="INTERNAL_ERROR",
                     message="An unexpected error occurred",
-                    details={"exception": str(exc)}
-                ).dict(exclude_none=True)
+                    details={"exception": str(exc)},
+                ).dict(exclude_none=True),
             )
 
     def is_development(self) -> bool:
         """Check if running in development mode."""
         import os
+
         return os.getenv("ENVIRONMENT", "development").lower() == "development"
 
     def get_app(self) -> FastAPI:
@@ -226,44 +239,32 @@ class BaseServiceApp:
 
 # Standard API utility functions
 def create_success_response(
-    data: Any,
-    message: str = "Success",
-    metadata: Optional[Dict[str, Any]] = None
+    data: Any, message: str = "Success", metadata: Optional[Dict[str, Any]] = None
 ) -> APIResponse:
     """Create standard success response."""
-    return APIResponse(
-        success=True,
-        data=data,
-        message=message,
-        metadata=metadata
-    )
+    return APIResponse(success=True, data=data, message=message, metadata=metadata)
 
 
 def create_error_response(
     error: str,
     message: str,
     details: Optional[Dict[str, Any]] = None,
-    status_code: int = 400
+    status_code: int = 400,
 ) -> tuple[ErrorResponse, int]:
     """Create standard error response."""
-    error_response = ErrorResponse(
-        error=error,
-        message=message,
-        details=details
-    )
+    error_response = ErrorResponse(error=error, message=message, details=details)
     return error_response, status_code
 
 
 def handle_database_errors(func):
     """Decorator to handle database errors."""
+
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Database error: {str(e)}"
-            )
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
     return wrapper
 
 
@@ -280,7 +281,7 @@ def get_request_metadata(request) -> Dict[str, Any]:
         "client_ip": request.client.host if request.client else None,
         "user_agent": request.headers.get("user-agent"),
         "timestamp": datetime.utcnow().isoformat(),
-        "path": request.url.path
+        "path": request.url.path,
     }
 
 

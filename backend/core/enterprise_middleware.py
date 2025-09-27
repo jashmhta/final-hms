@@ -43,15 +43,21 @@ class EnterpriseMiddleware(MiddlewareMixin):
 
         # Metrics
         self.enterprise_request_count = Counter(
-            "enterprise_requests_total", "Total enterprise requests", ["system", "status"]
+            "enterprise_requests_total",
+            "Total enterprise requests",
+            ["system", "status"],
         )
         self.enterprise_response_time = Histogram(
             "enterprise_response_time_seconds", "Enterprise response time", ["system"]
         )
         self.security_violations = Counter(
-            "enterprise_security_violations_total", "Total security violations", ["type"]
+            "enterprise_security_violations_total",
+            "Total security violations",
+            ["type"],
         )
-        self.ai_predictions = Counter("enterprise_ai_predictions_total", "Total AI predictions", ["type"])
+        self.ai_predictions = Counter(
+            "enterprise_ai_predictions_total", "Total AI predictions", ["type"]
+        )
 
     def process_request(self, request: HttpRequest) -> Optional[HttpResponse]:
         """Process incoming request with enterprise-grade security"""
@@ -89,7 +95,9 @@ class EnterpriseMiddleware(MiddlewareMixin):
 
         return None
 
-    def process_response(self, request: HttpRequest, response: HttpResponse) -> HttpResponse:
+    def process_response(
+        self, request: HttpRequest, response: HttpResponse
+    ) -> HttpResponse:
         """Process outgoing response with enterprise features"""
         try:
             if hasattr(request, "enterprise_context"):
@@ -125,7 +133,9 @@ class EnterpriseMiddleware(MiddlewareMixin):
             # Zero-trust verification
             if hasattr(request, "user") and request.user.is_authenticated:
                 security_level = self._determine_security_level(request)
-                security_passed = self.security_manager.security_check(request, request.user, security_level)
+                security_passed = self.security_manager.security_check(
+                    request, request.user, security_level
+                )
 
                 if not security_passed:
                     return {"success": False, "violation_type": "zero_trust_failure"}
@@ -156,7 +166,10 @@ class EnterpriseMiddleware(MiddlewareMixin):
         """Determine required security level based on request"""
         path = request.path.lower()
 
-        if any(pattern in path for pattern in ["/api/patients/", "/api/medical-records/", "/api/billing/"]):
+        if any(
+            pattern in path
+            for pattern in ["/api/patients/", "/api/medical-records/", "/api/billing/"]
+        ):
             return SecurityLevel.ENTERPRISE
         elif any(pattern in path for pattern in ["/api/admin/", "/api/users/"]):
             return SecurityLevel.HIPAA
@@ -237,7 +250,9 @@ class EnterpriseMiddleware(MiddlewareMixin):
             # AI-powered request classification
             if anomaly_score > 0.7:
                 analysis["prediction"] = "suspicious_request"
-                analysis["recommendations"].append("Additional security verification required")
+                analysis["recommendations"].append(
+                    "Additional security verification required"
+                )
 
             return analysis
 
@@ -304,27 +319,41 @@ class EnterpriseMiddleware(MiddlewareMixin):
             request.method,
             request.path,
             str(sorted(request.GET.items())),
-            str(request.user.id) if hasattr(request, "user") and request.user.is_authenticated else "anonymous",
+            (
+                str(request.user.id)
+                if hasattr(request, "user") and request.user.is_authenticated
+                else "anonymous"
+            ),
         ]
 
         key_string = "|".join(key_components)
         return f"enterprise_cache:{hashlib.sha256(key_string.encode()).hexdigest()}"
 
-    def _update_performance_metrics(self, request: HttpRequest, response: HttpResponse, response_time: float):
+    def _update_performance_metrics(
+        self, request: HttpRequest, response: HttpResponse, response_time: float
+    ):
         """Update performance metrics"""
         try:
             # Update Prometheus metrics
-            self.enterprise_request_count.labels(system="middleware", status=response.status_code).inc()
-            self.enterprise_response_time.labels(system="middleware").observe(response_time)
+            self.enterprise_request_count.labels(
+                system="middleware", status=response.status_code
+            ).inc()
+            self.enterprise_response_time.labels(system="middleware").observe(
+                response_time
+            )
 
             # Log performance metrics
             if response_time > 1.0:  # Slow response
-                self.logger.warning(f"Slow response detected: {response_time:.3f}s for {request.path}")
+                self.logger.warning(
+                    f"Slow response detected: {response_time:.3f}s for {request.path}"
+                )
 
         except Exception as e:
             self.logger.error(f"Performance metrics error: {e}")
 
-    def _enhance_response_with_ai(self, request: HttpRequest, response: HttpResponse) -> Optional[HttpResponse]:
+    def _enhance_response_with_ai(
+        self, request: HttpRequest, response: HttpResponse
+    ) -> Optional[HttpResponse]:
         """Enhance response using AI"""
         try:
             # Only enhance JSON responses
@@ -360,19 +389,29 @@ class EnterpriseMiddleware(MiddlewareMixin):
 
             # Enterprise security headers
             response.setdefault("X-Enterprise-Security", "Enabled")
-            response.setdefault("X-Security-Level", self._determine_security_level(request).value)
+            response.setdefault(
+                "X-Security-Level", self._determine_security_level(request).value
+            )
 
             # Compliance headers
-            if self._determine_security_level(request) in [SecurityLevel.HIPAA, SecurityLevel.ENTERPRISE]:
+            if self._determine_security_level(request) in [
+                SecurityLevel.HIPAA,
+                SecurityLevel.ENTERPRISE,
+            ]:
                 response.setdefault("X-HIPAA-Compliant", "true")
 
-            if self._determine_security_level(request) in [SecurityLevel.GDPR, SecurityLevel.ENTERPRISE]:
+            if self._determine_security_level(request) in [
+                SecurityLevel.GDPR,
+                SecurityLevel.ENTERPRISE,
+            ]:
                 response.setdefault("X-GDPR-Compliant", "true")
 
         except Exception as e:
             self.logger.error(f"Security headers error: {e}")
 
-    def _track_enterprise_response(self, request: HttpRequest, response: HttpResponse, response_time: float):
+    def _track_enterprise_response(
+        self, request: HttpRequest, response: HttpResponse, response_time: float
+    ):
         """Track enterprise response metrics"""
         try:
             # Log enterprise metrics
@@ -384,10 +423,14 @@ class EnterpriseMiddleware(MiddlewareMixin):
                     "status_code": response.status_code,
                     "response_time": response_time,
                     "user_id": (
-                        request.user.id if hasattr(request, "user") and request.user.is_authenticated else "anonymous"
+                        request.user.id
+                        if hasattr(request, "user") and request.user.is_authenticated
+                        else "anonymous"
                     ),
                     "security_level": self._determine_security_level(request).value,
-                    "performance_level": request.enterprise_context.get("performance_level", "basic"),
+                    "performance_level": request.enterprise_context.get(
+                        "performance_level", "basic"
+                    ),
                 },
             )
 
@@ -424,7 +467,9 @@ class EnterpriseMiddleware(MiddlewareMixin):
                     "ip": self._get_client_ip(request),
                     "user_agent": request.META.get("HTTP_USER_AGENT", ""),
                     "user_id": (
-                        request.user.id if hasattr(request, "user") and request.user.is_authenticated else "anonymous"
+                        request.user.id
+                        if hasattr(request, "user") and request.user.is_authenticated
+                        else "anonymous"
                     ),
                 },
             )
@@ -444,7 +489,9 @@ class EnterpriseAICorrelationMiddleware(MiddlewareMixin):
         self.logger = logging.getLogger("enterprise.ai_correlation")
         self.ai_manager = ai_manager
 
-    def process_response(self, request: HttpRequest, response: HttpResponse) -> HttpResponse:
+    def process_response(
+        self, request: HttpRequest, response: HttpResponse
+    ) -> HttpResponse:
         """Add AI-powered correlation to responses"""
         try:
             if isinstance(response, JsonResponse) and request.path.startswith("/api/"):
@@ -461,7 +508,9 @@ class EnterpriseAICorrelationMiddleware(MiddlewareMixin):
 
         return response
 
-    def _add_patient_correlations(self, request: HttpRequest, response: JsonResponse) -> JsonResponse:
+    def _add_patient_correlations(
+        self, request: HttpRequest, response: JsonResponse
+    ) -> JsonResponse:
         """Add patient data correlations using AI"""
         try:
             data = response.data.copy()
@@ -486,7 +535,9 @@ class EnterpriseAICorrelationMiddleware(MiddlewareMixin):
             self.logger.error(f"Patient correlation error: {e}")
             return response
 
-    def _add_appointment_correlations(self, request: HttpRequest, response: JsonResponse) -> JsonResponse:
+    def _add_appointment_correlations(
+        self, request: HttpRequest, response: JsonResponse
+    ) -> JsonResponse:
         """Add appointment data correlations using AI"""
         try:
             data = response.data.copy()
@@ -506,7 +557,9 @@ class EnterpriseAICorrelationMiddleware(MiddlewareMixin):
             self.logger.error(f"Appointment correlation error: {e}")
             return response
 
-    def _add_billing_correlations(self, request: HttpRequest, response: JsonResponse) -> JsonResponse:
+    def _add_billing_correlations(
+        self, request: HttpRequest, response: JsonResponse
+    ) -> JsonResponse:
         """Add billing data correlations using AI"""
         try:
             data = response.data.copy()
@@ -534,7 +587,11 @@ class EnterpriseAICorrelationMiddleware(MiddlewareMixin):
             # Risk assessment
             if "age" in patient_data and patient_data["age"] > 65:
                 insights.append(
-                    {"type": "risk_assessment", "message": "Patient in high-risk age group", "severity": "medium"}
+                    {
+                        "type": "risk_assessment",
+                        "message": "Patient in high-risk age group",
+                        "severity": "medium",
+                    }
                 )
 
             # Medication monitoring
@@ -552,7 +609,8 @@ class EnterpriseAICorrelationMiddleware(MiddlewareMixin):
                 chronic_conditions = [
                     condition
                     for condition in patient_data["medical_history"]
-                    if condition.lower() in ["diabetes", "hypertension", "heart_disease"]
+                    if condition.lower()
+                    in ["diabetes", "hypertension", "heart_disease"]
                 ]
                 if chronic_conditions:
                     insights.append(
@@ -643,7 +701,9 @@ class EnterprisePerformanceMiddleware(MiddlewareMixin):
 
         return None
 
-    def process_response(self, request: HttpRequest, response: HttpResponse) -> HttpResponse:
+    def process_response(
+        self, request: HttpRequest, response: HttpResponse
+    ) -> HttpResponse:
         """Optimize response performance"""
         try:
             if hasattr(request, "performance_start_time"):
@@ -672,7 +732,11 @@ class EnterprisePerformanceMiddleware(MiddlewareMixin):
             request.method,
             request.path,
             str(sorted(request.GET.items())),
-            request.user.id if hasattr(request, "user") and request.user.is_authenticated else "anonymous",
+            (
+                request.user.id
+                if hasattr(request, "user") and request.user.is_authenticated
+                else "anonymous"
+            ),
         ]
 
         key_string = "|".join(str(c) for c in components)
@@ -689,7 +753,9 @@ class EnterprisePerformanceMiddleware(MiddlewareMixin):
             self.logger.error(f"Cache retrieval error: {e}")
         return None
 
-    def _should_cache_response(self, request: HttpRequest, response: HttpResponse) -> bool:
+    def _should_cache_response(
+        self, request: HttpRequest, response: HttpResponse
+    ) -> bool:
         """Determine if response should be cached"""
         return (
             request.method == "GET"
@@ -706,7 +772,9 @@ class EnterprisePerformanceMiddleware(MiddlewareMixin):
         except Exception as e:
             self.logger.error(f"Response caching error: {e}")
 
-    def _log_performance_metrics(self, request: HttpRequest, response: HttpResponse, response_time: float):
+    def _log_performance_metrics(
+        self, request: HttpRequest, response: HttpResponse, response_time: float
+    ):
         """Log performance metrics"""
         try:
             self.logger.info(
@@ -717,7 +785,9 @@ class EnterprisePerformanceMiddleware(MiddlewareMixin):
                     "status_code": response.status_code,
                     "response_time": response_time,
                     "user_id": (
-                        request.user.id if hasattr(request, "user") and request.user.is_authenticated else "anonymous"
+                        request.user.id
+                        if hasattr(request, "user") and request.user.is_authenticated
+                        else "anonymous"
                     ),
                 },
             )
@@ -725,7 +795,9 @@ class EnterprisePerformanceMiddleware(MiddlewareMixin):
         except Exception as e:
             self.logger.error(f"Performance logging error: {e}")
 
-    def _optimize_response_performance(self, response: HttpResponse, response_time: float) -> HttpResponse:
+    def _optimize_response_performance(
+        self, response: HttpResponse, response_time: float
+    ) -> HttpResponse:
         """Optimize response performance"""
         try:
             # Add performance headers

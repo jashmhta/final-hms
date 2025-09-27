@@ -1,4 +1,3 @@
-from django.urls import include, path, re_path
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
@@ -6,7 +5,11 @@ from drf_spectacular.views import (
 )
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+from django.urls import include, path, re_path
+
 from . import views
+
 router = DefaultRouter()
 router.register(r"donors", views.DonorViewSet, basename="donor")
 router.register(r"inventory", views.BloodInventoryViewSet, basename="bloodinventory")

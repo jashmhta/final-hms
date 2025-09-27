@@ -1,14 +1,20 @@
-import os
-import sys
-import re
-import json
+"""
+validate_gitignore module
+"""
+
 import hashlib
+import json
+import os
+import re
 import subprocess
-from pathlib import Path
+import sys
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import List, Dict, Set, Tuple, Optional
-from dataclasses import dataclass, asdict
 from enum import Enum
+from pathlib import Path
+from typing import Dict, List, Optional, Set, Tuple
+
+
 class ValidationLevel(Enum):
     ERROR = "error"
     WARNING = "warning"

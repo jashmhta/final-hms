@@ -1,3 +1,7 @@
+"""
+models module
+"""
+
 import uuid
 from decimal import Decimal
 
@@ -73,14 +77,18 @@ class ModulePermission(models.Model):
     display_name = models.CharField(max_length=100)
     description = models.TextField()
     is_core_module = models.BooleanField(default=False)
-    min_tier_required = models.CharField(max_length=20, choices=SubscriptionTier.TIER_CHOICES, default="BASIC")
+    min_tier_required = models.CharField(
+        max_length=20, choices=SubscriptionTier.TIER_CHOICES, default="BASIC"
+    )
 
     def __str__(self):
         return self.display_name
 
 
 class TierModuleAccess(models.Model):
-    tier = models.ForeignKey(SubscriptionTier, on_delete=models.CASCADE, related_name="module_access")
+    tier = models.ForeignKey(
+        SubscriptionTier, on_delete=models.CASCADE, related_name="module_access"
+    )
     module = models.ForeignKey(ModulePermission, on_delete=models.CASCADE)
     is_enabled = models.BooleanField(default=True)
     feature_limits = models.JSONField(default=dict, blank=True)
@@ -105,11 +113,15 @@ class HospitalSubscription(TimeStampedModel):
         ("EXPIRED", "Expired"),
     ]
     hospital = models.OneToOneField(
-        "hospitals.Hospital", on_delete=models.CASCADE, related_name="superadmin_subscription"
+        "hospitals.Hospital",
+        on_delete=models.CASCADE,
+        related_name="superadmin_subscription",
     )
     tier = models.ForeignKey(SubscriptionTier, on_delete=models.CASCADE)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="TRIAL")
-    billing_cycle = models.CharField(max_length=10, choices=BILLING_CYCLE_CHOICES, default="MONTHLY")
+    billing_cycle = models.CharField(
+        max_length=10, choices=BILLING_CYCLE_CHOICES, default="MONTHLY"
+    )
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
     trial_end_date = models.DateTimeField(null=True, blank=True)
@@ -167,7 +179,9 @@ class SuperadminUser(TimeStampedModel):
         ("BILLING", "Billing Manager"),
         ("TECHNICAL", "Technical Manager"),
     ]
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="superadmin_profile")
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="superadmin_profile"
+    )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     can_manage_subscriptions = models.BooleanField(default=False)
     can_manage_users = models.BooleanField(default=False)

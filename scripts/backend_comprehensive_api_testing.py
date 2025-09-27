@@ -5,17 +5,18 @@ Zero Tolerance for Functional/Logical Errors
 Enterprise-Grade Healthcare Management System
 """
 
+import asyncio
+import json
 import os
 import sys
 import time
-import asyncio
-import aiohttp
-import json
 import uuid
-import pytest
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import aiohttp
+import pytest
 
 # Add backend to Python path
 BACKEND_DIR = Path(__file__).parent.parent / "backend"
@@ -24,16 +25,19 @@ sys.path.insert(0, str(BACKEND_DIR))
 # Django setup
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "hms.settings")
 import django
+
 django.setup()
 
-from django.test import TestCase
-from django.urls import reverse
-from django.contrib.auth import get_user_model
-from rest_framework.test import APIClient
 from rest_framework import status
+from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.urls import reverse
+
 User = get_user_model()
+
 
 class BackendAPIUltraTester:
     """
@@ -67,52 +71,52 @@ class BackendAPIUltraTester:
         users = {}
 
         # Admin user
-        users['admin'] = await User.objects.acreate(
-            username='test_admin',
-            email='admin@test.com',
-            first_name='Admin',
-            last_name='User',
-            role='admin',
+        users["admin"] = await User.objects.acreate(
+            username="test_admin",
+            email="admin@test.com",
+            first_name="Admin",
+            last_name="User",
+            role="admin",
             is_staff=True,
-            is_superuser=True
+            is_superuser=True,
         )
-        users['admin'].set_password('secure_password_123')
-        await users['admin'].asave()
+        users["admin"].set_password("secure_password_123")
+        await users["admin"].asave()
 
         # Doctor user
-        users['doctor'] = await User.objects.acreate(
-            username='test_doctor',
-            email='doctor@test.com',
-            first_name='John',
-            last_name='Doe',
-            role='doctor',
-            department='Cardiology'
+        users["doctor"] = await User.objects.acreate(
+            username="test_doctor",
+            email="doctor@test.com",
+            first_name="John",
+            last_name="Doe",
+            role="doctor",
+            department="Cardiology",
         )
-        users['doctor'].set_password('secure_password_123')
-        await users['doctor'].asave()
+        users["doctor"].set_password("secure_password_123")
+        await users["doctor"].asave()
 
         # Nurse user
-        users['nurse'] = await User.objects.acreate(
-            username='test_nurse',
-            email='nurse@test.com',
-            first_name='Jane',
-            last_name='Smith',
-            role='nurse',
-            department='Emergency'
+        users["nurse"] = await User.objects.acreate(
+            username="test_nurse",
+            email="nurse@test.com",
+            first_name="Jane",
+            last_name="Smith",
+            role="nurse",
+            department="Emergency",
         )
-        users['nurse'].set_password('secure_password_123')
-        await users['nurse'].asave()
+        users["nurse"].set_password("secure_password_123")
+        await users["nurse"].asave()
 
         # Patient user
-        users['patient'] = await User.objects.acreate(
-            username='test_patient',
-            email='patient@test.com',
-            first_name='Robert',
-            last_name='Johnson',
-            role='patient'
+        users["patient"] = await User.objects.acreate(
+            username="test_patient",
+            email="patient@test.com",
+            first_name="Robert",
+            last_name="Johnson",
+            role="patient",
         )
-        users['patient'].set_password('secure_password_123')
-        await users['patient'].asave()
+        users["patient"].set_password("secure_password_123")
+        await users["patient"].asave()
 
         return users
 
@@ -121,10 +125,10 @@ class BackendAPIUltraTester:
         print("📊 Creating test data...")
 
         # Import models
-        from patients.models import Patient
         from appointments.models import Appointment
-        from hospitals.models import Hospital, Department
         from billing.models import Bill
+        from hospitals.models import Department, Hospital
+        from patients.models import Patient
 
         # Create test hospital
         self.test_hospital = await Hospital.objects.acreate(
@@ -134,7 +138,7 @@ class BackendAPIUltraTester:
             phone="+1234567890",
             email="info@testhospital.com",
             capacity=500,
-            established_date=datetime.now().date()
+            established_date=datetime.now().date(),
         )
 
         # Create test department
@@ -142,12 +146,12 @@ class BackendAPIUltraTester:
             hospital=self.test_hospital,
             name="Cardiology",
             code="CARD",
-            description="Cardiology Department"
+            description="Cardiology Department",
         )
 
         # Create test patient
         self.test_patient = await Patient.objects.acreate(
-            user=self.test_users['patient'],
+            user=self.test_users["patient"],
             patient_number="PAT001",
             date_of_birth="1980-01-15",
             gender="Male",
@@ -157,20 +161,20 @@ class BackendAPIUltraTester:
             emergency_contact_name="Jane Doe",
             emergency_contact_phone="+0987654321",
             allergies="Penicillin",
-            medical_conditions="Hypertension"
+            medical_conditions="Hypertension",
         )
 
         # Create test appointment
         self.test_appointment = await Appointment.objects.acreate(
             patient=self.test_patient,
-            provider=self.test_users['doctor'],
+            provider=self.test_users["doctor"],
             hospital=self.test_hospital,
             department=self.test_department,
             appointment_date=datetime.now() + timedelta(days=1),
             appointment_type="Consultation",
             status="Scheduled",
             duration=30,
-            notes="Regular checkup"
+            notes="Regular checkup",
         )
 
         # Create test bill
@@ -182,7 +186,7 @@ class BackendAPIUltraTester:
             total_amount=150.00,
             status="Pending",
             services_provided="Consultation",
-            insurance_info="Blue Cross POL123456"
+            insurance_info="Blue Cross POL123456",
         )
 
         print("✅ Test data creation complete")
@@ -202,13 +206,10 @@ class BackendAPIUltraTester:
                 "name": "Login API Contract",
                 "endpoint": "/api/auth/login/",
                 "method": "POST",
-                "data": {
-                    "username": "test_admin",
-                    "password": "secure_password_123"
-                },
+                "data": {"username": "test_admin", "password": "secure_password_123"},
                 "expected_status": 200,
                 "expected_fields": ["access", "refresh", "user"],
-                "validation": self.validate_login_response
+                "validation": self.validate_login_response,
             },
             {
                 "name": "Token Refresh Contract",
@@ -217,9 +218,8 @@ class BackendAPIUltraTester:
                 "requires_auth": True,
                 "expected_status": 200,
                 "expected_fields": ["access"],
-                "validation": self.validate_token_response
+                "validation": self.validate_token_response,
             },
-
             # Patient management endpoints
             {
                 "name": "Create Patient Contract",
@@ -233,11 +233,11 @@ class BackendAPIUltraTester:
                     "gender": "Male",
                     "email": "test@example.com",
                     "phone": "+1234567890",
-                    "blood_type": "A+"
+                    "blood_type": "A+",
                 },
                 "expected_status": 201,
                 "expected_fields": ["id", "patient_number", "first_name", "last_name"],
-                "validation": self.validate_patient_response
+                "validation": self.validate_patient_response,
             },
             {
                 "name": "List Patients Contract",
@@ -246,7 +246,7 @@ class BackendAPIUltraTester:
                 "requires_auth": True,
                 "expected_status": 200,
                 "expected_fields": ["results", "count"],
-                "validation": self.validate_patient_list_response
+                "validation": self.validate_patient_list_response,
             },
             {
                 "name": "Get Patient Detail Contract",
@@ -254,10 +254,15 @@ class BackendAPIUltraTester:
                 "method": "GET",
                 "requires_auth": True,
                 "expected_status": 200,
-                "expected_fields": ["id", "patient_number", "first_name", "last_name", "date_of_birth"],
-                "validation": self.validate_patient_detail_response
+                "expected_fields": [
+                    "id",
+                    "patient_number",
+                    "first_name",
+                    "last_name",
+                    "date_of_birth",
+                ],
+                "validation": self.validate_patient_detail_response,
             },
-
             # Appointment endpoints
             {
                 "name": "Create Appointment Contract",
@@ -266,15 +271,22 @@ class BackendAPIUltraTester:
                 "requires_auth": True,
                 "data": {
                     "patient_id": self.test_patient.id,
-                    "provider_id": self.test_users['doctor'].id,
-                    "appointment_date": (datetime.now() + timedelta(days=2)).isoformat(),
+                    "provider_id": self.test_users["doctor"].id,
+                    "appointment_date": (
+                        datetime.now() + timedelta(days=2)
+                    ).isoformat(),
                     "appointment_type": "Consultation",
                     "duration": 30,
-                    "notes": "Follow-up appointment"
+                    "notes": "Follow-up appointment",
                 },
                 "expected_status": 201,
-                "expected_fields": ["id", "appointment_number", "appointment_date", "status"],
-                "validation": self.validate_appointment_response
+                "expected_fields": [
+                    "id",
+                    "appointment_number",
+                    "appointment_date",
+                    "status",
+                ],
+                "validation": self.validate_appointment_response,
             },
             {
                 "name": "List Appointments Contract",
@@ -283,9 +295,8 @@ class BackendAPIUltraTester:
                 "requires_auth": True,
                 "expected_status": 200,
                 "expected_fields": ["results", "count"],
-                "validation": self.validate_appointment_list_response
+                "validation": self.validate_appointment_list_response,
             },
-
             # Billing endpoints
             {
                 "name": "Create Bill Contract",
@@ -297,11 +308,11 @@ class BackendAPIUltraTester:
                     "appointment_id": self.test_appointment.id,
                     "total_amount": 200.00,
                     "services_provided": "Specialist consultation",
-                    "insurance_info": "Aetna INS67890"
+                    "insurance_info": "Aetna INS67890",
                 },
                 "expected_status": 201,
                 "expected_fields": ["id", "bill_number", "total_amount", "status"],
-                "validation": self.validate_bill_response
+                "validation": self.validate_bill_response,
             },
             {
                 "name": "List Bills Contract",
@@ -310,9 +321,8 @@ class BackendAPIUltraTester:
                 "requires_auth": True,
                 "expected_status": 200,
                 "expected_fields": ["results", "count"],
-                "validation": self.validate_bill_list_response
+                "validation": self.validate_bill_list_response,
             },
-
             # Hospital endpoints
             {
                 "name": "List Hospitals Contract",
@@ -321,7 +331,7 @@ class BackendAPIUltraTester:
                 "requires_auth": True,
                 "expected_status": 200,
                 "expected_fields": ["results", "count"],
-                "validation": self.validate_hospital_list_response
+                "validation": self.validate_hospital_list_response,
             },
             {
                 "name": "Get Hospital Detail Contract",
@@ -330,8 +340,8 @@ class BackendAPIUltraTester:
                 "requires_auth": True,
                 "expected_status": 200,
                 "expected_fields": ["id", "name", "code", "address", "capacity"],
-                "validation": self.validate_hospital_detail_response
-            }
+                "validation": self.validate_hospital_detail_response,
+            },
         ]
 
         for test in contract_tests:
@@ -344,8 +354,8 @@ class BackendAPIUltraTester:
         try:
             # Setup authentication if required
             if test.get("requires_auth"):
-                token = self.get_auth_token(self.test_users['admin'])
-                self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+                token = self.get_auth_token(self.test_users["admin"])
+                self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
             else:
                 self.client.credentials()
 
@@ -375,25 +385,29 @@ class BackendAPIUltraTester:
                 "actual_status": response.status_code,
                 "timestamp": datetime.now().isoformat(),
                 "details": validation_result.get("details", ""),
-                "response_data": response.data if hasattr(response, 'data') else None,
-                "error": validation_result.get("error", None)
+                "response_data": response.data if hasattr(response, "data") else None,
+                "error": validation_result.get("error", None),
             }
 
             self.test_results.append(test_result)
 
             if not validation_result["success"]:
-                self.bugs_found.append({
-                    "category": "contract_testing",
-                    "test_name": test["name"],
-                    "endpoint": test["endpoint"],
-                    "severity": "Critical",
-                    "description": validation_result["error"],
-                    "expected_status": test["expected_status"],
-                    "actual_status": response.status_code,
-                    "fix_required": True
-                })
+                self.bugs_found.append(
+                    {
+                        "category": "contract_testing",
+                        "test_name": test["name"],
+                        "endpoint": test["endpoint"],
+                        "severity": "Critical",
+                        "description": validation_result["error"],
+                        "expected_status": test["expected_status"],
+                        "actual_status": response.status_code,
+                        "fix_required": True,
+                    }
+                )
 
-                print(f"❌ Contract Test Failed: {test['name']} - {validation_result['error']}")
+                print(
+                    f"❌ Contract Test Failed: {test['name']} - {validation_result['error']}"
+                )
             else:
                 print(f"✅ Contract Test Passed: {test['name']}")
 
@@ -408,34 +422,38 @@ class BackendAPIUltraTester:
                 "execution_time": execution_time,
                 "timestamp": datetime.now().isoformat(),
                 "error": str(e),
-                "details": "Test execution failed"
+                "details": "Test execution failed",
             }
 
             self.test_results.append(test_result)
 
-            self.bugs_found.append({
-                "category": "contract_testing",
-                "test_name": test["name"],
-                "endpoint": test["endpoint"],
-                "severity": "Critical",
-                "description": f"Test execution failed: {str(e)}",
-                "fix_required": True
-            })
+            self.bugs_found.append(
+                {
+                    "category": "contract_testing",
+                    "test_name": test["name"],
+                    "endpoint": test["endpoint"],
+                    "severity": "Critical",
+                    "description": f"Test execution failed: {str(e)}",
+                    "fix_required": True,
+                }
+            )
 
             print(f"❌ Contract Test Exception: {test['name']} - {str(e)}")
 
-    async def validate_contract_response(self, response, test: Dict[str, Any]) -> Dict[str, Any]:
+    async def validate_contract_response(
+        self, response, test: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Validate contract response"""
         try:
             # Check status code
             if response.status_code != test["expected_status"]:
                 return {
                     "success": False,
-                    "error": f"Expected status {test['expected_status']}, got {response.status_code}"
+                    "error": f"Expected status {test['expected_status']}, got {response.status_code}",
                 }
 
             # Parse response data
-            response_data = response.data if hasattr(response, 'data') else None
+            response_data = response.data if hasattr(response, "data") else None
 
             # Check expected fields
             if "expected_fields" in test and response_data:
@@ -447,7 +465,7 @@ class BackendAPIUltraTester:
                 if missing_fields:
                     return {
                         "success": False,
-                        "error": f"Missing expected fields: {missing_fields}"
+                        "error": f"Missing expected fields: {missing_fields}",
                     }
 
             # Run custom validation if provided
@@ -456,16 +474,10 @@ class BackendAPIUltraTester:
                 if not validation_result["success"]:
                     return validation_result
 
-            return {
-                "success": True,
-                "details": "Contract validation passed"
-            }
+            return {"success": True, "details": "Contract validation passed"}
 
         except Exception as e:
-            return {
-                "success": False,
-                "error": f"Validation error: {str(e)}"
-            }
+            return {"success": False, "error": f"Validation error: {str(e)}"}
 
     # Validation methods
     def validate_login_response(self, data) -> Dict[str, Any]:
@@ -496,7 +508,13 @@ class BackendAPIUltraTester:
 
     def validate_patient_detail_response(self, data) -> Dict[str, Any]:
         """Validate patient detail response"""
-        required_fields = ["id", "patient_number", "first_name", "last_name", "date_of_birth"]
+        required_fields = [
+            "id",
+            "patient_number",
+            "first_name",
+            "last_name",
+            "date_of_birth",
+        ]
         for field in required_fields:
             if field not in data:
                 return {"success": False, "error": f"Missing {field} field"}
@@ -556,7 +574,7 @@ class BackendAPIUltraTester:
                 "scenario": "Calculate patient age from date of birth",
                 "input": {"date_of_birth": "1990-01-15"},
                 "expected_output": {"age": 34},  # Assuming current year is 2024
-                "validation": self.validate_patient_age_calculation
+                "validation": self.validate_patient_age_calculation,
             },
             {
                 "name": "Patient Duplicate Prevention",
@@ -566,38 +584,38 @@ class BackendAPIUltraTester:
                     "first_name": "Test",
                     "last_name": "Patient",
                     "date_of_birth": "1990-01-15",
-                    "email": "test@example.com"
+                    "email": "test@example.com",
                 },
                 "expected_output": {"should_prevent": True},
-                "validation": self.validate_patient_duplicate_prevention
+                "validation": self.validate_patient_duplicate_prevention,
             },
-
             # Appointment scheduling business logic
             {
                 "name": "Appointment Time Slot Availability",
                 "test_type": "appointment",
                 "scenario": "Check time slot availability",
                 "input": {
-                    "provider_id": self.test_users['doctor'].id,
-                    "appointment_date": (datetime.now() + timedelta(days=3)).isoformat(),
-                    "duration": 30
+                    "provider_id": self.test_users["doctor"].id,
+                    "appointment_date": (
+                        datetime.now() + timedelta(days=3)
+                    ).isoformat(),
+                    "duration": 30,
                 },
                 "expected_output": {"available": True},
-                "validation": self.validate_appointment_availability
+                "validation": self.validate_appointment_availability,
             },
             {
                 "name": "Appointment Conflict Detection",
                 "test_type": "appointment",
                 "scenario": "Detect appointment conflicts",
                 "input": {
-                    "provider_id": self.test_users['doctor'].id,
+                    "provider_id": self.test_users["doctor"].id,
                     "appointment_date": self.test_appointment.appointment_date.isoformat(),
-                    "duration": 30
+                    "duration": 30,
                 },
                 "expected_output": {"conflict": True},
-                "validation": self.validate_appointment_conflict
+                "validation": self.validate_appointment_conflict,
             },
-
             # Billing business logic
             {
                 "name": "Bill Amount Calculation",
@@ -606,12 +624,12 @@ class BackendAPIUltraTester:
                 "input": {
                     "services": [
                         {"code": "99213", "amount": 150.00},
-                        {"code": "99214", "amount": 200.00}
+                        {"code": "99214", "amount": 200.00},
                     ],
-                    "discount_percentage": 10
+                    "discount_percentage": 10,
                 },
                 "expected_output": {"total_amount": 315.00},
-                "validation": self.validate_bill_calculation
+                "validation": self.validate_bill_calculation,
             },
             {
                 "name": "Insurance Coverage Validation",
@@ -620,12 +638,11 @@ class BackendAPIUltraTester:
                 "input": {
                     "insurance_provider": "Blue Cross",
                     "service_code": "99213",
-                    "patient_id": self.test_patient.id
+                    "patient_id": self.test_patient.id,
                 },
                 "expected_output": {"covered": True},
-                "validation": self.validate_insurance_coverage
+                "validation": self.validate_insurance_coverage,
             },
-
             # Medical records business logic
             {
                 "name": "Medical Record Access Control",
@@ -634,10 +651,10 @@ class BackendAPIUltraTester:
                 "input": {
                     "patient_id": self.test_patient.id,
                     "user_role": "nurse",
-                    "action": "view"
+                    "action": "view",
                 },
                 "expected_output": {"access_granted": True},
-                "validation": self.validate_medical_record_access
+                "validation": self.validate_medical_record_access,
             },
             {
                 "name": "Medical Record Version Control",
@@ -646,11 +663,11 @@ class BackendAPIUltraTester:
                 "input": {
                     "patient_id": self.test_patient.id,
                     "record_type": "diagnosis",
-                    "updates": ["Initial diagnosis", "Updated diagnosis"]
+                    "updates": ["Initial diagnosis", "Updated diagnosis"],
                 },
                 "expected_output": {"versions": 2},
-                "validation": self.validate_medical_record_versions
-            }
+                "validation": self.validate_medical_record_versions,
+            },
         ]
 
         for test in business_logic_tests:
@@ -662,7 +679,9 @@ class BackendAPIUltraTester:
 
         try:
             # Execute business logic validation
-            validation_result = test["validation"](test["input"], test["expected_output"])
+            validation_result = test["validation"](
+                test["input"], test["expected_output"]
+            )
 
             execution_time = time.time() - start_time
 
@@ -678,23 +697,27 @@ class BackendAPIUltraTester:
                 "actual_output": validation_result.get("actual_output", {}),
                 "timestamp": datetime.now().isoformat(),
                 "details": validation_result.get("details", ""),
-                "error": validation_result.get("error", None)
+                "error": validation_result.get("error", None),
             }
 
             self.test_results.append(test_result)
 
             if not validation_result["success"]:
-                self.bugs_found.append({
-                    "category": "business_logic",
-                    "test_name": test["name"],
-                    "test_type": test["test_type"],
-                    "severity": "Critical",
-                    "description": validation_result["error"],
-                    "scenario": test["scenario"],
-                    "fix_required": True
-                })
+                self.bugs_found.append(
+                    {
+                        "category": "business_logic",
+                        "test_name": test["name"],
+                        "test_type": test["test_type"],
+                        "severity": "Critical",
+                        "description": validation_result["error"],
+                        "scenario": test["scenario"],
+                        "fix_required": True,
+                    }
+                )
 
-                print(f"❌ Business Logic Test Failed: {test['name']} - {validation_result['error']}")
+                print(
+                    f"❌ Business Logic Test Failed: {test['name']} - {validation_result['error']}"
+                )
             else:
                 print(f"✅ Business Logic Test Passed: {test['name']}")
 
@@ -709,33 +732,44 @@ class BackendAPIUltraTester:
                 "execution_time": execution_time,
                 "timestamp": datetime.now().isoformat(),
                 "error": str(e),
-                "details": "Test execution failed"
+                "details": "Test execution failed",
             }
 
             self.test_results.append(test_result)
 
-            self.bugs_found.append({
-                "category": "business_logic",
-                "test_name": test["name"],
-                "test_type": test["test_type"],
-                "severity": "Critical",
-                "description": f"Test execution failed: {str(e)}",
-                "scenario": test["scenario"],
-                "fix_required": True
-            })
+            self.bugs_found.append(
+                {
+                    "category": "business_logic",
+                    "test_name": test["name"],
+                    "test_type": test["test_type"],
+                    "severity": "Critical",
+                    "description": f"Test execution failed: {str(e)}",
+                    "scenario": test["scenario"],
+                    "fix_required": True,
+                }
+            )
 
             print(f"❌ Business Logic Test Exception: {test['name']} - {str(e)}")
 
     # Business logic validation methods
-    def validate_patient_age_calculation(self, input_data: Dict, expected_output: Dict) -> Dict[str, Any]:
+    def validate_patient_age_calculation(
+        self, input_data: Dict, expected_output: Dict
+    ) -> Dict[str, Any]:
         """Validate patient age calculation"""
         try:
-            from patients.models import Patient
             from datetime import date
 
-            birth_date = datetime.strptime(input_data["date_of_birth"], "%Y-%m-%d").date()
+            from patients.models import Patient
+
+            birth_date = datetime.strptime(
+                input_data["date_of_birth"], "%Y-%m-%d"
+            ).date()
             today = date.today()
-            age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+            age = (
+                today.year
+                - birth_date.year
+                - ((today.month, today.day) < (birth_date.month, birth_date.day))
+            )
 
             if age == expected_output["age"]:
                 return {"success": True, "actual_output": {"age": age}}
@@ -743,12 +777,14 @@ class BackendAPIUltraTester:
                 return {
                     "success": False,
                     "error": f"Expected age {expected_output['age']}, got {age}",
-                    "actual_output": {"age": age}
+                    "actual_output": {"age": age},
                 }
         except Exception as e:
             return {"success": False, "error": f"Age calculation error: {str(e)}"}
 
-    def validate_patient_duplicate_prevention(self, input_data: Dict, expected_output: Dict) -> Dict[str, Any]:
+    def validate_patient_duplicate_prevention(
+        self, input_data: Dict, expected_output: Dict
+    ) -> Dict[str, Any]:
         """Validate patient duplicate prevention"""
         try:
             from patients.models import Patient
@@ -758,7 +794,7 @@ class BackendAPIUltraTester:
                 first_name=input_data["first_name"],
                 last_name=input_data["last_name"],
                 date_of_birth=input_data["date_of_birth"],
-                email=input_data["email"]
+                email=input_data["email"],
             ).first()
 
             if existing_patient:
@@ -768,18 +804,22 @@ class BackendAPIUltraTester:
         except Exception as e:
             return {"success": False, "error": f"Duplicate check error: {str(e)}"}
 
-    def validate_appointment_availability(self, input_data: Dict, expected_output: Dict) -> Dict[str, Any]:
+    def validate_appointment_availability(
+        self, input_data: Dict, expected_output: Dict
+    ) -> Dict[str, Any]:
         """Validate appointment availability"""
         try:
             from appointments.models import Appointment
 
-            appointment_date = datetime.fromisoformat(input_data["appointment_date"].replace('Z', '+00:00'))
+            appointment_date = datetime.fromisoformat(
+                input_data["appointment_date"].replace("Z", "+00:00")
+            )
 
             # Check for conflicting appointments
             conflicts = Appointment.objects.filter(
                 provider_id=input_data["provider_id"],
                 appointment_date__date=appointment_date.date(),
-                status__in=['Scheduled', 'Confirmed']
+                status__in=["Scheduled", "Confirmed"],
             ).count()
 
             available = conflicts == 0
@@ -790,23 +830,27 @@ class BackendAPIUltraTester:
                 return {
                     "success": False,
                     "error": f"Expected available {expected_output['available']}, got {available}",
-                    "actual_output": {"available": available}
+                    "actual_output": {"available": available},
                 }
         except Exception as e:
             return {"success": False, "error": f"Availability check error: {str(e)}"}
 
-    def validate_appointment_conflict(self, input_data: Dict, expected_output: Dict) -> Dict[str, Any]:
+    def validate_appointment_conflict(
+        self, input_data: Dict, expected_output: Dict
+    ) -> Dict[str, Any]:
         """Validate appointment conflict detection"""
         try:
             from appointments.models import Appointment
 
-            appointment_date = datetime.fromisoformat(input_data["appointment_date"].replace('Z', '+00:00'))
+            appointment_date = datetime.fromisoformat(
+                input_data["appointment_date"].replace("Z", "+00:00")
+            )
 
             # Check for conflicts
             conflicts = Appointment.objects.filter(
                 provider_id=input_data["provider_id"],
                 appointment_date__date=appointment_date.date(),
-                status__in=['Scheduled', 'Confirmed']
+                status__in=["Scheduled", "Confirmed"],
             ).exists()
 
             if conflicts == expected_output["conflict"]:
@@ -815,33 +859,44 @@ class BackendAPIUltraTester:
                 return {
                     "success": False,
                     "error": f"Expected conflict {expected_output['conflict']}, got {conflicts}",
-                    "actual_output": {"conflict": conflicts}
+                    "actual_output": {"conflict": conflicts},
                 }
         except Exception as e:
             return {"success": False, "error": f"Conflict detection error: {str(e)}"}
 
-    def validate_bill_calculation(self, input_data: Dict, expected_output: Dict) -> Dict[str, Any]:
+    def validate_bill_calculation(
+        self, input_data: Dict, expected_output: Dict
+    ) -> Dict[str, Any]:
         """Validate bill calculation"""
         try:
             from decimal import Decimal
 
             # Calculate total amount
-            subtotal = sum(Decimal(str(service["amount"])) for service in input_data["services"])
-            discount_amount = subtotal * (Decimal(str(input_data["discount_percentage"])) / Decimal('100'))
+            subtotal = sum(
+                Decimal(str(service["amount"])) for service in input_data["services"]
+            )
+            discount_amount = subtotal * (
+                Decimal(str(input_data["discount_percentage"])) / Decimal("100")
+            )
             total_amount = subtotal - discount_amount
 
             if float(total_amount) == expected_output["total_amount"]:
-                return {"success": True, "actual_output": {"total_amount": float(total_amount)}}
+                return {
+                    "success": True,
+                    "actual_output": {"total_amount": float(total_amount)},
+                }
             else:
                 return {
                     "success": False,
                     "error": f"Expected total {expected_output['total_amount']}, got {total_amount}",
-                    "actual_output": {"total_amount": float(total_amount)}
+                    "actual_output": {"total_amount": float(total_amount)},
                 }
         except Exception as e:
             return {"success": False, "error": f"Bill calculation error: {str(e)}"}
 
-    def validate_insurance_coverage(self, input_data: Dict, expected_output: Dict) -> Dict[str, Any]:
+    def validate_insurance_coverage(
+        self, input_data: Dict, expected_output: Dict
+    ) -> Dict[str, Any]:
         """Validate insurance coverage"""
         try:
             from billing.models import InsuranceProvider
@@ -855,39 +910,48 @@ class BackendAPIUltraTester:
                 return {
                     "success": False,
                     "error": f"Expected covered {expected_output['covered']}, got {coverage_valid}",
-                    "actual_output": {"covered": coverage_valid}
+                    "actual_output": {"covered": coverage_valid},
                 }
         except Exception as e:
             return {"success": False, "error": f"Insurance validation error: {str(e)}"}
 
-    def validate_medical_record_access(self, input_data: Dict, expected_output: Dict) -> Dict[str, Any]:
+    def validate_medical_record_access(
+        self, input_data: Dict, expected_output: Dict
+    ) -> Dict[str, Any]:
         """Validate medical record access control"""
         try:
             # Mock access control validation
             role_permissions = {
-                'doctor': ['view', 'create', 'update'],
-                'nurse': ['view', 'create'],
-                'admin': ['view', 'create', 'update', 'delete'],
-                'patient': ['view']
+                "doctor": ["view", "create", "update"],
+                "nurse": ["view", "create"],
+                "admin": ["view", "create", "update", "delete"],
+                "patient": ["view"],
             }
 
             user_role = input_data["user_role"]
             action = input_data["action"]
 
-            access_granted = user_role in role_permissions and action in role_permissions[user_role]
+            access_granted = (
+                user_role in role_permissions and action in role_permissions[user_role]
+            )
 
             if access_granted == expected_output["access_granted"]:
-                return {"success": True, "actual_output": {"access_granted": access_granted}}
+                return {
+                    "success": True,
+                    "actual_output": {"access_granted": access_granted},
+                }
             else:
                 return {
                     "success": False,
                     "error": f"Expected access {expected_output['access_granted']}, got {access_granted}",
-                    "actual_output": {"access_granted": access_granted}
+                    "actual_output": {"access_granted": access_granted},
                 }
         except Exception as e:
             return {"success": False, "error": f"Access control error: {str(e)}"}
 
-    def validate_medical_record_versions(self, input_data: Dict, expected_output: Dict) -> Dict[str, Any]:
+    def validate_medical_record_versions(
+        self, input_data: Dict, expected_output: Dict
+    ) -> Dict[str, Any]:
         """Validate medical record version control"""
         try:
             # Mock version control validation
@@ -899,7 +963,7 @@ class BackendAPIUltraTester:
                 return {
                     "success": False,
                     "error": f"Expected versions {expected_output['versions']}, got {versions}",
-                    "actual_output": {"versions": versions}
+                    "actual_output": {"versions": versions},
                 }
         except Exception as e:
             return {"success": False, "error": f"Version control error: {str(e)}"}
@@ -916,7 +980,7 @@ class BackendAPIUltraTester:
                 "scenario": "Validate email format",
                 "input": "invalid-email",
                 "expected_output": {"valid": False},
-                "validation": self.validate_email_format
+                "validation": self.validate_email_format,
             },
             {
                 "name": "Phone Number Validation",
@@ -924,7 +988,7 @@ class BackendAPIUltraTester:
                 "scenario": "Validate phone number format",
                 "input": "+1234567890",
                 "expected_output": {"valid": True},
-                "validation": self.validate_phone_format
+                "validation": self.validate_phone_format,
             },
             {
                 "name": "Date Validation",
@@ -932,9 +996,8 @@ class BackendAPIUltraTester:
                 "scenario": "Validate date format",
                 "input": "2024-13-45",  # Invalid date
                 "expected_output": {"valid": False},
-                "validation": self.validate_date_format
+                "validation": self.validate_date_format,
             },
-
             # Data sanitization
             {
                 "name": "HTML Sanitization",
@@ -942,7 +1005,7 @@ class BackendAPIUltraTester:
                 "scenario": "Sanitize HTML content",
                 "input": "<script>alert('xss')</script><p>Safe content</p>",
                 "expected_output": {"sanitized": "Safe content"},
-                "validation": self.validate_html_sanitization
+                "validation": self.validate_html_sanitization,
             },
             {
                 "name": "SQL Injection Prevention",
@@ -950,9 +1013,8 @@ class BackendAPIUltraTester:
                 "scenario": "Prevent SQL injection",
                 "input": "'; DROP TABLE users; --",
                 "expected_output": {"safe": True},
-                "validation": self.validate_sql_injection_prevention
+                "validation": self.validate_sql_injection_prevention,
             },
-
             # Data transformation
             {
                 "name": "Data Type Conversion",
@@ -960,7 +1022,7 @@ class BackendAPIUltraTester:
                 "scenario": "Convert string to proper types",
                 "input": {"age": "25", "weight": "70.5", "height": "175"},
                 "expected_output": {"age": 25, "weight": 70.5, "height": 175},
-                "validation": self.validate_data_type_conversion
+                "validation": self.validate_data_type_conversion,
             },
             {
                 "name": "Data Normalization",
@@ -968,8 +1030,8 @@ class BackendAPIUltraTester:
                 "scenario": "Normalize data formats",
                 "input": {"name": "JOHN DOE", "email": "JOHN@DOE.COM"},
                 "expected_output": {"name": "John Doe", "email": "john@doe.com"},
-                "validation": self.validate_data_normalization
-            }
+                "validation": self.validate_data_normalization,
+            },
         ]
 
         for test in data_validation_tests:
@@ -981,7 +1043,9 @@ class BackendAPIUltraTester:
 
         try:
             # Execute data validation
-            validation_result = test["validation"](test["input"], test["expected_output"])
+            validation_result = test["validation"](
+                test["input"], test["expected_output"]
+            )
 
             execution_time = time.time() - start_time
 
@@ -997,23 +1061,27 @@ class BackendAPIUltraTester:
                 "actual_output": validation_result.get("actual_output", {}),
                 "timestamp": datetime.now().isoformat(),
                 "details": validation_result.get("details", ""),
-                "error": validation_result.get("error", None)
+                "error": validation_result.get("error", None),
             }
 
             self.test_results.append(test_result)
 
             if not validation_result["success"]:
-                self.bugs_found.append({
-                    "category": "data_processing",
-                    "test_name": test["name"],
-                    "test_type": test["test_type"],
-                    "severity": "High",
-                    "description": validation_result["error"],
-                    "scenario": test["scenario"],
-                    "fix_required": True
-                })
+                self.bugs_found.append(
+                    {
+                        "category": "data_processing",
+                        "test_name": test["name"],
+                        "test_type": test["test_type"],
+                        "severity": "High",
+                        "description": validation_result["error"],
+                        "scenario": test["scenario"],
+                        "fix_required": True,
+                    }
+                )
 
-                print(f"❌ Data Validation Test Failed: {test['name']} - {validation_result['error']}")
+                print(
+                    f"❌ Data Validation Test Failed: {test['name']} - {validation_result['error']}"
+                )
             else:
                 print(f"✅ Data Validation Test Passed: {test['name']}")
 
@@ -1028,29 +1096,34 @@ class BackendAPIUltraTester:
                 "execution_time": execution_time,
                 "timestamp": datetime.now().isoformat(),
                 "error": str(e),
-                "details": "Test execution failed"
+                "details": "Test execution failed",
             }
 
             self.test_results.append(test_result)
 
-            self.bugs_found.append({
-                "category": "data_processing",
-                "test_name": test["name"],
-                "test_type": test["test_type"],
-                "severity": "High",
-                "description": f"Test execution failed: {str(e)}",
-                "scenario": test["scenario"],
-                "fix_required": True
-            })
+            self.bugs_found.append(
+                {
+                    "category": "data_processing",
+                    "test_name": test["name"],
+                    "test_type": test["test_type"],
+                    "severity": "High",
+                    "description": f"Test execution failed: {str(e)}",
+                    "scenario": test["scenario"],
+                    "fix_required": True,
+                }
+            )
 
             print(f"❌ Data Validation Test Exception: {test['name']} - {str(e)}")
 
     # Data validation methods
-    def validate_email_format(self, input_data: str, expected_output: Dict) -> Dict[str, Any]:
+    def validate_email_format(
+        self, input_data: str, expected_output: Dict
+    ) -> Dict[str, Any]:
         """Validate email format"""
         try:
             import re
-            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+
+            email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
             is_valid = bool(re.match(email_pattern, input_data))
 
             if is_valid == expected_output["valid"]:
@@ -1059,16 +1132,19 @@ class BackendAPIUltraTester:
                 return {
                     "success": False,
                     "error": f"Expected valid {expected_output['valid']}, got {is_valid}",
-                    "actual_output": {"valid": is_valid}
+                    "actual_output": {"valid": is_valid},
                 }
         except Exception as e:
             return {"success": False, "error": f"Email validation error: {str(e)}"}
 
-    def validate_phone_format(self, input_data: str, expected_output: Dict) -> Dict[str, Any]:
+    def validate_phone_format(
+        self, input_data: str, expected_output: Dict
+    ) -> Dict[str, Any]:
         """Validate phone number format"""
         try:
             import re
-            phone_pattern = r'^\+?[0-9]{10,15}$'
+
+            phone_pattern = r"^\+?[0-9]{10,15}$"
             is_valid = bool(re.match(phone_pattern, input_data))
 
             if is_valid == expected_output["valid"]:
@@ -1077,15 +1153,18 @@ class BackendAPIUltraTester:
                 return {
                     "success": False,
                     "error": f"Expected valid {expected_output['valid']}, got {is_valid}",
-                    "actual_output": {"valid": is_valid}
+                    "actual_output": {"valid": is_valid},
                 }
         except Exception as e:
             return {"success": False, "error": f"Phone validation error: {str(e)}"}
 
-    def validate_date_format(self, input_data: str, expected_output: Dict) -> Dict[str, Any]:
+    def validate_date_format(
+        self, input_data: str, expected_output: Dict
+    ) -> Dict[str, Any]:
         """Validate date format"""
         try:
             from datetime import datetime
+
             datetime.strptime(input_data, "%Y-%m-%d")
             is_valid = True
         except ValueError:
@@ -1097,15 +1176,18 @@ class BackendAPIUltraTester:
             return {
                 "success": False,
                 "error": f"Expected valid {expected_output['valid']}, got {is_valid}",
-                "actual_output": {"valid": is_valid}
+                "actual_output": {"valid": is_valid},
             }
 
-    def validate_html_sanitization(self, input_data: str, expected_output: Dict) -> Dict[str, Any]:
+    def validate_html_sanitization(
+        self, input_data: str, expected_output: Dict
+    ) -> Dict[str, Any]:
         """Validate HTML sanitization"""
         try:
             import re
+
             # Simple HTML sanitization (in real implementation, use proper library)
-            sanitized = re.sub(r'<[^>]*>', '', input_data)
+            sanitized = re.sub(r"<[^>]*>", "", input_data)
             sanitized = sanitized.strip()
 
             if sanitized == expected_output["sanitized"]:
@@ -1114,23 +1196,28 @@ class BackendAPIUltraTester:
                 return {
                     "success": False,
                     "error": f"Expected sanitized '{expected_output['sanitized']}', got '{sanitized}'",
-                    "actual_output": {"sanitized": sanitized}
+                    "actual_output": {"sanitized": sanitized},
                 }
         except Exception as e:
             return {"success": False, "error": f"HTML sanitization error: {str(e)}"}
 
-    def validate_sql_injection_prevention(self, input_data: str, expected_output: Dict) -> Dict[str, Any]:
+    def validate_sql_injection_prevention(
+        self, input_data: str, expected_output: Dict
+    ) -> Dict[str, Any]:
         """Validate SQL injection prevention"""
         try:
             # Check for SQL injection patterns
             sql_patterns = [
                 r"('|\"|;|--|\/\*|\*\/|#)",
                 r"(union|select|insert|update|delete|drop|create|alter)",
-                r"(exec|execute|xp_cmdshell|sp_oacreate)"
+                r"(exec|execute|xp_cmdshell|sp_oacreate)",
             ]
 
             import re
-            has_injection = any(re.search(pattern, input_data.lower()) for pattern in sql_patterns)
+
+            has_injection = any(
+                re.search(pattern, input_data.lower()) for pattern in sql_patterns
+            )
             is_safe = not has_injection
 
             if is_safe == expected_output["safe"]:
@@ -1139,18 +1226,23 @@ class BackendAPIUltraTester:
                 return {
                     "success": False,
                     "error": f"Expected safe {expected_output['safe']}, got {is_safe}",
-                    "actual_output": {"safe": is_safe}
+                    "actual_output": {"safe": is_safe},
                 }
         except Exception as e:
-            return {"success": False, "error": f"SQL injection prevention error: {str(e)}"}
+            return {
+                "success": False,
+                "error": f"SQL injection prevention error: {str(e)}",
+            }
 
-    def validate_data_type_conversion(self, input_data: Dict, expected_output: Dict) -> Dict[str, Any]:
+    def validate_data_type_conversion(
+        self, input_data: Dict, expected_output: Dict
+    ) -> Dict[str, Any]:
         """Validate data type conversion"""
         try:
             converted = {
                 "age": int(input_data["age"]),
                 "weight": float(input_data["weight"]),
-                "height": int(input_data["height"])
+                "height": int(input_data["height"]),
             }
 
             if converted == expected_output:
@@ -1159,17 +1251,19 @@ class BackendAPIUltraTester:
                 return {
                     "success": False,
                     "error": f"Expected {expected_output}, got {converted}",
-                    "actual_output": converted
+                    "actual_output": converted,
                 }
         except Exception as e:
             return {"success": False, "error": f"Data type conversion error: {str(e)}"}
 
-    def validate_data_normalization(self, input_data: Dict, expected_output: Dict) -> Dict[str, Any]:
+    def validate_data_normalization(
+        self, input_data: Dict, expected_output: Dict
+    ) -> Dict[str, Any]:
         """Validate data normalization"""
         try:
             normalized = {
                 "name": input_data["name"].title(),
-                "email": input_data["email"].lower()
+                "email": input_data["email"].lower(),
             }
 
             if normalized == expected_output:
@@ -1178,7 +1272,7 @@ class BackendAPIUltraTester:
                 return {
                     "success": False,
                     "error": f"Expected {expected_output}, got {normalized}",
-                    "actual_output": normalized
+                    "actual_output": normalized,
                 }
         except Exception as e:
             return {"success": False, "error": f"Data normalization error: {str(e)}"}
@@ -1195,7 +1289,7 @@ class BackendAPIUltraTester:
                 "method": "GET",
                 "requires_auth": True,
                 "expected_status": 404,
-                "validation": self.validate_not_found_error
+                "validation": self.validate_not_found_error,
             },
             {
                 "name": "Invalid JSON Data",
@@ -1204,7 +1298,7 @@ class BackendAPIUltraTester:
                 "requires_auth": True,
                 "data": "invalid json",
                 "expected_status": 400,
-                "validation": self.validate_invalid_json_error
+                "validation": self.validate_invalid_json_error,
             },
             {
                 "name": "Missing Required Fields",
@@ -1213,7 +1307,7 @@ class BackendAPIUltraTester:
                 "requires_auth": True,
                 "data": {"first_name": "John"},  # Missing required fields
                 "expected_status": 400,
-                "validation": self.validate_missing_fields_error
+                "validation": self.validate_missing_fields_error,
             },
             {
                 "name": "Unauthorized Access",
@@ -1221,7 +1315,7 @@ class BackendAPIUltraTester:
                 "method": "GET",
                 "requires_auth": False,
                 "expected_status": 401,
-                "validation": self.validate_unauthorized_error
+                "validation": self.validate_unauthorized_error,
             },
             {
                 "name": "Forbidden Access",
@@ -1230,7 +1324,7 @@ class BackendAPIUltraTester:
                 "requires_auth": True,
                 "auth_user": "patient",  # Patient shouldn't access user management
                 "expected_status": 403,
-                "validation": self.validate_forbidden_error
+                "validation": self.validate_forbidden_error,
             },
             {
                 "name": "Rate Limiting",
@@ -1239,22 +1333,21 @@ class BackendAPIUltraTester:
                 "requires_auth": True,
                 "multiple_requests": 100,
                 "expected_status": 429,
-                "validation": self.validate_rate_limiting
+                "validation": self.validate_rate_limiting,
             },
-
             # Recovery mechanisms
             {
                 "name": "Database Connection Error",
                 "scenario": "Simulate database connection error",
                 "expected_behavior": "Graceful degradation with proper error message",
-                "validation": self.validate_database_error_handling
+                "validation": self.validate_database_error_handling,
             },
             {
                 "name": "Service Unavailable",
                 "scenario": "Simulate external service unavailability",
                 "expected_behavior": "Circuit breaker activation with fallback",
-                "validation": self.validate_service_unavailable_handling
-            }
+                "validation": self.validate_service_unavailable_handling,
+            },
         ]
 
         for test in error_handling_tests:
@@ -1268,10 +1361,10 @@ class BackendAPIUltraTester:
             # Handle authentication
             if test.get("requires_auth"):
                 if test.get("auth_user") == "patient":
-                    token = self.get_auth_token(self.test_users['patient'])
+                    token = self.get_auth_token(self.test_users["patient"])
                 else:
-                    token = self.get_auth_token(self.test_users['admin'])
-                self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+                    token = self.get_auth_token(self.test_users["admin"])
+                self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
             else:
                 self.client.credentials()
 
@@ -1293,9 +1386,13 @@ class BackendAPIUltraTester:
                 if test["method"] == "GET":
                     response = self.client.get(test["endpoint"])
                 elif test["method"] == "POST":
-                    response = self.client.post(test["endpoint"], data=test.get("data", {}))
+                    response = self.client.post(
+                        test["endpoint"], data=test.get("data", {})
+                    )
                 elif test["method"] == "PUT":
-                    response = self.client.put(test["endpoint"], data=test.get("data", {}))
+                    response = self.client.put(
+                        test["endpoint"], data=test.get("data", {})
+                    )
                 elif test["method"] == "DELETE":
                     response = self.client.delete(test["endpoint"])
 
@@ -1315,25 +1412,31 @@ class BackendAPIUltraTester:
                 "passed": validation_result["success"],
                 "execution_time": execution_time,
                 "expected_status": test.get("expected_status"),
-                "actual_status": response.status_code if "response" in locals() else None,
+                "actual_status": (
+                    response.status_code if "response" in locals() else None
+                ),
                 "timestamp": datetime.now().isoformat(),
                 "details": validation_result.get("details", ""),
-                "error": validation_result.get("error", None)
+                "error": validation_result.get("error", None),
             }
 
             self.test_results.append(test_result)
 
             if not validation_result["success"]:
-                self.bugs_found.append({
-                    "category": "error_handling",
-                    "test_name": test["name"],
-                    "severity": "High",
-                    "description": validation_result["error"],
-                    "expected_behavior": test.get("expected_behavior", ""),
-                    "fix_required": True
-                })
+                self.bugs_found.append(
+                    {
+                        "category": "error_handling",
+                        "test_name": test["name"],
+                        "severity": "High",
+                        "description": validation_result["error"],
+                        "expected_behavior": test.get("expected_behavior", ""),
+                        "fix_required": True,
+                    }
+                )
 
-                print(f"❌ Error Handling Test Failed: {test['name']} - {validation_result['error']}")
+                print(
+                    f"❌ Error Handling Test Failed: {test['name']} - {validation_result['error']}"
+                )
             else:
                 print(f"✅ Error Handling Test Passed: {test['name']}")
 
@@ -1348,19 +1451,21 @@ class BackendAPIUltraTester:
                 "execution_time": execution_time,
                 "timestamp": datetime.now().isoformat(),
                 "error": str(e),
-                "details": "Test execution failed"
+                "details": "Test execution failed",
             }
 
             self.test_results.append(test_result)
 
-            self.bugs_found.append({
-                "category": "error_handling",
-                "test_name": test["name"],
-                "severity": "Critical",
-                "description": f"Test execution failed: {str(e)}",
-                "expected_behavior": test.get("expected_behavior", ""),
-                "fix_required": True
-            })
+            self.bugs_found.append(
+                {
+                    "category": "error_handling",
+                    "test_name": test["name"],
+                    "severity": "Critical",
+                    "description": f"Test execution failed: {str(e)}",
+                    "expected_behavior": test.get("expected_behavior", ""),
+                    "fix_required": True,
+                }
+            )
 
             print(f"❌ Error Handling Test Exception: {test['name']} - {str(e)}")
 
@@ -1370,35 +1475,59 @@ class BackendAPIUltraTester:
         if response.status_code == 404:
             return {"success": True, "details": "Proper 404 response"}
         else:
-            return {"success": False, "error": f"Expected 404, got {response.status_code}"}
+            return {
+                "success": False,
+                "error": f"Expected 404, got {response.status_code}",
+            }
 
     def validate_invalid_json_error(self, response) -> Dict[str, Any]:
         """Validate invalid JSON error"""
         if response.status_code == 400:
             return {"success": True, "details": "Proper 400 response for invalid JSON"}
         else:
-            return {"success": False, "error": f"Expected 400, got {response.status_code}"}
+            return {
+                "success": False,
+                "error": f"Expected 400, got {response.status_code}",
+            }
 
     def validate_missing_fields_error(self, response) -> Dict[str, Any]:
         """Validate missing fields error"""
         if response.status_code == 400:
-            return {"success": True, "details": "Proper 400 response for missing fields"}
+            return {
+                "success": True,
+                "details": "Proper 400 response for missing fields",
+            }
         else:
-            return {"success": False, "error": f"Expected 400, got {response.status_code}"}
+            return {
+                "success": False,
+                "error": f"Expected 400, got {response.status_code}",
+            }
 
     def validate_unauthorized_error(self, response) -> Dict[str, Any]:
         """Validate unauthorized error"""
         if response.status_code == 401:
-            return {"success": True, "details": "Proper 401 response for unauthorized access"}
+            return {
+                "success": True,
+                "details": "Proper 401 response for unauthorized access",
+            }
         else:
-            return {"success": False, "error": f"Expected 401, got {response.status_code}"}
+            return {
+                "success": False,
+                "error": f"Expected 401, got {response.status_code}",
+            }
 
     def validate_forbidden_error(self, response) -> Dict[str, Any]:
         """Validate forbidden error"""
         if response.status_code == 403:
-            return {"success": True, "details": "Proper 403 response for forbidden access"}
+            return {
+                "success": True,
+                "details": "Proper 403 response for forbidden access",
+            }
         else:
-            return {"success": False, "error": f"Expected 403, got {response.status_code}"}
+            return {
+                "success": False,
+                "error": f"Expected 403, got {response.status_code}",
+            }
 
     def validate_rate_limiting(self, test_data: Dict) -> Dict[str, Any]:
         """Validate rate limiting"""
@@ -1428,7 +1557,7 @@ class BackendAPIUltraTester:
                 "method": "GET",
                 "requires_auth": True,
                 "max_response_time": 0.1,  # 100ms
-                "iterations": 10
+                "iterations": 10,
             },
             {
                 "name": "Patient Search Performance",
@@ -1437,7 +1566,7 @@ class BackendAPIUltraTester:
                 "requires_auth": True,
                 "params": {"search": "test"},
                 "max_response_time": 0.1,  # 100ms
-                "iterations": 10
+                "iterations": 10,
             },
             {
                 "name": "Appointment Creation Performance",
@@ -1446,13 +1575,15 @@ class BackendAPIUltraTester:
                 "requires_auth": True,
                 "data": {
                     "patient_id": self.test_patient.id,
-                    "provider_id": self.test_users['doctor'].id,
-                    "appointment_date": (datetime.now() + timedelta(days=5)).isoformat(),
+                    "provider_id": self.test_users["doctor"].id,
+                    "appointment_date": (
+                        datetime.now() + timedelta(days=5)
+                    ).isoformat(),
                     "appointment_type": "Consultation",
-                    "duration": 30
+                    "duration": 30,
                 },
                 "max_response_time": 0.2,  # 200ms
-                "iterations": 5
+                "iterations": 5,
             },
             {
                 "name": "Bill Creation Performance",
@@ -1462,11 +1593,11 @@ class BackendAPIUltraTester:
                 "data": {
                     "patient_id": self.test_patient.id,
                     "total_amount": 100.00,
-                    "services_provided": "Test service"
+                    "services_provided": "Test service",
                 },
                 "max_response_time": 0.15,  # 150ms
-                "iterations": 5
-            }
+                "iterations": 5,
+            },
         ]
 
         for test in performance_tests:
@@ -1477,8 +1608,8 @@ class BackendAPIUltraTester:
         try:
             # Setup authentication
             if test.get("requires_auth"):
-                token = self.get_auth_token(self.test_users['admin'])
-                self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+                token = self.get_auth_token(self.test_users["admin"])
+                self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
             response_times = []
 
@@ -1487,9 +1618,13 @@ class BackendAPIUltraTester:
 
                 # Make request
                 if test["method"] == "GET":
-                    response = self.client.get(test["endpoint"], params=test.get("params"))
+                    response = self.client.get(
+                        test["endpoint"], params=test.get("params")
+                    )
                 elif test["method"] == "POST":
-                    response = self.client.post(test["endpoint"], data=test.get("data", {}))
+                    response = self.client.post(
+                        test["endpoint"], data=test.get("data", {})
+                    )
 
                 response_time = time.time() - start_time
                 response_times.append(response_time)
@@ -1513,25 +1648,31 @@ class BackendAPIUltraTester:
                 "max_response_time": max_response_time,
                 "max_allowed_time": test["max_response_time"],
                 "timestamp": datetime.now().isoformat(),
-                "details": f"Performance benchmark completed with {test['iterations']} iterations"
+                "details": f"Performance benchmark completed with {test['iterations']} iterations",
             }
 
             self.test_results.append(test_result)
 
             if not passed:
-                self.bugs_found.append({
-                    "category": "performance",
-                    "test_name": test["name"],
-                    "severity": "High",
-                    "description": f"Performance benchmark failed: avg response time {avg_response_time:.3f}s exceeds limit {test['max_response_time']}s",
-                    "avg_response_time": avg_response_time,
-                    "max_response_time": test["max_response_time"],
-                    "fix_required": True
-                })
+                self.bugs_found.append(
+                    {
+                        "category": "performance",
+                        "test_name": test["name"],
+                        "severity": "High",
+                        "description": f"Performance benchmark failed: avg response time {avg_response_time:.3f}s exceeds limit {test['max_response_time']}s",
+                        "avg_response_time": avg_response_time,
+                        "max_response_time": test["max_response_time"],
+                        "fix_required": True,
+                    }
+                )
 
-                print(f"❌ Performance Test Failed: {test['name']} - Avg time: {avg_response_time:.3f}s > {test['max_response_time']}s")
+                print(
+                    f"❌ Performance Test Failed: {test['name']} - Avg time: {avg_response_time:.3f}s > {test['max_response_time']}s"
+                )
             else:
-                print(f"✅ Performance Test Passed: {test['name']} - Avg time: {avg_response_time:.3f}s")
+                print(
+                    f"✅ Performance Test Passed: {test['name']} - Avg time: {avg_response_time:.3f}s"
+                )
 
         except Exception as e:
             test_result = {
@@ -1542,18 +1683,20 @@ class BackendAPIUltraTester:
                 "passed": False,
                 "timestamp": datetime.now().isoformat(),
                 "error": str(e),
-                "details": "Performance test execution failed"
+                "details": "Performance test execution failed",
             }
 
             self.test_results.append(test_result)
 
-            self.bugs_found.append({
-                "category": "performance",
-                "test_name": test["name"],
-                "severity": "Critical",
-                "description": f"Performance test execution failed: {str(e)}",
-                "fix_required": True
-            })
+            self.bugs_found.append(
+                {
+                    "category": "performance",
+                    "test_name": test["name"],
+                    "severity": "Critical",
+                    "description": f"Performance test execution failed: {str(e)}",
+                    "fix_required": True,
+                }
+            )
 
             print(f"❌ Performance Test Exception: {test['name']} - {str(e)}")
 
@@ -1590,7 +1733,9 @@ class BackendAPIUltraTester:
         print(f"   Failed Tests: {failed_tests}")
         print(f"   Success Rate: {(passed_tests/total_tests)*100:.1f}%")
         print(f"   Bugs Found: {len(self.bugs_found)}")
-        print(f"   Zero Bug Policy: {'✅ PASS' if len(self.bugs_found) == 0 else '❌ FAIL'}")
+        print(
+            f"   Zero Bug Policy: {'✅ PASS' if len(self.bugs_found) == 0 else '❌ FAIL'}"
+        )
 
         if len(self.bugs_found) > 0:
             print(f"\n🚨 CRITICAL ISSUES FOUND:")
@@ -1601,7 +1746,7 @@ class BackendAPIUltraTester:
 
         # Save report
         report_file = "backend_comprehensive_test_report.json"
-        with open(report_file, 'w') as f:
+        with open(report_file, "w") as f:
             json.dump(report, f, indent=2, default=str)
 
         print(f"\n📄 Comprehensive report saved to: {report_file}")
@@ -1615,7 +1760,9 @@ class BackendAPIUltraTester:
         failed_tests = total_tests - passed_tests
 
         # Calculate performance metrics
-        performance_tests = [r for r in self.test_results if r["category"] == "performance"]
+        performance_tests = [
+            r for r in self.test_results if r["category"] == "performance"
+        ]
         avg_response_time = 0
         if performance_tests:
             response_times = [r.get("avg_response_time", 0) for r in performance_tests]
@@ -1650,32 +1797,46 @@ class BackendAPIUltraTester:
                 "testing_framework": "BackendAPIUltraTester",
                 "environment": "development",
                 "django_version": django.VERSION,
-                "python_version": sys.version
+                "python_version": sys.version,
             },
             "testing_summary": {
                 "total_tests": total_tests,
                 "passed_tests": passed_tests,
                 "failed_tests": failed_tests,
-                "success_rate": (passed_tests / total_tests) * 100 if total_tests > 0 else 0,
+                "success_rate": (
+                    (passed_tests / total_tests) * 100 if total_tests > 0 else 0
+                ),
                 "bugs_found": len(self.bugs_found),
                 "zero_bug_policy": len(self.bugs_found) == 0,
-                "certification_status": "PASS" if len(self.bugs_found) == 0 else "FAIL"
+                "certification_status": "PASS" if len(self.bugs_found) == 0 else "FAIL",
             },
             "category_breakdown": category_results,
             "performance_metrics": {
                 "average_response_time": avg_response_time,
                 "total_performance_tests": len(performance_tests),
-                "performance_tests_passed": len([r for r in performance_tests if r["passed"]]),
-                "fastest_endpoint": min([r.get("avg_response_time", 0) for r in performance_tests]) if performance_tests else 0,
-                "slowest_endpoint": max([r.get("avg_response_time", 0) for r in performance_tests]) if performance_tests else 0
+                "performance_tests_passed": len(
+                    [r for r in performance_tests if r["passed"]]
+                ),
+                "fastest_endpoint": (
+                    min([r.get("avg_response_time", 0) for r in performance_tests])
+                    if performance_tests
+                    else 0
+                ),
+                "slowest_endpoint": (
+                    max([r.get("avg_response_time", 0) for r in performance_tests])
+                    if performance_tests
+                    else 0
+                ),
             },
             "bug_analysis": {
                 "total_bugs": len(self.bugs_found),
                 "severity_breakdown": bug_severity,
                 "category_breakdown": {
-                    category: len([b for b in self.bugs_found if b["category"] == category])
+                    category: len(
+                        [b for b in self.bugs_found if b["category"] == category]
+                    )
                     for category in set(bug["category"] for bug in self.bugs_found)
-                }
+                },
             },
             "detailed_results": self.test_results,
             "all_bugs": self.bugs_found,
@@ -1684,8 +1845,11 @@ class BackendAPIUltraTester:
                 "hipaa_compliance": True,  # Assuming compliance based on tests
                 "gdpr_compliance": True,
                 "security_standards": True,
-                "performance_standards": len([b for b in self.bugs_found if b["category"] == "performance"]) == 0
-            }
+                "performance_standards": len(
+                    [b for b in self.bugs_found if b["category"] == "performance"]
+                )
+                == 0,
+            },
         }
 
     def generate_recommendations(self) -> List[str]:
@@ -1693,37 +1857,56 @@ class BackendAPIUltraTester:
         recommendations = []
 
         if len(self.bugs_found) > 0:
-            recommendations.append("🚨 CRITICAL: All backend API bugs must be fixed before production deployment")
-            recommendations.append("🔧 Implement immediate fix for all critical and high severity issues")
+            recommendations.append(
+                "🚨 CRITICAL: All backend API bugs must be fixed before production deployment"
+            )
+            recommendations.append(
+                "🔧 Implement immediate fix for all critical and high severity issues"
+            )
             recommendations.append("🔄 Conduct re-testing after bug fixes")
-            recommendations.append("📊 Establish continuous monitoring for regression testing")
+            recommendations.append(
+                "📊 Establish continuous monitoring for regression testing"
+            )
 
             # Category-specific recommendations
             categories_with_bugs = set(bug["category"] for bug in self.bugs_found)
 
             if "contract_testing" in categories_with_bugs:
-                recommendations.append("📋 Review and update API contracts and specifications")
+                recommendations.append(
+                    "📋 Review and update API contracts and specifications"
+                )
 
             if "business_logic" in categories_with_bugs:
-                recommendations.append("🧮 Thoroughly review business logic implementation")
+                recommendations.append(
+                    "🧮 Thoroughly review business logic implementation"
+                )
 
             if "data_processing" in categories_with_bugs:
-                recommendations.append("🔧 Strengthen input validation and data sanitization")
+                recommendations.append(
+                    "🔧 Strengthen input validation and data sanitization"
+                )
 
             if "error_handling" in categories_with_bugs:
-                recommendations.append("🛡️ Improve error handling and resilience mechanisms")
+                recommendations.append(
+                    "🛡️ Improve error handling and resilience mechanisms"
+                )
 
             if "performance" in categories_with_bugs:
-                recommendations.append("⚡ Optimize database queries and implement caching strategies")
+                recommendations.append(
+                    "⚡ Optimize database queries and implement caching strategies"
+                )
 
         else:
             recommendations.append("✅ Backend APIs meet zero-bug policy requirements")
             recommendations.append("🚀 Ready for production deployment")
             recommendations.append("📈 Continue regular API testing and monitoring")
-            recommendations.append("🔍 Maintain code quality through continuous integration")
+            recommendations.append(
+                "🔍 Maintain code quality through continuous integration"
+            )
             recommendations.append("📊 Monitor performance metrics in production")
 
         return recommendations
+
 
 # Main execution function
 async def main():
@@ -1731,6 +1914,7 @@ async def main():
     tester = BackendAPIUltraTester()
     report = await tester.run_comprehensive_testing()
     return report
+
 
 if __name__ == "__main__":
     # Run comprehensive backend testing

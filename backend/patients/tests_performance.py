@@ -1,3 +1,7 @@
+"""
+tests_performance module
+"""
+
 import json
 import queue
 import threading
@@ -32,7 +36,11 @@ class PatientPerformanceTests(TestCase):
         self.hospital = Mock()
         self.hospital.id = 1
         self.user = User.objects.create_user(
-            username="perfuser", email="perf@example.com", password="perfpass123", hospital=self.hospital, is_staff=True
+            username="perfuser",
+            email="perf@example.com",
+            password="perfpass123",
+            hospital=self.hospital,
+            is_staff=True,
         )
         self.client.force_login(self.user)
         self.api_client = APIClient()
@@ -60,7 +68,11 @@ class PatientPerformanceTests(TestCase):
 
         # Performance assertions
         self.assertEqual(Patient.objects.count(), num_patients)
-        self.assertLess(creation_time, 30.0, f"Created {num_patients} patients in {creation_time:.2f}s")
+        self.assertLess(
+            creation_time,
+            30.0,
+            f"Created {num_patients} patients in {creation_time:.2f}s",
+        )
 
         print(
             f"✓ Created {num_patients} patients in {creation_time:.2f}s ({num_patients/creation_time:.2f} patients/sec)"
@@ -122,12 +134,16 @@ class PatientPerformanceTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["results"]), 20)  # Default page size
-        self.assertLess(first_page_time, 1.0, f"First page loaded in {first_page_time:.2f}s")
+        self.assertLess(
+            first_page_time, 1.0, f"First page loaded in {first_page_time:.2f}s"
+        )
 
         print(f"✓ Loaded first page (20 patients) in {first_page_time:.2f}s")
 
         # Test pagination through all pages
-        total_pages = response.data["count"] // 20 + (1 if response.data["count"] % 20 else 0)
+        total_pages = response.data["count"] // 20 + (
+            1 if response.data["count"] % 20 else 0
+        )
         start_time = time.time()
 
         for page in range(2, min(total_pages + 1, 6)):  # Test first 5 pages
@@ -136,7 +152,9 @@ class PatientPerformanceTests(TestCase):
             self.assertEqual(len(response.data["results"]), 20)
 
         pagination_time = time.time() - start_time
-        self.assertLess(pagination_time, 3.0, f"Paginated through 5 pages in {pagination_time:.2f}s")
+        self.assertLess(
+            pagination_time, 3.0, f"Paginated through 5 pages in {pagination_time:.2f}s"
+        )
 
         print(f"✓ Paginated through 5 pages in {pagination_time:.2f}s")
 
@@ -196,9 +214,13 @@ class PatientPerformanceTests(TestCase):
         self.assertEqual(Patient.objects.count(), expected_patients)
         self.assertEqual(success_count, num_threads)
         self.assertEqual(error_count, 0)
-        self.assertLess(total_time, 10.0, f"Concurrent creation completed in {total_time:.2f}s")
+        self.assertLess(
+            total_time, 10.0, f"Concurrent creation completed in {total_time:.2f}s"
+        )
 
-        print(f"✓ Concurrently created {expected_patients} patients using {num_threads} threads in {total_time:.2f}s")
+        print(
+            f"✓ Concurrently created {expected_patients} patients using {num_threads} threads in {total_time:.2f}s"
+        )
 
     def test_patient_filter_performance(self):
         """Test performance of patient filtering operations"""
@@ -224,17 +246,25 @@ class PatientPerformanceTests(TestCase):
         filter_time = time.time() - start_time
 
         self.assertEqual(response.status_code, 200)
-        self.assertLess(filter_time, 1.0, f"Single filter completed in {filter_time:.2f}s")
+        self.assertLess(
+            filter_time, 1.0, f"Single filter completed in {filter_time:.2f}s"
+        )
 
         print(f"✓ Single status filter completed in {filter_time:.2f}s")
 
         # Test multiple filter performance
         start_time = time.time()
-        response = self.api_client.get("/api/patients/", {"status": "ACTIVE", "gender": "MALE", "city": "New York"})
+        response = self.api_client.get(
+            "/api/patients/", {"status": "ACTIVE", "gender": "MALE", "city": "New York"}
+        )
         multi_filter_time = time.time() - start_time
 
         self.assertEqual(response.status_code, 200)
-        self.assertLess(multi_filter_time, 1.5, f"Multi-filter completed in {multi_filter_time:.2f}s")
+        self.assertLess(
+            multi_filter_time,
+            1.5,
+            f"Multi-filter completed in {multi_filter_time:.2f}s",
+        )
 
         print(f"✓ Multi-filter completed in {multi_filter_time:.2f}s")
 
@@ -264,9 +294,13 @@ class PatientPerformanceTests(TestCase):
 
         update_time = time.time() - start_time
 
-        self.assertLess(update_time, 5.0, f"Updated {num_patients} patients in {update_time:.2f}s")
+        self.assertLess(
+            update_time, 5.0, f"Updated {num_patients} patients in {update_time:.2f}s"
+        )
 
-        print(f"✓ Updated {num_patients} patients in {update_time:.2f}s ({num_patients/update_time:.2f} patients/sec)")
+        print(
+            f"✓ Updated {num_patients} patients in {update_time:.2f}s ({num_patients/update_time:.2f} patients/sec)"
+        )
 
     def test_patient_delete_performance(self):
         """Test performance of patient deletion operations"""
@@ -293,15 +327,23 @@ class PatientPerformanceTests(TestCase):
         delete_time = time.time() - start_time
 
         self.assertEqual(Patient.objects.count(), 0)
-        self.assertLess(delete_time, 3.0, f"Deleted {num_patients} patients in {delete_time:.2f}s")
+        self.assertLess(
+            delete_time, 3.0, f"Deleted {num_patients} patients in {delete_time:.2f}s"
+        )
 
-        print(f"✓ Deleted {num_patients} patients in {delete_time:.2f}s ({num_patients/delete_time:.2f} patients/sec)")
+        print(
+            f"✓ Deleted {num_patients} patients in {delete_time:.2f}s ({num_patients/delete_time:.2f} patients/sec)"
+        )
 
     def test_patient_relationship_performance(self):
         """Test performance of patient relationship operations"""
         # Create base patient
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="Rel", last_name="Patient", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="Rel",
+            last_name="Patient",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         # Test adding multiple emergency contacts
@@ -317,7 +359,9 @@ class PatientPerformanceTests(TestCase):
             )
 
         contact_time = time.time() - start_time
-        self.assertLess(contact_time, 2.0, f"Added 20 emergency contacts in {contact_time:.2f}s")
+        self.assertLess(
+            contact_time, 2.0, f"Added 20 emergency contacts in {contact_time:.2f}s"
+        )
 
         print(f"✓ Added 20 emergency contacts in {contact_time:.2f}s")
 
@@ -336,7 +380,9 @@ class PatientPerformanceTests(TestCase):
             )
 
         insurance_time = time.time() - start_time
-        self.assertLess(insurance_time, 2.0, f"Added 10 insurance plans in {insurance_time:.2f}s")
+        self.assertLess(
+            insurance_time, 2.0, f"Added 10 insurance plans in {insurance_time:.2f}s"
+        )
 
         print(f"✓ Added 10 insurance plans in {insurance_time:.2f}s")
 
@@ -370,7 +416,9 @@ class PatientPerformanceTests(TestCase):
         self.assertEqual(len(patient_data["emergency_contacts"]), 20)
         self.assertEqual(len(patient_data["insurance_plans"]), 10)
         self.assertEqual(len(patient_data["alerts"]), 15)
-        self.assertLess(query_time, 1.0, f"Queried all relationships in {query_time:.2f}s")
+        self.assertLess(
+            query_time, 1.0, f"Queried all relationships in {query_time:.2f}s"
+        )
 
         print(f"✓ Queried all relationships (45 total) in {query_time:.2f}s")
 
@@ -421,9 +469,13 @@ class PatientPerformanceTests(TestCase):
         query_time = time.time() - start_time
 
         self.assertEqual(len(patient_list), num_patients)
-        self.assertLess(query_time, 1.0, f"Optimized query completed in {query_time:.2f}s")
+        self.assertLess(
+            query_time, 1.0, f"Optimized query completed in {query_time:.2f}s"
+        )
 
-        print(f"✓ Optimized query with relationships for {num_patients} patients completed in {query_time:.2f}s")
+        print(
+            f"✓ Optimized query with relationships for {num_patients} patients completed in {query_time:.2f}s"
+        )
 
         # Test unoptimized query for comparison
         start_time = time.time()
@@ -437,9 +489,15 @@ class PatientPerformanceTests(TestCase):
             list(patient.insurance_plans.all())
 
         unoptimized_time = time.time() - start_time
-        self.assertLess(query_time, unoptimized_time, "Optimized query should be faster than unoptimized")
+        self.assertLess(
+            query_time,
+            unoptimized_time,
+            "Optimized query should be faster than unoptimized",
+        )
 
-        print(f"✓ Unoptimized query (10 patients with relationships) completed in {unoptimized_time:.2f}s")
+        print(
+            f"✓ Unoptimized query (10 patients with relationships) completed in {unoptimized_time:.2f}s"
+        )
 
     def test_memory_usage_performance(self):
         """Test memory usage during patient operations"""
@@ -465,9 +523,15 @@ class PatientPerformanceTests(TestCase):
         memory_increase = peak_memory - initial_memory
 
         # Memory usage should be reasonable
-        self.assertLess(memory_increase, 500, f"Memory increase of {memory_increase:.2f}MB is too high")
+        self.assertLess(
+            memory_increase,
+            500,
+            f"Memory increase of {memory_increase:.2f}MB is too high",
+        )
 
-        print(f"✓ Memory usage: {initial_memory:.2f}MB → {peak_memory:.2f}MB (+{memory_increase:.2f}MB)")
+        print(
+            f"✓ Memory usage: {initial_memory:.2f}MB → {peak_memory:.2f}MB (+{memory_increase:.2f}MB)"
+        )
 
     def test_concurrent_api_requests(self):
         """Test performance under concurrent API requests"""
@@ -497,11 +561,15 @@ class PatientPerformanceTests(TestCase):
                         if i % 4 == 0:
                             response = self.api_client.get("/api/patients/")
                         elif i % 4 == 1:
-                            response = self.api_client.get("/api/patients/search/", {"q": "API"})
+                            response = self.api_client.get(
+                                "/api/patients/search/", {"q": "API"}
+                            )
                         elif i % 4 == 2:
                             response = self.api_client.get("/api/patients/stats/")
                         else:
-                            response = self.api_client.get("/api/patients/", {"page": 1, "page_size": 10})
+                            response = self.api_client.get(
+                                "/api/patients/", {"page": 1, "page_size": 10}
+                            )
 
                         if response.status_code == 200:
                             success_count += 1
@@ -556,8 +624,14 @@ class PatientPerformanceTests(TestCase):
 
         # Performance assertions
         self.assertEqual(total_errors, 0, f"No errors expected, got {total_errors}")
-        self.assertLess(total_time, 10.0, f"Concurrent API requests completed in {total_time:.2f}s")
-        self.assertGreaterEqual(success_rate, 95.0, f"Success rate should be >= 95%, got {success_rate:.1f}%")
+        self.assertLess(
+            total_time, 10.0, f"Concurrent API requests completed in {total_time:.2f}s"
+        )
+        self.assertGreaterEqual(
+            success_rate,
+            95.0,
+            f"Success rate should be >= 95%, got {success_rate:.1f}%",
+        )
 
         print(
             f"✓ {total_requests} concurrent API requests: {total_success} success, {total_errors} errors in {total_time:.2f}s"
@@ -602,7 +676,9 @@ class PatientPerformanceTests(TestCase):
         lines = csv_content.strip().split("\n")
         self.assertEqual(len(lines), num_patients + 1)  # Header + data rows
 
-        print(f"✓ CSV export of {num_patients} patients completed in {export_time:.2f}s")
+        print(
+            f"✓ CSV export of {num_patients} patients completed in {export_time:.2f}s"
+        )
 
     @override_settings(DEBUG=True)
     def test_database_connection_pooling(self):
@@ -625,15 +701,25 @@ class PatientPerformanceTests(TestCase):
 
                 # Query patient
                 retrieved_patient = Patient.objects.get(id=patient.id)
-                self.assertEqual(retrieved_patient.first_name, f"Pool{connection_id:03d}")
+                self.assertEqual(
+                    retrieved_patient.first_name, f"Pool{connection_id:03d}"
+                )
 
                 # Delete patient
                 patient.delete()
 
                 end_time = time.time()
-                results_queue.put({"connection_id": connection_id, "duration": end_time - start_time, "success": True})
+                results_queue.put(
+                    {
+                        "connection_id": connection_id,
+                        "duration": end_time - start_time,
+                        "success": True,
+                    }
+                )
             except Exception as e:
-                results_queue.put({"connection_id": connection_id, "error": str(e), "success": False})
+                results_queue.put(
+                    {"connection_id": connection_id, "error": str(e), "success": False}
+                )
 
         # Start connection test threads
         threads = []
@@ -665,12 +751,20 @@ class PatientPerformanceTests(TestCase):
                 print(f"Connection {result['connection_id']} error: {result['error']}")
 
         # Performance assertions
-        self.assertEqual(success_count, num_connections, f"All {num_connections} connections should succeed")
+        self.assertEqual(
+            success_count,
+            num_connections,
+            f"All {num_connections} connections should succeed",
+        )
         self.assertEqual(error_count, 0)
-        self.assertLess(total_time, 15.0, f"Connection pooling test completed in {total_time:.2f}s")
+        self.assertLess(
+            total_time, 15.0, f"Connection pooling test completed in {total_time:.2f}s"
+        )
 
         if connection_times:
             avg_time = sum(connection_times) / len(connection_times)
-            print(f"✓ {num_connections} concurrent database connections: {success_count} success, {error_count} errors")
+            print(
+                f"✓ {num_connections} concurrent database connections: {success_count} success, {error_count} errors"
+            )
             print(f"✓ Average connection time: {avg_time:.3f}s")
             print(f"✓ Total time: {total_time:.2f}s")

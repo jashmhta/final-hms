@@ -4,19 +4,20 @@ Implementing optimized gRPC services with streaming, compression, and load balan
 """
 
 import asyncio
-import time
 import logging
-from typing import Any, Dict, List, Optional, AsyncIterator, Callable
-from dataclasses import dataclass, field
-from contextlib import asynccontextmanager
-import grpc
-from grpc.aio import ServicerContext, AioRpcError
-import grpc.aio
+import time
 from concurrent.futures import ThreadPoolExecutor
-import orjson
+from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
+from typing import Any, AsyncIterator, Callable, Dict, List, Optional
+
+import grpc
+import grpc.aio
 import msgpack
-import snappy
+import orjson
 import prometheus_client as prom
+import snappy
+from grpc.aio import AioRpcError, ServicerContext
 from opentelemetry import trace
 from opentelemetry.trace.status import Status, StatusCode
 
@@ -24,26 +25,22 @@ logger = logging.getLogger(__name__)
 
 # Metrics
 GRPC_REQUEST_COUNT = prom.Counter(
-    'grpc_request_count',
-    'gRPC request count',
-    ['service', 'method', 'status_code']
+    "grpc_request_count", "gRPC request count", ["service", "method", "status_code"]
 )
 
 GRPC_REQUEST_LATENCY = prom.Histogram(
-    'grpc_request_latency_seconds',
-    'gRPC request latency',
-    ['service', 'method']
+    "grpc_request_latency_seconds", "gRPC request latency", ["service", "method"]
 )
 
 GRPC_ACTIVE_CONNECTIONS = prom.Gauge(
-    'grpc_active_connections',
-    'Active gRPC connections',
-    ['service']
+    "grpc_active_connections", "Active gRPC connections", ["service"]
 )
+
 
 @dataclass
 class GrpcServiceConfig:
     """Configuration for gRPC service"""
+
     name: str
     host: str
     port: int
@@ -58,6 +55,7 @@ class GrpcServiceConfig:
     keepalive_timeout: int = 5
     keepalive_permit_without_calls: bool = True
 
+
 class CompressionInterceptor(grpc.aio.ServerInterceptor):
     """Interceptor for request/response compression"""
 
@@ -67,9 +65,7 @@ class CompressionInterceptor(grpc.aio.ServerInterceptor):
         self.compressor = snappy if enable_compression else None
 
     async def intercept_service(
-        self,
-        continuation: Callable,
-        handler_call_details: grpc.HandlerCallDetails
+        self, continuation: Callable, handler_call_details: grpc.HandlerCallDetails
     ):
         # Wrap service handler
         service = await continuation(handler_call_details)
@@ -78,7 +74,7 @@ class CompressionInterceptor(grpc.aio.ServerInterceptor):
 
         async def wrapped_method(request, context):
             # Decompress request if needed
-            if self.compressor and hasattr(request, 'compressed'):
+            if self.compressor and hasattr(request, "compressed"):
                 try:
                     request.data = self.compressor.decompress(request.data)
                 except:
@@ -88,7 +84,7 @@ class CompressionInterceptor(grpc.aio.ServerInterceptor):
             response = await service.unary_unary(request, context)
 
             # Compress response if needed
-            if self.compressor and hasattr(response, 'data'):
+            if self.compressor and hasattr(response, "data"):
                 try:
                     response.data = self.compressor.compress(response.data)
                     response.compressed = True
@@ -99,6 +95,7 @@ class CompressionInterceptor(grpc.aio.ServerInterceptor):
 
         return grpc.aio.unary_unary_rpc_method_handler(wrapped_method)
 
+
 class MetricsInterceptor(grpc.aio.ServerInterceptor):
     """Interceptor for collecting metrics"""
 
@@ -106,11 +103,9 @@ class MetricsInterceptor(grpc.aio.ServerInterceptor):
         self.service_name = service_name
 
     async def intercept_service(
-        self,
-        continuation: Callable,
-        handler_call_details: grpc.HandlerCallDetails
+        self, continuation: Callable, handler_call_details: grpc.HandlerCallDetails
     ):
-        method_name = handler_call_details.method.split('/')[-1]
+        method_name = handler_call_details.method.split("/")[-1]
         start_time = time.time()
 
         # Wrap service handler
@@ -122,9 +117,7 @@ class MetricsInterceptor(grpc.aio.ServerInterceptor):
             try:
                 # Increment request count
                 GRPC_REQUEST_COUNT.labels(
-                    service=self.service_name,
-                    method=method_name,
-                    status_code='OK'
+                    service=self.service_name, method=method_name, status_code="OK"
                 ).inc()
 
                 # Call service method
@@ -133,8 +126,7 @@ class MetricsInterceptor(grpc.aio.ServerInterceptor):
                 # Record latency
                 latency = time.time() - start_time
                 GRPC_REQUEST_LATENCY.labels(
-                    service=self.service_name,
-                    method=method_name
+                    service=self.service_name, method=method_name
                 ).observe(latency)
 
                 return response
@@ -144,18 +136,19 @@ class MetricsInterceptor(grpc.aio.ServerInterceptor):
                 GRPC_REQUEST_COUNT.labels(
                     service=self.service_name,
                     method=method_name,
-                    status_code=str(e.code())
+                    status_code=str(e.code()),
                 ).inc()
                 raise
             except Exception as e:
                 GRPC_REQUEST_COUNT.labels(
                     service=self.service_name,
                     method=method_name,
-                    status_code='INTERNAL'
+                    status_code="INTERNAL",
                 ).inc()
                 raise
 
         return grpc.aio.unary_unary_rpc_method_handler(wrapped_method)
+
 
 class TracingInterceptor(grpc.aio.ServerInterceptor):
     """Interceptor for OpenTelemetry tracing"""
@@ -165,11 +158,9 @@ class TracingInterceptor(grpc.aio.ServerInterceptor):
         self.tracer = trace.get_tracer(service_name)
 
     async def intercept_service(
-        self,
-        continuation: Callable,
-        handler_call_details: grpc.HandlerDetails
+        self, continuation: Callable, handler_call_details: grpc.HandlerDetails
     ):
-        method_name = handler_call_details.method.split('/')[-1]
+        method_name = handler_call_details.method.split("/")[-1]
         span_name = f"{self.service_name}/{method_name}"
 
         # Create span
@@ -209,6 +200,7 @@ class TracingInterceptor(grpc.aio.ServerInterceptor):
 
         return grpc.aio.unary_unary_rpc_method_handler(wrapped_method)
 
+
 class OptimizedGrpcServer:
     """High-performance gRPC server with optimizations"""
 
@@ -231,24 +223,26 @@ class OptimizedGrpcServer:
         """Start gRPC server"""
         # Create server with options
         options = [
-            ('grpc.max_send_message_length', self.config.max_message_length),
-            ('grpc.max_receive_message_length', self.config.max_message_length),
-            ('grpc.keepalive_time_ms', self.config.keepalive_time * 1000),
-            ('grpc.keepalive_timeout_ms', self.config.keepalive_timeout * 1000),
-            ('grpc.keepalive_permit_without_calls', 1 if self.config.keepalive_permit_without_calls else 0),
-            ('grpc.http2.min_time_between_pings_ms', 10000),
-            ('grpc.http2.max_pings_without_data', 0),
-            ('grpc.http2.min_ping_interval_without_data_ms', 300000),
+            ("grpc.max_send_message_length", self.config.max_message_length),
+            ("grpc.max_receive_message_length", self.config.max_message_length),
+            ("grpc.keepalive_time_ms", self.config.keepalive_time * 1000),
+            ("grpc.keepalive_timeout_ms", self.config.keepalive_timeout * 1000),
+            (
+                "grpc.keepalive_permit_without_calls",
+                1 if self.config.keepalive_permit_without_calls else 0,
+            ),
+            ("grpc.http2.min_time_between_pings_ms", 10000),
+            ("grpc.http2.max_pings_without_data", 0),
+            ("grpc.http2.min_ping_interval_without_data_ms", 300000),
         ]
 
         self.server = grpc.aio.server(
-            options=options,
-            interceptors=self._get_interceptors()
+            options=options, interceptors=self._get_interceptors()
         )
 
         # Add services
         for service in self.services:
-            self.server.add_insecure_port(f'{self.config.host}:{self.config.port}')
+            self.server.add_insecure_port(f"{self.config.host}:{self.config.port}")
 
         # Start server
         await self.server.start()
@@ -268,7 +262,7 @@ class OptimizedGrpcServer:
             interceptors.append(
                 CompressionInterceptor(
                     enable_compression=True,
-                    compression_level=self.config.compression_level
+                    compression_level=self.config.compression_level,
                 )
             )
 
@@ -283,6 +277,7 @@ class OptimizedGrpcServer:
 
         return interceptors
 
+
 class GrpcClientPool:
     """Connection pool for gRPC clients"""
 
@@ -290,11 +285,7 @@ class GrpcClientPool:
         self.max_connections = max_connections
         self.connections = {}
         self.semaphore = asyncio.Semaphore(max_connections)
-        self.metrics = {
-            'created': 0,
-            'reused': 0,
-            'closed': 0
-        }
+        self.metrics = {"created": 0, "reused": 0, "closed": 0}
 
     async def get_channel(self, target: str, options: Dict = None) -> grpc.aio.Channel:
         """Get gRPC channel from pool"""
@@ -304,24 +295,24 @@ class GrpcClientPool:
         if target in self.connections:
             channel = self.connections[target]
             if not channel.closed():
-                self.metrics['reused'] += 1
+                self.metrics["reused"] += 1
                 return channel
             else:
                 del self.connections[target]
 
         # Create new channel
         channel_options = {
-            'grpc.max_send_message_length': 4 * 1024 * 1024,
-            'grpc.max_receive_message_length': 4 * 1024 * 1024,
-            'grpc.keepalive_time_ms': 30000,
-            'grpc.keepalive_timeout_ms': 5000,
+            "grpc.max_send_message_length": 4 * 1024 * 1024,
+            "grpc.max_receive_message_length": 4 * 1024 * 1024,
+            "grpc.keepalive_time_ms": 30000,
+            "grpc.keepalive_timeout_ms": 5000,
         }
         if options:
             channel_options.update(options)
 
         channel = grpc.aio.insecure_channel(target, options=channel_options)
         self.connections[target] = channel
-        self.metrics['created'] += 1
+        self.metrics["created"] += 1
         GRPC_ACTIVE_CONNECTIONS.labels(service=target).inc()
 
         return channel
@@ -336,10 +327,12 @@ class GrpcClientPool:
             await channel.close()
             GRPC_ACTIVE_CONNECTIONS.labels(service=target).dec()
         self.connections.clear()
-        self.metrics['closed'] += len(self.connections)
+        self.metrics["closed"] += len(self.connections)
+
 
 # Global client pool
 grpc_client_pool = GrpcClientPool()
+
 
 class OptimizedGrpcClient:
     """High-performance gRPC client with optimizations"""
@@ -383,28 +376,25 @@ class OptimizedGrpcClient:
             # Record metrics
             latency = time.time() - start_time
             GRPC_REQUEST_LATENCY.labels(
-                service=self.service_name,
-                method=method
+                service=self.service_name, method=method
             ).observe(latency)
 
             return response
 
         except AioRpcError as e:
             GRPC_REQUEST_COUNT.labels(
-                service=self.service_name,
-                method=method,
-                status_code=str(e.code())
+                service=self.service_name, method=method, status_code=str(e.code())
             ).inc()
             raise
         except Exception as e:
             GRPC_REQUEST_COUNT.labels(
-                service=self.service_name,
-                method=method,
-                status_code='INTERNAL'
+                service=self.service_name, method=method, status_code="INTERNAL"
             ).inc()
             raise
 
-    async def unary_stream(self, method: str, request, timeout: float = None) -> AsyncIterator:
+    async def unary_stream(
+        self, method: str, request, timeout: float = None
+    ) -> AsyncIterator:
         """Make unary-stream call"""
         timeout = timeout or self.timeout
 
@@ -417,30 +407,39 @@ class OptimizedGrpcClient:
             logger.error(f"Stream error: {e}")
             raise
 
-    async def stream_unary(self, method: str, request_iterator: AsyncIterator, timeout: float = None):
+    async def stream_unary(
+        self, method: str, request_iterator: AsyncIterator, timeout: float = None
+    ):
         """Make stream-unary call"""
         timeout = timeout or self.timeout
 
         try:
-            response = await getattr(self.stub, method)(request_iterator, timeout=timeout)
+            response = await getattr(self.stub, method)(
+                request_iterator, timeout=timeout
+            )
             return response
 
         except AioRpcError as e:
             logger.error(f"Stream error: {e}")
             raise
 
-    async def stream_stream(self, method: str, request_iterator: AsyncIterator, timeout: float = None) -> AsyncIterator:
+    async def stream_stream(
+        self, method: str, request_iterator: AsyncIterator, timeout: float = None
+    ) -> AsyncIterator:
         """Make stream-stream call"""
         timeout = timeout or self.timeout
 
         try:
-            response_stream = await getattr(self.stub, method)(request_iterator, timeout=timeout)
+            response_stream = await getattr(self.stub, method)(
+                request_iterator, timeout=timeout
+            )
             async for response in response_stream:
                 yield response
 
         except AioRpcError as e:
             logger.error(f"Stream error: {e}")
             raise
+
 
 class GrpcMessageSerializer:
     """Optimized message serialization for gRPC"""
@@ -472,15 +471,15 @@ class GrpcMessageSerializer:
                 return self.serializer.loads(data)
         return data.decode()
 
+
 # Utility functions
 def create_grpc_server(config: GrpcServiceConfig) -> OptimizedGrpcServer:
     """Create optimized gRPC server"""
     return OptimizedGrpcServer(config)
 
+
 async def create_grpc_client(
-    service_name: str,
-    target: str,
-    stub_class: type
+    service_name: str, target: str, stub_class: type
 ) -> OptimizedGrpcClient:
     """Create optimized gRPC client"""
     client = OptimizedGrpcClient(service_name, target)
@@ -488,18 +487,25 @@ async def create_grpc_client(
     client.stub = stub_class(client.channel)
     return client
 
+
 # Exception classes
 class GrpcError(Exception):
     """Base gRPC error"""
+
     pass
+
 
 class GrpcConnectionError(GrpcError):
     """gRPC connection error"""
+
     pass
+
 
 class GrpcTimeoutError(GrpcError):
     """gRPC timeout error"""
+
     pass
+
 
 # Example usage
 async def example_grpc_service():
@@ -513,7 +519,7 @@ async def example_grpc_service():
         max_workers=10,
         enable_compression=True,
         enable_metrics=True,
-        enable_tracing=True
+        enable_tracing=True,
     )
 
     # Create server

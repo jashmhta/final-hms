@@ -1,3 +1,7 @@
+"""
+tests module
+"""
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
@@ -14,7 +18,9 @@ class LowStockTest(TestCase):
         hp.enable_pharmacy = True
         hp.save()
         User = get_user_model()
-        self.user = User.objects.create_user(username="u", password="x", role=UserRole.PHARMACIST, hospital=self.h)
+        self.user = User.objects.create_user(
+            username="u", password="x", role=UserRole.PHARMACIST, hospital=self.h
+        )
         Medication.objects.create(
             hospital=self.h,
             name="MedA",

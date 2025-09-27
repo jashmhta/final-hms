@@ -189,7 +189,9 @@ class Migration(migrations.Migration):
                 ("cancellation_hours", models.PositiveIntegerField(default=24)),
                 (
                     "base_cost",
-                    models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True),
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=10, null=True
+                    ),
                 ),
                 ("is_active", models.BooleanField(default=True)),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
@@ -233,15 +235,21 @@ class Migration(migrations.Migration):
                 ("requires_approval", models.BooleanField(default=False)),
                 (
                     "min_booking_duration",
-                    models.PositiveIntegerField(default=15, help_text="Minimum booking duration in minutes"),
+                    models.PositiveIntegerField(
+                        default=15, help_text="Minimum booking duration in minutes"
+                    ),
                 ),
                 (
                     "max_booking_duration",
-                    models.PositiveIntegerField(default=480, help_text="Maximum booking duration in minutes"),
+                    models.PositiveIntegerField(
+                        default=480, help_text="Maximum booking duration in minutes"
+                    ),
                 ),
                 (
                     "hourly_rate",
-                    models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True),
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=10, null=True
+                    ),
                 ),
                 ("is_active", models.BooleanField(default=True)),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
@@ -291,7 +299,9 @@ class Migration(migrations.Migration):
                 ("preferred_date_to", models.DateField()),
                 (
                     "preferred_times",
-                    models.JSONField(default=list, help_text="List of preferred time slots"),
+                    models.JSONField(
+                        default=list, help_text="List of preferred time slots"
+                    ),
                 ),
                 (
                     "priority",
@@ -343,7 +353,9 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="appointment",
             name="appointment_number",
-            field=models.CharField(db_index=True, default="TEMP", max_length=50, unique=True),
+            field=models.CharField(
+                db_index=True, default="TEMP", max_length=50, unique=True
+            ),
         ),
         migrations.AddField(
             model_name="appointment",
@@ -447,7 +459,9 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="appointment",
             name="copay_amount",
-            field=models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True),
+            field=models.DecimalField(
+                blank=True, decimal_places=2, max_digits=10, null=True
+            ),
         ),
         migrations.AddField(
             model_name="appointment",
@@ -457,7 +471,9 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="appointment",
             name="estimated_cost",
-            field=models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True),
+            field=models.DecimalField(
+                blank=True, decimal_places=2, max_digits=10, null=True
+            ),
         ),
         migrations.AddField(
             model_name="appointment",
@@ -502,7 +518,9 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="appointment",
             name="no_show_fee",
-            field=models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True),
+            field=models.DecimalField(
+                blank=True, decimal_places=2, max_digits=10, null=True
+            ),
         ),
         migrations.AddField(
             model_name="appointment",
@@ -662,7 +680,9 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="appointment",
-            index=models.Index(fields=["status", "start_at"], name="appointment_status_013fbb_idx"),
+            index=models.Index(
+                fields=["status", "start_at"], name="appointment_status_013fbb_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="appointment",
@@ -673,7 +693,9 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="appointment",
-            index=models.Index(fields=["series_id"], name="appointment_series__d05f86_idx"),
+            index=models.Index(
+                fields=["series_id"], name="appointment_series__d05f86_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="appointment",
@@ -681,7 +703,9 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="appointment",
-            index=models.Index(fields=["appointment_number"], name="appointment_appoint_93abbc_idx"),
+            index=models.Index(
+                fields=["appointment_number"], name="appointment_appoint_93abbc_idx"
+            ),
         ),
         migrations.AddField(
             model_name="waitlist",
@@ -749,7 +773,9 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="appointmentresource",
             name="resource",
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="appointments.resource"),
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, to="appointments.resource"
+            ),
         ),
         migrations.AddField(
             model_name="appointmentreminder",
@@ -806,7 +832,9 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="waitlist",
-            index=models.Index(fields=["priority", "created_at"], name="appointment_priorit_850b63_idx"),
+            index=models.Index(
+                fields=["priority", "created_at"], name="appointment_priorit_850b63_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="resource",
@@ -824,7 +852,9 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="appointmentresource",
-            index=models.Index(fields=["resource", "start_time"], name="appointment_resourc_9d5d86_idx"),
+            index=models.Index(
+                fields=["resource", "start_time"], name="appointment_resourc_9d5d86_idx"
+            ),
         ),
         migrations.AlterUniqueTogether(
             name="appointmentresource",
@@ -832,7 +862,9 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="appointmentreminder",
-            index=models.Index(fields=["appointment", "status"], name="appointment_appoint_11af41_idx"),
+            index=models.Index(
+                fields=["appointment", "status"], name="appointment_appoint_11af41_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="appointmentreminder",
@@ -850,6 +882,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="appointmenthistory",
-            index=models.Index(fields=["action", "-timestamp"], name="appointment_action_1e6ad6_idx"),
+            index=models.Index(
+                fields=["action", "-timestamp"], name="appointment_action_1e6ad6_idx"
+            ),
         ),
     ]

@@ -1,5 +1,10 @@
+"""
+feature_engineering module
+"""
+
 import logging
 import re
+import secrets
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -122,7 +127,9 @@ class FeatureEngineeringPipeline:
             features_df = self._handle_missing_values(features_df)
             features_df, scaling_info = self._scale_features(features_df)
             if target_variable and target_variable in data.columns:
-                features_df, selected_features = self._select_features(features_df, data[target_variable])
+                features_df, selected_features = self._select_features(
+                    features_df, data[target_variable]
+                )
                 feature_metadata["selected_features"] = selected_features
             interaction_features = self._create_interaction_features(features_df)
             features_df = pd.concat([features_df, interaction_features], axis=1)
@@ -158,15 +165,23 @@ class FeatureEngineeringPipeline:
                 for key, value in ethnicity_encoded.items():
                     features[f"ethnicity_{key}"] = value
             if "preferred_language" in data.columns:
-                features["is_english_speaking"] = (data["preferred_language"] == "EN").astype(int)
-                features["needs_interpreter"] = data.get("interpreter_needed", 0).astype(int)
+                features["is_english_speaking"] = (
+                    data["preferred_language"] == "EN"
+                ).astype(int)
+                features["needs_interpreter"] = data.get(
+                    "interpreter_needed", 0
+                ).astype(int)
             if "insurance_type" in data.columns:
                 insurance_encoded = self._encode_categorical(data["insurance_type"])
                 for key, value in insurance_encoded.items():
                     features[f"insurance_{key}"] = value
             if "marital_status" in data.columns:
-                features["is_married"] = (data["marital_status"] == "MARRIED").astype(int)
-                features["social_support_score"] = self._calculate_social_support_score(data)
+                features["is_married"] = (data["marital_status"] == "MARRIED").astype(
+                    int
+                )
+                features["social_support_score"] = self._calculate_social_support_score(
+                    data
+                )
             return features
         except Exception as e:
             logger.error(f"Demographic feature engineering failed: {e}")
@@ -177,25 +192,41 @@ class FeatureEngineeringPipeline:
         try:
             if "chronic_conditions" in data.columns:
                 features["comorbidity_count"] = data["chronic_conditions"].apply(len)
-                features["charlson_index"] = data["chronic_conditions"].apply(self._calculate_charlson_index)
-                features["organ_system_count"] = data["chronic_conditions"].apply(self._count_organ_systems)
+                features["charlson_index"] = data["chronic_conditions"].apply(
+                    self._calculate_charlson_index
+                )
+                features["organ_system_count"] = data["chronic_conditions"].apply(
+                    self._count_organ_systems
+                )
             if "allergies" in data.columns:
                 features["allergy_count"] = data["allergies"].apply(len)
                 features["has_severe_allergies"] = (
                     data["allergies"]
-                    .apply(lambda x: any(allergy.get("severity", "") in ["SEVERE", "LIFE_THREAT"] for allergy in x))
+                    .apply(
+                        lambda x: any(
+                            allergy.get("severity", "") in ["SEVERE", "LIFE_THREAT"]
+                            for allergy in x
+                        )
+                    )
                     .astype(int)
                 )
             if "previous_surgeries" in data.columns:
                 features["surgery_count"] = data["previous_surgeries"].apply(len)
                 features["has_major_surgery"] = (
                     data["previous_surgeries"]
-                    .apply(lambda x: any(surgery.get("type", "") in ["MAJOR", "EMERGENCY"] for surgery in x))
+                    .apply(
+                        lambda x: any(
+                            surgery.get("type", "") in ["MAJOR", "EMERGENCY"]
+                            for surgery in x
+                        )
+                    )
                     .astype(int)
                 )
             if "family_history" in data.columns:
                 features["family_history_count"] = data["family_history"].apply(len)
-                features["hereditary_risk_score"] = data["family_history"].apply(self._calculate_hereditary_risk)
+                features["hereditary_risk_score"] = data["family_history"].apply(
+                    self._calculate_hereditary_risk
+                )
             features["fall_risk_score"] = self._calculate_fall_risk_score(data)
             features["malnutrition_risk"] = self._calculate_malnutrition_risk(data)
             features["pressure_ulcer_risk"] = self._calculate_pressure_ulcer_risk(data)
@@ -211,12 +242,20 @@ class FeatureEngineeringPipeline:
             if "systolic_bp" in data.columns and "diastolic_bp" in data.columns:
                 systolic = data["systolic_bp"]
                 diastolic = data["diastolic_bp"]
-                features["bp_category"] = self._categorize_blood_pressure(systolic, diastolic)
-                features["bp_normalized"] = self._normalize_vital_sign(systolic, "blood_pressure_systolic")
+                features["bp_category"] = self._categorize_blood_pressure(
+                    systolic, diastolic
+                )
+                features["bp_normalized"] = self._normalize_vital_sign(
+                    systolic, "blood_pressure_systolic"
+                )
                 features["pulse_pressure"] = systolic - diastolic
                 features["mean_arterial_pressure"] = (systolic + 2 * diastolic) / 3
-                features["hypertensive"] = ((systolic >= 140) | (diastolic >= 90)).astype(int)
-                features["hypotensive"] = ((systolic < 90) | (diastolic < 60)).astype(int)
+                features["hypertensive"] = (
+                    (systolic >= 140) | (diastolic >= 90)
+                ).astype(int)
+                features["hypotensive"] = ((systolic < 90) | (diastolic < 60)).astype(
+                    int
+                )
             if "heart_rate" in data.columns:
                 hr = data["heart_rate"]
                 features["hr_normalized"] = self._normalize_vital_sign(hr, "heart_rate")
@@ -225,18 +264,24 @@ class FeatureEngineeringPipeline:
                 features["hr_category"] = self._categorize_heart_rate(hr)
             if "temperature" in data.columns:
                 temp = data["temperature"]
-                features["temp_normalized"] = self._normalize_vital_sign(temp, "temperature")
+                features["temp_normalized"] = self._normalize_vital_sign(
+                    temp, "temperature"
+                )
                 features["fever"] = (temp > 38.0).astype(int)
                 features["hypothermia"] = (temp < 36.0).astype(int)
                 features["temp_category"] = self._categorize_temperature(temp)
             if "oxygen_saturation" in data.columns:
                 o2sat = data["oxygen_saturation"]
-                features["o2sat_normalized"] = self._normalize_vital_sign(o2sat, "oxygen_saturation")
+                features["o2sat_normalized"] = self._normalize_vital_sign(
+                    o2sat, "oxygen_saturation"
+                )
                 features["hypoxemic"] = (o2sat < 95).astype(int)
                 features["severe_hypoxemia"] = (o2sat < 90).astype(int)
             if "respiratory_rate" in data.columns:
                 rr = data["respiratory_rate"]
-                features["rr_normalized"] = self._normalize_vital_sign(rr, "respiratory_rate")
+                features["rr_normalized"] = self._normalize_vital_sign(
+                    rr, "respiratory_rate"
+                )
                 features["tachypnea"] = (rr > 20).astype(int)
                 features["bradypnea"] = (rr < 12).astype(int)
             if "pain_score" in data.columns:
@@ -266,23 +311,35 @@ class FeatureEngineeringPipeline:
             for lab in lab_values:
                 if lab in data.columns:
                     lab_data = data[lab]
-                    features[f"{lab}_normalized"] = self._normalize_lab_value(lab_data, lab)
-                    features[f"{lab}_abnormal"] = self._is_abnormal_lab_value(lab_data, lab).astype(int)
-                    features[f"{lab}_critical"] = self._is_critical_lab_value(lab_data, lab).astype(int)
+                    features[f"{lab}_normalized"] = self._normalize_lab_value(
+                        lab_data, lab
+                    )
+                    features[f"{lab}_abnormal"] = self._is_abnormal_lab_value(
+                        lab_data, lab
+                    ).astype(int)
+                    features[f"{lab}_critical"] = self._is_critical_lab_value(
+                        lab_data, lab
+                    ).astype(int)
             if "creatinine" in data.columns and "age" in data.columns:
                 features["egfr"] = self._calculate_egfr(data["creatinine"], data["age"])
                 features["renal_impairment"] = (data["creatinine"] > 1.5).astype(int)
             if "ast" in data.columns and "alt" in data.columns:
                 features["ast_alt_ratio"] = data["ast"] / (data["alt"] + 1)
-                features["liver_disease_indicator"] = ((data["ast"] > 40) | (data["alt"] > 40)).astype(int)
+                features["liver_disease_indicator"] = (
+                    (data["ast"] > 40) | (data["alt"] > 40)
+                ).astype(int)
             if "sodium" in data.columns and "potassium" in data.columns:
                 features["electrolyte_imbalance"] = (
                     self._is_abnormal_lab_value(data["sodium"], "sodium")
                     | self._is_abnormal_lab_value(data["potassium"], "potassium")
                 ).astype(int)
             if "hemoglobin" in data.columns:
-                features["anemia"] = self._is_abnormal_lab_value(data["hemoglobin"], "hemoglobin").astype(int)
-                features["anemia_severity"] = data["hemoglobin"].apply(self._classify_anemia_severity)
+                features["anemia"] = self._is_abnormal_lab_value(
+                    data["hemoglobin"], "hemoglobin"
+                ).astype(int)
+                features["anemia_severity"] = data["hemoglobin"].apply(
+                    self._classify_anemia_severity
+                )
             return features
         except Exception as e:
             logger.error(f"Laboratory feature engineering failed: {e}")
@@ -296,7 +353,9 @@ class FeatureEngineeringPipeline:
                 features["admission_hour"] = admission_dates.dt.hour
                 features["admission_day_of_week"] = admission_dates.dt.dayofweek
                 features["admission_month"] = admission_dates.dt.month
-                features["is_weekend_admission"] = (admission_dates.dt.dayofweek >= 5).astype(int)
+                features["is_weekend_admission"] = (
+                    admission_dates.dt.dayofweek >= 5
+                ).astype(int)
                 features["is_night_admission"] = (
                     (admission_dates.dt.hour >= 20) | (admission_dates.dt.hour < 6)
                 ).astype(int)
@@ -307,8 +366,12 @@ class FeatureEngineeringPipeline:
                 features["short_stay"] = (los <= 1).astype(int)
             if "last_admission_date" in data.columns:
                 last_admission = pd.to_datetime(data["last_admission_date"])
-                features["days_since_last_admission"] = (datetime.now() - last_admission).dt.days
-                features["readmission_within_30_days"] = (features["days_since_last_admission"] <= 30).astype(int)
+                features["days_since_last_admission"] = (
+                    datetime.now() - last_admission
+                ).dt.days
+                features["readmission_within_30_days"] = (
+                    features["days_since_last_admission"] <= 30
+                ).astype(int)
             return features
         except Exception as e:
             logger.error(f"Temporal feature engineering failed: {e}")
@@ -326,10 +389,18 @@ class FeatureEngineeringPipeline:
                 features["anticoagulant_count"] = medications.apply(
                     lambda x: sum(1 for med in x if self._is_anticoagulant(med))
                 )
-                features["opioid_count"] = medications.apply(lambda x: sum(1 for med in x if self._is_opioid(med)))
-                features["polypharmacy"] = (features["medication_count"] >= 5).astype(int)
-                features["severe_polypharmacy"] = (features["medication_count"] >= 10).astype(int)
-                features["medication_adherence_score"] = medications.apply(self._calculate_adherence_score)
+                features["opioid_count"] = medications.apply(
+                    lambda x: sum(1 for med in x if self._is_opioid(med))
+                )
+                features["polypharmacy"] = (features["medication_count"] >= 5).astype(
+                    int
+                )
+                features["severe_polypharmacy"] = (
+                    features["medication_count"] >= 10
+                ).astype(int)
+                features["medication_adherence_score"] = medications.apply(
+                    self._calculate_adherence_score
+                )
             return features
         except Exception as e:
             logger.error(f"Medication feature engineering failed: {e}")
@@ -339,25 +410,41 @@ class FeatureEngineeringPipeline:
         features = {}
         try:
             if "living_situation" in data.columns:
-                features["lives_alone"] = (data["living_situation"] == "ALONE").astype(int)
-                features["has_caregiver"] = (data["living_situation"].isin(["WITH_FAMILY", "WITH_CAREGIVER"])).astype(
+                features["lives_alone"] = (data["living_situation"] == "ALONE").astype(
                     int
                 )
+                features["has_caregiver"] = (
+                    data["living_situation"].isin(["WITH_FAMILY", "WITH_CAREGIVER"])
+                ).astype(int)
             if "income_level" in data.columns:
-                features["low_income"] = (data["income_level"].isin(["LOW", "VERY_LOW"])).astype(int)
-                features["uninsured"] = (data.get("insurance_status", "") == "UNINSURED").astype(int)
+                features["low_income"] = (
+                    data["income_level"].isin(["LOW", "VERY_LOW"])
+                ).astype(int)
+                features["uninsured"] = (
+                    data.get("insurance_status", "") == "UNINSURED"
+                ).astype(int)
             if "education_level" in data.columns:
                 features["low_education"] = (
-                    data["education_level"].isin(["LESS_THAN_HIGH_SCHOOL", "HIGH_SCHOOL"])
+                    data["education_level"].isin(
+                        ["LESS_THAN_HIGH_SCHOOL", "HIGH_SCHOOL"]
+                    )
                 ).astype(int)
             if "zip_code" in data.columns:
-                features["rural_resident"] = data["zip_code"].apply(self._is_rural_zip_code)
-                features["distance_to_hospital"] = data["zip_code"].apply(self._calculate_distance_to_hospital)
+                features["rural_resident"] = data["zip_code"].apply(
+                    self._is_rural_zip_code
+                )
+                features["distance_to_hospital"] = data["zip_code"].apply(
+                    self._calculate_distance_to_hospital
+                )
             if "substance_use" in data.columns:
                 features["smoker"] = (data["substance_use"] == "TOBACCO").astype(int)
                 features["alcohol_use"] = (
                     data["substance_use"]
-                    .apply(lambda x: (x in ["ALCOHOL", "BOTH"] if isinstance(x, str) else False))
+                    .apply(
+                        lambda x: (
+                            x in ["ALCOHOL", "BOTH"] if isinstance(x, str) else False
+                        )
+                    )
                     .astype(int)
                 )
             return features
@@ -371,21 +458,32 @@ class FeatureEngineeringPipeline:
             if "previous_admissions" in data.columns:
                 features["total_admissions"] = data["previous_admissions"].apply(len)
                 features["admissions_last_year"] = data["previous_admissions"].apply(
-                    lambda x: sum(1 for admission in x if self._is_within_last_year(admission.get("date", "")))
-                )
-                features["emergency_visits_last_year"] = data["previous_admissions"].apply(
                     lambda x: sum(
                         1
                         for admission in x
-                        if admission.get("type") == "EMERGENCY" and self._is_within_last_year(admission.get("date", ""))
+                        if self._is_within_last_year(admission.get("date", ""))
+                    )
+                )
+                features["emergency_visits_last_year"] = data[
+                    "previous_admissions"
+                ].apply(
+                    lambda x: sum(
+                        1
+                        for admission in x
+                        if admission.get("type") == "EMERGENCY"
+                        and self._is_within_last_year(admission.get("date", ""))
                     )
                 )
             if "icu_admissions" in data.columns:
                 features["icu_admission_count"] = data["icu_admissions"].apply(len)
-                features["previous_icu_stay"] = (features["icu_admission_count"] > 0).astype(int)
+                features["previous_icu_stay"] = (
+                    features["icu_admission_count"] > 0
+                ).astype(int)
             if "previous_costs" in data.columns:
                 features["total_healthcare_costs"] = data["previous_costs"].apply(sum)
-                features["high_cost_patient"] = (features["total_healthcare_costs"] > 50000).astype(int)
+                features["high_cost_patient"] = (
+                    features["total_healthcare_costs"] > 50000
+                ).astype(int)
             return features
         except Exception as e:
             logger.error(f"Utilization feature engineering failed: {e}")
@@ -400,7 +498,11 @@ class FeatureEngineeringPipeline:
             else:
                 if isinstance(dob, str):
                     dob = datetime.strptime(dob, "%Y-%m-%d")
-                age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+                age = (
+                    today.year
+                    - dob.year
+                    - ((today.month, today.day) < (dob.month, dob.day))
+                )
                 ages.append(age)
         return pd.Series(ages)
 
@@ -418,10 +520,14 @@ class FeatureEngineeringPipeline:
         encoded = {}
         for category in series.unique():
             if pd.notna(category):
-                encoded[str(category).lower().replace(" ", "_")] = (series == category).astype(int)
+                encoded[str(category).lower().replace(" ", "_")] = (
+                    series == category
+                ).astype(int)
         return encoded
 
-    def _categorize_blood_pressure(self, systolic: pd.Series, diastolic: pd.Series) -> pd.Series:
+    def _categorize_blood_pressure(
+        self, systolic: pd.Series, diastolic: pd.Series
+    ) -> pd.Series:
         categories = []
         for sys, dia in zip(systolic, diastolic):
             if sys < 120 and dia < 80:
@@ -488,7 +594,9 @@ class FeatureEngineeringPipeline:
         categorical_cols = df.select_dtypes(include=["object", "category"]).columns
         for col in categorical_cols:
             if df[col].isnull().sum() > 0:
-                df[col] = df[col].fillna(df[col].mode().iloc[0] if not df[col].mode().empty else "unknown")
+                df[col] = df[col].fillna(
+                    df[col].mode().iloc[0] if not df[col].mode().empty else "unknown"
+                )
         return df
 
     def _scale_features(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict]:
@@ -507,11 +615,17 @@ class FeatureEngineeringPipeline:
     def _create_interaction_features(self, df: pd.DataFrame) -> pd.DataFrame:
         interaction_features = pd.DataFrame(index=df.index)
         if "age_normalized" in df.columns and "comorbidity_count" in df.columns:
-            interaction_features["age_comorbidity_interaction"] = df["age_normalized"] * df["comorbidity_count"]
+            interaction_features["age_comorbidity_interaction"] = (
+                df["age_normalized"] * df["comorbidity_count"]
+            )
         if "charlson_index" in df.columns and "medication_count" in df.columns:
-            interaction_features["severity_medication_interaction"] = df["charlson_index"] * df["medication_count"]
+            interaction_features["severity_medication_interaction"] = (
+                df["charlson_index"] * df["medication_count"]
+            )
         if "bp_normalized" in df.columns and "hr_normalized" in df.columns:
-            interaction_features["bp_hr_interaction"] = df["bp_normalized"] * df["hr_normalized"]
+            interaction_features["bp_hr_interaction"] = (
+                df["bp_normalized"] * df["hr_normalized"]
+            )
         return interaction_features
 
     def _select_features(
@@ -569,7 +683,9 @@ class FeatureEngineeringPipeline:
         if "age" in data.columns:
             risk_score += (data["age"] >= 65).astype(int) * 1
         if "medications" in data.columns:
-            risk_score += data["medications"].apply(lambda x: sum(1 for med in x if self._is_fall_risk_medication(med)))
+            risk_score += data["medications"].apply(
+                lambda x: sum(1 for med in x if self._is_fall_risk_medication(med))
+            )
         if "previous_falls" in data.columns:
             risk_score += data["previous_falls"].apply(len) * 2
         return risk_score
@@ -640,7 +756,7 @@ class FeatureEngineeringPipeline:
             return False
 
     def _calculate_distance_to_hospital(self, zip_code: str) -> float:
-        return np.random.uniform(1, 50)
+        return np.secrets.uniform(1, 50)
 
     def _classify_anemia_severity(self, hemoglobin: float) -> str:
         if hemoglobin >= 12:
@@ -723,7 +839,9 @@ class FeatureEngineeringPipeline:
         risk_score = 0
         for condition in family_history:
             if isinstance(condition, dict):
-                condition_name = condition.get("condition", "").lower().replace(" ", "_")
+                condition_name = (
+                    condition.get("condition", "").lower().replace(" ", "_")
+                )
             else:
                 condition_name = str(condition).lower().replace(" ", "_")
             risk_score += hereditary_conditions.get(condition_name, 0)
@@ -742,7 +860,9 @@ class FeatureEngineeringPipeline:
     def _calculate_pressure_ulcer_risk(self, data: pd.DataFrame) -> pd.Series:
         risk_score = 0
         if "mobility" in data.columns:
-            risk_score += (data["mobility"].isin(["bedridden", "chairbound"])).astype(int)
+            risk_score += (data["mobility"].isin(["bedridden", "chairbound"])).astype(
+                int
+            )
         if "incontinence" in data.columns:
             risk_score += (data["incontinence"] == "yes").astype(int)
         if "nutrition_status" in data.columns:

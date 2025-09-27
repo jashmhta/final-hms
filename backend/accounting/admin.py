@@ -1,3 +1,7 @@
+"""
+admin module
+"""
+
 from django.contrib import admin
 from django.utils import timezone
 from django.utils.html import format_html
@@ -602,7 +606,9 @@ class ServicePackageAdmin(admin.ModelAdmin):
 
     def profit_margin_display(self, obj):
         if obj.cost_price_cents > 0:
-            margin = ((obj.base_price_cents - obj.cost_price_cents) / obj.base_price_cents) * 100
+            margin = (
+                (obj.base_price_cents - obj.cost_price_cents) / obj.base_price_cents
+            ) * 100
             return f"{margin:.1f}%"
         return "N/A"
 

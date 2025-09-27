@@ -3,22 +3,24 @@ Patient Risk Prediction Models for Healthcare Intelligence System
 Implements various risk stratification models for healthcare analytics
 """
 
-import numpy as np
-import pandas as pd
-from typing import Dict, List, Tuple, Optional
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+import logging
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+
 import mlflow
 import mlflow.sklearn
-from datetime import datetime, timedelta
-import logging
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score
+from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class PatientRiskPredictor:
     """
@@ -27,11 +29,13 @@ class PatientRiskPredictor:
 
     def __init__(self, experiment_name="hms-patient-risk-prediction"):
         self.models = {
-            'readmission': RandomForestClassifier(n_estimators=200, random_state=42),
-            'sepsis': GradientBoostingClassifier(n_estimators=100, random_state=42),
-            'mortality': LogisticRegression(random_state=42),
-            'heart_failure': RandomForestClassifier(n_estimators=150, random_state=42),
-            'diabetes_complications': GradientBoostingClassifier(n_estimators=100, random_state=42)
+            "readmission": RandomForestClassifier(n_estimators=200, random_state=42),
+            "sepsis": GradientBoostingClassifier(n_estimators=100, random_state=42),
+            "mortality": LogisticRegression(random_state=42),
+            "heart_failure": RandomForestClassifier(n_estimators=150, random_state=42),
+            "diabetes_complications": GradientBoostingClassifier(
+                n_estimators=100, random_state=42
+            ),
         }
         self.scalers = {}
         self.feature_encoders = {}
@@ -60,48 +64,54 @@ class PatientRiskPredictor:
         features = []
 
         # Demographic features
-        features.extend([
-            patient_data.get('age', 0),
-            1 if patient_data.get('gender', '') == 'male' else 0,
-            patient_data.get('bmi', 0),
-            patient_data.get('insurance_type_encoded', 0)
-        ])
+        features.extend(
+            [
+                patient_data.get("age", 0),
+                1 if patient_data.get("gender", "") == "male" else 0,
+                patient_data.get("bmi", 0),
+                patient_data.get("insurance_type_encoded", 0),
+            ]
+        )
 
         # Vital signs
-        vitals = patient_data.get('vital_signs', {})
-        features.extend([
-            vitals.get('heart_rate', 0),
-            vitals.get('blood_pressure_systolic', 0),
-            vitals.get('blood_pressure_diastolic', 0),
-            vitals.get('oxygen_saturation', 0),
-            vitals.get('temperature', 0),
-            vitals.get('respiratory_rate', 0)
-        ])
+        vitals = patient_data.get("vital_signs", {})
+        features.extend(
+            [
+                vitals.get("heart_rate", 0),
+                vitals.get("blood_pressure_systolic", 0),
+                vitals.get("blood_pressure_diastolic", 0),
+                vitals.get("oxygen_saturation", 0),
+                vitals.get("temperature", 0),
+                vitals.get("respiratory_rate", 0),
+            ]
+        )
 
         # Lab results
-        labs = patient_data.get('lab_results', {})
-        features.extend([
-            labs.get('glucose', 0),
-            labs.get('creatinine', 0),
-            labs.get('sodium', 0),
-            labs.get('potassium', 0),
-            labs.get('hemoglobin', 0),
-            labs.get('white_blood_cell_count', 0)
-        ])
+        labs = patient_data.get("lab_results", {})
+        features.extend(
+            [
+                labs.get("glucose", 0),
+                labs.get("creatinine", 0),
+                labs.get("sodium", 0),
+                labs.get("potassium", 0),
+                labs.get("hemoglobin", 0),
+                labs.get("white_blood_cell_count", 0),
+            ]
+        )
 
         # Comorbidities count
-        conditions = patient_data.get('conditions', [])
-        comorbidity_count = len([c for c in conditions if c not in ['healthy']])
+        conditions = patient_data.get("conditions", [])
+        comorbidity_count = len([c for c in conditions if c not in ["healthy"]])
         features.append(comorbidity_count)
 
         # Medication count
-        features.append(len(patient_data.get('medications', [])))
+        features.append(len(patient_data.get("medications", [])))
 
         # Recent admissions (last 12 months)
-        features.append(patient_data.get('recent_admissions', 0))
+        features.append(patient_data.get("recent_admissions", 0))
 
         # Length of stay (if applicable)
-        features.append(patient_data.get('length_of_stay', 0))
+        features.append(patient_data.get("length_of_stay", 0))
 
         return np.array(features).reshape(1, -1)
 
@@ -121,7 +131,7 @@ class PatientRiskPredictor:
             X_test_scaled = scaler.transform(X_test)
 
             # Train model
-            model = self.models['readmission']
+            model = self.models["readmission"]
             model.fit(X_train_scaled, y_train)
 
             # Evaluate
@@ -129,10 +139,10 @@ class PatientRiskPredictor:
             y_proba = model.predict_proba(X_test_scaled)[:, 1]
 
             metrics = {
-                'accuracy': accuracy_score(y_test, y_pred),
-                'precision': precision_score(y_test, y_pred),
-                'recall': recall_score(y_test, y_pred),
-                'auc_roc': roc_auc_score(y_test, y_proba)
+                "accuracy": accuracy_score(y_test, y_pred),
+                "precision": precision_score(y_test, y_pred),
+                "recall": recall_score(y_test, y_pred),
+                "auc_roc": roc_auc_score(y_test, y_proba),
             }
 
             # Log metrics
@@ -143,9 +153,11 @@ class PatientRiskPredictor:
             mlflow.sklearn.log_model(model, "readmission-model")
 
             # Store scaler
-            self.scalers['readmission'] = scaler
+            self.scalers["readmission"] = scaler
 
-            logger.info(f"Readmission model trained: AUC-ROC = {metrics['auc_roc']:.3f}")
+            logger.info(
+                f"Readmission model trained: AUC-ROC = {metrics['auc_roc']:.3f}"
+            )
 
             return model, metrics
 
@@ -161,11 +173,14 @@ class PatientRiskPredictor:
 
             # Handle class imbalance
             from sklearn.utils.class_weight import compute_class_weight
-            class_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y_train)
+
+            class_weights = compute_class_weight(
+                "balanced", classes=np.unique(y_train), y=y_train
+            )
             sample_weights = np.array([class_weights[i] for i in y_train])
 
             # Train model
-            model = self.models['sepsis']
+            model = self.models["sepsis"]
             model.fit(X_train, y_train, sample_weight=sample_weights)
 
             # Evaluate
@@ -173,10 +188,10 @@ class PatientRiskPredictor:
             y_proba = model.predict_proba(X_test)[:, 1]
 
             metrics = {
-                'accuracy': accuracy_score(y_test, y_pred),
-                'precision': precision_score(y_test, y_pred),
-                'recall': recall_score(y_test, y_pred),
-                'auc_roc': roc_auc_score(y_test, y_proba)
+                "accuracy": accuracy_score(y_test, y_pred),
+                "precision": precision_score(y_test, y_pred),
+                "recall": recall_score(y_test, y_pred),
+                "auc_roc": roc_auc_score(y_test, y_proba),
             }
 
             # Log metrics
@@ -190,7 +205,7 @@ class PatientRiskPredictor:
 
             return model, metrics
 
-    def predict_risk(self, patient_data: Dict, risk_type: str = 'readmission') -> Dict:
+    def predict_risk(self, patient_data: Dict, risk_type: str = "readmission") -> Dict:
         """
         Predict patient risk for specified outcome
 
@@ -220,88 +235,104 @@ class PatientRiskPredictor:
 
         # Generate recommendations based on risk level
         risk_level = self.get_risk_level(risk_score)
-        recommendations = self.generate_recommendations(risk_type, risk_level, patient_data)
+        recommendations = self.generate_recommendations(
+            risk_type, risk_level, patient_data
+        )
 
         return {
-            'risk_type': risk_type,
-            'risk_score': float(risk_score),
-            'risk_level': risk_level,
-            'prediction': bool(prediction),
-            'confidence': float(max(model.predict_proba(features)[0])),
-            'recommendations': recommendations,
-            'timestamp': datetime.utcnow().isoformat(),
-            'model_version': getattr(model, 'version', '1.0')
+            "risk_type": risk_type,
+            "risk_score": float(risk_score),
+            "risk_level": risk_level,
+            "prediction": bool(prediction),
+            "confidence": float(max(model.predict_proba(features)[0])),
+            "recommendations": recommendations,
+            "timestamp": datetime.utcnow().isoformat(),
+            "model_version": getattr(model, "version", "1.0"),
         }
 
     def get_risk_level(self, risk_score: float) -> str:
         """Convert risk score to risk level category"""
         if risk_score >= 0.8:
-            return 'critical'
+            return "critical"
         elif risk_score >= 0.6:
-            return 'high'
+            return "high"
         elif risk_score >= 0.4:
-            return 'medium'
+            return "medium"
         elif risk_score >= 0.2:
-            return 'low'
+            return "low"
         else:
-            return 'minimal'
+            return "minimal"
 
-    def generate_recommendations(self, risk_type: str, risk_level: str, patient_data: Dict) -> List[str]:
+    def generate_recommendations(
+        self, risk_type: str, risk_level: str, patient_data: Dict
+    ) -> List[str]:
         """Generate clinical recommendations based on risk assessment"""
         recommendations = []
 
-        if risk_type == 'readmission':
-            if risk_level in ['critical', 'high']:
-                recommendations.extend([
-                    "Schedule follow-up appointment within 7 days",
-                    "Assign care coordinator for transition of care",
-                    "Ensure medication reconciliation completed",
-                    "Provide patient education on condition management",
-                    "Consider home health services"
-                ])
-            elif risk_level == 'medium':
-                recommendations.extend([
-                    "Schedule follow-up within 14 days",
-                    "Medication review before discharge",
-                    "Patient education materials provided"
-                ])
+        if risk_type == "readmission":
+            if risk_level in ["critical", "high"]:
+                recommendations.extend(
+                    [
+                        "Schedule follow-up appointment within 7 days",
+                        "Assign care coordinator for transition of care",
+                        "Ensure medication reconciliation completed",
+                        "Provide patient education on condition management",
+                        "Consider home health services",
+                    ]
+                )
+            elif risk_level == "medium":
+                recommendations.extend(
+                    [
+                        "Schedule follow-up within 14 days",
+                        "Medication review before discharge",
+                        "Patient education materials provided",
+                    ]
+                )
 
-        elif risk_type == 'sepsis':
-            if risk_level in ['critical', 'high']:
-                recommendations.extend([
-                    "Immediate physician notification",
-                    "Consider sepsis protocol activation",
-                    "Frequent vital sign monitoring (every 15 minutes)",
-                    "Blood cultures and lactate levels ordered",
-                    "IV fluids and antibiotics consideration"
-                ])
-            elif risk_level == 'medium':
-                recommendations.extend([
-                    "Increased monitoring frequency",
-                    "Nurse assessment every 2 hours",
-                    "Repeat lactate in 4 hours"
-                ])
+        elif risk_type == "sepsis":
+            if risk_level in ["critical", "high"]:
+                recommendations.extend(
+                    [
+                        "Immediate physician notification",
+                        "Consider sepsis protocol activation",
+                        "Frequent vital sign monitoring (every 15 minutes)",
+                        "Blood cultures and lactate levels ordered",
+                        "IV fluids and antibiotics consideration",
+                    ]
+                )
+            elif risk_level == "medium":
+                recommendations.extend(
+                    [
+                        "Increased monitoring frequency",
+                        "Nurse assessment every 2 hours",
+                        "Repeat lactate in 4 hours",
+                    ]
+                )
 
-        elif risk_type == 'mortality':
-            if risk_level in ['critical', 'high']:
-                recommendations.extend([
-                    "Palliative care consultation",
-                    "Family conference scheduled",
-                    "Goals of care discussion",
-                    "Code status review"
-                ])
+        elif risk_type == "mortality":
+            if risk_level in ["critical", "high"]:
+                recommendations.extend(
+                    [
+                        "Palliative care consultation",
+                        "Family conference scheduled",
+                        "Goals of care discussion",
+                        "Code status review",
+                    ]
+                )
 
         # Add patient-specific recommendations
-        age = patient_data.get('age', 0)
+        age = patient_data.get("age", 0)
         if age > 65:
             recommendations.append("Consider geriatric assessment")
 
-        if patient_data.get('has_fall_risk', False):
+        if patient_data.get("has_fall_risk", False):
             recommendations.append("Fall prevention protocol activated")
 
         return recommendations
 
-    def batch_predict(self, patient_data_list: List[Dict], risk_type: str = 'readmission') -> List[Dict]:
+    def batch_predict(
+        self, patient_data_list: List[Dict], risk_type: str = "readmission"
+    ) -> List[Dict]:
         """
         Make predictions for multiple patients
 
@@ -320,7 +351,9 @@ class PatientRiskPredictor:
 
         return results
 
-    def explain_prediction(self, patient_data: Dict, risk_type: str = 'readmission') -> Dict:
+    def explain_prediction(
+        self, patient_data: Dict, risk_type: str = "readmission"
+    ) -> Dict:
         """
         Explain model prediction using feature importance
 
@@ -335,44 +368,63 @@ class PatientRiskPredictor:
         features = self.prepare_features(patient_data)
 
         # Get feature importance
-        if hasattr(model, 'feature_importances_'):
+        if hasattr(model, "feature_importances_"):
             feature_names = [
-                'age', 'gender_male', 'bmi', 'insurance_type',
-                'heart_rate', 'bp_systolic', 'bp_diastolic', 'oxygen_sat',
-                'temperature', 'respiratory_rate', 'glucose', 'creatinine',
-                'sodium', 'potassium', 'hemoglobin', 'wbc', 'comorbidities',
-                'medications', 'recent_admissions', 'length_of_stay'
+                "age",
+                "gender_male",
+                "bmi",
+                "insurance_type",
+                "heart_rate",
+                "bp_systolic",
+                "bp_diastolic",
+                "oxygen_sat",
+                "temperature",
+                "respiratory_rate",
+                "glucose",
+                "creatinine",
+                "sodium",
+                "potassium",
+                "hemoglobin",
+                "wbc",
+                "comorbidities",
+                "medications",
+                "recent_admissions",
+                "length_of_stay",
             ]
 
             importance_scores = model.feature_importances_
             feature_importance = sorted(
-                zip(feature_names, importance_scores),
-                key=lambda x: x[1],
-                reverse=True
-            )[:10]  # Top 10 features
+                zip(feature_names, importance_scores), key=lambda x: x[1], reverse=True
+            )[
+                :10
+            ]  # Top 10 features
 
             explanation = {
-                'top_features': feature_importance,
-                'feature_contributions': self.calculate_feature_contributions(
+                "top_features": feature_importance,
+                "feature_contributions": self.calculate_feature_contributions(
                     features[0], model, feature_names
-                )
+                ),
             }
 
             return explanation
 
-        return {'error': 'Model does not support feature importance'}
+        return {"error": "Model does not support feature importance"}
 
-    def calculate_feature_contributions(self, features: np.ndarray, model, feature_names: List[str]) -> Dict:
+    def calculate_feature_contributions(
+        self, features: np.ndarray, model, feature_names: List[str]
+    ) -> Dict:
         """Calculate contribution of each feature to prediction"""
         # This is a simplified contribution calculation
         # In practice, you might use SHAP or LIME for better explanations
         contributions = {}
 
-        if hasattr(model, 'feature_importances_'):
-            for i, (name, importance) in enumerate(zip(feature_names, model.feature_importances_)):
+        if hasattr(model, "feature_importances_"):
+            for i, (name, importance) in enumerate(
+                zip(feature_names, model.feature_importances_)
+            ):
                 contributions[name] = {
-                    'importance': float(importance),
-                    'value': float(features[i])
+                    "importance": float(importance),
+                    "value": float(features[i]),
                 }
 
         return contributions
@@ -385,37 +437,37 @@ if __name__ == "__main__":
 
     # Example patient data
     example_patient = {
-        'age': 75,
-        'gender': 'male',
-        'bmi': 28.5,
-        'insurance_type_encoded': 1,
-        'vital_signs': {
-            'heart_rate': 95,
-            'blood_pressure_systolic': 145,
-            'blood_pressure_diastolic': 85,
-            'oxygen_saturation': 94,
-            'temperature': 37.8,
-            'respiratory_rate': 22
+        "age": 75,
+        "gender": "male",
+        "bmi": 28.5,
+        "insurance_type_encoded": 1,
+        "vital_signs": {
+            "heart_rate": 95,
+            "blood_pressure_systolic": 145,
+            "blood_pressure_diastolic": 85,
+            "oxygen_saturation": 94,
+            "temperature": 37.8,
+            "respiratory_rate": 22,
         },
-        'lab_results': {
-            'glucose': 145,
-            'creatinine': 1.8,
-            'sodium': 138,
-            'potassium': 4.2,
-            'hemoglobin': 11.5,
-            'white_blood_cell_count': 12.5
+        "lab_results": {
+            "glucose": 145,
+            "creatinine": 1.8,
+            "sodium": 138,
+            "potassium": 4.2,
+            "hemoglobin": 11.5,
+            "white_blood_cell_count": 12.5,
         },
-        'conditions': ['hypertension', 'diabetes', 'heart_failure'],
-        'medications': ['lisinopril', 'metformin', 'furosemide'],
-        'recent_admissions': 2,
-        'length_of_stay': 5,
-        'has_fall_risk': True
+        "conditions": ["hypertension", "diabetes", "heart_failure"],
+        "medications": ["lisinopril", "metformin", "furosemide"],
+        "recent_admissions": 2,
+        "length_of_stay": 5,
+        "has_fall_risk": True,
     }
 
     # Make prediction
-    risk_prediction = predictor.predict_risk(example_patient, 'readmission')
+    risk_prediction = predictor.predict_risk(example_patient, "readmission")
     print(f"Readmission Risk Prediction: {risk_prediction}")
 
     # Get explanation
-    explanation = predictor.explain_prediction(example_patient, 'readmission')
+    explanation = predictor.explain_prediction(example_patient, "readmission")
     print(f"Prediction Explanation: {explanation}")

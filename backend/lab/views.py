@@ -1,3 +1,7 @@
+"""
+views module
+"""
+
 from rest_framework import decorators, response, viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
@@ -27,7 +31,9 @@ class TenantScopedViewSet(viewsets.ModelViewSet):
         user = self.request.user
         provided_hospital = serializer.validated_data.get("hospital")
         if not (
-            user.is_superuser or getattr(user, "hospital_id", None) or getattr(user, "role", None) == "SUPER_ADMIN"
+            user.is_superuser
+            or getattr(user, "hospital_id", None)
+            or getattr(user, "role", None) == "SUPER_ADMIN"
         ):
             raise PermissionDenied("User must belong to a hospital to create")
         if (
@@ -36,7 +42,11 @@ class TenantScopedViewSet(viewsets.ModelViewSet):
             and provided_hospital.id != user.hospital_id
         ):
             raise PermissionDenied("Cannot create for another hospital")
-        serializer.save(hospital_id=(provided_hospital.id if provided_hospital else user.hospital_id))
+        serializer.save(
+            hospital_id=(
+                provided_hospital.id if provided_hospital else user.hospital_id
+            )
+        )
 
 
 class LabTestViewSet(TenantScopedViewSet):

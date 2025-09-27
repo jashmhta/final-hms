@@ -1,3 +1,7 @@
+"""
+zero_trust_backup module
+"""
+
 import hashlib
 import hmac
 import logging
@@ -19,11 +23,15 @@ class DeviceTrustVerifier:
     def __init__(self):
         self.trust_cache_timeout = 3600
 
-    def verify_device_trust(self, user, device_fingerprint: str, request: HttpRequest) -> Dict:
+    def verify_device_trust(
+        self, user, device_fingerprint: str, request: HttpRequest
+    ) -> Dict:
         from authentication.models import DeviceTrustVerification, TrustedDevice
 
         try:
-            device = TrustedDevice.objects.get(user=user, device_fingerprint=device_fingerprint, is_active=True)
+            device = TrustedDevice.objects.get(
+                user=user, device_fingerprint=device_fingerprint, is_active=True
+            )
         except TrustedDevice.DoesNotExist:
             return {
                 "trusted": False,
@@ -38,9 +46,9 @@ class DeviceTrustVerifier:
                 "reason": "Device trust expired",
                 "verification_methods": [],
             }
-        verifications = DeviceTrustVerification.objects.filter(user=user, device=device, is_verified=True).exclude(
-            expires_at__lt=timezone.now()
-        )
+        verifications = DeviceTrustVerification.objects.filter(
+            user=user, device=device, is_verified=True
+        ).exclude(expires_at__lt=timezone.now())
         verification_methods = [v.verification_type for v in verifications]
         trust_score = self._calculate_trust_score(device, verification_methods)
         return {
@@ -64,7 +72,9 @@ class DeviceTrustVerifier:
             score += method_weights.get(method, 5)
         return min(100, score)
 
-    def add_device_verification(self, user, device, verification_type: str, verification_data: Dict) -> bool:
+    def add_device_verification(
+        self, user, device, verification_type: str, verification_data: Dict
+    ) -> bool:
         from authentication.models import DeviceTrustVerification
 
         verification = DeviceTrustVerification.objects.create(
@@ -94,7 +104,9 @@ class ContinuousAuthenticator:
         try:
             cont_auth = ContinuousAuthentication.objects.get(user=user, session=session)
         except ContinuousAuthentication.DoesNotExist:
-            cont_auth = ContinuousAuthentication.objects.create(user=user, session=session, baseline_risk_score=10)
+            cont_auth = ContinuousAuthentication.objects.create(
+                user=user, session=session, baseline_risk_score=10
+            )
         cont_auth.last_check = timezone.now()
         anomalies = cont_auth.check_anomaly(current_data)
         needs_reauth = (
@@ -115,7 +127,9 @@ class ContinuousAuthenticator:
     def update_behavior_baseline(self, user, session, behavior_data: Dict):
         from authentication.models import ContinuousAuthentication
 
-        cont_auth, created = ContinuousAuthentication.objects.get_or_create(user=user, session=session)
+        cont_auth, created = ContinuousAuthentication.objects.get_or_create(
+            user=user, session=session
+        )
         if "keystroke_pattern" in behavior_data:
             cont_auth.keystroke_pattern = behavior_data["keystroke_pattern"]
         if "mouse_movement" in behavior_data:
@@ -183,12 +197,16 @@ class LeastPrivilegeEnforcer:
     def __init__(self):
         self.policy_cache_timeout = 3600
 
-    def check_access(self, user, resource: str, action: str, context: Dict = None) -> Tuple[bool, str]:
+    def check_access(
+        self, user, resource: str, action: str, context: Dict = None
+    ) -> Tuple[bool, str]:
         permissions = self._get_user_permissions(user)
         resource_permission = f"{resource}:{action}"
         if resource_permission not in permissions:
             return False, f"Insufficient permissions for {resource_permission}"
-        context_check = self._check_context_restrictions(user, resource, action, context)
+        context_check = self._check_context_restrictions(
+            user, resource, action, context
+        )
         if not context_check[0]:
             return context_check
         time_check = self._check_time_restrictions(user, resource, action)
@@ -255,7 +273,9 @@ class LeastPrivilegeEnforcer:
         }
         return dept_permissions.get(department, [])
 
-    def _check_context_restrictions(self, user, resource: str, action: str, context: Dict) -> Tuple[bool, str]:
+    def _check_context_restrictions(
+        self, user, resource: str, action: str, context: Dict
+    ) -> Tuple[bool, str]:
         if not context:
             return True, "No context restrictions"
         if context.get("emergency_access", False) and user.role in ["DOCTOR", "NURSE"]:
@@ -265,7 +285,9 @@ class LeastPrivilegeEnforcer:
                 return False, "No relationship with patient"
         return True, "Context check passed"
 
-    def _check_time_restrictions(self, user, resource: str, action: str) -> Tuple[bool, str]:
+    def _check_time_restrictions(
+        self, user, resource: str, action: str
+    ) -> Tuple[bool, str]:
         current_hour = timezone.now().hour
         sensitive_resources = ["billing", "hr", "admin"]
         if any(res in resource for res in sensitive_resources):

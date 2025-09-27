@@ -142,7 +142,10 @@
       "reporting": {
         "frequency": "daily",
         "format": "json",
-        "recipients": ["devops@hospital.com", "performance@hospital.com"]
+        "recipients": [
+          "devops@hospital.com",
+          "performance@hospital.com"
+        ]
       }
     },
     "enforcement": {

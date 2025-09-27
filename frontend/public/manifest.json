@@ -10,7 +10,11 @@
   "scope": "/",
   "lang": "en",
   "dir": "ltr",
-  "categories": ["healthcare", "medical", "business"],
+  "categories": [
+    "healthcare",
+    "medical",
+    "business"
+  ],
   "icons": [
     {
       "src": "/pwa-192x192.png",
@@ -65,28 +69,48 @@
       "short_name": "Patients",
       "description": "Quick access to patient management",
       "url": "/patients",
-      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/pwa-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Appointments",
       "short_name": "Schedule",
       "description": "View and manage appointments",
       "url": "/appointments",
-      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/pwa-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Emergency",
       "short_name": "ER",
       "description": "Emergency triage and alerts",
       "url": "/emergency",
-      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/pwa-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Medical Records",
       "short_name": "Records",
       "description": "Access patient medical records",
       "url": "/records",
-      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/pwa-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

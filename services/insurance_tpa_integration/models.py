@@ -1,5 +1,6 @@
 import enum
 from datetime import datetime
+
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -13,7 +14,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
+
 Base = declarative_base()
+
+
 class InsuranceProvider(Base):
     __tablename__ = "insurance_providers"
     id = Column(Integer, primary_key=True, index=True)
@@ -25,6 +29,8 @@ class InsuranceProvider(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class InsurancePolicy(Base):
     __tablename__ = "insurance_policies"
     id = Column(Integer, primary_key=True, index=True)
@@ -39,6 +45,8 @@ class InsurancePolicy(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     provider = relationship("InsuranceProvider")
+
+
 class InsuranceClaim(Base):
     __tablename__ = "insurance_claims"
     id = Column(Integer, primary_key=True, index=True)
@@ -48,7 +56,7 @@ class InsuranceClaim(Base):
     billing_id = Column(Integer, index=True)
     total_amount = Column(Float)
     approved_amount = Column(Float)
-    status = Column(String)  
+    status = Column(String)
     submission_date = Column(DateTime)
     approval_date = Column(DateTime, nullable=True)
     payment_date = Column(DateTime, nullable=True)
@@ -57,12 +65,14 @@ class InsuranceClaim(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     policy = relationship("InsurancePolicy")
+
+
 class TPATransaction(Base):
     __tablename__ = "tpa_transactions"
     id = Column(Integer, primary_key=True, index=True)
     claim_id = Column(Integer, ForeignKey("insurance_claims.id"))
     tpa_reference = Column(String)
-    transaction_type = Column(String)  
+    transaction_type = Column(String)
     request_data = Column(JSON)
     response_data = Column(JSON)
     status_code = Column(Integer)
@@ -70,6 +80,8 @@ class TPATransaction(Base):
     retry_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     claim = relationship("InsuranceClaim")
+
+
 class PaymentRecord(Base):
     __tablename__ = "payment_records"
     id = Column(Integer, primary_key=True, index=True)

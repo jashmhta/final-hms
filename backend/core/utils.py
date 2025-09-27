@@ -1,22 +1,26 @@
+"""
+utils module
+"""
+
 import json
 import logging
 import time
 import traceback
-from typing import Dict, Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import requests
 from pybreaker import CircuitBreaker
+from rest_framework import status
+from rest_framework.exceptions import APIException, NotFound, PermissionDenied
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
+from rest_framework.views import exception_handler
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
-from rest_framework import status
-from rest_framework.exceptions import APIException, NotFound, PermissionDenied
-from rest_framework.pagination import PageNumberPagination
-from rest_framework.response import Response
-from rest_framework.views import exception_handler
 
 logger = logging.getLogger(__name__)
 api_breaker = CircuitBreaker(fail_max=5, reset_timeout=60)
@@ -71,51 +75,58 @@ def custom_exception_handler(exc, context):
     # If response is None, it means DRF couldn't handle it
     if response is None:
         if isinstance(exc, ValidationError):
-            return Response({
-                'error': 'Validation Error',
-                'details': exc.message_dict if hasattr(exc, 'message_dict') else str(exc),
-                'status': 'error'
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    "error": "Validation Error",
+                    "details": (
+                        exc.message_dict if hasattr(exc, "message_dict") else str(exc)
+                    ),
+                    "status": "error",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         elif isinstance(exc, PermissionDenied):
-            return Response({
-                'error': 'Permission Denied',
-                'details': str(exc),
-                'status': 'error'
-            }, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"error": "Permission Denied", "details": str(exc), "status": "error"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         elif isinstance(exc, NotFound):
-            return Response({
-                'error': 'Not Found',
-                'details': str(exc),
-                'status': 'error'
-            }, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Not Found", "details": str(exc), "status": "error"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         else:
             # Generic server error
-            return Response({
-                'error': 'Internal Server Error',
-                'details': 'An unexpected error occurred',
-                'status': 'error'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {
+                    "error": "Internal Server Error",
+                    "details": "An unexpected error occurred",
+                    "status": "error",
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     # Enhance the response with additional information
     if response is not None:
         custom_response_data = {
-            'status': 'error',
-            'error': response.data.get('detail', 'An error occurred'),
+            "status": "error",
+            "error": response.data.get("detail", "An error occurred"),
         }
 
         # Add validation errors if present
-        if hasattr(response.data, 'items'):
+        if hasattr(response.data, "items"):
             for key, value in response.data.items():
-                if key != 'detail':
+                if key != "detail":
                     custom_response_data[key] = value
 
         # Add trace information for debugging (only in development)
         from django.conf import settings
-        if getattr(settings, 'DEBUG', False):
-            custom_response_data['debug'] = {
-                'exception_type': type(exc).__name__,
-                'exception_message': str(exc),
-                'traceback': traceback.format_exc()
+
+        if getattr(settings, "DEBUG", False):
+            custom_response_data["debug"] = {
+                "exception_type": type(exc).__name__,
+                "exception_message": str(exc),
+                "traceback": traceback.format_exc(),
             }
 
         response.data = custom_response_data
@@ -145,8 +156,8 @@ def paginated_response(queryset, serializer_class, request, context=None):
         context = {}
 
     paginator = PageNumberPagination()
-    paginator.page_size = request.query_params.get('page_size', 25)
-    paginator.page_size_query_param = 'page_size'
+    paginator.page_size = request.query_params.get("page_size", 25)
+    paginator.page_size_query_param = "page_size"
     paginator.max_page_size = 100
 
     page = paginator.paginate_queryset(queryset, request)
@@ -158,7 +169,9 @@ def paginated_response(queryset, serializer_class, request, context=None):
     return Response(serializer.data)
 
 
-def validate_required_fields(data: Dict[str, Any], required_fields: List[str]) -> Dict[str, str]:
+def validate_required_fields(
+    data: Dict[str, Any], required_fields: List[str]
+) -> Dict[str, str]:
     """
     Validate required fields in request data.
 
@@ -171,7 +184,7 @@ def validate_required_fields(data: Dict[str, Any], required_fields: List[str]) -
     """
     errors = {}
     for field in required_fields:
-        if field not in data or data[field] is None or data[field] == '':
+        if field not in data or data[field] is None or data[field] == "":
             errors[field] = f"{field.replace('_', ' ').title()} is required"
     return errors
 
@@ -187,7 +200,8 @@ def validate_email_format(email: str) -> bool:
         True if valid, False otherwise
     """
     import re
-    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+
+    email_regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return re.match(email_regex, email) is not None
 
 
@@ -202,9 +216,10 @@ def validate_phone_format(phone: str) -> bool:
         True if valid, False otherwise
     """
     import re
+
     # Remove common separators
-    clean_phone = phone.replace('-', '').replace(' ', '').replace('+', '')
-    phone_regex = r'^\d{10,15}$'
+    clean_phone = phone.replace("-", "").replace(" ", "").replace("+", "")
+    phone_regex = r"^\d{10,15}$"
     return re.match(phone_regex, clean_phone) is not None
 
 
@@ -231,7 +246,9 @@ def format_validation_errors(errors: Dict[str, Any]) -> Dict[str, Any]:
     return formatted_errors
 
 
-def create_success_response(data: Any = None, message: str = "Success", **kwargs) -> Response:
+def create_success_response(
+    data: Any = None, message: str = "Success", **kwargs
+) -> Response:
     """
     Create a standardized success response.
 
@@ -243,16 +260,17 @@ def create_success_response(data: Any = None, message: str = "Success", **kwargs
     Returns:
         Response object
     """
-    response_data = {
-        'status': 'success',
-        'message': message,
-        'data': data
-    }
+    response_data = {"status": "success", "message": message, "data": data}
     response_data.update(kwargs)
     return Response(response_data)
 
 
-def create_error_response(message: str, status_code: int = status.HTTP_400_BAD_REQUEST, errors: Dict[str, Any] = None, **kwargs) -> Response:
+def create_error_response(
+    message: str,
+    status_code: int = status.HTTP_400_BAD_REQUEST,
+    errors: Dict[str, Any] = None,
+    **kwargs,
+) -> Response:
     """
     Create a standardized error response.
 
@@ -266,12 +284,12 @@ def create_error_response(message: str, status_code: int = status.HTTP_400_BAD_R
         Response object
     """
     response_data = {
-        'status': 'error',
-        'message': message,
+        "status": "error",
+        "message": message,
     }
 
     if errors:
-        response_data['errors'] = errors
+        response_data["errors"] = errors
 
     response_data.update(kwargs)
     return Response(response_data, status=status_code)
@@ -287,11 +305,11 @@ def get_client_ip(request) -> str:
     Returns:
         Client IP address
     """
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
     if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
+        ip = x_forwarded_for.split(",")[0]
     else:
-        ip = request.META.get('REMOTE_ADDR')
+        ip = request.META.get("REMOTE_ADDR")
     return ip
 
 
@@ -308,17 +326,19 @@ def log_user_action(user, action: str, details: str = None, **kwargs):
     from .models import AuditLog
 
     log_data = {
-        'user': user,
-        'action': action,
-        'details': details,
-        'ip_address': kwargs.get('ip_address'),
-        'user_agent': kwargs.get('user_agent'),
+        "user": user,
+        "action": action,
+        "details": details,
+        "ip_address": kwargs.get("ip_address"),
+        "user_agent": kwargs.get("user_agent"),
     }
 
     # Add any additional metadata
-    metadata = {k: v for k, v in kwargs.items() if k not in ['ip_address', 'user_agent']}
+    metadata = {
+        k: v for k, v in kwargs.items() if k not in ["ip_address", "user_agent"]
+    }
     if metadata:
-        log_data['metadata'] = json.dumps(metadata)
+        log_data["metadata"] = json.dumps(metadata)
 
     AuditLog.objects.create(**log_data)
 
@@ -385,12 +405,14 @@ def get_model_field_choices(model, field_name: str) -> List[Dict[str, str]]:
         List of choice dictionaries
     """
     field = model._meta.get_field(field_name)
-    if hasattr(field, 'choices') and field.choices:
-        return [{'value': choice[0], 'label': choice[1]} for choice in field.choices]
+    if hasattr(field, "choices") and field.choices:
+        return [{"value": choice[0], "label": choice[1]} for choice in field.choices]
     return []
 
 
-def bulk_create_with_audit(model, objects_data: List[Dict[str, Any]], user, batch_size: int = 1000) -> List[Any]:
+def bulk_create_with_audit(
+    model, objects_data: List[Dict[str, Any]], user, batch_size: int = 1000
+) -> List[Any]:
     """
     Bulk create objects with audit logging.
 
@@ -410,10 +432,10 @@ def bulk_create_with_audit(model, objects_data: List[Dict[str, Any]], user, batc
         # Log the bulk creation
         log_user_action(
             user=user,
-            action='BULK_CREATE',
-            details=f'Bulk created {len(created_objects)} {model.__name__} objects',
+            action="BULK_CREATE",
+            details=f"Bulk created {len(created_objects)} {model.__name__} objects",
             object_count=len(created_objects),
-            model_name=model.__name__
+            model_name=model.__name__,
         )
 
         return created_objects
@@ -438,17 +460,17 @@ def get_queryset_with_permissions(model, user, base_queryset=None):
         base_queryset = model.objects.all()
 
     # Superuser sees everything
-    if user.is_superuser or getattr(user, 'role', None) == 'SUPER_ADMIN':
+    if user.is_superuser or getattr(user, "role", None) == "SUPER_ADMIN":
         return base_queryset
 
     # Check if user has hospital access
-    hospital_id = getattr(user, 'hospital_id', None)
-    if hospital_id and hasattr(model, 'hospital'):
+    hospital_id = getattr(user, "hospital_id", None)
+    if hospital_id and hasattr(model, "hospital"):
         return base_queryset.filter(hospital_id=hospital_id)
 
     # Check if user has department access
-    department_id = getattr(user, 'department_id', None)
-    if department_id and hasattr(model, 'department'):
+    department_id = getattr(user, "department_id", None)
+    if department_id and hasattr(model, "department"):
         return base_queryset.filter(department_id=department_id)
 
     # Default: return empty queryset if no specific permissions

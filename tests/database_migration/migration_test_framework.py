@@ -3,58 +3,66 @@ Database Migration Testing Framework
 Provides comprehensive testing infrastructure for Django migrations with healthcare data validation
 """
 
+import concurrent.futures
+import hashlib
+import json
+import logging
 import os
 import sys
-import json
+import threading
 import time
-import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Union
-from pathlib import Path
-from dataclasses import dataclass, field
-from enum import Enum
 import uuid
-import hashlib
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from decimal import Decimal
+from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
+import pandas as pd
 import psycopg2
-from psycopg2 import sql, extras
+from psycopg2 import extras, sql
+
 import django
+from django.apps import apps
 from django.conf import settings
-from django.db import connection, transaction, DatabaseError, connections
-from django.db.migrations.executor import MigrationExecutor
-from django.db.migrations.autodetector import MigrationAutodetector
-from django.db.migrations.state import ProjectState
-from django.db.migrations.writer import MigrationWriter
 from django.core.management import call_command, execute_from_command_line
 from django.core.management.base import CommandError
+from django.db import DatabaseError, connection, connections, transaction
+from django.db.migrations.autodetector import MigrationAutodetector
+from django.db.migrations.executor import MigrationExecutor
+from django.db.migrations.state import ProjectState
+from django.db.migrations.writer import MigrationWriter
 from django.test import TestCase, TransactionTestCase
-from django.apps import apps
-import pandas as pd
-import numpy as np
-from decimal import Decimal
-import threading
-import concurrent.futures
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class MigrationTestStatus(Enum):
     """Migration test status"""
+
     NOT_STARTED = "not_started"
     RUNNING = "running"
     PASSED = "passed"
     FAILED = "failed"
     SKIPPED = "skipped"
 
+
 class MigrationSeverity(Enum):
     """Migration severity levels"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
 
+
 class MigrationTestType(Enum):
     """Types of migration tests"""
+
     FORWARD_MIGRATION = "forward_migration"
     BACKWARD_MIGRATION = "backward_migration"
     DATA_INTEGRITY = "data_integrity"
@@ -65,9 +73,11 @@ class MigrationTestType(Enum):
     CONCURRENCY = "concurrency"
     SCHEMA_VALIDATION = "schema_validation"
 
+
 @dataclass
 class MigrationTestConfig:
     """Configuration for migration testing"""
+
     test_database_prefix: str = "test_migration_"
     max_test_databases: int = 10
     cleanup_on_success: bool = True
@@ -76,18 +86,22 @@ class MigrationTestConfig:
     max_workers: int = 4
     healthcare_data_validation: bool = True
     encryption_validation: bool = True
-    performance_thresholds: Dict[str, float] = field(default_factory=lambda: {
-        'migration_time': 300.0,  # 5 minutes
-        'query_time': 5.0,  # 5 seconds
-        'memory_usage': 1024.0  # 1GB
-    })
-    compliance_checks: List[str] = field(default_factory=lambda: [
-        'hipaa', 'gdpr', 'data_localization', 'audit_trail'
-    ])
+    performance_thresholds: Dict[str, float] = field(
+        default_factory=lambda: {
+            "migration_time": 300.0,  # 5 minutes
+            "query_time": 5.0,  # 5 seconds
+            "memory_usage": 1024.0,  # 1GB
+        }
+    )
+    compliance_checks: List[str] = field(
+        default_factory=lambda: ["hipaa", "gdpr", "data_localization", "audit_trail"]
+    )
+
 
 @dataclass
 class MigrationTestResult:
     """Result of a migration test"""
+
     test_name: str
     test_type: MigrationTestType
     status: MigrationTestStatus
@@ -100,9 +114,11 @@ class MigrationTestResult:
     performance_metrics: Dict[str, float] = field(default_factory=dict)
     database_name: Optional[str] = None
 
+
 @dataclass
 class MigrationScenario:
     """Migration test scenario definition"""
+
     name: str
     app_name: str
     from_migration: str
@@ -111,14 +127,17 @@ class MigrationScenario:
     healthcare_data: bool = False
     encrypted_fields: List[str] = field(default_factory=list)
     critical: bool = False
-    test_types: List[MigrationTestType] = field(default_factory=lambda: [
-        MigrationTestType.FORWARD_MIGRATION,
-        MigrationTestType.BACKWARD_MIGRATION,
-        MigrationTestType.DATA_INTEGRITY,
-        MigrationTestType.SECURITY
-    ])
+    test_types: List[MigrationTestType] = field(
+        default_factory=lambda: [
+            MigrationTestType.FORWARD_MIGRATION,
+            MigrationTestType.BACKWARD_MIGRATION,
+            MigrationTestType.DATA_INTEGRITY,
+            MigrationTestType.SECURITY,
+        ]
+    )
     expected_results: Dict[str, Any] = field(default_factory=dict)
     dependencies: List[str] = field(default_factory=list)
+
 
 class DatabaseMigrationTestFramework:
     """Comprehensive database migration testing framework"""
@@ -132,9 +151,10 @@ class DatabaseMigrationTestFramework:
 
         # Healthcare-specific components
         try:
-            from backend.core.encryption import EncryptionManager
             from backend.core.audit import AuditManager
             from backend.core.compliance import ComplianceManager
+            from backend.core.encryption import EncryptionManager
+
             self.encryption_manager = EncryptionManager()
             self.audit_manager = AuditManager()
             self.compliance_manager = ComplianceManager()
@@ -147,7 +167,7 @@ class DatabaseMigrationTestFramework:
     def setup_django_environment(self):
         """Setup Django environment for testing"""
         if not settings.configured:
-            os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.hms.settings')
+            os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.hms.settings")
             django.setup()
 
     def create_test_database(self, suffix: str = None) -> str:
@@ -168,11 +188,11 @@ class DatabaseMigrationTestFramework:
         try:
             # Connect to PostgreSQL
             conn_params = {
-                'host': settings.DATABASES['default'].get('HOST', 'localhost'),
-                'port': settings.DATABASES['default'].get('PORT', '5432'),
-                'user': settings.DATABASES['default'].get('USER', 'postgres'),
-                'password': settings.DATABASES['default'].get('PASSWORD', 'postgres'),
-                'database': 'postgres'
+                "host": settings.DATABASES["default"].get("HOST", "localhost"),
+                "port": settings.DATABASES["default"].get("PORT", "5432"),
+                "user": settings.DATABASES["default"].get("USER", "postgres"),
+                "password": settings.DATABASES["default"].get("PASSWORD", "postgres"),
+                "database": "postgres",
             }
 
             with psycopg2.connect(**conn_params) as conn:
@@ -180,10 +200,18 @@ class DatabaseMigrationTestFramework:
                 cursor = conn.cursor()
 
                 # Drop database if exists
-                cursor.execute(sql.SQL("DROP DATABASE IF EXISTS {}").format(sql.Identifier(db_name)))
+                cursor.execute(
+                    sql.SQL("DROP DATABASE IF EXISTS {}").format(
+                        sql.Identifier(db_name)
+                    )
+                )
 
                 # Create new database
-                cursor.execute(sql.SQL("CREATE DATABASE {} WITH ENCODING 'UTF8'").format(sql.Identifier(db_name)))
+                cursor.execute(
+                    sql.SQL("CREATE DATABASE {} WITH ENCODING 'UTF8'").format(
+                        sql.Identifier(db_name)
+                    )
+                )
 
                 # Create test schemas
                 cursor.execute(sql.SQL("CREATE SCHEMA IF NOT EXISTS healthcare_data"))
@@ -201,11 +229,11 @@ class DatabaseMigrationTestFramework:
         """Cleanup test database"""
         try:
             conn_params = {
-                'host': settings.DATABASES['default'].get('HOST', 'localhost'),
-                'port': settings.DATABASES['default'].get('PORT', '5432'),
-                'user': settings.DATABASES['default'].get('USER', 'postgres'),
-                'password': settings.DATABASES['default'].get('PASSWORD', 'postgres'),
-                'database': 'postgres'
+                "host": settings.DATABASES["default"].get("HOST", "localhost"),
+                "port": settings.DATABASES["default"].get("PORT", "5432"),
+                "user": settings.DATABASES["default"].get("USER", "postgres"),
+                "password": settings.DATABASES["default"].get("PASSWORD", "postgres"),
+                "database": "postgres",
             }
 
             with psycopg2.connect(**conn_params) as conn:
@@ -213,15 +241,24 @@ class DatabaseMigrationTestFramework:
                 cursor = conn.cursor()
 
                 # Terminate all connections to the database
-                cursor.execute(sql.SQL("""
+                cursor.execute(
+                    sql.SQL(
+                        """
                     SELECT pg_terminate_backend(pg_stat_activity.pid)
                     FROM pg_stat_activity
                     WHERE pg_stat_activity.datname = %s
                     AND pid <> pg_backend_pid()
-                """), [db_name])
+                """
+                    ),
+                    [db_name],
+                )
 
                 # Drop database
-                cursor.execute(sql.SQL("DROP DATABASE IF EXISTS {}").format(sql.Identifier(db_name)))
+                cursor.execute(
+                    sql.SQL("DROP DATABASE IF EXISTS {}").format(
+                        sql.Identifier(db_name)
+                    )
+                )
 
                 logger.info(f"Cleaned up test database: {db_name}")
 
@@ -234,8 +271,12 @@ class DatabaseMigrationTestFramework:
             # Try common model names
             model_names = [
                 app_name.capitalize(),
-                app_name[:-1].capitalize() if app_name.endswith('s') else app_name.capitalize(),
-                app_name.title().replace('_', ''),
+                (
+                    app_name[:-1].capitalize()
+                    if app_name.endswith("s")
+                    else app_name.capitalize()
+                ),
+                app_name.title().replace("_", ""),
             ]
 
             for model_name in model_names:
@@ -255,7 +296,9 @@ class DatabaseMigrationTestFramework:
             logger.error(f"Failed to get model class for {app_name}: {str(e)}")
             raise
 
-    def generate_test_data(self, model_class, count: int, encrypted_fields: List[str]) -> List[Dict[str, Any]]:
+    def generate_test_data(
+        self, model_class, count: int, encrypted_fields: List[str]
+    ) -> List[Dict[str, Any]]:
         """Generate anonymized test data for migration testing"""
         test_data = []
 
@@ -265,77 +308,103 @@ class DatabaseMigrationTestFramework:
 
         return test_data
 
-    def _generate_model_data(self, model_class, index: int, encrypted_fields: List[str]) -> Dict[str, Any]:
+    def _generate_model_data(
+        self, model_class, index: int, encrypted_fields: List[str]
+    ) -> Dict[str, Any]:
         """Generate data for a specific model"""
         data = {}
         model_name = model_class.__name__.lower()
 
         # Basic fields
-        if hasattr(model_class, 'first_name'):
-            data['first_name'] = f'Test{index:04d}'
-        if hasattr(model_class, 'last_name'):
-            data['last_name'] = f'User{index:04d}'
-        if hasattr(model_class, 'email'):
-            data['email'] = f'test{index:04d}@example.com'
-        if hasattr(model_class, 'phone'):
-            data['phone'] = f'555-{index:04d:04d}'
-        if hasattr(model_class, 'name'):
-            data['name'] = f'Test Entity {index:04d}'
+        if hasattr(model_class, "first_name"):
+            data["first_name"] = f"Test{index:04d}"
+        if hasattr(model_class, "last_name"):
+            data["last_name"] = f"User{index:04d}"
+        if hasattr(model_class, "email"):
+            data["email"] = f"test{index:04d}@example.com"
+        if hasattr(model_class, "phone"):
+            data["phone"] = f"555-{index:04d:04d}"
+        if hasattr(model_class, "name"):
+            data["name"] = f"Test Entity {index:04d}"
 
         # Healthcare-specific data
-        if model_name == 'patient':
-            data.update({
-                'date_of_birth': datetime.now() - timedelta(days=index * 365),
-                'gender': 'M' if index % 2 == 0 else 'F',
-                'blood_type': ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'][index % 8],
-                'medical_record_number': f'MRN{index:08d}',
-                'ssn': f'{index:03d}-{index:02d}-{index:04d}',
-                'address': f'{index:04d} Test Street, Test City, TC 12345',
-                'emergency_contact_name': f'Emergency Contact {index}',
-                'emergency_contact_phone': f'555-{index:04d:04d}',
-                'primary_care_physician': f'Dr. Test{index:04d}',
-                'insurance_provider': f'Test Insurance {index % 5 + 1}',
-                'insurance_policy_number': f'POL{index:08d}',
-                'allergies': 'Penicillin' if index % 3 == 0 else '',
-                'medications': 'Lisinopril 10mg' if index % 2 == 0 else '',
-                'chronic_conditions': 'Hypertension' if index % 4 == 0 else '',
-                'last_visit_date': datetime.now() - timedelta(days=index * 30),
-                'status': 'active'
-            })
+        if model_name == "patient":
+            data.update(
+                {
+                    "date_of_birth": datetime.now() - timedelta(days=index * 365),
+                    "gender": "M" if index % 2 == 0 else "F",
+                    "blood_type": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"][
+                        index % 8
+                    ],
+                    "medical_record_number": f"MRN{index:08d}",
+                    "ssn": f"{index:03d}-{index:02d}-{index:04d}",
+                    "address": f"{index:04d} Test Street, Test City, TC 12345",
+                    "emergency_contact_name": f"Emergency Contact {index}",
+                    "emergency_contact_phone": f"555-{index:04d:04d}",
+                    "primary_care_physician": f"Dr. Test{index:04d}",
+                    "insurance_provider": f"Test Insurance {index % 5 + 1}",
+                    "insurance_policy_number": f"POL{index:08d}",
+                    "allergies": "Penicillin" if index % 3 == 0 else "",
+                    "medications": "Lisinopril 10mg" if index % 2 == 0 else "",
+                    "chronic_conditions": "Hypertension" if index % 4 == 0 else "",
+                    "last_visit_date": datetime.now() - timedelta(days=index * 30),
+                    "status": "active",
+                }
+            )
 
-        elif model_name == 'medicalrecord':
-            data.update({
-                'record_date': datetime.now() - timedelta(days=index * 7),
-                'record_type': ['diagnosis', 'treatment', 'follow-up', 'lab_result'][index % 4],
-                'diagnosis': f'Test diagnosis {index}',
-                'treatment': f'Test treatment {index}',
-                'notes': f'Test medical notes for record {index}',
-                'physician_id': (index % 10) + 1,
-                'facility_id': (index % 5) + 1,
-                'is_confidential': index % 10 == 0
-            })
+        elif model_name == "medicalrecord":
+            data.update(
+                {
+                    "record_date": datetime.now() - timedelta(days=index * 7),
+                    "record_type": [
+                        "diagnosis",
+                        "treatment",
+                        "follow-up",
+                        "lab_result",
+                    ][index % 4],
+                    "diagnosis": f"Test diagnosis {index}",
+                    "treatment": f"Test treatment {index}",
+                    "notes": f"Test medical notes for record {index}",
+                    "physician_id": (index % 10) + 1,
+                    "facility_id": (index % 5) + 1,
+                    "is_confidential": index % 10 == 0,
+                }
+            )
 
-        elif model_name == 'appointment':
-            data.update({
-                'appointment_date': datetime.now().date() + timedelta(days=index),
-                'appointment_time': datetime.now().replace(hour=9 + (index % 8), minute=0),
-                'appointment_type': ['consultation', 'follow-up', 'procedure', 'emergency'][index % 4],
-                'status': ['scheduled', 'confirmed', 'completed', 'cancelled'][index % 4],
-                'physician_id': (index % 10) + 1,
-                'facility_id': (index % 5) + 1,
-                'notes': f'Test appointment notes {index}',
-                'reminder_sent': True
-            })
+        elif model_name == "appointment":
+            data.update(
+                {
+                    "appointment_date": datetime.now().date() + timedelta(days=index),
+                    "appointment_time": datetime.now().replace(
+                        hour=9 + (index % 8), minute=0
+                    ),
+                    "appointment_type": [
+                        "consultation",
+                        "follow-up",
+                        "procedure",
+                        "emergency",
+                    ][index % 4],
+                    "status": ["scheduled", "confirmed", "completed", "cancelled"][
+                        index % 4
+                    ],
+                    "physician_id": (index % 10) + 1,
+                    "facility_id": (index % 5) + 1,
+                    "notes": f"Test appointment notes {index}",
+                    "reminder_sent": True,
+                }
+            )
 
-        elif model_name == 'bill':
-            data.update({
-                'bill_date': datetime.now().date(),
-                'due_date': datetime.now().date() + timedelta(days=30),
-                'total_amount': Decimal(f'{(index + 1) * 100.00}'),
-                'status': 'pending',
-                'payment_method': 'insurance',
-                'insurance_info': f'Test Insurance Co. {index % 5 + 1}'
-            })
+        elif model_name == "bill":
+            data.update(
+                {
+                    "bill_date": datetime.now().date(),
+                    "due_date": datetime.now().date() + timedelta(days=30),
+                    "total_amount": Decimal(f"{(index + 1) * 100.00}"),
+                    "status": "pending",
+                    "payment_method": "insurance",
+                    "insurance_info": f"Test Insurance Co. {index % 5 + 1}",
+                }
+            )
 
         # Handle foreign keys and relationships
         for field in model_class._meta.fields:
@@ -343,7 +412,7 @@ class DatabaseMigrationTestFramework:
                 if field.many_to_one:
                     # Generate a foreign key value
                     related_model = field.related_model
-                    if hasattr(related_model, 'id'):
+                    if hasattr(related_model, "id"):
                         data[field.name] = (index % 10) + 1
 
         # Encrypt sensitive fields
@@ -365,7 +434,7 @@ class DatabaseMigrationTestFramework:
             success=False,
             metrics={},
             healthcare_compliance={},
-            performance_metrics={}
+            performance_metrics={},
         )
 
         start_time = time.time()
@@ -380,15 +449,14 @@ class DatabaseMigrationTestFramework:
             model_class = self.get_model_class(scenario.app_name)
 
             # Configure Django for test database
-            original_db_config = settings.DATABASES['default'].copy()
-            settings.DATABASES['default'].update({
-                'NAME': test_db_name,
-                'TEST': {'NAME': test_db_name}
-            })
+            original_db_config = settings.DATABASES["default"].copy()
+            settings.DATABASES["default"].update(
+                {"NAME": test_db_name, "TEST": {"NAME": test_db_name}}
+            )
 
             # Create migration executor
-            with connections['default'].cursor() as cursor:
-                executor = MigrationExecutor(connections['default'])
+            with connections["default"].cursor() as cursor:
+                executor = MigrationExecutor(connections["default"])
 
                 # Run all requested test types
                 test_results = []
@@ -401,7 +469,9 @@ class DatabaseMigrationTestFramework:
                     # Aggregate results
                     result.metrics[test_type.value] = test_result.metrics
                     result.warnings.extend(test_result.warnings)
-                    result.healthcare_compliance.update(test_result.healthcare_compliance)
+                    result.healthcare_compliance.update(
+                        test_result.healthcare_compliance
+                    )
                     result.performance_metrics.update(test_result.performance_metrics)
 
                 # Determine overall success
@@ -414,7 +484,11 @@ class DatabaseMigrationTestFramework:
 
         finally:
             result.duration = time.time() - start_time
-            result.status = MigrationTestStatus.PASSED if result.success else MigrationTestStatus.FAILED
+            result.status = (
+                MigrationTestStatus.PASSED
+                if result.success
+                else MigrationTestStatus.FAILED
+            )
 
             # Cleanup
             if test_db_name:
@@ -424,15 +498,21 @@ class DatabaseMigrationTestFramework:
                     self.cleanup_test_database(test_db_name)
 
             # Restore original database configuration
-            if 'original_db_config' in locals():
-                settings.DATABASES['default'] = original_db_config
+            if "original_db_config" in locals():
+                settings.DATABASES["default"] = original_db_config
 
         with self.lock:
             self.test_results.append(result)
 
         return result
 
-    def _run_single_migration_test(self, executor, model_class, scenario: MigrationScenario, test_type: MigrationTestType) -> MigrationTestResult:
+    def _run_single_migration_test(
+        self,
+        executor,
+        model_class,
+        scenario: MigrationScenario,
+        test_type: MigrationTestType,
+    ) -> MigrationTestResult:
         """Run a single type of migration test"""
         result = MigrationTestResult(
             test_name=f"{scenario.name}_{test_type.value}",
@@ -442,7 +522,7 @@ class DatabaseMigrationTestFramework:
             success=False,
             metrics={},
             healthcare_compliance={},
-            performance_metrics={}
+            performance_metrics={},
         )
 
         start_time = time.time()
@@ -455,15 +535,21 @@ class DatabaseMigrationTestFramework:
             elif test_type == MigrationTestType.DATA_INTEGRITY:
                 result = self._test_data_integrity(executor, model_class, scenario)
             elif test_type == MigrationTestType.PERFORMANCE:
-                result = self._test_migration_performance(executor, model_class, scenario)
+                result = self._test_migration_performance(
+                    executor, model_class, scenario
+                )
             elif test_type == MigrationTestType.SECURITY:
                 result = self._test_migration_security(executor, model_class, scenario)
             elif test_type == MigrationTestType.COMPLIANCE:
-                result = self._test_migration_compliance(executor, model_class, scenario)
+                result = self._test_migration_compliance(
+                    executor, model_class, scenario
+                )
             elif test_type == MigrationTestType.ROLLBACK:
                 result = self._test_migration_rollback(executor, model_class, scenario)
             elif test_type == MigrationTestType.CONCURRENCY:
-                result = self._test_concurrent_migration(executor, model_class, scenario)
+                result = self._test_concurrent_migration(
+                    executor, model_class, scenario
+                )
             elif test_type == MigrationTestType.SCHEMA_VALIDATION:
                 result = self._test_schema_validation(executor, model_class, scenario)
             else:
@@ -476,11 +562,17 @@ class DatabaseMigrationTestFramework:
 
         finally:
             result.duration = time.time() - start_time
-            result.status = MigrationTestStatus.PASSED if result.success else MigrationTestStatus.FAILED
+            result.status = (
+                MigrationTestStatus.PASSED
+                if result.success
+                else MigrationTestStatus.FAILED
+            )
 
         return result
 
-    def _test_forward_migration(self, executor, model_class, scenario: MigrationScenario) -> MigrationTestResult:
+    def _test_forward_migration(
+        self, executor, model_class, scenario: MigrationScenario
+    ) -> MigrationTestResult:
         """Test forward migration"""
         result = MigrationTestResult(
             test_name=f"forward_migration_{scenario.name}",
@@ -488,7 +580,7 @@ class DatabaseMigrationTestFramework:
             success=False,
             metrics={},
             healthcare_compliance={},
-            performance_metrics={}
+            performance_metrics={},
         )
 
         try:
@@ -499,23 +591,32 @@ class DatabaseMigrationTestFramework:
 
             # Generate and insert test data
             if scenario.test_data_size > 0:
-                test_data = self.generate_test_data(model_class, scenario.test_data_size, scenario.encrypted_fields)
+                test_data = self.generate_test_data(
+                    model_class, scenario.test_data_size, scenario.encrypted_fields
+                )
                 if test_data:
-                    model_class.objects.bulk_create([
-                        model_class(**data) for data in test_data[:min(100, len(test_data))]
-                    ])
+                    model_class.objects.bulk_create(
+                        [
+                            model_class(**data)
+                            for data in test_data[: min(100, len(test_data))]
+                        ]
+                    )
 
             # Apply target migration
             executor.migrate([scenario.to_migration])
 
             migration_time = time.time() - start_time
             result.success = True
-            result.metrics['migration_time'] = migration_time
-            result.performance_metrics['migration_duration'] = migration_time
+            result.metrics["migration_time"] = migration_time
+            result.performance_metrics["migration_duration"] = migration_time
 
             # Check performance thresholds
-            if migration_time > self.config.performance_thresholds.get('migration_time', 300.0):
-                result.warnings.append(f"Migration time {migration_time:.2f}s exceeds threshold")
+            if migration_time > self.config.performance_thresholds.get(
+                "migration_time", 300.0
+            ):
+                result.warnings.append(
+                    f"Migration time {migration_time:.2f}s exceeds threshold"
+                )
 
         except Exception as e:
             result.error_message = str(e)
@@ -523,7 +624,9 @@ class DatabaseMigrationTestFramework:
 
         return result
 
-    def _test_backward_migration(self, executor, model_class, scenario: MigrationScenario) -> MigrationTestResult:
+    def _test_backward_migration(
+        self, executor, model_class, scenario: MigrationScenario
+    ) -> MigrationTestResult:
         """Test backward migration"""
         result = MigrationTestResult(
             test_name=f"backward_migration_{scenario.name}",
@@ -531,7 +634,7 @@ class DatabaseMigrationTestFramework:
             success=False,
             metrics={},
             healthcare_compliance={},
-            performance_metrics={}
+            performance_metrics={},
         )
 
         try:
@@ -552,7 +655,7 @@ class DatabaseMigrationTestFramework:
             states_match = self._compare_database_states(target_state, current_state)
 
             result.success = states_match
-            result.metrics['backward_compatibility'] = states_match
+            result.metrics["backward_compatibility"] = states_match
 
             if not states_match:
                 result.warnings.append("Backward migration resulted in different state")
@@ -563,7 +666,9 @@ class DatabaseMigrationTestFramework:
 
         return result
 
-    def _test_data_integrity(self, executor, model_class, scenario: MigrationScenario) -> MigrationTestResult:
+    def _test_data_integrity(
+        self, executor, model_class, scenario: MigrationScenario
+    ) -> MigrationTestResult:
         """Test data integrity after migration"""
         result = MigrationTestResult(
             test_name=f"data_integrity_{scenario.name}",
@@ -571,7 +676,7 @@ class DatabaseMigrationTestFramework:
             success=False,
             metrics={},
             healthcare_compliance={},
-            performance_metrics={}
+            performance_metrics={},
         )
 
         try:
@@ -580,42 +685,56 @@ class DatabaseMigrationTestFramework:
             executor.migrate([scenario.to_migration])
 
             # Test basic data operations
-            with connections['default'].cursor() as cursor:
+            with connections["default"].cursor() as cursor:
                 # Test table exists
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT table_name FROM information_schema.tables
                     WHERE table_schema = 'public' AND table_name = %s
-                """, [model_class._meta.db_table])
+                """,
+                    [model_class._meta.db_table],
+                )
 
                 table_exists = cursor.fetchone() is not None
-                result.metrics['table_exists'] = table_exists
+                result.metrics["table_exists"] = table_exists
 
                 if not table_exists:
-                    raise ValueError(f"Table {model_class._meta.db_table} does not exist")
+                    raise ValueError(
+                        f"Table {model_class._meta.db_table} does not exist"
+                    )
 
                 # Test column accessibility
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT column_name, data_type, is_nullable
                     FROM information_schema.columns
                     WHERE table_name = %s
                     ORDER BY ordinal_position
-                """, [model_class._meta.db_table])
+                """,
+                    [model_class._meta.db_table],
+                )
 
                 columns = cursor.fetchall()
-                result.metrics['column_count'] = len(columns)
+                result.metrics["column_count"] = len(columns)
 
                 # Test data insertion
                 if scenario.test_data_size > 0:
-                    test_data = self.generate_test_data(model_class, 1, scenario.encrypted_fields)
+                    test_data = self.generate_test_data(
+                        model_class, 1, scenario.encrypted_fields
+                    )
                     if test_data:
                         model_class.objects.create(**test_data[0])
-                        result.metrics['data_insertion'] = True
+                        result.metrics["data_insertion"] = True
 
             # Test encrypted fields
             if scenario.encrypted_fields and self.encryption_manager:
-                encryption_result = self._test_encryption_integrity(model_class, scenario.encrypted_fields)
-                result.healthcare_compliance['encryption_integrity'] = encryption_result['success']
-                result.warnings.extend(encryption_result['warnings'])
+                encryption_result = self._test_encryption_integrity(
+                    model_class, scenario.encrypted_fields
+                )
+                result.healthcare_compliance["encryption_integrity"] = (
+                    encryption_result["success"]
+                )
+                result.warnings.extend(encryption_result["warnings"])
 
             result.success = True
 
@@ -625,7 +744,9 @@ class DatabaseMigrationTestFramework:
 
         return result
 
-    def _test_migration_performance(self, executor, model_class, scenario: MigrationScenario) -> MigrationTestResult:
+    def _test_migration_performance(
+        self, executor, model_class, scenario: MigrationScenario
+    ) -> MigrationTestResult:
         """Test migration performance"""
         result = MigrationTestResult(
             test_name=f"performance_{scenario.name}",
@@ -633,12 +754,14 @@ class DatabaseMigrationTestFramework:
             success=False,
             metrics={},
             healthcare_compliance={},
-            performance_metrics={}
+            performance_metrics={},
         )
 
         try:
             # Test with larger dataset
-            large_scenario = scenario._replace(test_data_size=min(1000, scenario.test_data_size * 2))
+            large_scenario = scenario._replace(
+                test_data_size=min(1000, scenario.test_data_size * 2)
+            )
 
             start_time = time.time()
 
@@ -646,27 +769,37 @@ class DatabaseMigrationTestFramework:
             executor.migrate([large_scenario.from_migration])
 
             if large_scenario.test_data_size > 0:
-                test_data = self.generate_test_data(model_class, large_scenario.test_data_size, large_scenario.encrypted_fields)
+                test_data = self.generate_test_data(
+                    model_class,
+                    large_scenario.test_data_size,
+                    large_scenario.encrypted_fields,
+                )
                 if test_data:
                     # Batch insert
                     batch_size = 100
                     for i in range(0, len(test_data), batch_size):
-                        batch = test_data[i:i + batch_size]
-                        model_class.objects.bulk_create([
-                            model_class(**data) for data in batch
-                        ])
+                        batch = test_data[i : i + batch_size]
+                        model_class.objects.bulk_create(
+                            [model_class(**data) for data in batch]
+                        )
 
             executor.migrate([large_scenario.to_migration])
 
             total_time = time.time() - start_time
 
             result.success = True
-            result.performance_metrics['total_migration_time'] = total_time
-            result.performance_metrics['records_per_second'] = large_scenario.test_data_size / total_time if total_time > 0 else 0
+            result.performance_metrics["total_migration_time"] = total_time
+            result.performance_metrics["records_per_second"] = (
+                large_scenario.test_data_size / total_time if total_time > 0 else 0
+            )
 
             # Check performance thresholds
-            if total_time > self.config.performance_thresholds.get('migration_time', 300.0):
-                result.warnings.append(f"Performance test exceeded threshold: {total_time:.2f}s")
+            if total_time > self.config.performance_thresholds.get(
+                "migration_time", 300.0
+            ):
+                result.warnings.append(
+                    f"Performance test exceeded threshold: {total_time:.2f}s"
+                )
 
         except Exception as e:
             result.error_message = str(e)
@@ -674,7 +807,9 @@ class DatabaseMigrationTestFramework:
 
         return result
 
-    def _test_migration_security(self, executor, model_class, scenario: MigrationScenario) -> MigrationTestResult:
+    def _test_migration_security(
+        self, executor, model_class, scenario: MigrationScenario
+    ) -> MigrationTestResult:
         """Test migration security"""
         result = MigrationTestResult(
             test_name=f"security_{scenario.name}",
@@ -682,7 +817,7 @@ class DatabaseMigrationTestFramework:
             success=False,
             metrics={},
             healthcare_compliance={},
-            performance_metrics={}
+            performance_metrics={},
         )
 
         try:
@@ -692,7 +827,9 @@ class DatabaseMigrationTestFramework:
 
             # Test encrypted field security
             if scenario.encrypted_fields and self.encryption_manager:
-                test_data = self.generate_test_data(model_class, 1, scenario.encrypted_fields)
+                test_data = self.generate_test_data(
+                    model_class, 1, scenario.encrypted_fields
+                )
                 if test_data:
                     record = model_class.objects.create(**test_data[0])
 
@@ -704,18 +841,24 @@ class DatabaseMigrationTestFramework:
                                 # Check that it's not plaintext
                                 original_value = test_data[0][field]
                                 if str(encrypted_value) == str(original_value):
-                                    result.warnings.append(f"Field {field} appears to be stored in plaintext")
-                                    result.healthcare_compliance[f'{field}_encrypted'] = False
+                                    result.warnings.append(
+                                        f"Field {field} appears to be stored in plaintext"
+                                    )
+                                    result.healthcare_compliance[
+                                        f"{field}_encrypted"
+                                    ] = False
                                 else:
-                                    result.healthcare_compliance[f'{field}_encrypted'] = True
+                                    result.healthcare_compliance[
+                                        f"{field}_encrypted"
+                                    ] = True
 
             # Test audit trail (if available)
             if self.audit_manager:
                 try:
                     # Check if audit entries are created
                     audit_count = self._get_audit_count(scenario.app_name)
-                    result.metrics['audit_entries'] = audit_count
-                    result.healthcare_compliance['audit_trail'] = audit_count > 0
+                    result.metrics["audit_entries"] = audit_count
+                    result.healthcare_compliance["audit_trail"] = audit_count > 0
                 except Exception as e:
                     result.warnings.append(f"Audit trail check failed: {str(e)}")
 
@@ -727,7 +870,9 @@ class DatabaseMigrationTestFramework:
 
         return result
 
-    def _test_migration_compliance(self, executor, model_class, scenario: MigrationScenario) -> MigrationTestResult:
+    def _test_migration_compliance(
+        self, executor, model_class, scenario: MigrationScenario
+    ) -> MigrationTestResult:
         """Test migration compliance"""
         result = MigrationTestResult(
             test_name=f"compliance_{scenario.name}",
@@ -735,7 +880,7 @@ class DatabaseMigrationTestFramework:
             success=False,
             metrics={},
             healthcare_compliance={},
-            performance_metrics={}
+            performance_metrics={},
         )
 
         try:
@@ -746,22 +891,34 @@ class DatabaseMigrationTestFramework:
             # Test compliance checks
             for compliance_check in self.config.compliance_checks:
                 try:
-                    if compliance_check == 'hipaa':
-                        compliance_result = self._test_hipaa_compliance(model_class, scenario)
-                    elif compliance_check == 'gdpr':
-                        compliance_result = self._test_gdpr_compliance(model_class, scenario)
-                    elif compliance_check == 'data_localization':
-                        compliance_result = self._test_data_localization(model_class, scenario)
-                    elif compliance_check == 'audit_trail':
-                        compliance_result = self._test_audit_trail_compliance(model_class, scenario)
+                    if compliance_check == "hipaa":
+                        compliance_result = self._test_hipaa_compliance(
+                            model_class, scenario
+                        )
+                    elif compliance_check == "gdpr":
+                        compliance_result = self._test_gdpr_compliance(
+                            model_class, scenario
+                        )
+                    elif compliance_check == "data_localization":
+                        compliance_result = self._test_data_localization(
+                            model_class, scenario
+                        )
+                    elif compliance_check == "audit_trail":
+                        compliance_result = self._test_audit_trail_compliance(
+                            model_class, scenario
+                        )
                     else:
                         continue
 
-                    result.healthcare_compliance[compliance_check] = compliance_result['success']
-                    result.warnings.extend(compliance_result['warnings'])
+                    result.healthcare_compliance[compliance_check] = compliance_result[
+                        "success"
+                    ]
+                    result.warnings.extend(compliance_result["warnings"])
 
                 except Exception as e:
-                    result.warnings.append(f"Compliance check {compliance_check} failed: {str(e)}")
+                    result.warnings.append(
+                        f"Compliance check {compliance_check} failed: {str(e)}"
+                    )
 
             result.success = True
 
@@ -771,7 +928,9 @@ class DatabaseMigrationTestFramework:
 
         return result
 
-    def _test_migration_rollback(self, executor, model_class, scenario: MigrationScenario) -> MigrationTestResult:
+    def _test_migration_rollback(
+        self, executor, model_class, scenario: MigrationScenario
+    ) -> MigrationTestResult:
         """Test migration rollback"""
         result = MigrationTestResult(
             test_name=f"rollback_{scenario.name}",
@@ -779,7 +938,7 @@ class DatabaseMigrationTestFramework:
             success=False,
             metrics={},
             healthcare_compliance={},
-            performance_metrics={}
+            performance_metrics={},
         )
 
         try:
@@ -801,8 +960,10 @@ class DatabaseMigrationTestFramework:
             restored_state = self._capture_database_state(executor, scenario.app_name)
 
             # Compare states
-            rollback_success = self._compare_database_states(final_state, restored_state)
-            result.metrics['rollback_success'] = rollback_success
+            rollback_success = self._compare_database_states(
+                final_state, restored_state
+            )
+            result.metrics["rollback_success"] = rollback_success
 
             if not rollback_success:
                 result.warnings.append("Rollback test failed - states don't match")
@@ -815,7 +976,9 @@ class DatabaseMigrationTestFramework:
 
         return result
 
-    def _test_concurrent_migration(self, executor, model_class, scenario: MigrationScenario) -> MigrationTestResult:
+    def _test_concurrent_migration(
+        self, executor, model_class, scenario: MigrationScenario
+    ) -> MigrationTestResult:
         """Test concurrent migration safety"""
         result = MigrationTestResult(
             test_name=f"concurrent_{scenario.name}",
@@ -823,7 +986,7 @@ class DatabaseMigrationTestFramework:
             success=False,
             metrics={},
             healthcare_compliance={},
-            performance_metrics={}
+            performance_metrics={},
         )
 
         try:
@@ -837,21 +1000,28 @@ class DatabaseMigrationTestFramework:
             # Test basic concurrent operations
             def concurrent_test():
                 # Simple concurrent operation
-                with connections['default'].cursor() as cursor:
-                    cursor.execute("SELECT COUNT(*) FROM %s" % model_class._meta.db_table)
+                with connections["default"].cursor() as cursor:
+                    cursor.execute(
+                        "SELECT COUNT(*) FROM %s" % model_class._meta.db_table
+                    )
                     return cursor.fetchone()[0]
 
             # Run concurrent operations
             with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor_pool:
                 futures = [executor_pool.submit(concurrent_test) for _ in range(10)]
-                results = [future.result() for future in concurrent.futures.as_completed(futures)]
+                results = [
+                    future.result()
+                    for future in concurrent.futures.as_completed(futures)
+                ]
 
             # All results should be consistent
             consistent = all(r == results[0] for r in results)
-            result.metrics['concurrent_consistency'] = consistent
+            result.metrics["concurrent_consistency"] = consistent
 
             if not consistent:
-                result.warnings.append("Concurrent operations returned inconsistent results")
+                result.warnings.append(
+                    "Concurrent operations returned inconsistent results"
+                )
 
             result.success = True
 
@@ -861,7 +1031,9 @@ class DatabaseMigrationTestFramework:
 
         return result
 
-    def _test_schema_validation(self, executor, model_class, scenario: MigrationScenario) -> MigrationTestResult:
+    def _test_schema_validation(
+        self, executor, model_class, scenario: MigrationScenario
+    ) -> MigrationTestResult:
         """Test schema validation"""
         result = MigrationTestResult(
             test_name=f"schema_validation_{scenario.name}",
@@ -869,7 +1041,7 @@ class DatabaseMigrationTestFramework:
             success=False,
             metrics={},
             healthcare_compliance={},
-            performance_metrics={}
+            performance_metrics={},
         )
 
         try:
@@ -880,7 +1052,7 @@ class DatabaseMigrationTestFramework:
             # Validate schema
             schema_issues = self._validate_schema(model_class)
 
-            result.metrics['schema_issues'] = len(schema_issues)
+            result.metrics["schema_issues"] = len(schema_issues)
             result.warnings.extend(schema_issues)
 
             result.success = len(schema_issues) == 0
@@ -893,86 +1065,93 @@ class DatabaseMigrationTestFramework:
 
     def _capture_database_state(self, executor, app_name: str) -> Dict[str, Any]:
         """Capture current database state"""
-        state = {
-            'tables': {},
-            'sequences': {},
-            'constraints': {},
-            'indexes': {}
-        }
+        state = {"tables": {}, "sequences": {}, "constraints": {}, "indexes": {}}
 
         with executor.connection.cursor() as cursor:
             # Get tables
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT table_name, table_type
                 FROM information_schema.tables
                 WHERE table_schema = 'public'
                 ORDER BY table_name
-            """)
-            state['tables'] = {row[0]: row[1] for row in cursor.fetchall()}
+            """
+            )
+            state["tables"] = {row[0]: row[1] for row in cursor.fetchall()}
 
             # Get sequences
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT sequence_name
                 FROM information_schema.sequences
                 WHERE sequence_schema = 'public'
                 ORDER BY sequence_name
-            """)
-            state['sequences'] = [row[0] for row in cursor.fetchall()]
+            """
+            )
+            state["sequences"] = [row[0] for row in cursor.fetchall()]
 
             # Get constraints
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT table_name, constraint_name, constraint_type
                 FROM information_schema.table_constraints
                 WHERE table_schema = 'public'
                 ORDER BY table_name, constraint_name
-            """)
+            """
+            )
             for table_name, constraint_name, constraint_type in cursor.fetchall():
-                if table_name not in state['constraints']:
-                    state['constraints'][table_name] = {}
-                state['constraints'][table_name][constraint_name] = constraint_type
+                if table_name not in state["constraints"]:
+                    state["constraints"][table_name] = {}
+                state["constraints"][table_name][constraint_name] = constraint_type
 
             # Get indexes
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT tablename, indexname, indexdef
                 FROM pg_indexes
                 WHERE schemaname = 'public'
                 ORDER BY tablename, indexname
-            """)
+            """
+            )
             for table_name, index_name, index_def in cursor.fetchall():
-                if table_name not in state['indexes']:
-                    state['indexes'][table_name] = {}
-                state['indexes'][table_name][index_name] = index_def
+                if table_name not in state["indexes"]:
+                    state["indexes"][table_name] = {}
+                state["indexes"][table_name][index_name] = index_def
 
         return state
 
-    def _compare_database_states(self, state1: Dict[str, Any], state2: Dict[str, Any]) -> bool:
+    def _compare_database_states(
+        self, state1: Dict[str, Any], state2: Dict[str, Any]
+    ) -> bool:
         """Compare two database states"""
         # Compare tables
-        if state1['tables'] != state2['tables']:
+        if state1["tables"] != state2["tables"]:
             return False
 
         # Compare sequences
-        if set(state1['sequences']) != set(state2['sequences']):
+        if set(state1["sequences"]) != set(state2["sequences"]):
             return False
 
         # Compare constraints
-        if state1['constraints'] != state2['constraints']:
+        if state1["constraints"] != state2["constraints"]:
             return False
 
         # Compare indexes
-        if state1['indexes'] != state2['indexes']:
+        if state1["indexes"] != state2["indexes"]:
             return False
 
         return True
 
-    def _test_encryption_integrity(self, model_class, encrypted_fields: List[str]) -> Dict[str, Any]:
+    def _test_encryption_integrity(
+        self, model_class, encrypted_fields: List[str]
+    ) -> Dict[str, Any]:
         """Test encryption integrity"""
-        result = {'success': True, 'warnings': []}
+        result = {"success": True, "warnings": []}
 
         try:
             record = model_class.objects.first()
             if not record:
-                result['warnings'].append("No records found for encryption test")
+                result["warnings"].append("No records found for encryption test")
                 return result
 
             for field in encrypted_fields:
@@ -980,17 +1159,23 @@ class DatabaseMigrationTestFramework:
                     encrypted_value = getattr(record, field)
                     if encrypted_value:
                         try:
-                            decrypted_value = self.encryption_manager.decrypt(encrypted_value)
+                            decrypted_value = self.encryption_manager.decrypt(
+                                encrypted_value
+                            )
                             if not decrypted_value or len(str(decrypted_value)) == 0:
-                                result['warnings'].append(f"Field {field} decrypted to empty value")
-                                result['success'] = False
+                                result["warnings"].append(
+                                    f"Field {field} decrypted to empty value"
+                                )
+                                result["success"] = False
                         except Exception as e:
-                            result['warnings'].append(f"Failed to decrypt field {field}: {str(e)}")
-                            result['success'] = False
+                            result["warnings"].append(
+                                f"Failed to decrypt field {field}: {str(e)}"
+                            )
+                            result["success"] = False
 
         except Exception as e:
-            result['warnings'].append(f"Encryption integrity test failed: {str(e)}")
-            result['success'] = False
+            result["warnings"].append(f"Encryption integrity test failed: {str(e)}")
+            result["success"] = False
 
         return result
 
@@ -998,89 +1183,100 @@ class DatabaseMigrationTestFramework:
         """Get audit count for app"""
         try:
             from backend.core.models import AuditLog
+
             return AuditLog.objects.filter(
                 object_type__istartswith=app_name.capitalize()
             ).count()
         except:
             return 0
 
-    def _test_hipaa_compliance(self, model_class, scenario: MigrationScenario) -> Dict[str, Any]:
+    def _test_hipaa_compliance(
+        self, model_class, scenario: MigrationScenario
+    ) -> Dict[str, Any]:
         """Test HIPAA compliance"""
-        result = {'success': True, 'warnings': []}
+        result = {"success": True, "warnings": []}
 
         try:
             # Test PHI protection
             if scenario.encrypted_fields:
                 for field in scenario.encrypted_fields:
                     # Check that PHI fields are encrypted
-                    result['warnings'].append(f"PHI field {field} encryption verified")
+                    result["warnings"].append(f"PHI field {field} encryption verified")
 
             # Test audit trail
             audit_count = self._get_audit_count(scenario.app_name)
             if audit_count == 0:
-                result['warnings'].append("No audit trail found")
-                result['success'] = False
+                result["warnings"].append("No audit trail found")
+                result["success"] = False
 
         except Exception as e:
-            result['warnings'].append(f"HIPAA compliance test failed: {str(e)}")
-            result['success'] = False
+            result["warnings"].append(f"HIPAA compliance test failed: {str(e)}")
+            result["success"] = False
 
         return result
 
-    def _test_gdpr_compliance(self, model_class, scenario: MigrationScenario) -> Dict[str, Any]:
+    def _test_gdpr_compliance(
+        self, model_class, scenario: MigrationScenario
+    ) -> Dict[str, Any]:
         """Test GDPR compliance"""
-        result = {'success': True, 'warnings': []}
+        result = {"success": True, "warnings": []}
 
         try:
             # Test data minimization
             field_count = len(model_class._meta.fields)
             if field_count > 50:
-                result['warnings'].append(f"Model has {field_count} fields - consider data minimization")
+                result["warnings"].append(
+                    f"Model has {field_count} fields - consider data minimization"
+                )
 
             # Test personal data protection
-            personal_fields = ['email', 'phone', 'address', 'ssn']
+            personal_fields = ["email", "phone", "address", "ssn"]
             protected_fields = 0
             for field in personal_fields:
                 if hasattr(model_class, field):
                     protected_fields += 1
 
             if protected_fields == 0:
-                result['warnings'].append("No personal data fields found")
+                result["warnings"].append("No personal data fields found")
 
         except Exception as e:
-            result['warnings'].append(f"GDPR compliance test failed: {str(e)}")
-            result['success'] = False
+            result["warnings"].append(f"GDPR compliance test failed: {str(e)}")
+            result["success"] = False
 
         return result
 
-    def _test_data_localization(self, model_class, scenario: MigrationScenario) -> Dict[str, Any]:
+    def _test_data_localization(
+        self, model_class, scenario: MigrationScenario
+    ) -> Dict[str, Any]:
         """Test data localization compliance"""
-        result = {'success': True, 'warnings': []}
+        result = {"success": True, "warnings": []}
 
         try:
             # Check if data is properly localized
             # This would involve checking data residency requirements
-            result['warnings'].append("Data localization verification needed")
+            result["warnings"].append("Data localization verification needed")
 
         except Exception as e:
-            result['warnings'].append(f"Data localization test failed: {str(e)}")
-            result['success'] = False
+            result["warnings"].append(f"Data localization test failed: {str(e)}")
+            result["success"] = False
 
         return result
 
-    def _test_audit_trail_compliance(self, model_class, scenario: MigrationScenario) -> Dict[str, Any]:
+    def _test_audit_trail_compliance(
+        self, model_class, scenario: MigrationScenario
+    ) -> Dict[str, Any]:
         """Test audit trail compliance"""
-        result = {'success': True, 'warnings': []}
+        result = {"success": True, "warnings": []}
 
         try:
             audit_count = self._get_audit_count(scenario.app_name)
             if audit_count == 0:
-                result['warnings'].append("No audit trail entries found")
-                result['success'] = False
+                result["warnings"].append("No audit trail entries found")
+                result["success"] = False
 
         except Exception as e:
-            result['warnings'].append(f"Audit trail compliance test failed: {str(e)}")
-            result['success'] = False
+            result["warnings"].append(f"Audit trail compliance test failed: {str(e)}")
+            result["success"] = False
 
         return result
 
@@ -1089,36 +1285,45 @@ class DatabaseMigrationTestFramework:
         issues = []
 
         try:
-            with connections['default'].cursor() as cursor:
+            with connections["default"].cursor() as cursor:
                 # Check for required constraints
                 table_name = model_class._meta.db_table
 
                 # Check primary key
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT constraint_name, constraint_type
                     FROM information_schema.table_constraints
                     WHERE table_name = %s AND constraint_type = 'PRIMARY KEY'
-                """, [table_name])
+                """,
+                    [table_name],
+                )
 
                 if not cursor.fetchone():
                     issues.append(f"Table {table_name} missing primary key")
 
                 # Check for foreign key constraints
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT constraint_name
                     FROM information_schema.table_constraints
                     WHERE table_name = %s AND constraint_type = 'FOREIGN KEY'
-                """, [table_name])
+                """,
+                    [table_name],
+                )
 
                 fk_constraints = cursor.fetchall()
                 if not fk_constraints:
                     issues.append(f"Table {table_name} has no foreign key constraints")
 
                 # Check for indexes
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT indexname FROM pg_indexes
                     WHERE tablename = %s AND schemaname = 'public'
-                """, [table_name])
+                """,
+                    [table_name],
+                )
 
                 indexes = cursor.fetchall()
                 if not indexes:
@@ -1129,20 +1334,24 @@ class DatabaseMigrationTestFramework:
 
         return issues
 
-    def run_comprehensive_tests(self, scenarios: List[MigrationScenario]) -> Dict[str, Any]:
+    def run_comprehensive_tests(
+        self, scenarios: List[MigrationScenario]
+    ) -> Dict[str, Any]:
         """Run comprehensive migration tests"""
         results = {
-            'total_scenarios': len(scenarios),
-            'passed_scenarios': 0,
-            'failed_scenarios': 0,
-            'total_duration': 0.0,
-            'scenario_results': [],
-            'summary': {}
+            "total_scenarios": len(scenarios),
+            "passed_scenarios": 0,
+            "failed_scenarios": 0,
+            "total_duration": 0.0,
+            "scenario_results": [],
+            "summary": {},
         }
 
         if self.config.enable_parallel_testing:
             # Run tests in parallel
-            with concurrent.futures.ThreadPoolExecutor(max_workers=self.config.max_workers) as executor:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=self.config.max_workers
+            ) as executor:
                 future_to_scenario = {
                     executor.submit(self.run_migration_test, scenario): scenario
                     for scenario in scenarios
@@ -1152,39 +1361,60 @@ class DatabaseMigrationTestFramework:
                     scenario = future_to_scenario[future]
                     try:
                         result = future.result()
-                        results['scenario_results'].append(result)
-                        results['total_duration'] += result.duration
+                        results["scenario_results"].append(result)
+                        results["total_duration"] += result.duration
 
                         if result.success:
-                            results['passed_scenarios'] += 1
+                            results["passed_scenarios"] += 1
                         else:
-                            results['failed_scenarios'] += 1
+                            results["failed_scenarios"] += 1
 
                     except Exception as e:
-                        logger.error(f"Test for scenario {scenario.name} failed: {str(e)}")
-                        results['failed_scenarios'] += 1
+                        logger.error(
+                            f"Test for scenario {scenario.name} failed: {str(e)}"
+                        )
+                        results["failed_scenarios"] += 1
         else:
             # Run tests sequentially
             for scenario in scenarios:
                 result = self.run_migration_test(scenario)
-                results['scenario_results'].append(result)
-                results['total_duration'] += result.duration
+                results["scenario_results"].append(result)
+                results["total_duration"] += result.duration
 
                 if result.success:
-                    results['passed_scenarios'] += 1
+                    results["passed_scenarios"] += 1
                 else:
-                    results['failed_scenarios'] += 1
+                    results["failed_scenarios"] += 1
 
         # Calculate summary
-        results['summary'] = {
-            'success_rate': (results['passed_scenarios'] / results['total_scenarios']) * 100 if results['total_scenarios'] > 0 else 0,
-            'average_duration': results['total_duration'] / results['total_scenarios'] if results['total_scenarios'] > 0 else 0,
-            'critical_scenarios_passed': len([
-                r for r in results['scenario_results']
-                if r.success and MIGRATION_TEST_SCENARIOS[
-                    next((i for i, s in enumerate(MIGRATION_TEST_SCENARIOS) if s['name'] == r.test_name.split('_')[0]), 0)
-                ]['critical']
-            ])
+        results["summary"] = {
+            "success_rate": (
+                (results["passed_scenarios"] / results["total_scenarios"]) * 100
+                if results["total_scenarios"] > 0
+                else 0
+            ),
+            "average_duration": (
+                results["total_duration"] / results["total_scenarios"]
+                if results["total_scenarios"] > 0
+                else 0
+            ),
+            "critical_scenarios_passed": len(
+                [
+                    r
+                    for r in results["scenario_results"]
+                    if r.success
+                    and MIGRATION_TEST_SCENARIOS[
+                        next(
+                            (
+                                i
+                                for i, s in enumerate(MIGRATION_TEST_SCENARIOS)
+                                if s["name"] == r.test_name.split("_")[0]
+                            ),
+                            0,
+                        )
+                    ]["critical"]
+                ]
+            ),
         }
 
         return results
@@ -1206,7 +1436,7 @@ class DatabaseMigrationTestFramework:
 ## Test Results
 """
 
-        for result in results['scenario_results']:
+        for result in results["scenario_results"]:
             status_icon = "✅" if result.success else "❌"
             report += f"""
 ### {result.test_name}
@@ -1248,8 +1478,11 @@ class DatabaseMigrationTestFramework:
                 try:
                     self.cleanup_test_database(db_name)
                 except Exception as e:
-                    logger.warning(f"Failed to cleanup test database {db_name}: {str(e)}")
+                    logger.warning(
+                        f"Failed to cleanup test database {db_name}: {str(e)}"
+                    )
             self.test_databases = []
+
 
 # Migration test scenarios
 MIGRATION_TEST_SCENARIOS = [
@@ -1261,7 +1494,7 @@ MIGRATION_TEST_SCENARIOS = [
         test_data_size=1000,
         healthcare_data=True,
         encrypted_fields=["first_name", "last_name", "email", "phone", "ssn"],
-        critical=True
+        critical=True,
     ),
     MigrationScenario(
         name="Medical Records Migration",
@@ -1271,7 +1504,7 @@ MIGRATION_TEST_SCENARIOS = [
         test_data_size=500,
         healthcare_data=True,
         encrypted_fields=["diagnosis", "treatment", "notes"],
-        critical=True
+        critical=True,
     ),
     MigrationScenario(
         name="Appointments Migration",
@@ -1281,7 +1514,7 @@ MIGRATION_TEST_SCENARIOS = [
         test_data_size=2000,
         healthcare_data=False,
         encrypted_fields=["notes"],
-        critical=False
+        critical=False,
     ),
     MigrationScenario(
         name="Billing Migration",
@@ -1291,7 +1524,7 @@ MIGRATION_TEST_SCENARIOS = [
         test_data_size=1500,
         healthcare_data=True,
         encrypted_fields=["payment_method", "insurance_info"],
-        critical=True
+        critical=True,
     ),
     MigrationScenario(
         name="Accounting Migration",
@@ -1301,9 +1534,10 @@ MIGRATION_TEST_SCENARIOS = [
         test_data_size=1000,
         healthcare_data=False,
         encrypted_fields=["description"],
-        critical=False
-    )
+        critical=False,
+    ),
 ]
+
 
 # Utility functions
 def create_migration_test_config() -> MigrationTestConfig:
@@ -1318,12 +1552,13 @@ def create_migration_test_config() -> MigrationTestConfig:
         healthcare_data_validation=True,
         encryption_validation=True,
         performance_thresholds={
-            'migration_time': 300.0,
-            'query_time': 5.0,
-            'memory_usage': 1024.0
+            "migration_time": 300.0,
+            "query_time": 5.0,
+            "memory_usage": 1024.0,
         },
-        compliance_checks=['hipaa', 'gdpr', 'audit_trail']
+        compliance_checks=["hipaa", "gdpr", "audit_trail"],
     )
+
 
 def run_hms_migration_tests():
     """Run HMS-specific migration tests"""
@@ -1340,7 +1575,7 @@ def run_hms_migration_tests():
         # Save report
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         report_path = f"/tmp/hms_migration_test_report_{timestamp}.md"
-        with open(report_path, 'w') as f:
+        with open(report_path, "w") as f:
             f.write(report)
 
         print(f"Migration tests completed. Report saved to {report_path}")
@@ -1348,12 +1583,15 @@ def run_hms_migration_tests():
         # Print summary
         print(f"\nTest Summary:")
         print(f"Success Rate: {results['summary']['success_rate']:.1f}%")
-        print(f"Critical Scenarios: {results['summary']['critical_scenarios_passed']}/{len([s for s in MIGRATION_TEST_SCENARIOS if s.critical])}")
+        print(
+            f"Critical Scenarios: {results['summary']['critical_scenarios_passed']}/{len([s for s in MIGRATION_TEST_SCENARIOS if s.critical])}"
+        )
 
         return results
 
     finally:
         framework.cleanup_all_test_databases()
+
 
 if __name__ == "__main__":
     run_hms_migration_tests()

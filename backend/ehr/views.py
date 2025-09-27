@@ -1,3 +1,7 @@
+"""
+views module
+"""
+
 import os
 
 from rest_framework import viewsets
@@ -18,7 +22,9 @@ from .serializers import (
 
 class EncounterViewSet(viewsets.ModelViewSet):
     serializer_class = EncounterSerializer
-    queryset = Encounter.objects.select_related("patient", "doctor", "hospital", "appointment").all()
+    queryset = Encounter.objects.select_related(
+        "patient", "doctor", "hospital", "appointment"
+    ).all()
     permission_classes = [IsAuthenticated, ModuleEnabledPermission]
     required_module = "enable_opd"
 
@@ -27,19 +33,22 @@ class EncounterViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         if user.is_superuser or getattr(user, "role", None) == "SUPER_ADMIN":
             # Use prefetch_related for nested relationships to eliminate N+1 queries
-            return qs.prefetch_related('notes', 'attachments', 'notes__author', 'attachments__uploaded_by')
+            return qs.prefetch_related(
+                "notes", "attachments", "notes__author", "attachments__uploaded_by"
+            )
         if getattr(user, "hospital_id", None) is None:
             return qs.none()
         # Use prefetch_related for nested relationships to eliminate N+1 queries
         return qs.filter(hospital_id=user.hospital_id).prefetch_related(
-            'notes', 'attachments', 'notes__author', 'attachments__uploaded_by'
+            "notes", "attachments", "notes__author", "attachments__uploaded_by"
         )
 
     def get_serializer_class(self):
         """Use optimized serializer based on action."""
-        if self.action == 'list':
+        if self.action == "list":
             # Use a simpler serializer for list views to avoid over-fetching
             from .serializers import EncounterSerializer
+
             return EncounterSerializer
         return super().get_serializer_class()
 
@@ -47,16 +56,24 @@ class EncounterViewSet(viewsets.ModelViewSet):
         user = self.request.user
         provided_hospital = serializer.validated_data.get("hospital")
         if not (
-            user.is_superuser or getattr(user, "hospital_id", None) or getattr(user, "role", None) == "SUPER_ADMIN"
+            user.is_superuser
+            or getattr(user, "hospital_id", None)
+            or getattr(user, "role", None) == "SUPER_ADMIN"
         ):
-            raise PermissionDenied("User must belong to a hospital to create encounters")
+            raise PermissionDenied(
+                "User must belong to a hospital to create encounters"
+            )
         if (
             provided_hospital
             and not (user.is_superuser or user.role == "SUPER_ADMIN")
             and provided_hospital.id != user.hospital_id
         ):
             raise PermissionDenied("Cannot create encounter for another hospital")
-        serializer.save(hospital_id=(provided_hospital.id if provided_hospital else user.hospital_id))
+        serializer.save(
+            hospital_id=(
+                provided_hospital.id if provided_hospital else user.hospital_id
+            )
+        )
 
 
 class EncounterNoteViewSet(viewsets.ModelViewSet):
@@ -96,8 +113,13 @@ class EncounterAttachmentViewSet(viewsets.ModelViewSet):
             max_mb = int(os.getenv("EHR_MAX_ATTACHMENT_MB", "10"))
             if file_obj.size > max_mb * 1024 * 1024:
                 raise PermissionDenied("File too large")
-            allowed = (os.getenv("EHR_ALLOWED_MIME", "application/pdf,image/png,image/jpeg")).split(",")
-            if hasattr(file_obj, "content_type") and file_obj.content_type not in allowed:
+            allowed = (
+                os.getenv("EHR_ALLOWED_MIME", "application/pdf,image/png,image/jpeg")
+            ).split(",")
+            if (
+                hasattr(file_obj, "content_type")
+                and file_obj.content_type not in allowed
+            ):
                 raise PermissionDenied("Unsupported file type")
         serializer.save()
 
@@ -108,7 +130,9 @@ from .serializers import NotificationSerializer, QualityMetricSerializer
 
 class NotificationViewSet(viewsets.ModelViewSet):
     serializer_class = NotificationSerializer
-    queryset = NotificationModel.objects.select_related("encounter", "recipient_user").all()
+    queryset = NotificationModel.objects.select_related(
+        "encounter", "recipient_user"
+    ).all()
     permission_classes = [IsAuthenticated, ModuleEnabledPermission]
     required_module = "enable_opd"
 

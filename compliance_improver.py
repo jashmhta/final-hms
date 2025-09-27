@@ -1,7 +1,13 @@
-import os
+"""
+compliance_improver module
+"""
+
 import json
-from pathlib import Path
+import os
 from datetime import datetime
+from pathlib import Path
+
+
 class ComplianceImprover:
     def __init__(self):
         self.project_root = Path(__file__).parent

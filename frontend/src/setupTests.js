@@ -1,6 +1,4 @@
-import '@testing-library/jest-dom'
-import 'jest-canvas-mock'
-import '@emotion/jest'
+require('@testing-library/jest-dom')
 
 // Global setup for testing
 global.ResizeObserver = class ResizeObserver {

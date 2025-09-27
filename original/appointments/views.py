@@ -1,10 +1,18 @@
-from django.db import transaction
-from django.shortcuts import get_object_or_404
+"""
+views module
+"""
+
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+
 from .models import Appointment
 from .serializers import AppointmentSerializer
+
+
 class AppointmentListCreateView(APIView):
     def get(self, request):
         queryset = Appointment.objects.filter(is_active=True, patient__is_active=True)

@@ -1,11 +1,20 @@
+"""
+test_mock_tpa module
+"""
+
 import json
 from unittest.mock import Mock, patch
+
 import pytest
+from insurance_tpa.models import InsuranceProvider, Patient, TPAAuthorization, TPAClaim
+
 from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import reverse
-from insurance_tpa.models import InsuranceProvider, Patient, TPAAuthorization, TPAClaim
+
 User = get_user_model()
+
+
 class TestTPAMockIntegration:
     @pytest.fixture(autouse=True)
     def setup_test_data(
@@ -29,6 +38,7 @@ class TestTPAMockIntegration:
             date_of_birth="1990-01-01",
             insurance_number="INS123456",
         )
+
     def test_create_tpa_claim(self, db, mock_tpa_api):
         claim_data = {
             "claim_id": "CLAIM001",
@@ -45,6 +55,7 @@ class TestTPAMockIntegration:
         assert claim.status == "pending"
         assert claim.created_by == self.user
         assert claim.insurance_provider == self.insurance_provider
+
     def test_tpa_authorization_creation(self, db):
         claim = TPAClaim.objects.create(
             claim_id="AUTHCLAIM001",
@@ -68,6 +79,7 @@ class TestTPAMockIntegration:
         assert auth.approved_by == self.user
         claim.refresh_from_db()
         assert claim.status == "approved"
+
     @patch("requests.post")
     def test_tpa_api_integration(self, mock_post, db):
         mock_response = Mock()
@@ -103,6 +115,7 @@ class TestTPAMockIntegration:
         assert result["data"]["approved_amount"] == 1200.00
         claim.refresh_from_db()
         assert claim.status == "approved"
+
     def test_insurance_provider_validation(self, db):
         provider_data = {
             "name": "Valid Insurance Co",
@@ -122,6 +135,7 @@ class TestTPAMockIntegration:
             is_active=False,
         )
         assert inactive_provider.is_active is False
+
     def test_patient_integration(self, db):
         patients = [
             Patient.objects.create(
@@ -154,6 +168,7 @@ class TestTPAMockIntegration:
             assert (
                 patient_info["full_name"] == f"{patient.first_name} {patient.last_name}"
             )
+
     @patch("celery.task.base.Task.apply_async")
     def test_celery_task_integration(self, mock_celery, db):
         claim = TPAClaim.objects.create(
@@ -171,6 +186,7 @@ class TestTPAMockIntegration:
         mock_process.delay.assert_called_once_with(claim.claim_id)
         result = mock_process.delay.return_value
         assert result.get() is not None
+
     def test_redis_cache_integration(self, db, mock_redis_connection):
         claim = TPAClaim.objects.create(
             claim_id="CACHE001",
@@ -195,6 +211,7 @@ class TestTPAMockIntegration:
         assert retrieved_data["status"] == claim.status
         mock_redis_connection.set.assert_called()
         mock_redis_connection.get.assert_called()
+
     def test_error_handling(self, db, mock_tpa_api):
         mock_response = Mock()
         mock_response.status_code = 500
@@ -213,10 +230,9 @@ class TestTPAMockIntegration:
                 "status": "pending",
             }
             claim = TPAClaim.objects.create(**claim_data, created_by=self.user)
-            assert (
-                claim.status == "pending"
-            )  
+            assert claim.status == "pending"
         mock_post.assert_called_once()
+
     def test_database_transaction_rollback(self, db):
         initial_claim_count = TPAClaim.objects.count()
         initial_patient_count = Patient.objects.count()
@@ -238,6 +254,4 @@ class TestTPAMockIntegration:
             status="pending",
             created_by=self.user,
         )
-        assert (
-            TPAClaim.objects.count() == initial_claim_count + 1
-        )  
+        assert TPAClaim.objects.count() == initial_claim_count + 1

@@ -1,3 +1,7 @@
+"""
+serializers module
+"""
+
 import logging
 from datetime import timedelta
 
@@ -43,11 +47,17 @@ class LoginSerializer(TokenObtainPairSerializer):
                 password=password,
             )
             if not user:
-                raise serializers.ValidationError("No active account found with the given credentials")
+                raise serializers.ValidationError(
+                    "No active account found with the given credentials"
+                )
             if user.is_account_locked():
-                raise serializers.ValidationError("Account is temporarily locked due to too many failed attempts")
+                raise serializers.ValidationError(
+                    "Account is temporarily locked due to too many failed attempts"
+                )
             if user.must_change_password:
-                raise serializers.ValidationError("Password change required before login")
+                raise serializers.ValidationError(
+                    "Password change required before login"
+                )
             attrs["user"] = user
             return attrs
         else:
@@ -110,10 +120,14 @@ class MFASetupSerializer(serializers.ModelSerializer):
             pass
         elif device_type == "SMS":
             if not attrs.get("phone_number"):
-                raise serializers.ValidationError({"phone_number": "Phone number required for SMS MFA"})
+                raise serializers.ValidationError(
+                    {"phone_number": "Phone number required for SMS MFA"}
+                )
         elif device_type == "EMAIL":
             if not attrs.get("email_address"):
-                raise serializers.ValidationError({"email_address": "Email address required for Email MFA"})
+                raise serializers.ValidationError(
+                    {"email_address": "Email address required for Email MFA"}
+                )
         return attrs
 
 
@@ -133,7 +147,9 @@ class PasswordChangeSerializer(serializers.Serializer):
         if policy:
             errors = []
             if len(value) < policy.min_length:
-                errors.append(f"Password must be at least {policy.min_length} characters")
+                errors.append(
+                    f"Password must be at least {policy.min_length} characters"
+                )
             if policy.require_uppercase and not any(c.isupper() for c in value):
                 errors.append("Password must contain uppercase letters")
             if policy.require_lowercase and not any(c.islower() for c in value):
@@ -175,7 +191,9 @@ class TrustedDeviceSerializer(serializers.ModelSerializer):
 
 class SecurityEventSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source="user.get_full_name", read_only=True)
-    resolved_by_name = serializers.CharField(source="resolved_by.get_full_name", read_only=True)
+    resolved_by_name = serializers.CharField(
+        source="resolved_by.get_full_name", read_only=True
+    )
 
     class Meta:
         model = SecurityEvent

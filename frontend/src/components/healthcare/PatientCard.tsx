@@ -472,6 +472,6 @@ const PatientCard: React.FC<PatientCardProps> = React.memo(({
       </CardActions>
     </Card>
   )
-}
+})
 
-export default PatientCard
+export default PatientCard;

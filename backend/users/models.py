@@ -1,3 +1,7 @@
+"""
+models module
+"""
+
 from datetime import timedelta
 
 from encrypted_model_fields.fields import (
@@ -104,7 +108,9 @@ class Department(models.Model):
 
 class User(AbstractUser):
     employee_id = models.CharField(max_length=20, unique=True, null=True, blank=True)
-    role = models.CharField(max_length=32, choices=UserRole.choices, default=UserRole.RECEPTIONIST)
+    role = models.CharField(
+        max_length=32, choices=UserRole.choices, default=UserRole.RECEPTIONIST
+    )
     status = models.CharField(
         max_length=20,
         choices=UserStatus.choices,
@@ -234,7 +240,9 @@ class User(AbstractUser):
             UserRole.RESIDENT,
             UserRole.INTERN,
         ]
-        return self.role in prescribing_roles or self.has_perm("users.can_prescribe_medication")
+        return self.role in prescribing_roles or self.has_perm(
+            "users.can_prescribe_medication"
+        )
 
 
 class UserPermissionGroup(models.Model):
@@ -246,7 +254,9 @@ class UserPermissionGroup(models.Model):
         related_name="permission_groups",
     )
     permissions = models.ManyToManyField(Permission, blank=True)
-    users = models.ManyToManyField(User, blank=True, related_name="custom_permission_groups")
+    users = models.ManyToManyField(
+        User, blank=True, related_name="custom_permission_groups"
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

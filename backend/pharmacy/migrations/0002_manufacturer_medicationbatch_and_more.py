@@ -545,6 +545,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="medicationbatch",
-            index=models.Index(fields=["expiry_date"], name="pharmacy_me_expiry__266ee1_idx"),
+            index=models.Index(
+                fields=["expiry_date"], name="pharmacy_me_expiry__266ee1_idx"
+            ),
         ),
     ]

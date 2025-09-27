@@ -5,7 +5,8 @@ Eliminates redundant model patterns across all services.
 
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, JSON
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import declared_attr
 
@@ -14,7 +15,9 @@ class BaseTimestampMixin:
     """Mixin for common timestamp fields - eliminates redundant timestamp definitions."""
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     @property
     def age(self) -> Optional[float]:
@@ -36,7 +39,9 @@ class BaseAuditMixin:
     created_by = Column(String(100), nullable=True, index=True)
     updated_by = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
 
 class BaseIdentificationMixin:
@@ -70,14 +75,14 @@ class HMSBaseModel(Base, BaseTimestampMixin, BaseActiveMixin, BaseIdentification
     def to_dict(self) -> dict:
         """Convert model to dictionary - eliminates redundant serialization code."""
         return {
-            'id': self.id,
-            'uuid': self.uuid,
-            'name': self.name,
-            'description': self.description,
-            'is_active': self.is_active,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'metadata': self.metadata
+            "id": self.id,
+            "uuid": self.uuid,
+            "name": self.name,
+            "description": self.description,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "metadata": self.metadata,
         }
 
 
@@ -100,67 +105,61 @@ class TableConfig:
 
     # Common column configurations
     TIMESTAMP_COLUMNS = {
-        'created_at': Column(DateTime, default=datetime.utcnow, nullable=False),
-        'updated_at': Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+        "created_at": Column(DateTime, default=datetime.utcnow, nullable=False),
+        "updated_at": Column(
+            DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        ),
     }
 
     STATUS_COLUMNS = {
-        'is_active': Column(Boolean, default=True, nullable=False),
-        'is_deleted': Column(Boolean, default=False, nullable=False)
+        "is_active": Column(Boolean, default=True, nullable=False),
+        "is_deleted": Column(Boolean, default=False, nullable=False),
     }
 
     IDENTITY_COLUMNS = {
-        'id': Column(Integer, primary_key=True, index=True),
-        'uuid': Column(String(36), unique=True, nullable=True, index=True)
+        "id": Column(Integer, primary_key=True, index=True),
+        "uuid": Column(String(36), unique=True, nullable=True, index=True),
     }
 
     # Common indexes
-    COMMON_INDEXES = [
-        'created_at',
-        'updated_at',
-        'is_active',
-        'name'
-    ]
+    COMMON_INDEXES = ["created_at", "updated_at", "is_active", "name"]
 
     @classmethod
     def get_table_name(cls, class_name: str) -> str:
         """Generate standardized table names."""
         # Convert CamelCase to snake_case and add prefix
         import re
-        snake_case = re.sub('([a-z0-9])([A-Z])', r'\1_\2', class_name).lower()
+
+        snake_case = re.sub("([a-z0-9])([A-Z])", r"\1_\2", class_name).lower()
         return f"hms_{snake_case}"
 
 
 # Database utility functions
 def get_db_session_config():
     """Standard database session configuration - eliminates redundant session setup."""
-    return {
-        'autocommit': False,
-        'autoflush': False,
-        'expire_on_commit': False
-    }
+    return {"autocommit": False, "autoflush": False, "expire_on_commit": False}
 
 
 def common_column_types():
     """Common column type definitions."""
     return {
-        'id': Integer,
-        'name': String(255),
-        'description': Text,
-        'status': String(50),
-        'metadata': JSON,
-        'created_at': DateTime,
-        'updated_at': DateTime
+        "id": Integer,
+        "name": String(255),
+        "description": Text,
+        "status": String(50),
+        "metadata": JSON,
+        "created_at": DateTime,
+        "updated_at": DateTime,
     }
 
 
 def get_standard_indexes():
     """Standard index patterns."""
     return [
-        {'column': 'created_at', 'name': 'idx_created_at'},
-        {'column': 'updated_at', 'name': 'idx_updated_at'},
-        {'column': 'is_active', 'name': 'idx_is_active'},
-        {'column': 'name', 'name': 'idx_name'},
+        {"column": "created_at", "name": "idx_created_at"},
+        {"column": "updated_at", "name": "idx_updated_at"},
+        {"column": "is_active", "name": "idx_is_active"},
+        {"column": "name", "name": "idx_name"},
     ]
 
 

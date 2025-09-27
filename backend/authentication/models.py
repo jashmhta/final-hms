@@ -1,3 +1,7 @@
+"""
+models module
+"""
+
 import secrets
 import uuid
 from datetime import timedelta
@@ -95,14 +99,18 @@ class MFADevice(TimeStampedModel):
 
 
 class LoginSession(TimeStampedModel):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="login_sessions")
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="login_sessions"
+    )
     session_id = models.UUIDField(default=uuid.uuid4, unique=True)
     ip_address = models.GenericIPAddressField()
     user_agent = models.TextField()
     device_info = models.JSONField(default=dict, blank=True)
     login_method = models.CharField(max_length=20, default="PASSWORD")
     mfa_verified = models.BooleanField(default=False)
-    mfa_device_used = models.ForeignKey(MFADevice, on_delete=models.SET_NULL, null=True, blank=True)
+    mfa_device_used = models.ForeignKey(
+        MFADevice, on_delete=models.SET_NULL, null=True, blank=True
+    )
     is_active = models.BooleanField(default=True)
     last_activity = models.DateTimeField(default=timezone.now)
     expires_at = models.DateTimeField()
@@ -188,7 +196,9 @@ class PasswordPolicy(models.Model):
     require_lowercase = models.BooleanField(default=True)
     require_digits = models.BooleanField(default=True)
     require_special_chars = models.BooleanField(default=True)
-    special_chars = models.CharField(max_length=50, default="!@#$%^&*()_+-=[]{}|;:,.<>?")
+    special_chars = models.CharField(
+        max_length=50, default="!@#$%^&*()_+-=[]{}|;:,.<>?"
+    )
     password_history_count = models.PositiveIntegerField(default=5)
     max_age_days = models.PositiveIntegerField(default=90)
     min_age_hours = models.PositiveIntegerField(default=24)
@@ -211,7 +221,9 @@ class PasswordPolicy(models.Model):
 
 
 class UserPasswordHistory(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="password_history")
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="password_history"
+    )
     password_hash = models.CharField(max_length=128)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -223,7 +235,9 @@ class UserPasswordHistory(models.Model):
 
 
 class TrustedDevice(TimeStampedModel):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="trusted_devices")
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="trusted_devices"
+    )
     device_id = models.UUIDField(default=uuid.uuid4, unique=True)
     name = models.CharField(max_length=100)
     device_fingerprint = models.CharField(max_length=128, unique=True)
@@ -245,23 +259,6 @@ class TrustedDevice(TimeStampedModel):
 
     def is_expired(self):
         return timezone.now() > self.trust_expires_at
-
-    def update_trust_score(self, factors):
-        score = 50
-        if factors.get("consistent_location", False):
-            score += 15
-        if factors.get("regular_usage_pattern", False):
-            score += 10
-        if factors.get("successful_auth_history", False):
-            score += 10
-        if factors.get("unusual_time", False):
-            score -= 20
-        if factors.get("unusual_location", False):
-            score -= 15
-        if factors.get("suspicious_activity", False):
-            score -= 25
-        self.trust_score = max(0, min(100, score))
-        self.save()
 
     def update_trust_score(self, factors):
         score = 50
@@ -359,7 +356,9 @@ class ContinuousAuthentication(models.Model):
         """
         anomalies = []
         if self.keystroke_pattern:
-            avg_speed = sum(self.keystroke_pattern.get("speeds", [])) / len(self.keystroke_pattern.get("speeds", [1]))
+            avg_speed = sum(self.keystroke_pattern.get("speeds", [])) / len(
+                self.keystroke_pattern.get("speeds", [1])
+            )
             current_speed = current_data.get("keystroke_speed", avg_speed)
             if abs(current_speed - avg_speed) > avg_speed * 0.5:
                 anomalies.append("unusual_typing_speed")

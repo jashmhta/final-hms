@@ -4,38 +4,65 @@ Real-time bidirectional synchronization with FHIR R4, HL7 v2.x, and CCDA standar
 Supports multiple EHR systems and interoperability standards
 """
 
-import os
+import asyncio
+import hashlib
 import json
 import logging
-import asyncio
+import os
 import uuid
+import xml.etree.ElementTree as ET
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any, Union
 from enum import Enum
-from dataclasses import dataclass, asdict
 from pathlib import Path
-import aiohttp
+from typing import Any, Dict, List, Optional, Union
+
 import aiofiles
+import aiohttp
 import asyncpg
-from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks, WebSocket, WebSocketDisconnect
+import jwt
+import redis.asyncio as redis
+from cryptography.fernet import Fernet
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, validator, EmailStr
-from sqlalchemy import Column, String, DateTime, Boolean, Text, Integer, JSON, ForeignKey, Date
+from pydantic import BaseModel, EmailStr, Field, validator
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-import redis.asyncio as redis
-import xml.etree.ElementTree as ET
-from cryptography.fernet import Fernet
-import hashlib
-import jwt
 
 # Import existing integration components
-from ...integration.fhir.fhir_server import FHIRServer, FHIRPatientModel, FHIREncounterModel
+from ...integration.fhir.fhir_server import (
+    FHIREncounterModel,
+    FHIRPatientModel,
+    FHIRServer,
+)
 from ...integration.hl7.hl7_processor import HL7Processor
-from ...integration.sync.sync_engine import DataSynchronizer, SyncEvent, SyncEventType, SyncEntityType
 from ...integration.orchestrator import IntegrationOrchestrator
+from ...integration.sync.sync_engine import (
+    DataSynchronizer,
+    SyncEntityType,
+    SyncEvent,
+    SyncEventType,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -43,8 +70,10 @@ logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
+
 class EHRSystemType(Enum):
     """Supported EHR system types"""
+
     EPIC = "EPIC"
     CERNER = "CERNER"
     ORACLE_HEALTH = "ORACLE_HEALTH"
@@ -54,14 +83,18 @@ class EHRSystemType(Enum):
     NEXTGEN = "NEXTGEN"
     CUSTOM = "CUSTOM"
 
+
 class SyncDirection(Enum):
     """Synchronization direction"""
+
     BIDIRECTIONAL = "BIDIRECTIONAL"
     HMS_TO_EHR = "HMS_TO_EHR"
     EHR_TO_HMS = "EHR_TO_HMS"
 
+
 class DataFormat(Enum):
     """Supported data formats"""
+
     FHIR_R4 = "FHIR_R4"
     HL7_V2 = "HL7_V2"
     CCDA = "CCDA"
@@ -69,8 +102,10 @@ class DataFormat(Enum):
     XML = "XML"
     CSV = "CSV"
 
+
 class SyncStatus(Enum):
     """Synchronization status"""
+
     PENDING = "PENDING"
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETED = "COMPLETED"
@@ -79,8 +114,10 @@ class SyncStatus(Enum):
     CONFLICT = "CONFLICT"
     CANCELLED = "CANCELLED"
 
+
 class EHRSystemConfig(Base):
     """EHR system configuration"""
+
     __tablename__ = "ehr_system_configs"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -108,8 +145,10 @@ class EHRSystemConfig(Base):
     # Relationship with sync logs
     sync_logs = relationship("EHRSyncLog", back_populates="ehr_system")
 
+
 class EHRSyncLog(Base):
     """EHR synchronization log"""
+
     __tablename__ = "ehr_sync_logs"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -130,8 +169,10 @@ class EHRSyncLog(Base):
     # Relationship with EHR system
     ehr_system = relationship("EHRSystemConfig", back_populates="sync_logs")
 
+
 class DataMapping(Base):
     """Field mapping between HMS and EHR systems"""
+
     __tablename__ = "ehr_data_mappings"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -144,24 +185,30 @@ class DataMapping(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+
 class ConflictResolution(Base):
     """Conflict resolution rules"""
+
     __tablename__ = "ehr_conflict_resolutions"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     ehr_system_id = Column(String(36), ForeignKey("ehr_system_configs.id"))
     entity_type = Column(String(50), nullable=False)
     conflict_type = Column(String(50), nullable=False)
-    resolution_strategy = Column(String(50), nullable=False)  # HMS_WINS, EHR_WINS, MERGE, MANUAL
+    resolution_strategy = Column(
+        String(50), nullable=False
+    )  # HMS_WINS, EHR_WINS, MERGE, MANUAL
     conditions = Column(JSON)  # Conditions for applying this rule
     priority = Column(Integer, default=1)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+
 @dataclass
 class EHRSyncRequest:
     """EHR synchronization request"""
+
     ehr_system_id: str
     sync_type: str  # CREATE, UPDATE, DELETE, FULL_SYNC
     entity_type: str  # PATIENT, ENCOUNTER, OBSERVATION, etc.
@@ -172,9 +219,11 @@ class EHRSyncRequest:
     retry_count: int = 0
     max_retries: int = 3
 
+
 @dataclass
 class EHRSyncResponse:
     """EHR synchronization response"""
+
     request_id: str
     status: SyncStatus
     ehr_system_id: str
@@ -190,15 +239,20 @@ class EHRSyncResponse:
         if self.warnings is None:
             self.warnings = []
 
+
 class EHRSynchronizationService:
     """Enterprise-grade EHR synchronization service"""
 
     def __init__(self):
-        self.db_url = os.getenv("EHR_SYNC_DB_URL", "postgresql+asyncpg://hms:hms@localhost:5432/ehr_sync")
+        self.db_url = os.getenv(
+            "EHR_SYNC_DB_URL", "postgresql+asyncpg://hms:hms@localhost:5432/ehr_sync"
+        )
         self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self.encryption_key = os.getenv("EHR_ENCRYPTION_KEY")
         self.engine = create_async_engine(self.db_url)
-        self.SessionLocal = sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)
+        self.SessionLocal = sessionmaker(
+            self.engine, class_=AsyncSession, expire_on_commit=False
+        )
 
         # Initialize integrations
         self.fhir_server: Optional[FHIRServer] = None
@@ -272,7 +326,7 @@ class EHRSynchronizationService:
         try:
             async with self.SessionLocal() as session:
                 # Validate required fields
-                required_fields = ['name', 'system_type', 'base_url']
+                required_fields = ["name", "system_type", "base_url"]
                 for field in required_fields:
                     if field not in config:
                         raise ValueError(f"Required field '{field}' is missing")
@@ -281,22 +335,24 @@ class EHRSynchronizationService:
                 encrypted_config = await self._encrypt_sensitive_data(config)
 
                 ehr_system = EHRSystemConfig(
-                    name=config['name'],
-                    system_type=config['system_type'],
-                    base_url=config['base_url'],
-                    api_key=encrypted_config.get('api_key'),
-                    api_secret=encrypted_config.get('api_secret'),
-                    username=encrypted_config.get('username'),
-                    password=encrypted_config.get('password'),
-                    client_id=encrypted_config.get('client_id'),
-                    client_secret=encrypted_config.get('client_secret'),
-                    tenant_id=config.get('tenant_id'),
-                    facility_id=config.get('facility_id'),
-                    sync_direction=config.get('sync_direction', SyncDirection.BIDIRECTIONAL.value),
-                    data_format=config.get('data_format', DataFormat.FHIR_R4.value),
-                    sync_interval_minutes=config.get('sync_interval_minutes', 60),
-                    max_retries=config.get('max_retries', 3),
-                    timeout_seconds=config.get('timeout_seconds', 30)
+                    name=config["name"],
+                    system_type=config["system_type"],
+                    base_url=config["base_url"],
+                    api_key=encrypted_config.get("api_key"),
+                    api_secret=encrypted_config.get("api_secret"),
+                    username=encrypted_config.get("username"),
+                    password=encrypted_config.get("password"),
+                    client_id=encrypted_config.get("client_id"),
+                    client_secret=encrypted_config.get("client_secret"),
+                    tenant_id=config.get("tenant_id"),
+                    facility_id=config.get("facility_id"),
+                    sync_direction=config.get(
+                        "sync_direction", SyncDirection.BIDIRECTIONAL.value
+                    ),
+                    data_format=config.get("data_format", DataFormat.FHIR_R4.value),
+                    sync_interval_minutes=config.get("sync_interval_minutes", 60),
+                    max_retries=config.get("max_retries", 3),
+                    timeout_seconds=config.get("timeout_seconds", 30),
                 )
 
                 session.add(ehr_system)
@@ -305,7 +361,9 @@ class EHRSynchronizationService:
                 # Test connectivity
                 await self._test_ehr_connectivity(ehr_system.id)
 
-                logger.info(f"Registered EHR system: {config['name']} ({ehr_system.id})")
+                logger.info(
+                    f"Registered EHR system: {config['name']} ({ehr_system.id})"
+                )
                 return ehr_system.id
 
         except Exception as e:
@@ -328,9 +386,13 @@ class EHRSynchronizationService:
 
             # Send to EHR system
             if ehr_system.data_format == DataFormat.FHIR_R4.value:
-                result = await self._sync_patient_fhir(request, ehr_system, transformed_data)
+                result = await self._sync_patient_fhir(
+                    request, ehr_system, transformed_data
+                )
             elif ehr_system.data_format == DataFormat.HL7_V2.value:
-                result = await self._sync_patient_hl7(request, ehr_system, transformed_data)
+                result = await self._sync_patient_hl7(
+                    request, ehr_system, transformed_data
+                )
             else:
                 raise ValueError(f"Unsupported data format: {ehr_system.data_format}")
 
@@ -341,9 +403,7 @@ class EHRSynchronizationService:
             # Cache result
             if self.redis_client:
                 await self.redis_client.setex(
-                    f"ehr_sync:{request_id}",
-                    3600,
-                    json.dumps(asdict(result))
+                    f"ehr_sync:{request_id}", 3600, json.dumps(asdict(result))
                 )
 
             return result
@@ -357,13 +417,15 @@ class EHRSynchronizationService:
                 entity_type=request.entity_type,
                 entity_id=request.entity_id,
                 processing_time_ms=processing_time,
-                error_message=str(e)
+                error_message=str(e),
             )
 
             await self._log_sync(request, error_result, processing_time)
             return error_result
 
-    async def _sync_patient_fhir(self, request: EHRSyncRequest, ehr_system: EHRSystemConfig, data: Dict) -> EHRSyncResponse:
+    async def _sync_patient_fhir(
+        self, request: EHRSyncRequest, ehr_system: EHRSystemConfig, data: Dict
+    ) -> EHRSyncResponse:
         """Sync patient using FHIR R4 format"""
         try:
             # Convert to FHIR Patient model
@@ -373,8 +435,13 @@ class EHRSynchronizationService:
             headers = await self._get_ehr_headers(ehr_system)
 
             if request.sync_type == "CREATE":
-                async with aiohttp.ClientSession(headers=headers, timeout=aiohttp.ClientTimeout(total=ehr_system.timeout_seconds)) as session:
-                    async with session.post(f"{ehr_system.base_url}/Patient", json=fhir_patient) as response:
+                async with aiohttp.ClientSession(
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=ehr_system.timeout_seconds),
+                ) as session:
+                    async with session.post(
+                        f"{ehr_system.base_url}/Patient", json=fhir_patient
+                    ) as response:
                         if response.status == 201:
                             response_data = await response.json()
                             return EHRSyncResponse(
@@ -383,20 +450,30 @@ class EHRSynchronizationService:
                                 ehr_system_id=ehr_system.id,
                                 entity_type=request.entity_type,
                                 entity_id=request.entity_id,
-                                external_id=response_data.get('id'),
-                                response_data=response_data
+                                external_id=response_data.get("id"),
+                                response_data=response_data,
                             )
                         else:
                             error_text = await response.text()
-                            raise HTTPException(status_code=response.status, detail=error_text)
+                            raise HTTPException(
+                                status_code=response.status, detail=error_text
+                            )
 
             elif request.sync_type == "UPDATE":
-                external_id = await self._get_external_id(request.entity_id, ehr_system.id)
+                external_id = await self._get_external_id(
+                    request.entity_id, ehr_system.id
+                )
                 if not external_id:
                     raise ValueError("No external ID found for update")
 
-                async with aiohttp.ClientSession(headers=headers, timeout=aiohttp.ClientTimeout(total=ehr_system.timeout_seconds)) as session:
-                    async with session.put(f"{ehr_system.base_url}/Patient/{external_id}", json=fhir_patient) as response:
+                async with aiohttp.ClientSession(
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=ehr_system.timeout_seconds),
+                ) as session:
+                    async with session.put(
+                        f"{ehr_system.base_url}/Patient/{external_id}",
+                        json=fhir_patient,
+                    ) as response:
                         if response.status == 200:
                             response_data = await response.json()
                             return EHRSyncResponse(
@@ -406,11 +483,13 @@ class EHRSynchronizationService:
                                 entity_type=request.entity_type,
                                 entity_id=request.entity_id,
                                 external_id=external_id,
-                                response_data=response_data
+                                response_data=response_data,
                             )
                         else:
                             error_text = await response.text()
-                            raise HTTPException(status_code=response.status, detail=error_text)
+                            raise HTTPException(
+                                status_code=response.status, detail=error_text
+                            )
 
             else:
                 raise ValueError(f"Unsupported sync type: {request.sync_type}")
@@ -419,7 +498,9 @@ class EHRSynchronizationService:
             logger.error(f"FHIR patient sync failed: {e}")
             raise
 
-    async def _sync_patient_hl7(self, request: EHRSyncRequest, ehr_system: EHRSystemConfig, data: Dict) -> EHRSyncResponse:
+    async def _sync_patient_hl7(
+        self, request: EHRSyncRequest, ehr_system: EHRSystemConfig, data: Dict
+    ) -> EHRSyncResponse:
         """Sync patient using HL7 v2 format"""
         try:
             # Convert to HL7 message
@@ -427,10 +508,15 @@ class EHRSynchronizationService:
 
             # Make API call to EHR system
             headers = await self._get_ehr_headers(ehr_system)
-            headers['Content-Type'] = 'application/hl7-v2'
+            headers["Content-Type"] = "application/hl7-v2"
 
-            async with aiohttp.ClientSession(headers=headers, timeout=aiohttp.ClientTimeout(total=ehr_system.timeout_seconds)) as session:
-                async with session.post(f"{ehr_system.base_url}/hl7", data=hl7_message.encode()) as response:
+            async with aiohttp.ClientSession(
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=ehr_system.timeout_seconds),
+            ) as session:
+                async with session.post(
+                    f"{ehr_system.base_url}/hl7", data=hl7_message.encode()
+                ) as response:
                     if response.status == 200:
                         response_data = await response.text()
                         # Parse HL7 ACK message
@@ -438,15 +524,21 @@ class EHRSynchronizationService:
 
                         return EHRSyncResponse(
                             request_id=str(uuid.uuid4()),
-                            status=SyncStatus.COMPLETED if ack_data.get('acknowledgement_code') == 'AA' else SyncStatus.FAILED,
+                            status=(
+                                SyncStatus.COMPLETED
+                                if ack_data.get("acknowledgement_code") == "AA"
+                                else SyncStatus.FAILED
+                            ),
                             ehr_system_id=ehr_system.id,
                             entity_type=request.entity_type,
                             entity_id=request.entity_id,
-                            response_data=ack_data
+                            response_data=ack_data,
                         )
                     else:
                         error_text = await response.text()
-                        raise HTTPException(status_code=response.status, detail=error_text)
+                        raise HTTPException(
+                            status_code=response.status, detail=error_text
+                        )
 
         except Exception as e:
             logger.error(f"HL7 patient sync failed: {e}")
@@ -458,7 +550,9 @@ class EHRSynchronizationService:
         # This is a placeholder - full implementation would follow the same pattern
         pass
 
-    async def full_sync(self, ehr_system_id: str, entity_types: List[str] = None) -> Dict[str, Any]:
+    async def full_sync(
+        self, ehr_system_id: str, entity_types: List[str] = None
+    ) -> Dict[str, Any]:
         """Perform full synchronization for specified entity types"""
         try:
             ehr_system = await self._get_ehr_system(ehr_system_id)
@@ -466,47 +560,49 @@ class EHRSynchronizationService:
                 raise ValueError(f"EHR system {ehr_system_id} not found")
 
             results = {
-                'total_processed': 0,
-                'successful': 0,
-                'failed': 0,
-                'errors': [],
-                'start_time': datetime.now().isoformat(),
-                'end_time': None
+                "total_processed": 0,
+                "successful": 0,
+                "failed": 0,
+                "errors": [],
+                "start_time": datetime.now().isoformat(),
+                "end_time": None,
             }
 
             # Get entities to sync from HMS database
-            entities_to_sync = await self._get_entities_for_full_sync(ehr_system_id, entity_types)
+            entities_to_sync = await self._get_entities_for_full_sync(
+                ehr_system_id, entity_types
+            )
 
             for entity in entities_to_sync:
                 try:
                     request = EHRSyncRequest(
                         ehr_system_id=ehr_system_id,
                         sync_type="CREATE",
-                        entity_type=entity['type'],
-                        entity_id=entity['id'],
-                        data=entity['data']
+                        entity_type=entity["type"],
+                        entity_id=entity["id"],
+                        data=entity["data"],
                     )
 
-                    if entity['type'] == 'PATIENT':
+                    if entity["type"] == "PATIENT":
                         response = await self.sync_patient(request)
-                    elif entity['type'] == 'ENCOUNTER':
+                    elif entity["type"] == "ENCOUNTER":
                         response = await self.sync_encounter(request)
                     else:
                         continue
 
-                    results['total_processed'] += 1
+                    results["total_processed"] += 1
                     if response.status == SyncStatus.COMPLETED:
-                        results['successful'] += 1
+                        results["successful"] += 1
                     else:
-                        results['failed'] += 1
-                        results['errors'].append(response.error_message)
+                        results["failed"] += 1
+                        results["errors"].append(response.error_message)
 
                 except Exception as e:
-                    results['total_processed'] += 1
-                    results['failed'] += 1
-                    results['errors'].append(str(e))
+                    results["total_processed"] += 1
+                    results["failed"] += 1
+                    results["errors"].append(str(e))
 
-            results['end_time'] = datetime.now().isoformat()
+            results["end_time"] = datetime.now().isoformat()
 
             # Update last sync timestamp
             await self._update_last_sync_timestamp(ehr_system_id)
@@ -526,7 +622,7 @@ class EHRSynchronizationService:
     async def _encrypt_sensitive_data(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """Encrypt sensitive configuration data"""
         encrypted = {}
-        sensitive_fields = ['api_key', 'api_secret', 'password', 'client_secret']
+        sensitive_fields = ["api_key", "api_secret", "password", "client_secret"]
 
         for key, value in config.items():
             if key in sensitive_fields and value and self.cipher_suite:
@@ -536,10 +632,12 @@ class EHRSynchronizationService:
 
         return encrypted
 
-    async def _decrypt_sensitive_data(self, encrypted_config: Dict[str, Any]) -> Dict[str, Any]:
+    async def _decrypt_sensitive_data(
+        self, encrypted_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Decrypt sensitive configuration data"""
         decrypted = {}
-        sensitive_fields = ['api_key', 'api_secret', 'password', 'client_secret']
+        sensitive_fields = ["api_key", "api_secret", "password", "client_secret"]
 
         for key, value in encrypted_config.items():
             if key in sensitive_fields and value and self.cipher_suite:
@@ -554,10 +652,9 @@ class EHRSynchronizationService:
         # Get field mappings for this EHR system
         async with self.SessionLocal() as session:
             mappings = await session.execute(
-                session.query(DataMapping)
-                .filter(
+                session.query(DataMapping).filter(
                     DataMapping.ehr_system_id == ehr_system.id,
-                    DataMapping.is_active == True
+                    DataMapping.is_active == True,
                 )
             )
             mappings = mappings.scalars().all()
@@ -568,38 +665,43 @@ class EHRSynchronizationService:
             if mapping.hms_field in transformed_data:
                 # Apply transformation rule if specified
                 if mapping.transformation_rule:
-                    transformed_data[mapping.ehr_field] = await self._apply_transformation(
-                        transformed_data[mapping.hms_field],
-                        mapping.transformation_rule
+                    transformed_data[mapping.ehr_field] = (
+                        await self._apply_transformation(
+                            transformed_data[mapping.hms_field],
+                            mapping.transformation_rule,
+                        )
                     )
                 else:
-                    transformed_data[mapping.ehr_field] = transformed_data[mapping.hms_field]
+                    transformed_data[mapping.ehr_field] = transformed_data[
+                        mapping.hms_field
+                    ]
 
         return transformed_data
 
     async def _apply_transformation(self, value: Any, rule: Dict) -> Any:
         """Apply transformation rule to a value"""
-        transformation_type = rule.get('type')
+        transformation_type = rule.get("type")
 
-        if transformation_type == 'date_format':
+        if transformation_type == "date_format":
             # Format date according to specified format
             from datetime import datetime
+
             if isinstance(value, str):
-                input_format = rule.get('input_format', '%Y-%m-%d')
-                output_format = rule.get('output_format', '%Y%m%d')
+                input_format = rule.get("input_format", "%Y-%m-%d")
+                output_format = rule.get("output_format", "%Y%m%d")
                 dt = datetime.strptime(value, input_format)
                 return dt.strftime(output_format)
 
-        elif transformation_type == 'code_mapping':
+        elif transformation_type == "code_mapping":
             # Map codes using provided mapping
-            mapping = rule.get('mapping', {})
+            mapping = rule.get("mapping", {})
             return mapping.get(str(value), value)
 
-        elif transformation_type == 'concatenate':
+        elif transformation_type == "concatenate":
             # Concatenate multiple fields
-            separator = rule.get('separator', ' ')
-            fields = rule.get('fields', [])
-            values = [str(value.get(field, '')) for field in fields]
+            separator = rule.get("separator", " ")
+            fields = rule.get("fields", [])
+            values = [str(value.get(field, "")) for field in fields]
             return separator.join(values)
 
         return value
@@ -610,54 +712,47 @@ class EHRSynchronizationService:
             "resourceType": "Patient",
             "name": [
                 {
-                    "family": data.get('last_name', ''),
-                    "given": [data.get('first_name', '')]
+                    "family": data.get("last_name", ""),
+                    "given": [data.get("first_name", "")],
                 }
             ],
-            "gender": data.get('gender', '').lower(),
-            "birthDate": data.get('date_of_birth', ''),
-            "identifier": []
+            "gender": data.get("gender", "").lower(),
+            "birthDate": data.get("date_of_birth", ""),
+            "identifier": [],
         }
 
         # Add identifiers
-        if data.get('medical_record_number'):
-            fhir_patient["identifier"].append({
-                "system": "http://hospital.com/mrn",
-                "value": data['medical_record_number']
-            })
+        if data.get("medical_record_number"):
+            fhir_patient["identifier"].append(
+                {
+                    "system": "http://hospital.com/mrn",
+                    "value": data["medical_record_number"],
+                }
+            )
 
-        if data.get('ssn'):
-            fhir_patient["identifier"].append({
-                "system": "http://hl7.org/fhir/sid/us-ssn",
-                "value": data['ssn']
-            })
+        if data.get("ssn"):
+            fhir_patient["identifier"].append(
+                {"system": "http://hl7.org/fhir/sid/us-ssn", "value": data["ssn"]}
+            )
 
         # Add contact information
-        if data.get('phone'):
-            fhir_patient["telecom"] = [
-                {
-                    "system": "phone",
-                    "value": data['phone']
-                }
-            ]
+        if data.get("phone"):
+            fhir_patient["telecom"] = [{"system": "phone", "value": data["phone"]}]
 
-        if data.get('email'):
+        if data.get("email"):
             if "telecom" not in fhir_patient:
                 fhir_patient["telecom"] = []
-            fhir_patient["telecom"].append({
-                "system": "email",
-                "value": data['email']
-            })
+            fhir_patient["telecom"].append({"system": "email", "value": data["email"]})
 
         # Add address
-        if data.get('address'):
+        if data.get("address"):
             fhir_patient["address"] = [
                 {
-                    "line": [data.get('address', '')],
-                    "city": data.get('city', ''),
-                    "state": data.get('state', ''),
-                    "postalCode": data.get('zip_code', ''),
-                    "country": data.get('country', 'USA')
+                    "line": [data.get("address", "")],
+                    "city": data.get("city", ""),
+                    "state": data.get("state", ""),
+                    "postalCode": data.get("zip_code", ""),
+                    "country": data.get("country", "USA"),
                 }
             ]
 
@@ -683,27 +778,26 @@ class EHRSynchronizationService:
 
     async def _get_ehr_headers(self, ehr_system: EHRSystemConfig) -> Dict[str, str]:
         """Get HTTP headers for EHR API calls"""
-        headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        }
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
         # Add authentication headers
         if ehr_system.api_key:
-            decrypted_config = await self._decrypt_sensitive_data({
-                'api_key': ehr_system.api_key
-            })
-            headers['Authorization'] = f"Bearer {decrypted_config['api_key']}"
+            decrypted_config = await self._decrypt_sensitive_data(
+                {"api_key": ehr_system.api_key}
+            )
+            headers["Authorization"] = f"Bearer {decrypted_config['api_key']}"
 
         elif ehr_system.username and ehr_system.password:
-            decrypted_config = await self._decrypt_sensitive_data({
-                'username': ehr_system.username,
-                'password': ehr_system.password
-            })
+            decrypted_config = await self._decrypt_sensitive_data(
+                {"username": ehr_system.username, "password": ehr_system.password}
+            )
             import base64
-            auth_string = f"{decrypted_config['username']}:{decrypted_config['password']}"
+
+            auth_string = (
+                f"{decrypted_config['username']}:{decrypted_config['password']}"
+            )
             encoded_auth = base64.b64encode(auth_string.encode()).decode()
-            headers['Authorization'] = f"Basic {encoded_auth}"
+            headers["Authorization"] = f"Basic {encoded_auth}"
 
         return headers
 
@@ -716,7 +810,9 @@ class EHRSynchronizationService:
 
             headers = await self._get_ehr_headers(ehr_system)
 
-            async with aiohttp.ClientSession(headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as session:
+            async with aiohttp.ClientSession(
+                headers=headers, timeout=aiohttp.ClientTimeout(total=10)
+            ) as session:
                 async with session.get(f"{ehr_system.base_url}/metadata") as response:
                     return response.status == 200
 
@@ -724,7 +820,12 @@ class EHRSynchronizationService:
             logger.error(f"EHR connectivity test failed: {e}")
             return False
 
-    async def _log_sync(self, request: EHRSyncRequest, response: EHRSyncResponse, processing_time_ms: float):
+    async def _log_sync(
+        self,
+        request: EHRSyncRequest,
+        response: EHRSyncResponse,
+        processing_time_ms: float,
+    ):
         """Log synchronization operation"""
         try:
             async with self.SessionLocal() as session:
@@ -740,7 +841,11 @@ class EHRSynchronizationService:
                     error_message=response.error_message,
                     processing_time_ms=int(processing_time_ms),
                     retry_count=request.retry_count,
-                    completed_at=datetime.now() if response.status != SyncStatus.PENDING else None
+                    completed_at=(
+                        datetime.now()
+                        if response.status != SyncStatus.PENDING
+                        else None
+                    ),
                 )
 
                 session.add(sync_log)
@@ -749,13 +854,17 @@ class EHRSynchronizationService:
         except Exception as e:
             logger.error(f"Failed to log sync operation: {e}")
 
-    async def _get_external_id(self, entity_id: str, ehr_system_id: str) -> Optional[str]:
+    async def _get_external_id(
+        self, entity_id: str, ehr_system_id: str
+    ) -> Optional[str]:
         """Get external ID for entity from EHR system"""
         # This would query a mapping table to get the external ID
         # For now, return None as placeholder
         return None
 
-    async def _get_entities_for_full_sync(self, ehr_system_id: str, entity_types: List[str] = None) -> List[Dict]:
+    async def _get_entities_for_full_sync(
+        self, ehr_system_id: str, entity_types: List[str] = None
+    ) -> List[Dict]:
         """Get entities for full synchronization"""
         # This would query the HMS database for entities that need to be synced
         # For now, return empty list as placeholder
@@ -779,9 +888,9 @@ class EHRSynchronizationService:
             try:
                 request = await self.sync_queue.get()
 
-                if request.entity_type == 'PATIENT':
+                if request.entity_type == "PATIENT":
                     response = await self.sync_patient(request)
-                elif request.entity_type == 'ENCOUNTER':
+                elif request.entity_type == "ENCOUNTER":
                     response = await self.sync_encounter(request)
                 else:
                     logger.warning(f"Unsupported entity type: {request.entity_type}")
@@ -817,17 +926,19 @@ class EHRSynchronizationService:
                     cutoff_time = current_time - timedelta(minutes=5)  # 5-minute buffer
 
                     ehr_systems = await session.execute(
-                        session.query(EHRSystemConfig)
-                        .filter(
+                        session.query(EHRSystemConfig).filter(
                             EHRSystemConfig.is_active == True,
-                            EHRSystemConfig.last_sync_at.is_(None) |
-                            (EHRSystemConfig.last_sync_at < cutoff_time)
+                            EHRSystemConfig.last_sync_at.is_(None)
+                            | (EHRSystemConfig.last_sync_at < cutoff_time),
                         )
                     )
 
                     for ehr_system in ehr_systems.scalars().all():
-                        if ehr_system.last_sync_at is None or \
-                           (current_time - ehr_system.last_sync_at).total_seconds() >= ehr_system.sync_interval_minutes * 60:
+                        if (
+                            ehr_system.last_sync_at is None
+                            or (current_time - ehr_system.last_sync_at).total_seconds()
+                            >= ehr_system.sync_interval_minutes * 60
+                        ):
                             # Perform scheduled sync
                             asyncio.create_task(self.full_sync(ehr_system.id))
 
@@ -842,14 +953,17 @@ class EHRSynchronizationService:
             try:
                 async with self.SessionLocal() as session:
                     ehr_systems = await session.execute(
-                        session.query(EHRSystemConfig)
-                        .filter(EHRSystemConfig.is_active == True)
+                        session.query(EHRSystemConfig).filter(
+                            EHRSystemConfig.is_active == True
+                        )
                     )
 
                     for ehr_system in ehr_systems.scalars().all():
                         is_healthy = await self._test_ehr_connectivity(ehr_system.id)
                         if not is_healthy:
-                            logger.warning(f"EHR system {ehr_system.name} ({ehr_system.id}) is unhealthy")
+                            logger.warning(
+                                f"EHR system {ehr_system.name} ({ehr_system.id}) is unhealthy"
+                            )
 
                 await asyncio.sleep(300)  # Check every 5 minutes
 
@@ -861,7 +975,7 @@ class EHRSynchronizationService:
         message = {
             "type": "sync_result",
             "timestamp": datetime.now().isoformat(),
-            "data": asdict(result)
+            "data": asdict(result),
         }
 
         for connection in self.active_connections:
@@ -905,7 +1019,11 @@ class EHRSynchronizationService:
                     "processing_time_ms": sync_log.processing_time_ms,
                     "error_message": sync_log.error_message,
                     "created_at": sync_log.created_at.isoformat(),
-                    "completed_at": sync_log.completed_at.isoformat() if sync_log.completed_at else None
+                    "completed_at": (
+                        sync_log.completed_at.isoformat()
+                        if sync_log.completed_at
+                        else None
+                    ),
                 }
 
         return None
@@ -914,8 +1032,7 @@ class EHRSynchronizationService:
         """Get all configured EHR systems"""
         async with self.SessionLocal() as session:
             ehr_systems = await session.execute(
-                session.query(EHRSystemConfig)
-                .filter(EHRSystemConfig.is_active == True)
+                session.query(EHRSystemConfig).filter(EHRSystemConfig.is_active == True)
             )
 
             return [
@@ -926,13 +1043,17 @@ class EHRSynchronizationService:
                     "base_url": system.base_url,
                     "sync_direction": system.sync_direction,
                     "data_format": system.data_format,
-                    "last_sync_at": system.last_sync_at.isoformat() if system.last_sync_at else None,
-                    "is_healthy": await self._test_ehr_connectivity(system.id)
+                    "last_sync_at": (
+                        system.last_sync_at.isoformat() if system.last_sync_at else None
+                    ),
+                    "is_healthy": await self._test_ehr_connectivity(system.id),
                 }
                 for system in ehr_systems.scalars().all()
             ]
 
-    async def get_sync_metrics(self, ehr_system_id: str = None, time_range_hours: int = 24) -> Dict:
+    async def get_sync_metrics(
+        self, ehr_system_id: str = None, time_range_hours: int = 24
+    ) -> Dict:
         """Get synchronization metrics"""
         async with self.SessionLocal() as session:
             query = session.query(EHRSyncLog)
@@ -947,25 +1068,34 @@ class EHRSynchronizationService:
             logs = sync_logs.scalars().all()
 
             total_requests = len(logs)
-            successful = len([log for log in logs if log.status == SyncStatus.COMPLETED.value])
+            successful = len(
+                [log for log in logs if log.status == SyncStatus.COMPLETED.value]
+            )
             failed = len([log for log in logs if log.status == SyncStatus.FAILED.value])
 
-            avg_processing_time = sum(log.processing_time_ms for log in logs) / total_requests if total_requests > 0 else 0
+            avg_processing_time = (
+                sum(log.processing_time_ms for log in logs) / total_requests
+                if total_requests > 0
+                else 0
+            )
 
             return {
                 "total_requests": total_requests,
                 "successful": successful,
                 "failed": failed,
-                "success_rate": (successful / total_requests * 100) if total_requests > 0 else 0,
+                "success_rate": (
+                    (successful / total_requests * 100) if total_requests > 0 else 0
+                ),
                 "average_processing_time_ms": avg_processing_time,
-                "time_range_hours": time_range_hours
+                "time_range_hours": time_range_hours,
             }
+
 
 # FastAPI application
 ehr_app = FastAPI(
     title="HMS EHR Synchronization Service",
     description="Enterprise-grade EHR synchronization with FHIR, HL7, and CCDA support",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 ehr_app.add_middleware(
@@ -979,6 +1109,7 @@ ehr_app.add_middleware(
 # Global service instance
 ehr_service: Optional[EHRSynchronizationService] = None
 
+
 async def get_ehr_service() -> EHRSynchronizationService:
     """Get EHR service instance"""
     global ehr_service
@@ -987,27 +1118,32 @@ async def get_ehr_service() -> EHRSynchronizationService:
         await ehr_service.initialize()
     return ehr_service
 
+
 # API Endpoints
 @ehr_app.post("/ehr/systems/register")
 async def register_ehr_system(
     config: Dict[str, Any],
-    ehr_service: EHRSynchronizationService = Depends(get_ehr_service)
+    ehr_service: EHRSynchronizationService = Depends(get_ehr_service),
 ):
     """Register a new EHR system"""
     system_id = await ehr_service.register_ehr_system(config)
     return {"system_id": system_id, "status": "registered"}
 
+
 @ehr_app.get("/ehr/systems")
-async def get_ehr_systems(ehr_service: EHRSynchronizationService = Depends(get_ehr_service)):
+async def get_ehr_systems(
+    ehr_service: EHRSynchronizationService = Depends(get_ehr_service),
+):
     """Get all configured EHR systems"""
     return await ehr_service.get_ehr_systems()
+
 
 @ehr_app.post("/ehr/sync/patient")
 async def sync_patient(
     ehr_system_id: str,
     sync_type: str,
     patient_data: Dict[str, Any],
-    ehr_service: EHRSynchronizationService = Depends(get_ehr_service)
+    ehr_service: EHRSynchronizationService = Depends(get_ehr_service),
 ):
     """Synchronize patient data with EHR system"""
     request = EHRSyncRequest(
@@ -1015,18 +1151,19 @@ async def sync_patient(
         sync_type=sync_type,
         entity_type="PATIENT",
         entity_id=patient_data.get("id", str(uuid.uuid4())),
-        data=patient_data
+        data=patient_data,
     )
 
     response = await ehr_service.sync_patient(request)
     return asdict(response)
+
 
 @ehr_app.post("/ehr/sync/encounter")
 async def sync_encounter(
     ehr_system_id: str,
     sync_type: str,
     encounter_data: Dict[str, Any],
-    ehr_service: EHRSynchronizationService = Depends(get_ehr_service)
+    ehr_service: EHRSynchronizationService = Depends(get_ehr_service),
 ):
     """Synchronize encounter data with EHR system"""
     request = EHRSyncRequest(
@@ -1034,26 +1171,27 @@ async def sync_encounter(
         sync_type=sync_type,
         entity_type="ENCOUNTER",
         entity_id=encounter_data.get("id", str(uuid.uuid4())),
-        data=encounter_data
+        data=encounter_data,
     )
 
     response = await ehr_service.sync_encounter(request)
     return asdict(response)
 
+
 @ehr_app.post("/ehr/sync/full")
 async def full_sync(
     ehr_system_id: str,
     entity_types: List[str] = None,
-    ehr_service: EHRSynchronizationService = Depends(get_ehr_service)
+    ehr_service: EHRSynchronizationService = Depends(get_ehr_service),
 ):
     """Perform full synchronization"""
     results = await ehr_service.full_sync(ehr_system_id, entity_types)
     return results
 
+
 @ehr_app.get("/ehr/sync/status/{request_id}")
 async def get_sync_status(
-    request_id: str,
-    ehr_service: EHRSynchronizationService = Depends(get_ehr_service)
+    request_id: str, ehr_service: EHRSynchronizationService = Depends(get_ehr_service)
 ):
     """Get synchronization status"""
     status = await ehr_service.get_sync_status(request_id)
@@ -1061,35 +1199,42 @@ async def get_sync_status(
         raise HTTPException(status_code=404, detail="Sync request not found")
     return status
 
+
 @ehr_app.get("/ehr/metrics")
 async def get_sync_metrics(
     ehr_system_id: Optional[str] = None,
     time_range_hours: int = 24,
-    ehr_service: EHRSynchronizationService = Depends(get_ehr_service)
+    ehr_service: EHRSynchronizationService = Depends(get_ehr_service),
 ):
     """Get synchronization metrics"""
     return await ehr_service.get_sync_metrics(ehr_system_id, time_range_hours)
+
 
 @ehr_app.websocket("/ehr/updates/{client_id}")
 async def websocket_endpoint(
     websocket: WebSocket,
     client_id: str,
-    ehr_service: EHRSynchronizationService = Depends(get_ehr_service)
+    ehr_service: EHRSynchronizationService = Depends(get_ehr_service),
 ):
     """WebSocket endpoint for real-time updates"""
     await ehr_service.connect_websocket(websocket, client_id)
 
+
 @ehr_app.get("/health")
-async def health_check(ehr_service: EHRSynchronizationService = Depends(get_ehr_service)):
+async def health_check(
+    ehr_service: EHRSynchronizationService = Depends(get_ehr_service),
+):
     """Health check endpoint"""
     return {
         "status": "healthy",
         "service": "HMS EHR Synchronization Service",
         "timestamp": datetime.now().isoformat(),
         "active_connections": len(ehr_service.active_connections),
-        "configured_systems": len(await ehr_service.get_ehr_systems())
+        "configured_systems": len(await ehr_service.get_ehr_systems()),
     }
+
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(ehr_app, host="0.0.0.0", port=8083)

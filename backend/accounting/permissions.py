@@ -1,3 +1,7 @@
+"""
+permissions module
+"""
+
 from rest_framework import permissions
 
 from users.models import UserRole
@@ -121,7 +125,10 @@ class PayrollProcessingPermission(permissions.BasePermission):
         user_role = request.user.role
         if user_role in [UserRole.SUPER_ADMIN, UserRole.HOSPITAL_ADMIN]:
             return True
-        if hasattr(request.user, "has_hr_permissions") and request.user.has_hr_permissions:
+        if (
+            hasattr(request.user, "has_hr_permissions")
+            and request.user.has_hr_permissions
+        ):
             return True
         if view.action in ["list", "retrieve"]:
             return True
@@ -147,7 +154,10 @@ class TaxCompliancePermission(permissions.BasePermission):
         user_role = request.user.role
         if user_role in [UserRole.SUPER_ADMIN, UserRole.HOSPITAL_ADMIN]:
             return True
-        if hasattr(request.user, "has_tax_permissions") and request.user.has_tax_permissions:
+        if (
+            hasattr(request.user, "has_tax_permissions")
+            and request.user.has_tax_permissions
+        ):
             return True
         return False
 
@@ -159,7 +169,10 @@ class BankReconciliationPermission(permissions.BasePermission):
         user_role = request.user.role
         if user_role in [UserRole.SUPER_ADMIN, UserRole.HOSPITAL_ADMIN]:
             return True
-        if hasattr(request.user, "has_finance_permissions") and request.user.has_finance_permissions:
+        if (
+            hasattr(request.user, "has_finance_permissions")
+            and request.user.has_finance_permissions
+        ):
             return True
         if request.method == "GET":
             return user_role in [UserRole.BILLING_CLERK]

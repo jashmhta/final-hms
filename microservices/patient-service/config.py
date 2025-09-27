@@ -6,8 +6,10 @@ Centralized configuration management for the Patient microservice.
 
 import os
 from typing import Optional
-from pydantic import BaseSettings, Field
+
 from cryptography.fernet import Fernet
+from pydantic import BaseSettings, Field
+
 
 class Settings(BaseSettings):
     """Application settings with environment variable support"""
@@ -20,23 +22,18 @@ class Settings(BaseSettings):
     # Database Configuration
     DATABASE_URL: str = Field(
         default="postgresql://postgres:password@localhost:5432/patient_db",
-        env="DATABASE_URL"
+        env="DATABASE_URL",
     )
 
     # Redis Configuration
-    REDIS_URL: str = Field(
-        default="redis://localhost:6379/0",
-        env="REDIS_URL"
-    )
+    REDIS_URL: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
 
     # Security Configuration
     JWT_SECRET_KEY: str = Field(
-        default="your-secret-key-change-in-production",
-        env="JWT_SECRET_KEY"
+        default="your-secret-key-change-in-production", env="JWT_SECRET_KEY"
     )
     ENCRYPTION_KEY: str = Field(
-        default="your-encryption-key-change-in-production",
-        env="ENCRYPTION_KEY"
+        default="your-encryption-key-change-in-production", env="ENCRYPTION_KEY"
     )
 
     # Monitoring Configuration
@@ -45,10 +42,7 @@ class Settings(BaseSettings):
 
     # API Configuration
     API_PREFIX: str = Field(default="/api", env="API_PREFIX")
-    CORS_ORIGINS: list = Field(
-        default=["*"],
-        env="CORS_ORIGINS"
-    )
+    CORS_ORIGINS: list = Field(default=["*"], env="CORS_ORIGINS")
 
     # Performance Configuration
     DATABASE_POOL_SIZE: int = Field(default=20, env="DATABASE_POOL_SIZE")
@@ -58,8 +52,7 @@ class Settings(BaseSettings):
     # Logging Configuration
     LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")
     LOG_FORMAT: str = Field(
-        default="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        env="LOG_FORMAT"
+        default="%(asctime)s - %(name)s - %(levelname)s - %(message)s", env="LOG_FORMAT"
     )
 
     # Health Check Configuration
@@ -69,6 +62,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
+
 
 # Initialize settings
 settings = Settings()
@@ -97,7 +91,11 @@ if not settings.REDIS_URL or "redis://" not in settings.REDIS_URL:
 DATABASE_URL = settings.DATABASE_URL
 REDIS_URL = settings.REDIS_URL
 JWT_SECRET_KEY = settings.JWT_SECRET_KEY
-ENCRYPTION_KEY = settings.ENCRYPTION_KEY.encode() if isinstance(settings.ENCRYPTION_KEY, str) else settings.ENCRYPTION_KEY
+ENCRYPTION_KEY = (
+    settings.ENCRYPTION_KEY.encode()
+    if isinstance(settings.ENCRYPTION_KEY, str)
+    else settings.ENCRYPTION_KEY
+)
 SERVICE_NAME = settings.SERVICE_NAME
 SERVICE_VERSION = settings.SERVICE_VERSION
 JAEGER_AGENT_HOST = settings.JAEGER_AGENT_HOST

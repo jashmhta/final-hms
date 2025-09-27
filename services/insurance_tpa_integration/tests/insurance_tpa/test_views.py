@@ -1,14 +1,23 @@
+"""
+test_views module
+"""
+
 from unittest import mock
+
 import pytest
-from django.contrib.auth import get_user_model
-from django.urls import reverse
 from fakeredis import FakeStrictRedis
 from insurance_tpa.factories.factories import *
 from insurance_tpa.models import Claim, PreAuth
 from insurance_tpa.views import ClaimViewSet, PreAuthViewSet
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
+
+from django.contrib.auth import get_user_model
+from django.urls import reverse
+
 User = get_user_model()
+
+
 @pytest.mark.django_db
 class TestPreAuthViews(APITestCase):
     def setUp(self):
@@ -18,6 +27,7 @@ class TestPreAuthViews(APITestCase):
         self.client.force_authenticate(user=self.user)
         self.url = reverse("preauth-list")
         self.redis_mock = FakeStrictRedis()
+
     @mock.patch("insurance_tpa.tasks.submit_tpa_request.delay")
     def test_create_preauth_success(self, mock_celery_task):
         data = {
@@ -32,6 +42,7 @@ class TestPreAuthViews(APITestCase):
         assert preauth.claim_amount == 50000.00
         assert preauth.status == "pending"
         mock_celery_task.assert_called_once_with(preauth.id)
+
     def test_create_preauth_rate_limit_exceeded(self):
         data = {
             "patient_id": self.patient.patient_id,
@@ -45,10 +56,12 @@ class TestPreAuthViews(APITestCase):
                 assert "Rate limit exceeded" in response.data["detail"]
             else:
                 assert response.status_code == status.HTTP_201_CREATED
+
     def test_list_preauth_unauthenticated(self):
         self.client.force_authenticate(user=None)
         response = self.client.get(self.url)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
     def test_create_preauth_invalid_amount(self):
         data = {
             "patient_id": self.patient.patient_id,
@@ -61,6 +74,7 @@ class TestPreAuthViews(APITestCase):
         data["claim_amount"] = 2000000.00
         response = self.client.post(self.url, data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     @mock.patch("redis.Redis")
     def test_preauth_list_caching(self, mock_redis):
         mock_redis_instance = mock_redis.return_value
@@ -70,6 +84,8 @@ class TestPreAuthViews(APITestCase):
         mock_redis_instance.get.return_value = b"cached_response"
         response2 = self.client.get(self.url)
         assert response1.data == response2.data
+
+
 @pytest.mark.django_db
 class TestClaimViews(APITestCase):
     def setUp(self):
@@ -79,6 +95,7 @@ class TestClaimViews(APITestCase):
         self.client.force_authenticate(user=self.user)
         self.create_url = reverse("claim-list")
         self.status_url = reverse("claim-status", kwargs={"pk": 1})
+
     @mock.patch("insurance_tpa.tasks.submit_tpa_request.delay")
     def test_create_claim_success(self, mock_celery_task):
         data = {
@@ -94,6 +111,7 @@ class TestClaimViews(APITestCase):
         assert claim.billed_amount == 25000.00
         assert claim.status == "pending"
         mock_celery_task.assert_called_once_with(claim.id)
+
     def test_create_claim_rate_limit_exceeded(self):
         data = {
             "patient_id": self.patient.patient_id,
@@ -107,6 +125,7 @@ class TestClaimViews(APITestCase):
                 assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
             else:
                 assert response.status_code == status.HTTP_201_CREATED
+
     def test_claim_status_caching(self):
         claim = ClaimFactory(patient=self.patient, created_by=self.user)
         url = reverse("claim-status", kwargs={"pk": claim.id})
@@ -118,6 +137,7 @@ class TestClaimViews(APITestCase):
             mock_redis_instance.get.return_value = b'{"status": "pending"}'
             response2 = self.client.get(url)
             assert response1.data["status"] == response2.data["status"]
+
     def test_create_claim_too_many_procedures(self):
         procedures = ", ".join([f"Proc{i}" for i in range(11)])
         data = {
@@ -129,6 +149,7 @@ class TestClaimViews(APITestCase):
         response = self.client.post(self.create_url, data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "procedures" in response.data
+
     def test_claim_sql_injection_protection(self):
         malicious_data = {
             "patient_id": self.patient.patient_id,
@@ -139,6 +160,8 @@ class TestClaimViews(APITestCase):
         response = self.client.post(self.create_url, malicious_data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         assert Claim.objects.filter(procedures="' OR '1'='1").exists()
+
+
 @pytest.mark.django_db
 class TestReimbursementViews(APITestCase):
     def setUp(self):
@@ -148,6 +171,7 @@ class TestReimbursementViews(APITestCase):
         self.claim = ClaimFactory(patient=self.patient, created_by=self.user)
         self.client.force_authenticate(user=self.user)
         self.url = reverse("reimbursement-list")
+
     def test_create_reimbursement_success(self):
         data = {
             "claim_id": self.claim.id,
@@ -161,7 +185,8 @@ class TestReimbursementViews(APITestCase):
         reimbursement = self.claim.reimbursement_set.first()
         assert reimbursement.paid_amount == 20000.00
         assert reimbursement.status == "paid"
-        assert self.claim.status == "paid"  
+        assert self.claim.status == "paid"
+
     def test_reimbursement_rate_limiting(self):
         data = {
             "claim_id": self.claim.id,
@@ -176,6 +201,7 @@ class TestReimbursementViews(APITestCase):
                 assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
             else:
                 assert response.status_code == status.HTTP_201_CREATED
+
     def test_duplicate_transaction_id(self):
         data = {
             "claim_id": self.claim.id,

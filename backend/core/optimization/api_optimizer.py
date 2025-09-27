@@ -1,3 +1,5 @@
+import hashlib
+
 """
 API Response Optimization Utilities
 Advanced pagination, efficient serialization, and response caching
@@ -46,12 +48,20 @@ class OptimizedPageNumberPagination(PageNumberPagination):
                 "page_size": self.get_page_size(self.request),
                 "has_next": self.page.has_next(),
                 "has_previous": self.page.has_previous(),
-                "next_page_number": self.page.next_page_number() if self.page.has_next() else None,
-                "previous_page_number": self.page.previous_page_number() if self.page.has_previous() else None,
+                "next_page_number": (
+                    self.page.next_page_number() if self.page.has_next() else None
+                ),
+                "previous_page_number": (
+                    self.page.previous_page_number()
+                    if self.page.has_previous()
+                    else None
+                ),
                 "results": data,
                 "performance": {
                     "query_time": getattr(self.request, "query_time", 0),
-                    "serialization_time": getattr(self.request, "serialization_time", 0),
+                    "serialization_time": getattr(
+                        self.request, "serialization_time", 0
+                    ),
                     "cache_hit": getattr(self.request, "cache_hit", False),
                     "cached_at": getattr(self.request, "cached_at", None),
                 },
@@ -100,7 +110,9 @@ class CursorPagination:
                     queryset = queryset.filter(**{f"{field_name}__lt": last_value})
 
         # Limit page size
-        queryset = queryset[: self.page_size + 1]  # Get one extra to check if more exists
+        queryset = queryset[
+            : self.page_size + 1
+        ]  # Get one extra to check if more exists
 
         # Get results and check if more pages exist
         results = list(queryset[: self.page_size])
@@ -118,12 +130,19 @@ class CursorPagination:
             if has_more or direction == "next":
                 import base64
 
-                next_cursor = base64.b64encode(json.dumps(cursor_data).encode()).decode()
+                next_cursor = base64.b64encode(
+                    json.dumps(cursor_data).encode()
+                ).decode()
 
             if cursor and direction == "next":
                 prev_cursor = cursor
 
-        return {"results": results, "next_cursor": next_cursor, "prev_cursor": prev_cursor, "has_more": has_more}
+        return {
+            "results": results,
+            "next_cursor": next_cursor,
+            "prev_cursor": prev_cursor,
+            "has_more": has_more,
+        }
 
 
 class StreamingJSONResponse(JsonResponse):
@@ -136,7 +155,11 @@ class StreamingJSONResponse(JsonResponse):
 
     def render(self):
         """Stream the response"""
-        response = {"results": self.generator, "count": getattr(self, "_count", None), "streaming": True}
+        response = {
+            "results": self.generator,
+            "count": getattr(self, "_count", None),
+            "streaming": True,
+        }
         return json.dumps(response, cls=self._JSONEncoder)
 
     class _JSONEncoder(json.JSONEncoder):
@@ -177,7 +200,10 @@ class APICacheMiddleware:
 
         # Cache successful responses
         if response.status_code == 200 and hasattr(response, "data"):
-            cache_data = {"data": response.data, "cached_at": timezone.now().isoformat()}
+            cache_data = {
+                "data": response.data,
+                "cached_at": timezone.now().isoformat(),
+            }
             cache.set(cache_key, cache_data, self.cache_timeout)
             response["X-Cache"] = "MISS"
 
@@ -188,7 +214,7 @@ class APICacheMiddleware:
         from urllib.parse import urlencode
 
         query_string = urlencode(request.GET)
-        return f"{self.cache_prefix}{request.path}_{hashlib.md5(query_string.encode()).hexdigest()}"
+        return f"{self.cache_prefix}{request.path}_{hashlib.hashlib.sha256(query_string.encode()).hexdigest()}"
 
 
 def cache_api_response(timeout=None, key_func=None):
@@ -201,9 +227,7 @@ def cache_api_response(timeout=None, key_func=None):
             if key_func:
                 cache_key = key_func(request, *args, **kwargs)
             else:
-                cache_key = (
-                    f"api_{view.__class__.__name__}_{hashlib.md5(request.build_absolute_uri().encode()).hexdigest()}"
-                )
+                cache_key = f"api_{view.__class__.__name__}_{hashlib.hashlib.sha256(request.build_absolute_uri().encode()).hexdigest()}"
 
             # Check cache
             cached_data = cache.get(cache_key)
@@ -217,7 +241,10 @@ def cache_api_response(timeout=None, key_func=None):
 
             # Cache successful responses
             if response.status_code == 200 and hasattr(response, "data"):
-                cache_data = {"data": response.data, "cached_at": timezone.now().isoformat()}
+                cache_data = {
+                    "data": response.data,
+                    "cached_at": timezone.now().isoformat(),
+                }
                 cache.set(cache_key, cache_data, timeout or settings.API_CACHE_TIMEOUT)
 
             return response
@@ -257,7 +284,8 @@ class BulkOperationMixin:
 
         # Use bulk_create for efficiency
         instances = self.get_queryset().model.objects.bulk_create(
-            [self.get_queryset().model(**item) for item in serializer.validated_data], batch_size=1000
+            [self.get_queryset().model(**item) for item in serializer.validated_data],
+            batch_size=1000,
         )
 
         # Serialize created instances
@@ -291,7 +319,9 @@ class BulkOperationMixin:
 
         # Bulk update
         self.get_queryset().model.objects.bulk_update(
-            updates, batch_size=1000, fields=[field for field in request.data[0].keys() if field != "id"]
+            updates,
+            batch_size=1000,
+            fields=[field for field in request.data[0].keys() if field != "id"],
         )
 
         # Return updated instances
@@ -393,7 +423,10 @@ class OptimizedModelViewSet(ModelViewSet):
 
         # Invalidate cache
         model_name = instance.__class__.__name__
-        cache_keys = [f"{model_name}_{instance.pk}", f"{model_name}_list_*"]  # Pattern for list caches
+        cache_keys = [
+            f"{model_name}_{instance.pk}",
+            f"{model_name}_list_*",
+        ]  # Pattern for list caches
         cache.delete_many(cache_keys)
 
     def perform_destroy(self, instance):
@@ -414,7 +447,9 @@ def optimize_serializer_fields(serializer, requested_fields=None):
     # Limit fields
     if hasattr(serializer, "fields"):
         fields_to_include = set(requested_fields) & set(serializer.fields.keys())
-        serializer.fields = {k: v for k, v in serializer.fields.items() if k in fields_to_include}
+        serializer.fields = {
+            k: v for k, v in serializer.fields.items() if k in fields_to_include
+        }
 
     return serializer
 
@@ -437,7 +472,9 @@ def calculate_query_efficiency(queryset):
     return {
         "queries_executed": queries_executed,
         "total_time_ms": total_time * 1000,
-        "avg_time_per_query_ms": (total_time / queries_executed) * 1000 if queries_executed > 0 else 0,
+        "avg_time_per_query_ms": (
+            (total_time / queries_executed) * 1000 if queries_executed > 0 else 0
+        ),
         "query_count_score": 1 / (1 + queries_executed),  # Lower is better
         "time_score": 1 / (1 + total_time * 1000),  # Lower is better
     }

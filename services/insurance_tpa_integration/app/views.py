@@ -1,12 +1,13 @@
+"""
+views module
+"""
+
+import asyncio
 import json
 import logging
-import asyncio
 from datetime import datetime, timezone
-from django.utils import timezone as django_timezone
+
 from celery import current_app as celery_app
-from django.core.cache import cache
-from django.db import transaction
-from django.http import JsonResponse
 from django_ratelimit.decorators import ratelimit
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
@@ -14,22 +15,32 @@ from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
+
+from django.core.cache import cache
+from django.db import transaction
+from django.http import JsonResponse
+from django.utils import timezone as django_timezone
+
+from ..insurance_service import (
+    ClaimStatus,
+    ClaimSubmission,
+    EligibilityRequest,
+    InsuranceIntegrationService,
+    PreAuthRequest,
+    create_insurance_service,
+)
 from .models import Claim, PreAuth, Reimbursement
 from .serializers import ClaimSerializer, PreAuthSerializer, ReimbursementSerializer
-from ..insurance_service import (
-    create_insurance_service,
-    InsuranceIntegrationService,
-    EligibilityRequest,
-    PreAuthRequest,
-    ClaimSubmission,
-    ClaimStatus
-)  
+
 logger = logging.getLogger(__name__)
+
+
 class PreAuthCreateView(generics.CreateAPIView):
     queryset = PreAuth.objects.all()
     serializer_class = PreAuthSerializer
     permission_classes = [IsAuthenticated]
     throttle_classes = [UserRateThrottle]
+
     @ratelimit(key="user", rate="5/m", method="POST", block=True)
     def create(self, request, *args, **kwargs):
         try:
@@ -42,36 +53,70 @@ class PreAuthCreateView(generics.CreateAPIView):
                     # Create enterprise pre-authorization request
                     try:
                         # Get insurance provider from validated data
-                        provider_id = serializer.validated_data.get('insurance_provider_id', 1)
+                        provider_id = serializer.validated_data.get(
+                            "insurance_provider_id", 1
+                        )
 
                         # Create pre-auth request for real insurance integration
                         preauth_request = PreAuthRequest(
-                            patient_id=str(serializer.validated_data.get('patient_id')),
-                            policy_number=serializer.validated_data.get('policy_number', ''),
-                            provider_npi=serializer.validated_data.get('provider_npi', ''),
-                            facility_npi=serializer.validated_data.get('facility_npi', ''),
-                            diagnosis_codes=serializer.validated_data.get('diagnosis_codes', []),
-                            procedure_codes=serializer.validated_data.get('procedure_codes', []),
-                            estimated_cost=float(serializer.validated_data.get('estimated_cost', 0)),
-                            service_date=serializer.validated_data.get('service_date', datetime.now().isoformat()),
-                            clinical_notes=serializer.validated_data.get('clinical_notes', ''),
-                            urgency_level=serializer.validated_data.get('urgency_level', 'ROUTINE'),
-                            supporting_documents=serializer.validated_data.get('supporting_documents', [])
+                            patient_id=str(serializer.validated_data.get("patient_id")),
+                            policy_number=serializer.validated_data.get(
+                                "policy_number", ""
+                            ),
+                            provider_npi=serializer.validated_data.get(
+                                "provider_npi", ""
+                            ),
+                            facility_npi=serializer.validated_data.get(
+                                "facility_npi", ""
+                            ),
+                            diagnosis_codes=serializer.validated_data.get(
+                                "diagnosis_codes", []
+                            ),
+                            procedure_codes=serializer.validated_data.get(
+                                "procedure_codes", []
+                            ),
+                            estimated_cost=float(
+                                serializer.validated_data.get("estimated_cost", 0)
+                            ),
+                            service_date=serializer.validated_data.get(
+                                "service_date", datetime.now().isoformat()
+                            ),
+                            clinical_notes=serializer.validated_data.get(
+                                "clinical_notes", ""
+                            ),
+                            urgency_level=serializer.validated_data.get(
+                                "urgency_level", "ROUTINE"
+                            ),
+                            supporting_documents=serializer.validated_data.get(
+                                "supporting_documents", []
+                            ),
                         )
 
                         # Submit to real insurance provider
                         async def submit_preauth():
                             async with create_insurance_service() as service:
-                                preauth_response = await service.request_preauthorization(preauth_request, provider_id)
+                                preauth_response = (
+                                    await service.request_preauthorization(
+                                        preauth_request, provider_id
+                                    )
+                                )
 
                                 # Update instance with real response
                                 instance.status = preauth_response.status.value
-                                instance.preauth_number = preauth_response.preauth_number
-                                instance.approval_amount = preauth_response.approval_amount
+                                instance.preauth_number = (
+                                    preauth_response.preauth_number
+                                )
+                                instance.approval_amount = (
+                                    preauth_response.approval_amount
+                                )
                                 instance.denial_reason = preauth_response.denial_reason
                                 instance.conditions = preauth_response.conditions
-                                instance.expiration_date = preauth_response.expiration_date
-                                instance.processing_time_ms = preauth_response.processing_time_ms
+                                instance.expiration_date = (
+                                    preauth_response.expiration_date
+                                )
+                                instance.processing_time_ms = (
+                                    preauth_response.processing_time_ms
+                                )
                                 instance.save()
 
                                 # Update cache
@@ -120,8 +165,8 @@ class PreAuthCreateView(generics.CreateAPIView):
                             "message": "Enterprise pre-authorization request created and submitted to insurance provider",
                             "preauth_id": instance.id,
                             "status": instance.status,
-                            "preauth_number": getattr(instance, 'preauth_number', None),
-                            "approval_amount": getattr(instance, 'approval_amount', 0),
+                            "preauth_number": getattr(instance, "preauth_number", None),
+                            "approval_amount": getattr(instance, "approval_amount", 0),
                             "estimated_processing_time": "Real-time processing",
                         },
                         status=status.HTTP_201_CREATED,
@@ -139,12 +184,16 @@ class PreAuthCreateView(generics.CreateAPIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
 class PreAuthListView(generics.ListAPIView):
     serializer_class = PreAuthSerializer
     permission_classes = [IsAuthenticated]
+
     def get_queryset(self):
         user = self.request.user
         return PreAuth.objects.filter(created_by=user).order_by("-created_at")
+
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
@@ -155,11 +204,15 @@ class PreAuthListView(generics.ListAPIView):
         return Response(
             {"count": len(queryset), "results": serializer.data, "status": "success"}
         )
+
+
 class PreAuthRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = PreAuthSerializer
     permission_classes = [IsAuthenticated]
+
     def get_queryset(self):
         return PreAuth.objects.filter(created_by=self.request.user)
+
     def perform_update(self, serializer):
         instance = serializer.save()
         cache_key = f"preauth_{instance.id}"
@@ -167,16 +220,20 @@ class PreAuthRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         logger.info(
             f"PreAuth {instance.id} updated to status: {instance.status} by user {self.request.user.id}"
         )
+
     def perform_destroy(self, instance):
         cache_key = f"preauth_{instance.id}"
         cache.delete(cache_key)
         instance.delete()
         logger.info(f"PreAuth {instance.id} deleted by user {self.request.user.id}")
+
+
 class ClaimCreateView(generics.CreateAPIView):
     queryset = Claim.objects.all()
     serializer_class = ClaimSerializer
     permission_classes = [IsAuthenticated]
     throttle_classes = [UserRateThrottle]
+
     @ratelimit(key="user", rate="3/m", method="POST", block=True)
     def create(self, request, *args, **kwargs):
         try:
@@ -214,17 +271,24 @@ class ClaimCreateView(generics.CreateAPIView):
                 {"error": "Internal server error", "message": "Failed to create claim"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
 class ClaimListView(generics.ListAPIView):
     serializer_class = ClaimSerializer
     permission_classes = [IsAuthenticated]
+
     def get_queryset(self):
         user = self.request.user
         return Claim.objects.filter(created_by=user).order_by("-created_at")
+
+
 class ClaimRetrieveView(generics.RetrieveAPIView):
     serializer_class = ClaimSerializer
     permission_classes = [IsAuthenticated]
+
     def get_queryset(self):
         return Claim.objects.filter(created_by=self.request.user)
+
     def retrieve(self, request, *args, **kwargs):
         try:
             instance = self.get_object()
@@ -271,11 +335,14 @@ class ClaimRetrieveView(generics.RetrieveAPIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
 class ReimbursementCreateView(generics.CreateAPIView):
     queryset = Reimbursement.objects.all()
     serializer_class = ReimbursementSerializer
     permission_classes = [IsAuthenticated]
     throttle_classes = [UserRateThrottle]
+
     @ratelimit(key="user", rate="2/m", method="POST", block=True)
     def create(self, request, *args, **kwargs):
         try:
@@ -339,12 +406,17 @@ class ReimbursementCreateView(generics.CreateAPIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
 class ReimbursementListView(generics.ListAPIView):
     serializer_class = ReimbursementSerializer
     permission_classes = [IsAuthenticated]
+
     def get_queryset(self):
         user = self.request.user
         return Reimbursement.objects.filter(created_by=user).order_by("-created_at")
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 @throttle_classes([UserRateThrottle])
@@ -406,6 +478,8 @@ def claim_status(request, claim_id):
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
 @api_view(["GET"])
 def api_health_check(request):
     try:
@@ -417,6 +491,7 @@ def api_health_check(request):
         # Check insurance provider connectivity
         insurance_providers_status = {}
         try:
+
             async def check_providers():
                 async with create_insurance_service() as service:
                     providers = service.providers
@@ -431,29 +506,33 @@ def api_health_check(request):
                                 service_type="CONSULTATION",
                                 provider_npi="1234567890",
                                 diagnosis_codes=["Z00.00"],
-                                procedure_codes=["99213"]
+                                procedure_codes=["99213"],
                             )
 
-                            eligibility_response = await service.check_eligibility(test_request, provider_id)
+                            eligibility_response = await service.check_eligibility(
+                                test_request, provider_id
+                            )
                             insurance_providers_status[provider.name] = {
                                 "status": "connected",
                                 "response_time_ms": eligibility_response.response_time_ms,
                                 "edi_payer_id": provider.edi_payer_id,
-                                "api_endpoint": provider.api_endpoint
+                                "api_endpoint": provider.api_endpoint,
                             }
                         except Exception as provider_error:
                             insurance_providers_status[provider.name] = {
                                 "status": "disconnected",
                                 "error": str(provider_error),
                                 "edi_payer_id": provider.edi_payer_id,
-                                "api_endpoint": provider.api_endpoint
+                                "api_endpoint": provider.api_endpoint,
                             }
 
             # Run provider connectivity check
             asyncio.run(check_providers())
 
         except Exception as insurance_check_error:
-            logger.error(f"Insurance provider connectivity check failed: {insurance_check_error}")
+            logger.error(
+                f"Insurance provider connectivity check failed: {insurance_check_error}"
+            )
             insurance_providers_status = {"error": str(insurance_check_error)}
 
         return Response(
@@ -463,8 +542,18 @@ def api_health_check(request):
                 "redis_cache": cache_health,
                 "celery_broker": bool(celery_health),
                 "insurance_providers": insurance_providers_status,
-                "connected_providers": len([p for p in insurance_providers_status.values() if isinstance(p, dict) and p.get("status") == "connected"]),
-                "total_providers": len(insurance_providers_status) if isinstance(insurance_providers_status, dict) else 0,
+                "connected_providers": len(
+                    [
+                        p
+                        for p in insurance_providers_status.values()
+                        if isinstance(p, dict) and p.get("status") == "connected"
+                    ]
+                ),
+                "total_providers": (
+                    len(insurance_providers_status)
+                    if isinstance(insurance_providers_status, dict)
+                    else 0
+                ),
                 "endpoints_count": 8,
                 "version": "1.0.0",
                 "integration_type": "Real-time insurance provider integration",

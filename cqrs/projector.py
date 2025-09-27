@@ -3,22 +3,25 @@
 
 import asyncio
 import json
-from datetime import datetime
-from typing import Dict, Any, List, Optional, Callable
-from enum import Enum
-import asyncpg
-from redis.asyncio import Redis
 import logging
 import uuid
+from datetime import datetime
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
 
-from .event_store import Event, EventType, EventStore
+import asyncpg
+from redis.asyncio import Redis
+
+from .event_store import Event, EventStore, EventType
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class ProjectionType(Enum):
     """Types of projections"""
+
     PATIENT_PROJECTION = "patient_projection"
     APPOINTMENT_PROJECTION = "appointment_projection"
     CLINICAL_PROJECTION = "clinical_projection"
@@ -26,16 +29,20 @@ class ProjectionType(Enum):
     ANALYTICS_PROJECTION = "analytics_projection"
     AUDIT_PROJECTION = "audit_projection"
 
+
 class ProjectionState(Enum):
     """Projection states"""
+
     IDLE = "idle"
     BUILDING = "building"
     RUNNING = "running"
     ERROR = "error"
     CATCHING_UP = "catching_up"
 
+
 class Projection(BaseModel):
     """Base projection model"""
+
     id: str
     type: ProjectionType
     name: str
@@ -47,6 +54,7 @@ class Projection(BaseModel):
     error_message: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
 
 class Projector:
     """Base projector class for building read models from events"""
@@ -71,7 +79,8 @@ class Projector:
     async def _create_projection_tables(self):
         """Create projection tracking tables"""
         async with self.postgres_pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS projections (
                     id UUID PRIMARY KEY,
                     type TEXT NOT NULL,
@@ -85,9 +94,11 @@ class Projector:
                     created_at TIMESTAMP DEFAULT NOW(),
                     updated_at TIMESTAMP DEFAULT NOW()
                 );
-            ''')
+            """
+            )
 
-            await conn.execute('''
+            await conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS projection_errors (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                     projection_id UUID NOT NULL,
@@ -97,39 +108,74 @@ class Projector:
                     created_at TIMESTAMP DEFAULT NOW(),
                     FOREIGN KEY (projection_id) REFERENCES projections(id)
                 );
-            ''')
+            """
+            )
 
             # Create indexes
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_projections_type ON projections(type);')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_projections_state ON projections(state);')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_projection_errors_projection_id ON projection_errors(projection_id);')
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_projections_type ON projections(type);"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_projections_state ON projections(state);"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_projection_errors_projection_id ON projection_errors(projection_id);"
+            )
 
     async def _register_event_handlers(self):
         """Register event handlers for all projection types"""
         # Patient projection handlers
-        self._register_event_handler(EventType.PATIENT_REGISTERED, self._handle_patient_registered)
-        self._register_event_handler(EventType.PATIENT_UPDATED, self._handle_patient_updated)
-        self._register_event_handler(EventType.PATIENT_DELETED, self._handle_patient_deleted)
-        self._register_event_handler(EventType.PATIENT_ADMITTED, self._handle_patient_admitted)
-        self._register_event_handler(EventType.PATIENT_DISCHARGED, self._handle_patient_discharged)
+        self._register_event_handler(
+            EventType.PATIENT_REGISTERED, self._handle_patient_registered
+        )
+        self._register_event_handler(
+            EventType.PATIENT_UPDATED, self._handle_patient_updated
+        )
+        self._register_event_handler(
+            EventType.PATIENT_DELETED, self._handle_patient_deleted
+        )
+        self._register_event_handler(
+            EventType.PATIENT_ADMITTED, self._handle_patient_admitted
+        )
+        self._register_event_handler(
+            EventType.PATIENT_DISCHARGED, self._handle_patient_discharged
+        )
 
         # Appointment projection handlers
-        self._register_event_handler(EventType.APPOINTMENT_CREATED, self._handle_appointment_created)
-        self._register_event_handler(EventType.APPOINTMENT_UPDATED, self._handle_appointment_updated)
-        self._register_event_handler(EventType.APPOINTMENT_CANCELLED, self._handle_appointment_cancelled)
-        self._register_event_handler(EventType.APPOINTMENT_COMPLETED, self._handle_appointment_completed)
+        self._register_event_handler(
+            EventType.APPOINTMENT_CREATED, self._handle_appointment_created
+        )
+        self._register_event_handler(
+            EventType.APPOINTMENT_UPDATED, self._handle_appointment_updated
+        )
+        self._register_event_handler(
+            EventType.APPOINTMENT_CANCELLED, self._handle_appointment_cancelled
+        )
+        self._register_event_handler(
+            EventType.APPOINTMENT_COMPLETED, self._handle_appointment_completed
+        )
 
         # Clinical projection handlers
-        self._register_event_handler(EventType.CLINICAL_NOTE_CREATED, self._handle_clinical_note_created)
-        self._register_event_handler(EventType.PRESCRIPTION_CREATED, self._handle_prescription_created)
-        self._register_event_handler(EventType.PRESCRIPTION_UPDATED, self._handle_prescription_updated)
-        self._register_event_handler(EventType.PRESCRIPTION_CANCELLED, self._handle_prescription_cancelled)
+        self._register_event_handler(
+            EventType.CLINICAL_NOTE_CREATED, self._handle_clinical_note_created
+        )
+        self._register_event_handler(
+            EventType.PRESCRIPTION_CREATED, self._handle_prescription_created
+        )
+        self._register_event_handler(
+            EventType.PRESCRIPTION_UPDATED, self._handle_prescription_updated
+        )
+        self._register_event_handler(
+            EventType.PRESCRIPTION_CANCELLED, self._handle_prescription_cancelled
+        )
 
         # Billing projection handlers
         self._register_event_handler(EventType.BILL_CREATED, self._handle_bill_created)
         self._register_event_handler(EventType.BILL_UPDATED, self._handle_bill_updated)
         self._register_event_handler(EventType.BILL_PAID, self._handle_bill_paid)
-        self._register_event_handler(EventType.BILL_CANCELLED, self._handle_bill_cancelled)
+        self._register_event_handler(
+            EventType.BILL_CANCELLED, self._handle_bill_cancelled
+        )
 
     def _register_event_handler(self, event_type: EventType, handler: Callable):
         """Register an event handler"""
@@ -137,22 +183,28 @@ class Projector:
             self.event_handlers[event_type] = []
         self.event_handlers[event_type].append(handler)
 
-    async def create_projection(self, projection_type: ProjectionType, name: str, description: str) -> Projection:
+    async def create_projection(
+        self, projection_type: ProjectionType, name: str, description: str
+    ) -> Projection:
         """Create a new projection"""
         projection_id = str(uuid.uuid4())
         projection = Projection(
-            id=projection_id,
-            type=projection_type,
-            name=name,
-            description=description
+            id=projection_id, type=projection_type, name=name, description=description
         )
 
         async with self.postgres_pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 INSERT INTO projections (id, type, name, description, version, state)
                 VALUES ($1, $2, $3, $4, $5, $6)
-            ''', projection.id, projection.type.value, projection.name, projection.description,
-                projection.version, projection.state.value)
+            """,
+                projection.id,
+                projection.type.value,
+                projection.name,
+                projection.description,
+                projection.version,
+                projection.state.value,
+            )
 
         self.projections[projection_id] = projection
         return projection
@@ -160,58 +212,89 @@ class Projector:
     async def get_projection(self, projection_id: str) -> Optional[Projection]:
         """Get a projection by ID"""
         async with self.postgres_pool.acquire() as conn:
-            row = await conn.fetchrow('''
+            row = await conn.fetchrow(
+                """
                 SELECT * FROM projections WHERE id = $1
-            ''', projection_id)
+            """,
+                projection_id,
+            )
 
             if not row:
                 return None
 
             return Projection(
-                id=str(row['id']),
-                type=ProjectionType(row['type']),
-                name=row['name'],
-                description=row['description'],
-                version=row['version'],
-                last_processed_event_id=str(row['last_processed_event_id']) if row['last_processed_event_id'] else None,
-                last_processed_event_timestamp=row['last_processed_event_timestamp'],
-                state=ProjectionState(row['state']),
-                error_message=row['error_message'],
-                created_at=row['created_at'],
-                updated_at=row['updated_at']
+                id=str(row["id"]),
+                type=ProjectionType(row["type"]),
+                name=row["name"],
+                description=row["description"],
+                version=row["version"],
+                last_processed_event_id=(
+                    str(row["last_processed_event_id"])
+                    if row["last_processed_event_id"]
+                    else None
+                ),
+                last_processed_event_timestamp=row["last_processed_event_timestamp"],
+                state=ProjectionState(row["state"]),
+                error_message=row["error_message"],
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
             )
 
-    async def get_projections_by_type(self, projection_type: ProjectionType) -> List[Projection]:
+    async def get_projections_by_type(
+        self, projection_type: ProjectionType
+    ) -> List[Projection]:
         """Get all projections of a specific type"""
         async with self.postgres_pool.acquire() as conn:
-            rows = await conn.fetch('''
+            rows = await conn.fetch(
+                """
                 SELECT * FROM projections WHERE type = $1
-            ''', projection_type.value)
+            """,
+                projection_type.value,
+            )
 
             return [
                 Projection(
-                    id=str(row['id']),
-                    type=ProjectionType(row['type']),
-                    name=row['name'],
-                    description=row['description'],
-                    version=row['version'],
-                    last_processed_event_id=str(row['last_processed_event_id']) if row['last_processed_event_id'] else None,
-                    last_processed_event_timestamp=row['last_processed_event_timestamp'],
-                    state=ProjectionState(row['state']),
-                    error_message=row['error_message'],
-                    created_at=row['created_at'],
-                    updated_at=row['updated_at']
-                ) for row in rows
+                    id=str(row["id"]),
+                    type=ProjectionType(row["type"]),
+                    name=row["name"],
+                    description=row["description"],
+                    version=row["version"],
+                    last_processed_event_id=(
+                        str(row["last_processed_event_id"])
+                        if row["last_processed_event_id"]
+                        else None
+                    ),
+                    last_processed_event_timestamp=row[
+                        "last_processed_event_timestamp"
+                    ],
+                    state=ProjectionState(row["state"]),
+                    error_message=row["error_message"],
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                )
+                for row in rows
             ]
 
-    async def update_projection_state(self, projection_id: str, state: ProjectionState, event_id: Optional[str] = None, error_message: Optional[str] = None):
+    async def update_projection_state(
+        self,
+        projection_id: str,
+        state: ProjectionState,
+        event_id: Optional[str] = None,
+        error_message: Optional[str] = None,
+    ):
         """Update projection state"""
         async with self.postgres_pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 UPDATE projections
                 SET state = $1, last_processed_event_id = $2, error_message = $3, updated_at = NOW()
                 WHERE id = $4
-            ''', state.value, event_id, error_message, projection_id)
+            """,
+                state.value,
+                event_id,
+                error_message,
+                projection_id,
+            )
 
         if projection_id in self.projections:
             self.projections[projection_id].state = state
@@ -228,8 +311,12 @@ class Projector:
             try:
                 await handler(event)
             except Exception as e:
-                logger.error(f"Error processing event {event.id} with handler {handler.__name__}: {e}")
-                await self._log_projection_error(event.id, str(e), {"handler": handler.__name__})
+                logger.error(
+                    f"Error processing event {event.id} with handler {handler.__name__}: {e}"
+                )
+                await self._log_projection_error(
+                    event.id, str(e), {"handler": handler.__name__}
+                )
 
     async def process_events_batch(self, events: List[Event]):
         """Process a batch of events"""
@@ -250,8 +337,7 @@ class Projector:
 
         # Get events since last processed
         events = await event_store.get_events_by_time_range(
-            projection.last_processed_event_timestamp or datetime.min,
-            datetime.utcnow()
+            projection.last_processed_event_timestamp or datetime.min, datetime.utcnow()
         )
 
         await self.process_events_batch(events)
@@ -263,7 +349,7 @@ class Projector:
                 projection_id,
                 ProjectionState.RUNNING,
                 last_event.id,
-                last_event.timestamp
+                last_event.timestamp,
             )
 
     async def rebuild_projection(self, projection_id: str):
@@ -302,24 +388,26 @@ class Projector:
                 projection_id,
                 ProjectionState.RUNNING,
                 last_event.id,
-                last_event.timestamp
+                last_event.timestamp,
             )
 
     async def _clear_projection_data(self, projection_type: ProjectionType):
         """Clear existing data for a projection type"""
         async with self.postgres_pool.acquire() as conn:
             if projection_type == ProjectionType.PATIENT_PROJECTION:
-                await conn.execute('TRUNCATE TABLE patient_read_model CASCADE')
+                await conn.execute("TRUNCATE TABLE patient_read_model CASCADE")
             elif projection_type == ProjectionType.APPOINTMENT_PROJECTION:
-                await conn.execute('TRUNCATE TABLE appointment_read_model CASCADE')
+                await conn.execute("TRUNCATE TABLE appointment_read_model CASCADE")
             elif projection_type == ProjectionType.CLINICAL_PROJECTION:
-                await conn.execute('TRUNCATE TABLE clinical_notes_read_model CASCADE')
+                await conn.execute("TRUNCATE TABLE clinical_notes_read_model CASCADE")
             elif projection_type == ProjectionType.BILLING_PROJECTION:
-                await conn.execute('TRUNCATE TABLE billing_read_model CASCADE')
+                await conn.execute("TRUNCATE TABLE billing_read_model CASCADE")
             elif projection_type == ProjectionType.ANALYTICS_PROJECTION:
-                await conn.execute('TRUNCATE TABLE analytics_read_model CASCADE')
+                await conn.execute("TRUNCATE TABLE analytics_read_model CASCADE")
 
-    def _get_relevant_event_types(self, projection_type: ProjectionType) -> List[EventType]:
+    def _get_relevant_event_types(
+        self, projection_type: ProjectionType
+    ) -> List[EventType]:
         """Get relevant event types for a projection"""
         mapping = {
             ProjectionType.PATIENT_PROJECTION: [
@@ -327,55 +415,63 @@ class Projector:
                 EventType.PATIENT_UPDATED,
                 EventType.PATIENT_DELETED,
                 EventType.PATIENT_ADMITTED,
-                EventType.PATIENT_DISCHARGED
+                EventType.PATIENT_DISCHARGED,
             ],
             ProjectionType.APPOINTMENT_PROJECTION: [
                 EventType.APPOINTMENT_CREATED,
                 EventType.APPOINTMENT_UPDATED,
                 EventType.APPOINTMENT_CANCELLED,
-                EventType.APPOINTMENT_COMPLETED
+                EventType.APPOINTMENT_COMPLETED,
             ],
             ProjectionType.CLINICAL_PROJECTION: [
                 EventType.CLINICAL_NOTE_CREATED,
                 EventType.PRESCRIPTION_CREATED,
                 EventType.PRESCRIPTION_UPDATED,
-                EventType.PRESCRIPTION_CANCELLED
+                EventType.PRESCRIPTION_CANCELLED,
             ],
             ProjectionType.BILLING_PROJECTION: [
                 EventType.BILL_CREATED,
                 EventType.BILL_UPDATED,
                 EventType.BILL_PAID,
-                EventType.BILL_CANCELLED
+                EventType.BILL_CANCELLED,
             ],
             ProjectionType.ANALYTICS_PROJECTION: [
                 EventType.PATIENT_REGISTERED,
                 EventType.APPOINTMENT_CREATED,
                 EventType.APPOINTMENT_COMPLETED,
                 EventType.BILL_CREATED,
-                EventType.BILL_PAID
-            ]
+                EventType.BILL_PAID,
+            ],
         }
         return mapping.get(projection_type, [])
 
-    async def _log_projection_error(self, event_id: str, error_message: str, error_details: Dict[str, Any]):
+    async def _log_projection_error(
+        self, event_id: str, error_message: str, error_details: Dict[str, Any]
+    ):
         """Log a projection error"""
         async with self.postgres_pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 INSERT INTO projection_errors (event_id, error_message, error_details)
                 VALUES ($1, $2, $3)
-            ''', event_id, error_message, json.dumps(error_details))
+            """,
+                event_id,
+                error_message,
+                json.dumps(error_details),
+            )
 
     # Patient projection handlers
     async def _handle_patient_registered(self, event: Event):
         """Handle patient registered event"""
         async with self.postgres_pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 INSERT INTO patient_read_model (
                     patient_id, first_name, last_name, date_of_birth, email,
                     phone, address, emergency_contact, medical_history, allergies,
                     medications, status, created_at, updated_at, last_event_version
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-            ''',
+            """,
                 event.data["patient_id"],
                 event.data["first_name"],
                 event.data["last_name"],
@@ -390,7 +486,7 @@ class Projector:
                 "active",
                 event.timestamp,
                 event.timestamp,
-                event.version
+                event.version,
             )
 
     async def _handle_patient_updated(self, event: Event):
@@ -410,13 +506,23 @@ class Projector:
             "emergency_contact": "emergency_contact",
             "medical_history": "medical_history",
             "allergies": "allergies",
-            "medications": "medications"
+            "medications": "medications",
         }
 
         for field, value in updates.items():
             if field in field_mapping:
                 update_fields.append(f"{field_mapping[field]} = ${param_count}")
-                params.append(value if field not in ["emergency_contact", "medical_history", "allergies", "medications"] else json.dumps(value))
+                params.append(
+                    value
+                    if field
+                    not in [
+                        "emergency_contact",
+                        "medical_history",
+                        "allergies",
+                        "medications",
+                    ]
+                    else json.dumps(value)
+                )
                 param_count += 1
 
         if update_fields:
@@ -427,11 +533,11 @@ class Projector:
             update_fields.append(f"last_event_version = ${param_count}")
             params.append(event.version)
 
-            query = f'''
+            query = f"""
                 UPDATE patient_read_model
                 SET {', '.join(update_fields)}
                 WHERE patient_id = ${param_count}
-            '''
+            """
             params.append(event.data["patient_id"])
 
             async with self.postgres_pool.acquire() as conn:
@@ -440,41 +546,62 @@ class Projector:
     async def _handle_patient_deleted(self, event: Event):
         """Handle patient deleted event"""
         async with self.postgres_pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 UPDATE patient_read_model
                 SET status = $1, updated_at = $2, last_event_version = $3
                 WHERE patient_id = $4
-            ''', "deleted", event.timestamp, event.version, event.data["patient_id"])
+            """,
+                "deleted",
+                event.timestamp,
+                event.version,
+                event.data["patient_id"],
+            )
 
     async def _handle_patient_admitted(self, event: Event):
         """Handle patient admitted event"""
         async with self.postgres_pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 UPDATE patient_read_model
                 SET status = $1, admission_date = $2, updated_at = $3, last_event_version = $4
                 WHERE patient_id = $5
-            ''', "admitted", event.data["admission_date"], event.timestamp, event.version, event.data["patient_id"])
+            """,
+                "admitted",
+                event.data["admission_date"],
+                event.timestamp,
+                event.version,
+                event.data["patient_id"],
+            )
 
     async def _handle_patient_discharged(self, event: Event):
         """Handle patient discharged event"""
         async with self.postgres_pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 UPDATE patient_read_model
                 SET status = $1, discharge_date = $2, updated_at = $3, last_event_version = $4
                 WHERE patient_id = $5
-            ''', "discharged", event.data["discharge_date"], event.timestamp, event.version, event.data["patient_id"])
+            """,
+                "discharged",
+                event.data["discharge_date"],
+                event.timestamp,
+                event.version,
+                event.data["patient_id"],
+            )
 
     # Appointment projection handlers
     async def _handle_appointment_created(self, event: Event):
         """Handle appointment created event"""
         async with self.postgres_pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 INSERT INTO appointment_read_model (
                     appointment_id, patient_id, provider_id, appointment_time,
                     duration, appointment_type, status, location, notes,
                     reminder_sent, created_at, updated_at, last_event_version
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-            ''',
+            """,
                 event.data["appointment_id"],
                 event.data["patient_id"],
                 event.data["provider_id"],
@@ -487,7 +614,7 @@ class Projector:
                 event.data.get("reminder_sent", False),
                 event.timestamp,
                 event.timestamp,
-                event.version
+                event.version,
             )
 
     async def _handle_appointment_updated(self, event: Event):
@@ -504,7 +631,7 @@ class Projector:
             "status": "status",
             "location": "location",
             "notes": "notes",
-            "reminder_sent": "reminder_sent"
+            "reminder_sent": "reminder_sent",
         }
 
         for field, value in updates.items():
@@ -521,11 +648,11 @@ class Projector:
             update_fields.append(f"last_event_version = ${param_count}")
             params.append(event.version)
 
-            query = f'''
+            query = f"""
                 UPDATE appointment_read_model
                 SET {', '.join(update_fields)}
                 WHERE appointment_id = ${param_count}
-            '''
+            """
             params.append(event.data["appointment_id"])
 
             async with self.postgres_pool.acquire() as conn:
@@ -534,31 +661,44 @@ class Projector:
     async def _handle_appointment_cancelled(self, event: Event):
         """Handle appointment cancelled event"""
         async with self.postgres_pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 UPDATE appointment_read_model
                 SET status = $1, updated_at = $2, last_event_version = $3
                 WHERE appointment_id = $4
-            ''', "cancelled", event.timestamp, event.version, event.data["appointment_id"])
+            """,
+                "cancelled",
+                event.timestamp,
+                event.version,
+                event.data["appointment_id"],
+            )
 
     async def _handle_appointment_completed(self, event: Event):
         """Handle appointment completed event"""
         async with self.postgres_pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 UPDATE appointment_read_model
                 SET status = $1, updated_at = $2, last_event_version = $3
                 WHERE appointment_id = $4
-            ''', "completed", event.timestamp, event.version, event.data["appointment_id"])
+            """,
+                "completed",
+                event.timestamp,
+                event.version,
+                event.data["appointment_id"],
+            )
 
     # Clinical projection handlers
     async def _handle_clinical_note_created(self, event: Event):
         """Handle clinical note created event"""
         async with self.postgres_pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 INSERT INTO clinical_notes_read_model (
                     note_id, patient_id, provider_id, note_type, content,
                     created_at, updated_at, last_event_version
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            ''',
+            """,
                 event.data["note_id"],
                 event.data["patient_id"],
                 event.data["provider_id"],
@@ -566,7 +706,7 @@ class Projector:
                 event.data["content"],
                 event.timestamp,
                 event.timestamp,
-                event.version
+                event.version,
             )
 
     async def _handle_prescription_created(self, event: Event):
@@ -588,12 +728,13 @@ class Projector:
     async def _handle_bill_created(self, event: Event):
         """Handle bill created event"""
         async with self.postgres_pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 INSERT INTO billing_read_model (
                     bill_id, patient_id, total_amount, paid_amount, status,
                     created_at, updated_at, last_event_version
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            ''',
+            """,
                 event.data["bill_id"],
                 event.data["patient_id"],
                 event.data["total_amount"],
@@ -601,49 +742,57 @@ class Projector:
                 event.data.get("status", "pending"),
                 event.timestamp,
                 event.timestamp,
-                event.version
+                event.version,
             )
 
     async def _handle_bill_updated(self, event: Event):
         """Handle bill updated event"""
         async with self.postgres_pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 UPDATE billing_read_model
                 SET total_amount = $1, paid_amount = $2, status = $3,
                     updated_at = $4, last_event_version = $5
                 WHERE bill_id = $6
-            ''',
+            """,
                 event.data.get("total_amount"),
                 event.data.get("paid_amount", 0.00),
                 event.data.get("status", "pending"),
                 event.timestamp,
                 event.version,
-                event.data["bill_id"]
+                event.data["bill_id"],
             )
 
     async def _handle_bill_paid(self, event: Event):
         """Handle bill paid event"""
         async with self.postgres_pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 UPDATE billing_read_model
                 SET paid_amount = $1, status = $2, updated_at = $3, last_event_version = $4
                 WHERE bill_id = $5
-            ''',
+            """,
                 event.data.get("paid_amount"),
                 "paid",
                 event.timestamp,
                 event.version,
-                event.data["bill_id"]
+                event.data["bill_id"],
             )
 
     async def _handle_bill_cancelled(self, event: Event):
         """Handle bill cancelled event"""
         async with self.postgres_pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 UPDATE billing_read_model
                 SET status = $1, updated_at = $2, last_event_version = $3
                 WHERE bill_id = $4
-            ''', "cancelled", event.timestamp, event.version, event.data["bill_id"])
+            """,
+                "cancelled",
+                event.timestamp,
+                event.version,
+                event.data["bill_id"],
+            )
 
     # Analytics projection handlers
     async def _handle_analytics_event(self, event: Event):
@@ -651,8 +800,10 @@ class Projector:
         # This would update analytics read models
         pass
 
+
 # Global projector instance
 projector: Optional[Projector] = None
+
 
 async def get_projector() -> Projector:
     """Get the global projector instance"""
@@ -660,10 +811,11 @@ async def get_projector() -> Projector:
     if projector is None:
         projector = Projector(
             postgres_url="postgresql://user:password@localhost/hms_projections",
-            redis_url="redis://localhost:6379"
+            redis_url="redis://localhost:6379",
         )
         await projector.initialize()
     return projector
+
 
 async def initialize_projections():
     """Initialize default projections"""
@@ -673,38 +825,42 @@ async def initialize_projections():
     await projector_instance.create_projection(
         ProjectionType.PATIENT_PROJECTION,
         "Patient Projection",
-        "Patient data read model for efficient querying"
+        "Patient data read model for efficient querying",
     )
 
     await projector_instance.create_projection(
         ProjectionType.APPOINTMENT_PROJECTION,
         "Appointment Projection",
-        "Appointment data read model for efficient querying"
+        "Appointment data read model for efficient querying",
     )
 
     await projector_instance.create_projection(
         ProjectionType.CLINICAL_PROJECTION,
         "Clinical Projection",
-        "Clinical data read model for efficient querying"
+        "Clinical data read model for efficient querying",
     )
 
     await projector_instance.create_projection(
         ProjectionType.BILLING_PROJECTION,
         "Billing Projection",
-        "Billing data read model for efficient querying"
+        "Billing data read model for efficient querying",
     )
 
     await projector_instance.create_projection(
         ProjectionType.ANALYTICS_PROJECTION,
         "Analytics Projection",
-        "Analytics data read model for reporting and dashboards"
+        "Analytics data read model for reporting and dashboards",
     )
 
     # Start all projections
-    projections = await projector_instance.get_projections_by_type(ProjectionType.PATIENT_PROJECTION)
+    projections = await projector_instance.get_projections_by_type(
+        ProjectionType.PATIENT_PROJECTION
+    )
     for projection in projections:
         await projector_instance.start_projection(projection.id)
 
-    projections = await projector_instance.get_projections_by_type(ProjectionType.APPOINTMENT_PROJECTION)
+    projections = await projector_instance.get_projections_by_type(
+        ProjectionType.APPOINTMENT_PROJECTION
+    )
     for projection in projections:
         await projector_instance.start_projection(projection.id)

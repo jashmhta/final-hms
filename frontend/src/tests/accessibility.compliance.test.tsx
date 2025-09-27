@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { axe, toHaveNoViolations } from 'jest-axe'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
-import healthcareTheme from '../../theme/healthcareTheme'
+import healthcareTheme from '../theme/healthcareTheme'
 import PatientCard from '../components/healthcare/PatientCard'
 
 // Extend Jest matchers
@@ -33,9 +33,8 @@ describe('Accessibility Tests - WCAG 2.1 AA Compliance', () => {
   const mockOnViewDetails = jest.fn()
 
   const renderWithTheme = (component) => {
-    const theme = createTheme(healthcareTheme)
     return render(
-      <ThemeProvider theme={theme}>
+      <ThemeProvider theme={healthcareTheme}>
         {component}
       </ThemeProvider>
     )

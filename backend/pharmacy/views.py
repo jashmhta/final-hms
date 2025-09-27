@@ -1,3 +1,7 @@
+"""
+views module
+"""
+
 import requests
 from rest_framework import decorators, response, viewsets
 from rest_framework.exceptions import PermissionDenied
@@ -34,7 +38,9 @@ class TenantScopedViewSet(viewsets.ModelViewSet):
         user = self.request.user
         provided_hospital = serializer.validated_data.get("hospital")
         if not (
-            user.is_superuser or getattr(user, "hospital_id", None) or getattr(user, "role", None) == "SUPER_ADMIN"
+            user.is_superuser
+            or getattr(user, "hospital_id", None)
+            or getattr(user, "role", None) == "SUPER_ADMIN"
         ):
             raise PermissionDenied("User must belong to a hospital to create")
         if (
@@ -43,7 +49,11 @@ class TenantScopedViewSet(viewsets.ModelViewSet):
             and provided_hospital.id != user.hospital_id
         ):
             raise PermissionDenied("Cannot create for another hospital")
-        serializer.save(hospital_id=(provided_hospital.id if provided_hospital else user.hospital_id))
+        serializer.save(
+            hospital_id=(
+                provided_hospital.id if provided_hospital else user.hospital_id
+            )
+        )
 
 
 class MedicationViewSet(TenantScopedViewSet):
@@ -58,7 +68,9 @@ class MedicationViewSet(TenantScopedViewSet):
     @decorators.action(detail=False, methods=["get"])
     def low_stock(self, request):
         self.throttle_scope = "inventory"
-        qs = self.get_queryset().filter(total_stock_quantity__lt=models.F("min_stock_level"))
+        qs = self.get_queryset().filter(
+            total_stock_quantity__lt=models.F("min_stock_level")
+        )
         page = self.paginate_queryset(qs)
         if page is not None:
             ser = MedicationSerializer(page, many=True)
@@ -68,7 +80,9 @@ class MedicationViewSet(TenantScopedViewSet):
 
     @decorators.action(detail=False, methods=["post"])
     def auto_reorder(self, request):
-        qs = self.get_queryset().filter(total_stock_quantity__lt=models.F("min_stock_level"))
+        qs = self.get_queryset().filter(
+            total_stock_quantity__lt=models.F("min_stock_level")
+        )
         provider_url = request.data.get("provider_url") or ""
         token = request.data.get("token") or ""
         placed = []
@@ -79,7 +93,9 @@ class MedicationViewSet(TenantScopedViewSet):
                         provider_url,
                         json={
                             "item": m.name,
-                            "qty": int(m.min_stock_level) - int(m.total_stock_quantity) + 1,
+                            "qty": int(m.min_stock_level)
+                            - int(m.total_stock_quantity)
+                            + 1,
                         },
                         headers={"Authorization": f"Bearer {token}"} if token else {},
                         timeout=5,
@@ -92,7 +108,9 @@ class MedicationViewSet(TenantScopedViewSet):
 
 class PrescriptionViewSet(TenantScopedViewSet):
     serializer_class = PrescriptionSerializer
-    queryset = Prescription.objects.select_related("patient", "doctor", "medication", "encounter").all()
+    queryset = Prescription.objects.select_related(
+        "patient", "doctor", "medication", "encounter"
+    ).all()
 
     def perform_create(self, serializer):
         self.ensure_tenant_on_create(serializer)

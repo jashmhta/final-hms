@@ -3,10 +3,12 @@ Shared CRUD Operations
 Eliminates redundant CRUD patterns across all services.
 """
 
-from typing import Generic, TypeVar, List, Optional, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, desc, asc
 from datetime import datetime
+from typing import Any, Dict, Generic, List, Optional, TypeVar
+
+from sqlalchemy import and_, asc, desc, or_
+from sqlalchemy.orm import Session
+
 from .base import HMSBaseModel
 
 ModelType = TypeVar("ModelType", bound=HMSBaseModel)
@@ -22,7 +24,11 @@ class BaseCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
     def get(self, db: Session, id: int) -> Optional[ModelType]:
         """Get single record by ID."""
-        return db.query(self.model).filter(self.model.id == id, self.model.is_active == True).first()
+        return (
+            db.query(self.model)
+            .filter(self.model.id == id, self.model.is_active == True)
+            .first()
+        )
 
     def get_multi(
         self,
@@ -33,7 +39,7 @@ class BaseCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         search: Optional[str] = None,
         search_fields: Optional[List[str]] = None,
         order_by: Optional[str] = None,
-        order_direction: str = "asc"
+        order_direction: str = "asc",
     ) -> List[ModelType]:
         """Get multiple records with filtering, search, and pagination."""
         query = db.query(self.model).filter(self.model.is_active == True)
@@ -49,7 +55,9 @@ class BaseCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             search_conditions = []
             for field in search_fields:
                 if hasattr(self.model, field):
-                    search_conditions.append(getattr(self.model, field).ilike(f"%{search}%"))
+                    search_conditions.append(
+                        getattr(self.model, field).ilike(f"%{search}%")
+                    )
             if search_conditions:
                 query = query.filter(or_(*search_conditions))
 
@@ -67,10 +75,12 @@ class BaseCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         # Apply pagination
         return query.offset(skip).limit(limit).all()
 
-    def create(self, db: Session, obj_in: CreateSchemaType, created_by: Optional[str] = None) -> ModelType:
+    def create(
+        self, db: Session, obj_in: CreateSchemaType, created_by: Optional[str] = None
+    ) -> ModelType:
         """Create new record."""
-        obj_data = obj_in.dict() if hasattr(obj_in, 'dict') else obj_in
-        obj_data['created_by'] = created_by
+        obj_data = obj_in.dict() if hasattr(obj_in, "dict") else obj_in
+        obj_data["created_by"] = created_by
         db_obj = self.model(**obj_data)
         db.add(db_obj)
         db.commit()
@@ -82,11 +92,13 @@ class BaseCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db: Session,
         db_obj: ModelType,
         obj_in: UpdateSchemaType,
-        updated_by: Optional[str] = None
+        updated_by: Optional[str] = None,
     ) -> ModelType:
         """Update existing record."""
-        obj_data = obj_in.dict(exclude_unset=True) if hasattr(obj_in, 'dict') else obj_in
-        obj_data['updated_by'] = updated_by
+        obj_data = (
+            obj_in.dict(exclude_unset=True) if hasattr(obj_in, "dict") else obj_in
+        )
+        obj_data["updated_by"] = updated_by
 
         for field, value in obj_data.items():
             if hasattr(db_obj, field):
@@ -96,7 +108,9 @@ class BaseCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db.refresh(db_obj)
         return db_obj
 
-    def delete(self, db: Session, id: int, deleted_by: Optional[str] = None) -> Optional[ModelType]:
+    def delete(
+        self, db: Session, id: int, deleted_by: Optional[str] = None
+    ) -> Optional[ModelType]:
         """Soft delete record."""
         db_obj = self.get(db, id=id)
         if db_obj:
@@ -119,10 +133,12 @@ class BaseCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
     def exists(self, db: Session, id: int) -> bool:
         """Check if record exists."""
-        return db.query(self.model).filter(
-            self.model.id == id,
-            self.model.is_active == True
-        ).first() is not None
+        return (
+            db.query(self.model)
+            .filter(self.model.id == id, self.model.is_active == True)
+            .first()
+            is not None
+        )
 
 
 class TimestampedCRUD(BaseCRUD[ModelType, CreateSchemaType, UpdateSchemaType]):
@@ -134,33 +150,39 @@ class TimestampedCRUD(BaseCRUD[ModelType, CreateSchemaType, UpdateSchemaType]):
         start_date: datetime,
         end_date: datetime,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[ModelType]:
         """Get records within date range."""
-        return db.query(self.model).filter(
-            and_(
-                self.model.created_at >= start_date,
-                self.model.created_at <= end_date,
-                self.model.is_active == True
+        return (
+            db.query(self.model)
+            .filter(
+                and_(
+                    self.model.created_at >= start_date,
+                    self.model.created_at <= end_date,
+                    self.model.is_active == True,
+                )
             )
-        ).offset(skip).limit(limit).all()
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
 
     def get_recent(
-        self,
-        db: Session,
-        hours: int = 24,
-        limit: int = 100
+        self, db: Session, hours: int = 24, limit: int = 100
     ) -> List[ModelType]:
         """Get recent records."""
         cutoff_time = datetime.utcnow()
         cutoff_time = cutoff_time.replace(hour=cutoff_time.hour - hours)
 
-        return db.query(self.model).filter(
-            and_(
-                self.model.created_at >= cutoff_time,
-                self.model.is_active == True
+        return (
+            db.query(self.model)
+            .filter(
+                and_(self.model.created_at >= cutoff_time, self.model.is_active == True)
             )
-        ).order_by(desc(self.model.created_at)).limit(limit).all()
+            .order_by(desc(self.model.created_at))
+            .limit(limit)
+            .all()
+        )
 
 
 class AuditedCRUD(TimestampedCRUD[ModelType, CreateSchemaType, UpdateSchemaType]):
@@ -171,7 +193,7 @@ class AuditedCRUD(TimestampedCRUD[ModelType, CreateSchemaType, UpdateSchemaType]
         db: Session,
         obj_in: CreateSchemaType,
         created_by: str,
-        audit_details: Optional[Dict[str, Any]] = None
+        audit_details: Optional[Dict[str, Any]] = None,
     ) -> ModelType:
         """Create record with audit trail."""
         obj = self.create(db, obj_in, created_by)
@@ -183,7 +205,9 @@ class AuditedCRUD(TimestampedCRUD[ModelType, CreateSchemaType, UpdateSchemaType]
             entity_type=self.model.__name__,
             entity_id=str(obj.id),
             user=created_by,
-            details=audit_details or obj_in.dict() if hasattr(obj_in, 'dict') else obj_in
+            details=(
+                audit_details or obj_in.dict() if hasattr(obj_in, "dict") else obj_in
+            ),
         )
 
         return obj
@@ -194,10 +218,10 @@ class AuditedCRUD(TimestampedCRUD[ModelType, CreateSchemaType, UpdateSchemaType]
         db_obj: ModelType,
         obj_in: UpdateSchemaType,
         updated_by: str,
-        audit_details: Optional[Dict[str, Any]] = None
+        audit_details: Optional[Dict[str, Any]] = None,
     ) -> ModelType:
         """Update record with audit trail."""
-        old_data = db_obj.to_dict() if hasattr(db_obj, 'to_dict') else {}
+        old_data = db_obj.to_dict() if hasattr(db_obj, "to_dict") else {}
         obj = self.update(db, db_obj, obj_in, updated_by)
 
         # Create audit entry
@@ -209,19 +233,19 @@ class AuditedCRUD(TimestampedCRUD[ModelType, CreateSchemaType, UpdateSchemaType]
             user=updated_by,
             details={
                 "old_data": old_data,
-                "new_data": obj_in.dict(exclude_unset=True) if hasattr(obj_in, 'dict') else obj_in,
-                "audit_details": audit_details
-            }
+                "new_data": (
+                    obj_in.dict(exclude_unset=True)
+                    if hasattr(obj_in, "dict")
+                    else obj_in
+                ),
+                "audit_details": audit_details,
+            },
         )
 
         return obj
 
     def delete_with_audit(
-        self,
-        db: Session,
-        id: int,
-        deleted_by: str,
-        reason: Optional[str] = None
+        self, db: Session, id: int, deleted_by: str, reason: Optional[str] = None
     ) -> Optional[ModelType]:
         """Soft delete record with audit trail."""
         obj = self.delete(db, id, deleted_by)
@@ -233,7 +257,7 @@ class AuditedCRUD(TimestampedCRUD[ModelType, CreateSchemaType, UpdateSchemaType]
                 entity_type=self.model.__name__,
                 entity_id=str(id),
                 user=deleted_by,
-                details={"reason": reason}
+                details={"reason": reason},
             )
 
         return obj
@@ -245,7 +269,7 @@ class AuditedCRUD(TimestampedCRUD[ModelType, CreateSchemaType, UpdateSchemaType]
         entity_type: str,
         entity_id: str,
         user: str,
-        details: Optional[Dict[str, Any]] = None
+        details: Optional[Dict[str, Any]] = None,
     ):
         """Create audit entry (to be implemented by specific services)."""
         # This should be implemented in the specific service's audit model
@@ -258,7 +282,7 @@ def get_standard_filters(request_data: Dict[str, Any]) -> Dict[str, Any]:
     filters = {}
 
     # Common filter fields
-    filter_fields = ['status', 'is_active', 'created_by', 'updated_by']
+    filter_fields = ["status", "is_active", "created_by", "updated_by"]
 
     for field in filter_fields:
         if field in request_data:
@@ -276,25 +300,27 @@ def get_pagination_params(skip: int = 0, limit: int = 100) -> tuple[int, int]:
     return skip, limit
 
 
-def get_search_params(request_data: Dict[str, Any]) -> tuple[Optional[str], Optional[List[str]]]:
+def get_search_params(
+    request_data: Dict[str, Any],
+) -> tuple[Optional[str], Optional[List[str]]]:
     """Extract search parameters from request data."""
-    search = request_data.get('search')
-    search_fields = request_data.get('search_fields')
+    search = request_data.get("search")
+    search_fields = request_data.get("search_fields")
 
     if search and not search_fields:
         # Default search fields if not specified
-        search_fields = ['name', 'description']
+        search_fields = ["name", "description"]
 
     return search, search_fields
 
 
 def get_ordering_params(request_data: Dict[str, Any]) -> tuple[Optional[str], str]:
     """Extract ordering parameters from request data."""
-    order_by = request_data.get('order_by')
-    order_direction = request_data.get('order_direction', 'asc')
+    order_by = request_data.get("order_by")
+    order_direction = request_data.get("order_direction", "asc")
 
     # Validate order direction
-    if order_direction.lower() not in ['asc', 'desc']:
-        order_direction = 'asc'
+    if order_direction.lower() not in ["asc", "desc"]:
+        order_direction = "asc"
 
     return order_by, order_direction

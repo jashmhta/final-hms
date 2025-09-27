@@ -104,16 +104,28 @@ class APIResponseCompressor(MiddlewareMixin):
     def _is_bot_request(self, request):
         """Check if request is from a bot"""
         user_agent = request.META.get("HTTP_USER_AGENT", "").lower()
-        bot_patterns = ["bot", "crawler", "spider", "scraper", "curl", "wget", "python-requests"]
+        bot_patterns = [
+            "bot",
+            "crawler",
+            "spider",
+            "scraper",
+            "curl",
+            "wget",
+            "python-requests",
+        ]
         return any(pattern in user_agent for pattern in bot_patterns)
 
     def _compress_with_brotli(self, response):
         """Compress response with Brotli"""
-        compressed_content = brotli.compress(response.content, quality=self.compression_level)
+        compressed_content = brotli.compress(
+            response.content, quality=self.compression_level
+        )
 
         # Create new response with compressed content
         compressed_response = HttpResponse(
-            compressed_content, content_type=response.get("Content-Type"), status=response.status_code
+            compressed_content,
+            content_type=response.get("Content-Type"),
+            status=response.status_code,
         )
 
         # Copy headers
@@ -130,7 +142,9 @@ class APIResponseCompressor(MiddlewareMixin):
         if hasattr(response, "performance_metrics"):
             original_size = len(response.content)
             compressed_size = len(compressed_content)
-            compression_ratio = ((original_size - compressed_size) / original_size) * 100
+            compression_ratio = (
+                (original_size - compressed_size) / original_size
+            ) * 100
             compressed_response.performance_metrics = {
                 **response.performance_metrics,
                 "compression_ratio": compression_ratio,
@@ -145,14 +159,18 @@ class APIResponseCompressor(MiddlewareMixin):
         """Compress response with Gzip"""
         # Use GzipFile for better compression
         zbuf = io.BytesIO()
-        with gzip.GzipFile(mode="wb", compresslevel=self.compression_level, fileobj=zbuf) as zfile:
+        with gzip.GzipFile(
+            mode="wb", compresslevel=self.compression_level, fileobj=zbuf
+        ) as zfile:
             zfile.write(response.content)
 
         compressed_content = zbuf.getvalue()
 
         # Create new response
         compressed_response = HttpResponse(
-            compressed_content, content_type=response.get("Content-Type"), status=response.status_code
+            compressed_content,
+            content_type=response.get("Content-Type"),
+            status=response.status_code,
         )
 
         # Copy headers
@@ -169,7 +187,9 @@ class APIResponseCompressor(MiddlewareMixin):
         if hasattr(response, "performance_metrics"):
             original_size = len(response.content)
             compressed_size = len(compressed_content)
-            compression_ratio = ((original_size - compressed_size) / original_size) * 100
+            compression_ratio = (
+                (original_size - compressed_size) / original_size
+            ) * 100
             compressed_response.performance_metrics = {
                 **response.performance_metrics,
                 "compression_ratio": compression_ratio,
@@ -182,11 +202,15 @@ class APIResponseCompressor(MiddlewareMixin):
 
     def _compress_with_deflate(self, response):
         """Compress response with Deflate"""
-        compressed_content = zlib.compress(response.content, level=self.compression_level)
+        compressed_content = zlib.compress(
+            response.content, level=self.compression_level
+        )
 
         # Create new response
         compressed_response = HttpResponse(
-            compressed_content, content_type=response.get("Content-Type"), status=response.status_code
+            compressed_content,
+            content_type=response.get("Content-Type"),
+            status=response.status_code,
         )
 
         # Copy headers
@@ -203,7 +227,9 @@ class APIResponseCompressor(MiddlewareMixin):
         if hasattr(response, "performance_metrics"):
             original_size = len(response.content)
             compressed_size = len(compressed_content)
-            compression_ratio = ((original_size - compressed_size) / original_size) * 100
+            compression_ratio = (
+                (original_size - compressed_size) / original_size
+            ) * 100
             compressed_response.performance_metrics = {
                 **response.performance_metrics,
                 "compression_ratio": compression_ratio,
@@ -221,7 +247,9 @@ class APIResponseOptimizer(MiddlewareMixin):
     def __init__(self, get_response):
         super().__init__(get_response)
         self.enable_etag = getattr(settings, "API_ENABLE_ETAG", True)
-        self.enable_conditional_get = getattr(settings, "API_ENABLE_CONDITIONAL_GET", True)
+        self.enable_conditional_get = getattr(
+            settings, "API_ENABLE_CONDITIONAL_GET", True
+        )
 
     def process_response(self, request, response):
         """Optimize API response"""
@@ -277,7 +305,7 @@ class APIResponseOptimizer(MiddlewareMixin):
         import hashlib
 
         content = response.content
-        return hashlib.md5(content).hexdigest()
+        return hashlib.hashlib.sha256(content).hexdigest()
 
     def _add_caching_headers(self, request, response):
         """Add appropriate caching headers"""
@@ -367,7 +395,10 @@ class APIThrottlingMiddleware(MiddlewareMixin):
         }
 
         # Find appropriate limit
-        rate_limits = limits.get((endpoint, method), limits.get(("default", method), ("500/hour", "50/minute")))
+        rate_limits = limits.get(
+            (endpoint, method),
+            limits.get(("default", method), ("500/hour", "50/minute")),
+        )
 
         # Check each limit
         for limit in rate_limits:

@@ -6,9 +6,11 @@ from functools import wraps
 
 import requests
 from celery import shared_task
+
 from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
+
 from .models import Claim, PreAuth, Reimbursement
 
 logger = logging.getLogger(__name__)
@@ -16,17 +18,24 @@ logger = logging.getLogger(__name__)
 
 def cache_result(timeout=300):
     """Decorator to cache task results"""
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            cache_key = f"{func.__name__}:{hash(str(args) + str(sorted(kwargs.items())))}"
+            cache_key = (
+                f"{func.__name__}:{hash(str(args) + str(sorted(kwargs.items())))}"
+            )
             result = cache.get(cache_key)
             if result is None:
                 result = func(*args, **kwargs)
                 cache.set(cache_key, result, timeout)
             return result
+
         return wrapper
+
     return decorator
+
+
 @shared_task(bind=True, max_retries=3)
 def submit_tpa_request(self, preauth_id):
     """Submit TPA request with proper error handling and resource management"""
@@ -34,7 +43,7 @@ def submit_tpa_request(self, preauth_id):
         cache_key = f"tpa_status_{preauth_id}"
         cache.set(cache_key, "submitting", timeout=300)
 
-        preauth = PreAuth.objects.select_related('patient').get(id=preauth_id)
+        preauth = PreAuth.objects.select_related("patient").get(id=preauth_id)
         payload = {
             "patient_id": preauth.patient.id,
             "claim_amount": float(preauth.claim_amount),
@@ -45,15 +54,15 @@ def submit_tpa_request(self, preauth_id):
 
         # Use session for connection pooling
         with requests.Session() as session:
-            session.headers.update({
-                "Authorization": f"Token {getattr(settings, 'TPA_API_TOKEN', '')}",
-                "Content-Type": "application/json"
-            })
+            session.headers.update(
+                {
+                    "Authorization": f"Token {getattr(settings, 'TPA_API_TOKEN', '')}",
+                    "Content-Type": "application/json",
+                }
+            )
 
             response = session.post(
-                "http://mock-tpa.com/api/submit",
-                json=payload,
-                timeout=30
+                "http://mock-tpa.com/api/submit", json=payload, timeout=30
             )
 
         if response.status_code == 200:
@@ -90,6 +99,8 @@ def submit_tpa_request(self, preauth_id):
         logger.error(f"Unexpected error in TPA submission: {e}")
         cache.set(cache_key, f"error: {e}", timeout=300)
         raise self.retry(countdown=60 * (2**self.request.retries))
+
+
 @shared_task(bind=True, max_retries=5)
 @cache_result(timeout=60)
 def poll_tpa_status(self, preauth_id):
@@ -114,10 +125,12 @@ def poll_tpa_status(self, preauth_id):
 
         # Use session for connection pooling
         with requests.Session() as session:
-            session.headers.update({
-                "Authorization": f"Token {getattr(settings, 'TPA_API_TOKEN', '')}",
-                "Content-Type": "application/json"
-            })
+            session.headers.update(
+                {
+                    "Authorization": f"Token {getattr(settings, 'TPA_API_TOKEN', '')}",
+                    "Content-Type": "application/json",
+                }
+            )
 
             response = session.get(status_url, timeout=30)
 
@@ -131,14 +144,18 @@ def poll_tpa_status(self, preauth_id):
             if preauth.status in ["approved", "rejected"]:
                 send_notification.delay(preauth_id, preauth.status)
 
-            logger.info(f"Successfully polled status for preauth {preauth_id}: {preauth.status}")
+            logger.info(
+                f"Successfully polled status for preauth {preauth_id}: {preauth.status}"
+            )
             return {
                 "status": "polled",
                 "new_status": preauth.status,
                 "status_data": status_data,
             }
         else:
-            logger.warning(f"Poll failed for preauth {preauth_id}: {response.status_code}")
+            logger.warning(
+                f"Poll failed for preauth {preauth_id}: {response.status_code}"
+            )
             return {"status": "poll_failed", "code": response.status_code}
 
     except PreAuth.DoesNotExist:
@@ -150,11 +167,13 @@ def poll_tpa_status(self, preauth_id):
     except Exception as e:
         logger.error(f"Unexpected error polling TPA status: {e}")
         raise self.retry(countdown=300 * (2**self.request.retries))
+
+
 @shared_task
 def send_notification(preauth_id, status):
     """Send notification with proper logging and error handling"""
     try:
-        preauth = PreAuth.objects.select_related('patient').get(id=preauth_id)
+        preauth = PreAuth.objects.select_related("patient").get(id=preauth_id)
 
         message = (
             f"Your pre-authorization request {preauth_id} has been {status}. "
@@ -193,6 +212,8 @@ def send_notification(preauth_id, status):
     except Exception as e:
         logger.error(f"Notification failed for preauth {preauth_id}: {e}")
         return {"status": "notification_failed", "error": str(e)}
+
+
 @shared_task
 def cleanup_old_records():
     """Clean up old records with proper batching and resource management"""
@@ -209,7 +230,9 @@ def cleanup_old_records():
             # Delete in batches of 1000
             batch_size = 1000
             for i in range(0, count, batch_size):
-                batch_ids = old_preauths.values_list('id', flat=True)[i:i + batch_size]
+                batch_ids = old_preauths.values_list("id", flat=True)[
+                    i : i + batch_size
+                ]
                 PreAuth.objects.filter(id__in=batch_ids).delete()
                 deleted_count += len(batch_ids)
 
@@ -222,7 +245,9 @@ def cleanup_old_records():
             # Delete in batches of 1000
             batch_size = 1000
             for i in range(0, count, batch_size):
-                batch_ids = old_reimbursements.values_list('id', flat=True)[i:i + batch_size]
+                batch_ids = old_reimbursements.values_list("id", flat=True)[
+                    i : i + batch_size
+                ]
                 Reimbursement.objects.filter(id__in=batch_ids).delete()
                 deleted_count += len(batch_ids)
 

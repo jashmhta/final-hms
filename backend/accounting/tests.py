@@ -1,3 +1,7 @@
+"""
+tests module
+"""
+
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -231,7 +235,9 @@ class DepreciationTest(AccountingModuleTestCase):
         annual_depreciation = asset.calculate_annual_depreciation()
         expected_annual = (500000000 - 5000000) // 10
         self.assertEqual(annual_depreciation, expected_annual)
-        monthly_depreciation = DepreciationCalculator.calculate_monthly_depreciation(asset)
+        monthly_depreciation = DepreciationCalculator.calculate_monthly_depreciation(
+            asset
+        )
         expected_monthly = expected_annual // 12
         self.assertEqual(monthly_depreciation, expected_monthly)
 
@@ -268,7 +274,9 @@ class ReportGenerationTest(AccountingModuleTestCase):
         )
 
     def test_trial_balance_generation(self):
-        trial_balance = ReportGenerator.generate_trial_balance(self.hospital, timezone.now().date())
+        trial_balance = ReportGenerator.generate_trial_balance(
+            self.hospital, timezone.now().date()
+        )
         self.assertIn("accounts", trial_balance)
         self.assertIn("total_debits", trial_balance)
         self.assertIn("total_credits", trial_balance)

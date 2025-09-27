@@ -1,9 +1,15 @@
-import json
-import time
+"""
+standalone_demo module
+"""
+
 import datetime
+import json
 import statistics
-from typing import Dict, List, Any
+import time
 from pathlib import Path
+from typing import Any, Dict, List
+
+
 class QualityFrameworkDemo:
     def __init__(self):
         self.demo_start_time = datetime.datetime.now()
@@ -11,16 +17,19 @@ class QualityFrameworkDemo:
             "Zero-Defect Quality Framework",
             "Healthcare Test Automation",
             "Quality Metrics Dashboard",
-            "Continuous Quality Integration"
+            "Continuous Quality Integration",
         ]
         self.quality_metrics = {}
+
     def run_comprehensive_demo(self):
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("🏥 HMS ZERO-DEFECT QUALITY FRAMEWORK - IMPLEMENTATION DEMONSTRATION")
-        print("="*80)
+        print("=" * 80)
         print("This demonstration showcases the world-class quality assurance system")
-        print("designed for healthcare management systems with uncompromising standards.")
-        print("="*80 + "\n")
+        print(
+            "designed for healthcare management systems with uncompromising standards."
+        )
+        print("=" * 80 + "\n")
         print("🚀 EXECUTION TIMELINE:")
         for i, component in enumerate(self.framework_components, 1):
             print(f"   {i}. {component}")
@@ -54,6 +63,7 @@ class QualityFrameworkDemo:
         self._print_summary(demo_results)
         self._save_demo_results(demo_results)
         return demo_results
+
     def _demo_zero_defect_framework(self) -> Dict[str, Any]:
         print("🎯 Executing Zero-Defect Quality Framework Assessment...")
         print("   • Comprehensive quality evaluation")
@@ -87,7 +97,7 @@ class QualityFrameworkDemo:
             "reliability_score": 97.5,
             "test_coverage": 98.7,
             "defect_density": 0.8,
-            "assessment_duration": "45.2 seconds"
+            "assessment_duration": "45.2 seconds",
         }
         print(f"   ✅ Assessment completed in {results['assessment_duration']}")
         print(f"   📊 Overall Quality Score: {results['overall_quality_score']:.1f}%")
@@ -100,6 +110,7 @@ class QualityFrameworkDemo:
         print(f"   📈 Test Coverage: {results['test_coverage']:.1f}%")
         print(f"   🐛 Defect Density: {results['defect_density']} per KLOC")
         return results
+
     def _demo_healthcare_testing(self) -> Dict[str, Any]:
         print("🧪 Executing Healthcare-Specific Test Automation...")
         print("   • Clinical workflow validation")
@@ -137,18 +148,23 @@ class QualityFrameworkDemo:
             "compliance_score": 100.0,
             "data_integrity_score": 99.8,
             "clinical_workflow_accuracy": 100.0,
-            "emergency_response_time": 1.8  
+            "emergency_response_time": 1.8,
         }
         print(f"   ✅ Healthcare testing completed in 78.3 seconds")
         print(f"   📈 Pass Rate: {results['overall_pass_rate']:.1f}%")
-        print(f"   🏥 Clinical Workflows: {results['clinical_workflows_passed']}/{results['clinical_workflows_tested']} passed")
-        print(f"   💊 Medication Safety: {results['medication_safety_violations']} violations")
+        print(
+            f"   🏥 Clinical Workflows: {results['clinical_workflows_passed']}/{results['clinical_workflows_tested']} passed"
+        )
+        print(
+            f"   💊 Medication Safety: {results['medication_safety_violations']} violations"
+        )
         print(f"   🚨 Patient Safety Incidents: {results['patient_safety_incidents']}")
         print(f"   📋 Compliance Score: {results['compliance_score']:.1f}%")
         print(f"   🛡️ Safety Score: {results['safety_score']:.1f}%")
         print(f"   💾 Data Integrity: {results['data_integrity_score']:.1f}%")
         print(f"   🏥 Emergency Response: {results['emergency_response_time']} minutes")
         return results
+
     def _demo_quality_dashboard(self) -> Dict[str, Any]:
         print("📊 Generating Real-time Quality Metrics Dashboard...")
         print("   • Live quality score monitoring")
@@ -169,26 +185,26 @@ class QualityFrameworkDemo:
             "overall_quality_score": 97.5,
             "real_time_metrics": {
                 "availability": 99.995,
-                "response_time": 0.085,  
-                "error_rate": 0.008,     
+                "response_time": 0.085,
+                "error_rate": 0.008,
                 "throughput": 1250,
                 "active_users": 847,
                 "database_response_time": 0.045,
-                "api_response_time": 0.072
+                "api_response_time": 0.072,
             },
             "quality_trends": {
                 "overall_trend": "+2.3%",
                 "performance_trend": "+1.8%",
                 "security_trend": "+0.5%",
                 "compliance_trend": "STABLE",
-                "reliability_trend": "+1.2%"
+                "reliability_trend": "+1.2%",
             },
             "active_alerts": {
                 "critical": 0,
                 "high": 1,
                 "medium": 3,
                 "low": 2,
-                "info": 5
+                "info": 5,
             },
             "healthcare_metrics": {
                 "patient_satisfaction": 98.5,
@@ -196,7 +212,7 @@ class QualityFrameworkDemo:
                 "medication_accuracy": 99.9,
                 "data_integrity": 99.7,
                 "care_coordination": 97.2,
-                "staff_satisfaction": 94.6
+                "staff_satisfaction": 94.6,
             },
             "dashboard_features": {
                 "real_time_updates": True,
@@ -204,18 +220,25 @@ class QualityFrameworkDemo:
                 "custom_alerts": True,
                 "api_access": True,
                 "export_capabilities": True,
-                "mobile_responsive": True
-            }
+                "mobile_responsive": True,
+            },
         }
         print(f"   ✅ Dashboard generated at: quality_dashboard.html")
         print(f"   📊 Real-time Quality Score: {results['overall_quality_score']:.1f}%")
         print(f"   📈 Overall Trend: {results['quality_trends']['overall_trend']}")
         print(f"   🚨 Active Alerts: {sum(results['active_alerts'].values())}")
-        print(f"   🏥 Patient Satisfaction: {results['healthcare_metrics']['patient_satisfaction']:.1f}%")
-        print(f"   💊 Medication Accuracy: {results['healthcare_metrics']['medication_accuracy']:.1f}%")
-        print(f"   ⚡ System Availability: {results['real_time_metrics']['availability']:.3f}%")
+        print(
+            f"   🏥 Patient Satisfaction: {results['healthcare_metrics']['patient_satisfaction']:.1f}%"
+        )
+        print(
+            f"   💊 Medication Accuracy: {results['healthcare_metrics']['medication_accuracy']:.1f}%"
+        )
+        print(
+            f"   ⚡ System Availability: {results['real_time_metrics']['availability']:.3f}%"
+        )
         print(f"   📱 Active Users: {results['real_time_metrics']['active_users']}")
         return results
+
     def _demo_continuous_integration(self) -> Dict[str, Any]:
         print("🚀 Executing Continuous Quality Integration Pipeline...")
         print("   • Automated quality gates")
@@ -236,7 +259,7 @@ class QualityFrameworkDemo:
             "Quality Gate Evaluation",
             "Deployment Preparation",
             "Deployment Execution",
-            "Post-Deployment Validation"
+            "Post-Deployment Validation",
         ]
         for i, stage in enumerate(stages, 1):
             print(f"   ⏳ Stage {i}/12: {stage}...")
@@ -244,7 +267,7 @@ class QualityFrameworkDemo:
         results = {
             "pipeline_execution_id": "CQI-20250116-143022",
             "status": "SUCCESS",
-            "duration": 342.8,  
+            "duration": 342.8,
             "stages_executed": 12,
             "stages_passed": 12,
             "quality_gates": 3,
@@ -261,20 +284,35 @@ class QualityFrameworkDemo:
             "deployment_time": 45.3,
             "rollback_time": 0,
             "environment": "production",
-            "zero_defect_criteria_met": True
+            "zero_defect_criteria_met": True,
         }
         print(f"   ✅ Pipeline execution: {results['pipeline_execution_id']}")
         print(f"   🎯 Status: {results['status']}")
         print(f"   ⏱️ Duration: {results['duration']:.1f} seconds")
-        print(f"   📋 Stages: {results['stages_passed']}/{results['stages_executed']} passed")
-        print(f"   🔒 Quality Gates: {results['quality_gates_passed']}/{results['quality_gates']} passed")
-        print(f"   🚀 Deployment: {'Success' if results['deployment_successful'] else 'Failed'}")
-        print(f"   📊 Tests: {results['tests_passed']}/{results['tests_executed']} passed")
+        print(
+            f"   📋 Stages: {results['stages_passed']}/{results['stages_executed']} passed"
+        )
+        print(
+            f"   🔒 Quality Gates: {results['quality_gates_passed']}/{results['quality_gates']} passed"
+        )
+        print(
+            f"   🚀 Deployment: {'Success' if results['deployment_successful'] else 'Failed'}"
+        )
+        print(
+            f"   📊 Tests: {results['tests_passed']}/{results['tests_executed']} passed"
+        )
         print(f"   📈 Coverage: {results['coverage_achieved']:.1f}%")
-        print(f"   🛡️ Security: {'✅ Passed' if results['security_scans_passed'] else '❌ Failed'}")
-        print(f"   📋 Compliance: {'✅ Passed' if results['compliance_checks_passed'] else '❌ Failed'}")
-        print(f"   ⚡ Performance SLA: {'✅ Met' if results['performance_sla_met'] else '❌ Not Met'}")
+        print(
+            f"   🛡️ Security: {'✅ Passed' if results['security_scans_passed'] else '❌ Failed'}"
+        )
+        print(
+            f"   📋 Compliance: {'✅ Passed' if results['compliance_checks_passed'] else '❌ Failed'}"
+        )
+        print(
+            f"   ⚡ Performance SLA: {'✅ Met' if results['performance_sla_met'] else '❌ Not Met'}"
+        )
         return results
+
     def _demo_comprehensive_assessment(self) -> Dict[str, Any]:
         print("🎯 Executing Comprehensive Quality Assessment...")
         print("   • Integrated evaluation across all components")
@@ -309,7 +347,7 @@ class QualityFrameworkDemo:
             "risk_assessment": "LOW",
             "business_readiness": "PRODUCTION-READY",
             "compliance_status": "FULLY_COMPLIANT",
-            "patient_safety_rating": "EXCELLENT"
+            "patient_safety_rating": "EXCELLENT",
         }
         print(f"   ✅ Assessment ID: {results['execution_id']}")
         print(f"   🎯 Overall Quality Score: {results['overall_quality_score']:.1f}%")
@@ -317,7 +355,9 @@ class QualityFrameworkDemo:
         print(f"   💡 Recommendation: {results['recommendation']}")
         print(f"   🔍 Components Evaluated: {results['components_evaluated']}")
         print(f"   🚨 Critical Findings: {results['critical_findings']}")
-        print(f"   ⚠️  Issues Found: {results['high_priority_issues']}H/{results['medium_priority_issues']}M/{results['low_priority_issues']}L")
+        print(
+            f"   ⚠️  Issues Found: {results['high_priority_issues']}H/{results['medium_priority_issues']}M/{results['low_priority_issues']}L"
+        )
         print(f"   💡 Recommendations: {results['recommendations_count']}")
         print(f"   📝 Action Items: {results['action_items_count']}")
         print(f"   📄 Reports Generated: {results['reports_generated']}")
@@ -326,13 +366,14 @@ class QualityFrameworkDemo:
         print(f"   📋 Compliance Status: {results['compliance_status']}")
         print(f"   🏥 Patient Safety: {results['patient_safety_rating']}")
         return results
+
     def _print_summary(self, demo_results: Dict[str, Any]):
         demo_duration = (datetime.datetime.now() - self.demo_start_time).total_seconds()
         all_scores = [
             demo_results["zero_defect"]["overall_quality_score"],
             demo_results["healthcare_testing"]["overall_pass_rate"],
             demo_results["dashboard"]["overall_quality_score"],
-            97.3  
+            97.3,
         ]
         avg_quality_score = statistics.mean(all_scores)
         print(f"📊 Demonstration completed in {demo_duration:.1f} seconds")
@@ -391,16 +432,21 @@ class QualityFrameworkDemo:
         for i, component in enumerate(self.framework_components, 1):
             print(f"   {i}. ✅ {component}")
         print("   5. ✅ Master Quality Control & Orchestration")
+
     def _save_demo_results(self, demo_results: Dict[str, Any]):
-        reports_dir = Path("/home/azureuser/hms-enterprise-grade/quality_framework/reports")
+        reports_dir = Path(
+            "/home/azureuser/hms-enterprise-grade/quality_framework/reports"
+        )
         reports_dir.mkdir(exist_ok=True)
         demo_report = {
             "demonstration_summary": {
                 "execution_time": datetime.datetime.now().isoformat(),
-                "duration_seconds": (datetime.datetime.now() - self.demo_start_time).total_seconds(),
+                "duration_seconds": (
+                    datetime.datetime.now() - self.demo_start_time
+                ).total_seconds(),
                 "components_demonstrated": len(self.framework_components),
                 "overall_quality_score": 97.3,
-                "business_readiness": "PRODUCTION-READY"
+                "business_readiness": "PRODUCTION-READY",
             },
             "component_results": demo_results,
             "key_achievements": [
@@ -409,7 +455,7 @@ class QualityFrameworkDemo:
                 "Real-time quality monitoring system active",
                 "Continuous quality integration pipeline ready",
                 "Comprehensive compliance validation complete",
-                "Executive-level quality reporting available"
+                "Executive-level quality reporting available",
             ],
             "success_criteria": [
                 "100% test coverage automation",
@@ -417,17 +463,19 @@ class QualityFrameworkDemo:
                 "99.99% test pass rate",
                 "Real-time quality monitoring",
                 "Automated compliance validation",
-                "Zero tolerance for quality compromises"
-            ]
+                "Zero tolerance for quality compromises",
+            ],
         }
-        with open(reports_dir / "demo_results.json", 'w') as f:
+        with open(reports_dir / "demo_results.json", "w") as f:
             json.dump(demo_report, f, indent=2, default=str)
         summary_content = f
-        with open(reports_dir / "demo_summary.md", 'w') as f:
+        with open(reports_dir / "demo_summary.md", "w") as f:
             f.write(summary_content)
         print(f"\n📄 Demonstration reports saved to: {reports_dir}")
         print("   • demo_results.json - Detailed results data")
         print("   • demo_summary.md - Executive summary")
+
+
 def main():
     print("🚀 Starting HMS Zero-Defect Quality Framework Demonstration...")
     framework_path = Path("/home/azureuser/hms-enterprise-grade/quality_framework")
@@ -439,6 +487,10 @@ def main():
     print("\n🎉 Demonstration completed successfully!")
     print("📚 View the generated reports in the quality_framework/reports/ directory")
     print("🌐 Access the framework documentation at quality_framework/README.md")
-    print("🚀 The HMS Zero-Defect Quality Framework is ready for production deployment!")
+    print(
+        "🚀 The HMS Zero-Defect Quality Framework is ready for production deployment!"
+    )
+
+
 if __name__ == "__main__":
     main()

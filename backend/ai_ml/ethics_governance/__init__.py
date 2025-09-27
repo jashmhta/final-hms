@@ -1,3 +1,7 @@
+"""
+__init__ module
+"""
+
 import hashlib
 import json
 import logging
@@ -117,17 +121,27 @@ class EthicalAIFramework:
         training_data_info: Dict[str, Any],
         assessor: str,
     ) -> EthicalAssessment:
-        assessment_id = f"ethics_assessment_{model_id}_{int(timezone.now().timestamp())}"
+        assessment_id = (
+            f"ethics_assessment_{model_id}_{int(timezone.now().timestamp())}"
+        )
         principle_scores = {}
         for principle in self.ethical_principles:
             score = self._assess_principle_compliance(
                 principle, model_metadata, performance_metrics, training_data_info
             )
             principle_scores[principle] = score
-        risk_level = self._assess_risk_level(model_id, model_metadata, performance_metrics)
-        bias_result = self._detect_bias(model_id, training_data_info, performance_metrics)
-        privacy_compliant = self._assess_privacy_compliance(model_metadata, training_data_info)
-        transparency_score = self._assess_transparency(model_metadata, performance_metrics)
+        risk_level = self._assess_risk_level(
+            model_id, model_metadata, performance_metrics
+        )
+        bias_result = self._detect_bias(
+            model_id, training_data_info, performance_metrics
+        )
+        privacy_compliant = self._assess_privacy_compliance(
+            model_metadata, training_data_info
+        )
+        transparency_score = self._assess_transparency(
+            model_metadata, performance_metrics
+        )
         safety_score = self._assess_safety(model_metadata, performance_metrics)
         overall_score = self._calculate_ethical_score(
             principle_scores, privacy_compliant, transparency_score, safety_score
@@ -164,42 +178,65 @@ class EthicalAIFramework:
         training_data_info: Dict[str, Any],
     ) -> float:
         principle_scores = {
-            EthicalPrinciple.BENEFICENCE: self._assess_beneficence(performance_metrics, training_data_info),
-            EthicalPrinciple.NON_MALEFICENCE: self._assess_non_maleficence(performance_metrics, training_data_info),
+            EthicalPrinciple.BENEFICENCE: self._assess_beneficence(
+                performance_metrics, training_data_info
+            ),
+            EthicalPrinciple.NON_MALEFICENCE: self._assess_non_maleficence(
+                performance_metrics, training_data_info
+            ),
             EthicalPrinciple.AUTONOMY: self._assess_autonomy(model_metadata),
-            EthicalPrinciple.JUSTICE: self._assess_justice(training_data_info, performance_metrics),
-            EthicalPrinciple.PRIVACY: self._assess_privacy_principle(model_metadata, training_data_info),
-            EthicalPrinciple.TRANSPARENCY: self._assess_transparency_principle(model_metadata),
-            EthicalPrinciple.ACCOUNTABILITY: self._assess_accountability(model_metadata),
+            EthicalPrinciple.JUSTICE: self._assess_justice(
+                training_data_info, performance_metrics
+            ),
+            EthicalPrinciple.PRIVACY: self._assess_privacy_principle(
+                model_metadata, training_data_info
+            ),
+            EthicalPrinciple.TRANSPARENCY: self._assess_transparency_principle(
+                model_metadata
+            ),
+            EthicalPrinciple.ACCOUNTABILITY: self._assess_accountability(
+                model_metadata
+            ),
             EthicalPrinciple.SAFETY: self._assess_safety_principle(performance_metrics),
         }
         return principle_scores.get(principle, 0.5)
 
-    def _assess_beneficence(self, performance_metrics: Dict[str, Any], training_data_info: Dict[str, Any]) -> float:
+    def _assess_beneficence(
+        self, performance_metrics: Dict[str, Any], training_data_info: Dict[str, Any]
+    ) -> float:
         score = 0.0
         factors = 0
         if "accuracy" in performance_metrics:
             score += min(performance_metrics["accuracy"] / 0.90, 1.0) * 0.4
             factors += 0.4
         if "patient_outcome_improvement" in performance_metrics:
-            score += min(performance_metrics["patient_outcome_improvement"] / 0.80, 1.0) * 0.3
+            score += (
+                min(performance_metrics["patient_outcome_improvement"] / 0.80, 1.0)
+                * 0.3
+            )
             factors += 0.3
         if "treatment_efficacy" in performance_metrics:
             score += min(performance_metrics["treatment_efficacy"] / 0.85, 1.0) * 0.3
             factors += 0.3
         return score / max(factors, 1.0)
 
-    def _assess_non_maleficence(self, performance_metrics: Dict[str, Any], training_data_info: Dict[str, Any]) -> float:
+    def _assess_non_maleficence(
+        self, performance_metrics: Dict[str, Any], training_data_info: Dict[str, Any]
+    ) -> float:
         score = 0.0
         factors = 0
         if "error_rate" in performance_metrics:
             score += max(0, 1.0 - (performance_metrics["error_rate"] / 0.10)) * 0.3
             factors += 0.3
         if "adverse_event_rate" in performance_metrics:
-            score += max(0, 1.0 - (performance_metrics["adverse_event_rate"] / 0.05)) * 0.3
+            score += (
+                max(0, 1.0 - (performance_metrics["adverse_event_rate"] / 0.05)) * 0.3
+            )
             factors += 0.3
         if "false_negative_rate" in performance_metrics:
-            score += max(0, 1.0 - (performance_metrics["false_negative_rate"] / 0.15)) * 0.2
+            score += (
+                max(0, 1.0 - (performance_metrics["false_negative_rate"] / 0.15)) * 0.2
+            )
             factors += 0.2
         if training_data_info.get("safety_testing_completed", False):
             score += 0.2
@@ -216,7 +253,9 @@ class EthicalAIFramework:
             score += 0.3
         return score
 
-    def _assess_justice(self, training_data_info: Dict[str, Any], performance_metrics: Dict[str, Any]) -> float:
+    def _assess_justice(
+        self, training_data_info: Dict[str, Any], performance_metrics: Dict[str, Any]
+    ) -> float:
         score = 0.0
         factors = 0
         if "demographic_balance" in training_data_info:
@@ -237,7 +276,9 @@ class EthicalAIFramework:
             factors += 0.3
         return score / max(factors, 1.0)
 
-    def _assess_privacy_principle(self, model_metadata: Dict[str, Any], training_data_info: Dict[str, Any]) -> float:
+    def _assess_privacy_principle(
+        self, model_metadata: Dict[str, Any], training_data_info: Dict[str, Any]
+    ) -> float:
         score = 0.0
         if training_data_info.get("data_anonymized", False):
             score += 0.3
@@ -334,10 +375,14 @@ class EthicalAIFramework:
         bias_metrics = {
             "data_bias_score": data_bias["bias_score"],
             "performance_bias_score": performance_bias["bias_score"],
-            "overall_bias_score": max(data_bias["bias_score"], performance_bias["bias_score"]),
+            "overall_bias_score": max(
+                data_bias["bias_score"], performance_bias["bias_score"]
+            ),
         }
         severity_score = bias_metrics["overall_bias_score"]
-        mitigation_strategies = self._generate_bias_mitigation_strategies(bias_types, bias_metrics)
+        mitigation_strategies = self._generate_bias_mitigation_strategies(
+            bias_types, bias_metrics
+        )
         return BiasDetectionResult(
             detection_id=detection_id,
             model_id=model_id,
@@ -376,7 +421,9 @@ class EthicalAIFramework:
             "bias_types": bias_types,
         }
 
-    def _analyze_performance_bias(self, performance_metrics: Dict[str, Any]) -> Dict[str, Any]:
+    def _analyze_performance_bias(
+        self, performance_metrics: Dict[str, Any]
+    ) -> Dict[str, Any]:
         subgroup_performance = performance_metrics.get("subgroup_performance", {})
         if not subgroup_performance:
             return {"bias_detected": False, "bias_score": 0.0, "bias_types": []}
@@ -402,7 +449,9 @@ class EthicalAIFramework:
         strategies = []
         for bias_type in bias_types:
             if bias_type == BiasType.SELECTION_BIAS:
-                strategies.append("Improve training data diversity and representativeness")
+                strategies.append(
+                    "Improve training data diversity and representativeness"
+                )
                 strategies.append("Implement stratified sampling techniques")
             elif bias_type == BiasType.ALGORITHMIC_BIAS:
                 strategies.append("Apply fairness-aware machine learning algorithms")
@@ -419,7 +468,9 @@ class EthicalAIFramework:
             strategies.append("Establish bias mitigation review board")
         return strategies
 
-    def _assess_privacy_compliance(self, model_metadata: Dict[str, Any], training_data_info: Dict[str, Any]) -> bool:
+    def _assess_privacy_compliance(
+        self, model_metadata: Dict[str, Any], training_data_info: Dict[str, Any]
+    ) -> bool:
         privacy_checks = [
             training_data_info.get("data_anonymized", False),
             training_data_info.get("hipaa_compliant", False),
@@ -428,7 +479,9 @@ class EthicalAIFramework:
         ]
         return all(privacy_checks)
 
-    def _assess_transparency(self, model_metadata: Dict[str, Any], performance_metrics: Dict[str, Any]) -> float:
+    def _assess_transparency(
+        self, model_metadata: Dict[str, Any], performance_metrics: Dict[str, Any]
+    ) -> float:
         score = 0.0
         if model_metadata.get("interpretable_model", False):
             score += 0.4
@@ -438,7 +491,9 @@ class EthicalAIFramework:
             score += 0.3
         return score
 
-    def _assess_safety(self, model_metadata: Dict[str, Any], performance_metrics: Dict[str, Any]) -> float:
+    def _assess_safety(
+        self, model_metadata: Dict[str, Any], performance_metrics: Dict[str, Any]
+    ) -> float:
         score = 0.0
         if performance_metrics.get("clinical_validation_completed", False):
             score += 0.4
@@ -465,7 +520,10 @@ class EthicalAIFramework:
             EthicalPrinciple.ACCOUNTABILITY: 0.10,
             EthicalPrinciple.SAFETY: 0.10,
         }
-        weighted_score = sum(principle_scores[principle] * weight for principle, weight in principle_weights.items())
+        weighted_score = sum(
+            principle_scores[principle] * weight
+            for principle, weight in principle_weights.items()
+        )
         if privacy_compliant:
             weighted_score *= 1.0
         else:
@@ -486,19 +544,29 @@ class EthicalAIFramework:
         for principle, score in principle_scores.items():
             if score < 0.7:
                 if principle == EthicalPrinciple.BENEFICENCE:
-                    recommendations.append("Improve model effectiveness and patient outcomes")
+                    recommendations.append(
+                        "Improve model effectiveness and patient outcomes"
+                    )
                 elif principle == EthicalPrinciple.NON_MALEFICENCE:
-                    recommendations.append("Strengthen safety testing and error reduction")
+                    recommendations.append(
+                        "Strengthen safety testing and error reduction"
+                    )
                 elif principle == EthicalPrinciple.AUTONOMY:
-                    recommendations.append("Enhance patient consent and control mechanisms")
+                    recommendations.append(
+                        "Enhance patient consent and control mechanisms"
+                    )
                 elif principle == EthicalPrinciple.JUSTICE:
                     recommendations.append("Address fairness and equity concerns")
                 elif principle == EthicalPrinciple.PRIVACY:
                     recommendations.append("Improve privacy protection measures")
                 elif principle == EthicalPrinciple.TRANSPARENCY:
-                    recommendations.append("Enhance model explainability and documentation")
+                    recommendations.append(
+                        "Enhance model explainability and documentation"
+                    )
                 elif principle == EthicalPrinciple.ACCOUNTABILITY:
-                    recommendations.append("Strengthen accountability and audit mechanisms")
+                    recommendations.append(
+                        "Strengthen accountability and audit mechanisms"
+                    )
                 elif principle == EthicalPrinciple.SAFETY:
                     recommendations.append("Improve clinical safety validation")
         if bias_result.bias_detected:
@@ -585,7 +653,9 @@ class RegulatoryComplianceMonitor:
         model_metadata: Dict[str, Any],
         framework: ComplianceFramework,
     ) -> ComplianceReport:
-        report_id = f"compliance_{framework.value}_{model_id}_{int(timezone.now().timestamp())}"
+        report_id = (
+            f"compliance_{framework.value}_{model_id}_{int(timezone.now().timestamp())}"
+        )
         requirements = self.compliance_requirements.get(framework, [])
         requirements_met = []
         requirements_failed = []
@@ -594,7 +664,9 @@ class RegulatoryComplianceMonitor:
                 requirements_met.append(requirement)
             else:
                 requirements_failed.append(requirement)
-        compliance_score = len(requirements_met) / len(requirements) if requirements else 1.0
+        compliance_score = (
+            len(requirements_met) / len(requirements) if requirements else 1.0
+        )
         evidence = self._generate_compliance_evidence(model_metadata, requirements_met)
         recommendations = self._generate_compliance_recommendations(requirements_failed)
         next_review = timezone.now() + timedelta(days=365)
@@ -613,15 +685,21 @@ class RegulatoryComplianceMonitor:
             compliant=compliant,
         )
 
-    def _check_requirement(self, model_metadata: Dict[str, Any], requirement: str) -> bool:
+    def _check_requirement(
+        self, model_metadata: Dict[str, Any], requirement: str
+    ) -> bool:
         requirement_checks = {
             "data_anonymization": model_metadata.get("data_anonymized", False),
             "access_controls": model_metadata.get("access_controls_implemented", False),
             "audit_logging": model_metadata.get("audit_logging_enabled", False),
             "consent_mechanisms": model_metadata.get("consent_mechanisms", False),
-            "clinical_validation": model_metadata.get("clinical_validation_completed", False),
+            "clinical_validation": model_metadata.get(
+                "clinical_validation_completed", False
+            ),
             "risk_management": model_metadata.get("risk_management_plan", False),
-            "transparency_requirements": model_metadata.get("transparency_measures", False),
+            "transparency_requirements": model_metadata.get(
+                "transparency_measures", False
+            ),
             "human_oversight": model_metadata.get("human_oversight_mechanisms", False),
         }
         return requirement_checks.get(requirement, False)
@@ -635,7 +713,9 @@ class RegulatoryComplianceMonitor:
                 evidence[requirement] = {
                     "evidence_type": "technical_validation",
                     "description": "Data anonymization techniques validated",
-                    "validation_date": model_metadata.get("anonymization_validation_date"),
+                    "validation_date": model_metadata.get(
+                        "anonymization_validation_date"
+                    ),
                 }
             elif requirement == "clinical_validation":
                 evidence[requirement] = {
@@ -645,7 +725,9 @@ class RegulatoryComplianceMonitor:
                 }
         return evidence
 
-    def _generate_compliance_recommendations(self, requirements_failed: List[str]) -> List[str]:
+    def _generate_compliance_recommendations(
+        self, requirements_failed: List[str]
+    ) -> List[str]:
         recommendations = []
         for requirement in requirements_failed:
             if requirement == "data_anonymization":
@@ -700,7 +782,10 @@ def create_ethics_governance_api():
                     {
                         "assessment_id": assessment.assessment_id,
                         "model_id": assessment.model_id,
-                        "ethical_principles": {p.value: score for p, score in assessment.ethical_principles.items()},
+                        "ethical_principles": {
+                            p.value: score
+                            for p, score in assessment.ethical_principles.items()
+                        },
                         "risk_level": assessment.risk_level.value,
                         "bias_detected": assessment.bias_detected,
                         "bias_metrics": assessment.bias_metrics,
@@ -723,7 +808,9 @@ def create_ethics_governance_api():
                 model_id = request.data.get("model_id")
                 model_metadata = request.data.get("model_metadata", {})
                 framework = ComplianceFramework(request.data.get("framework", "hipaa"))
-                report = self.compliance_monitor.assess_compliance(model_id, model_metadata, framework)
+                report = self.compliance_monitor.assess_compliance(
+                    model_id, model_metadata, framework
+                )
                 return Response(
                     {
                         "report_id": report.report_id,

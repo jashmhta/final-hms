@@ -35,7 +35,7 @@ class EncounterAttachmentSerializer(serializers.ModelSerializer):
 class OptimizedEncounterNoteSerializer(serializers.ModelSerializer):
     """Optimized serializer to prevent N+1 queries."""
 
-    author_name = serializers.CharField(source='author.get_full_name', read_only=True)
+    author_name = serializers.CharField(source="author.get_full_name", read_only=True)
 
     class Meta:
         model = EncounterNote
@@ -54,8 +54,10 @@ class OptimizedEncounterNoteSerializer(serializers.ModelSerializer):
 class OptimizedEncounterAttachmentSerializer(serializers.ModelSerializer):
     """Optimized serializer to prevent N+1 queries."""
 
-    uploaded_by_name = serializers.CharField(source='uploaded_by.get_full_name', read_only=True)
-    file_size = serializers.IntegerField(source='file.size', read_only=True)
+    uploaded_by_name = serializers.CharField(
+        source="uploaded_by.get_full_name", read_only=True
+    )
+    file_size = serializers.IntegerField(source="file.size", read_only=True)
 
     class Meta:
         model = EncounterAttachment
@@ -80,9 +82,11 @@ class EncounterSerializer(serializers.ModelSerializer):
     attachments = OptimizedEncounterAttachmentSerializer(many=True, read_only=True)
 
     # Optimized related field lookups
-    patient_name = serializers.CharField(source='patient.get_full_name', read_only=True)
-    physician_name = serializers.CharField(source='primary_physician.get_full_name', read_only=True)
-    hospital_name = serializers.CharField(source='hospital.name', read_only=True)
+    patient_name = serializers.CharField(source="patient.get_full_name", read_only=True)
+    physician_name = serializers.CharField(
+        source="primary_physician.get_full_name", read_only=True
+    )
+    hospital_name = serializers.CharField(source="hospital.name", read_only=True)
 
     class Meta:
         model = Encounter

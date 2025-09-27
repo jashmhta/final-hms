@@ -1,7 +1,11 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, JSON
-from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy.ext.declarative import declarative_base
+
 Base = declarative_base()
+
+
 class ConsentModel(Base):
     __tablename__ = "consent_records"
     id = Column(Integer, primary_key=True, index=True)

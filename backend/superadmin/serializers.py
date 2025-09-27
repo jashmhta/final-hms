@@ -1,3 +1,7 @@
+"""
+serializers module
+"""
+
 from rest_framework import serializers
 
 from django.contrib.auth import get_user_model
@@ -103,7 +107,9 @@ class SuperadminUserSerializer(serializers.ModelSerializer):
 
 
 class GlobalSettingsSerializer(serializers.ModelSerializer):
-    last_modified_by_name = serializers.CharField(source="last_modified_by.get_full_name", read_only=True)
+    last_modified_by_name = serializers.CharField(
+        source="last_modified_by.get_full_name", read_only=True
+    )
 
     class Meta:
         model = GlobalSettings
@@ -112,7 +118,9 @@ class GlobalSettingsSerializer(serializers.ModelSerializer):
 
 
 class SystemAlertSerializer(serializers.ModelSerializer):
-    created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True)
+    created_by_name = serializers.CharField(
+        source="created_by.get_full_name", read_only=True
+    )
     target_hospitals_details = serializers.SerializerMethodField()
     target_tiers_details = serializers.SerializerMethodField()
 
@@ -153,10 +161,16 @@ class DashboardStatsSerializer(serializers.Serializer):
 
 
 class PriceEstimatorRequestSerializer(serializers.Serializer):
-    services = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
+    services = serializers.ListField(
+        child=serializers.DictField(child=serializers.CharField())
+    )
     patient_type = serializers.ChoiceField(choices=["OPD", "IPD", "EMERGENCY"])
-    insurance_type = serializers.ChoiceField(choices=["NONE", "BASIC", "PREMIUM"], required=False)
-    room_type = serializers.ChoiceField(choices=["GENERAL", "PRIVATE", "DELUXE", "SUITE"], required=False)
+    insurance_type = serializers.ChoiceField(
+        choices=["NONE", "BASIC", "PREMIUM"], required=False
+    )
+    room_type = serializers.ChoiceField(
+        choices=["GENERAL", "PRIVATE", "DELUXE", "SUITE"], required=False
+    )
     duration_days = serializers.IntegerField(min_value=1, required=False)
 
 

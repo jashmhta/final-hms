@@ -105,7 +105,9 @@ class DataEncryptionManager:
             for key in settings.FERNET_KEYS:
                 if isinstance(key, str):
                     key = key.encode()
-                self.encryption_keys[f"fernet_{len(self.encryption_keys)}"] = Fernet(key)
+                self.encryption_keys[f"fernet_{len(self.encryption_keys)}"] = Fernet(
+                    key
+                )
 
         # Generate new key if none exists
         if not self.encryption_keys:
@@ -215,14 +217,23 @@ class AccessControlManager:
                 "lab:read",
                 "reports:read",
             ],
-            "NURSE": ["patients:read", "patients:write", "ehr:read", "appointments:read", "pharmacy:read", "lab:read"],
+            "NURSE": [
+                "patients:read",
+                "patients:write",
+                "ehr:read",
+                "appointments:read",
+                "pharmacy:read",
+                "lab:read",
+            ],
             "PHARMACIST": ["pharmacy:*", "patients:read", "ehr:read"],
             "LAB_TECHNICIAN": ["lab:*", "patients:read", "ehr:read"],
             "BILLING_CLERK": ["billing:*", "patients:read", "appointments:read"],
             "RECEPTIONIST": ["patients:read", "patients:write", "appointments:*"],
         }
 
-    def check_permission(self, user: User, resource: str, action: str, context: Dict = None) -> Tuple[bool, str]:
+    def check_permission(
+        self, user: User, resource: str, action: str, context: Dict = None
+    ) -> Tuple[bool, str]:
         """Check if user has permission to access resource"""
         try:
             # Get user's role
@@ -240,7 +251,9 @@ class AccessControlManager:
                 return False, f"Insufficient permissions for {required_permission}"
 
             # Context-based access control
-            context_check = self._check_context_restrictions(user, resource, action, context)
+            context_check = self._check_context_restrictions(
+                user, resource, action, context
+            )
             if not context_check[0]:
                 return context_check
 
@@ -258,7 +271,9 @@ class AccessControlManager:
             logging.error(f"Permission check error: {e}")
             return False, "Permission check failed"
 
-    def _check_context_restrictions(self, user: User, resource: str, action: str, context: Dict) -> Tuple[bool, str]:
+    def _check_context_restrictions(
+        self, user: User, resource: str, action: str, context: Dict
+    ) -> Tuple[bool, str]:
         """Check context-based access restrictions"""
         if not context:
             return True, "No context restrictions"
@@ -274,14 +289,18 @@ class AccessControlManager:
 
         return True, "Context check passed"
 
-    def _check_time_restrictions(self, user: User, resource: str, action: str) -> Tuple[bool, str]:
+    def _check_time_restrictions(
+        self, user: User, resource: str, action: str
+    ) -> Tuple[bool, str]:
         """Check time-based access restrictions"""
         current_hour = timezone.now().hour
 
         # Restrict sensitive operations to business hours
         sensitive_resources = ["billing", "hr", "admin", "settings"]
         if any(res in resource for res in sensitive_resources):
-            if action in ["write", "delete", "update"] and not (9 <= current_hour <= 17):
+            if action in ["write", "delete", "update"] and not (
+                9 <= current_hour <= 17
+            ):
                 return False, "Sensitive operations restricted to business hours"
 
         return True, "Time restrictions passed"
@@ -324,20 +343,44 @@ class SecurityAuditManager:
     def _setup_audit_triggers(self):
         """Setup audit triggers for sensitive operations"""
         self.audit_triggers = {
-            "user_authentication": {"severity": RiskLevel.HIGH, "description": "User authentication attempt"},
-            "data_access": {"severity": RiskLevel.MEDIUM, "description": "Data access attempt"},
-            "data_modification": {"severity": RiskLevel.HIGH, "description": "Data modification attempt"},
-            "admin_action": {"severity": RiskLevel.HIGH, "description": "Administrative action"},
-            "security_configuration": {"severity": RiskLevel.CRITICAL, "description": "Security configuration change"},
-            "failed_login": {"severity": RiskLevel.MEDIUM, "description": "Failed login attempt"},
+            "user_authentication": {
+                "severity": RiskLevel.HIGH,
+                "description": "User authentication attempt",
+            },
+            "data_access": {
+                "severity": RiskLevel.MEDIUM,
+                "description": "Data access attempt",
+            },
+            "data_modification": {
+                "severity": RiskLevel.HIGH,
+                "description": "Data modification attempt",
+            },
+            "admin_action": {
+                "severity": RiskLevel.HIGH,
+                "description": "Administrative action",
+            },
+            "security_configuration": {
+                "severity": RiskLevel.CRITICAL,
+                "description": "Security configuration change",
+            },
+            "failed_login": {
+                "severity": RiskLevel.MEDIUM,
+                "description": "Failed login attempt",
+            },
         }
 
-    def log_security_event(self, event_type: str, user: User = None, request=None, metadata: Dict = None):
+    def log_security_event(
+        self, event_type: str, user: User = None, request=None, metadata: Dict = None
+    ):
         """Log security event"""
         try:
             event_id = f"sec_{int(time.time())}_{secrets.token_hex(4)}"
             trigger = self.audit_triggers.get(
-                event_type, {"severity": RiskLevel.LOW, "description": f"Security event: {event_type}"}
+                event_type,
+                {
+                    "severity": RiskLevel.LOW,
+                    "description": f"Security event: {event_type}",
+                },
             )
 
             security_event = SecurityEvent(
@@ -390,16 +433,27 @@ class SecurityAuditManager:
             }
 
             # Check for patterns
-            recent_events = [e for e in self.audit_logs if e.timestamp > timezone.now() - timedelta(hours=1)]
+            recent_events = [
+                e
+                for e in self.audit_logs
+                if e.timestamp > timezone.now() - timedelta(hours=1)
+            ]
 
             # Check for repeated failed logins
             if event.event_type == "failed_login":
                 failed_logins = [
-                    e for e in recent_events if e.event_type == "failed_login" and e.ip_address == event.ip_address
+                    e
+                    for e in recent_events
+                    if e.event_type == "failed_login"
+                    and e.ip_address == event.ip_address
                 ]
                 if len(failed_logins) > 5:
-                    investigation_results["findings"].append("Multiple failed login attempts detected")
-                    investigation_results["recommendations"].append("Consider blocking IP address or enabling MFA")
+                    investigation_results["findings"].append(
+                        "Multiple failed login attempts detected"
+                    )
+                    investigation_results["recommendations"].append(
+                        "Consider blocking IP address or enabling MFA"
+                    )
 
             # Update investigation status
             event.metadata["investigation"] = investigation_results
@@ -409,7 +463,12 @@ class SecurityAuditManager:
 
     def _calculate_risk_score(self, event: SecurityEvent) -> float:
         """Calculate risk score for security event"""
-        base_scores = {RiskLevel.LOW: 1, RiskLevel.MEDIUM: 3, RiskLevel.HIGH: 7, RiskLevel.CRITICAL: 10}
+        base_scores = {
+            RiskLevel.LOW: 1,
+            RiskLevel.MEDIUM: 3,
+            RiskLevel.HIGH: 7,
+            RiskLevel.CRITICAL: 10,
+        }
 
         score = base_scores.get(event.severity, 1)
 
@@ -429,24 +488,35 @@ class SecurityAuditManager:
         # For now, we'll just keep in memory
         pass
 
-    def generate_compliance_report(self, standard: ComplianceStandard) -> ComplianceReport:
+    def generate_compliance_report(
+        self, standard: ComplianceStandard
+    ) -> ComplianceReport:
         """Generate compliance report"""
         try:
             # Analyze audit logs for compliance
             relevant_events = [
-                event for event in self.audit_logs if event.timestamp > timezone.now() - timedelta(days=30)
+                event
+                for event in self.audit_logs
+                if event.timestamp > timezone.now() - timedelta(days=30)
             ]
 
             # Calculate compliance score
             total_events = len(relevant_events)
-            critical_events = len([e for e in relevant_events if e.severity == RiskLevel.CRITICAL])
-            high_events = len([e for e in relevant_events if e.severity == RiskLevel.HIGH])
+            critical_events = len(
+                [e for e in relevant_events if e.severity == RiskLevel.CRITICAL]
+            )
+            high_events = len(
+                [e for e in relevant_events if e.severity == RiskLevel.HIGH]
+            )
 
             # Simple scoring algorithm
             if total_events == 0:
                 score = 100.0
             else:
-                score = max(0, 100 - (critical_events * 10 + high_events * 5) / total_events * 100)
+                score = max(
+                    0,
+                    100 - (critical_events * 10 + high_events * 5) / total_events * 100,
+                )
 
             # Generate findings and recommendations
             findings = []
@@ -454,13 +524,31 @@ class SecurityAuditManager:
 
             if critical_events > 0:
                 findings.append(
-                    {"type": "critical", "description": f"Found {critical_events} critical security events"}
+                    {
+                        "type": "critical",
+                        "description": f"Found {critical_events} critical security events",
+                    }
                 )
-                recommendations.append({"priority": "high", "action": "Review and address critical security events"})
+                recommendations.append(
+                    {
+                        "priority": "high",
+                        "action": "Review and address critical security events",
+                    }
+                )
 
             if high_events > 5:
-                findings.append({"type": "high", "description": f"Found {high_events} high-severity security events"})
-                recommendations.append({"priority": "medium", "action": "Implement additional security controls"})
+                findings.append(
+                    {
+                        "type": "high",
+                        "description": f"Found {high_events} high-severity security events",
+                    }
+                )
+                recommendations.append(
+                    {
+                        "priority": "medium",
+                        "action": "Implement additional security controls",
+                    }
+                )
 
             report = ComplianceReport(
                 standard=standard,
@@ -499,7 +587,13 @@ class DataPrivacyManager:
             "backup_data": {"retention_days": 30, "archival": False},
         }
 
-    def record_consent(self, patient_id: int, consent_type: str, granted: bool, expiration_date: datetime = None):
+    def record_consent(
+        self,
+        patient_id: int,
+        consent_type: str,
+        granted: bool,
+        expiration_date: datetime = None,
+    ):
         """Record patient consent"""
         try:
             consent_id = f"consent_{patient_id}_{int(time.time())}"
@@ -531,7 +625,10 @@ class DataPrivacyManager:
                     consent["patient_id"] == patient_id
                     and consent["consent_type"] == consent_type
                     and consent["granted"]
-                    and (consent["expires_at"] is None or consent["expires_at"] > timezone.now())
+                    and (
+                        consent["expires_at"] is None
+                        or consent["expires_at"] > timezone.now()
+                    )
                 )
             ]
 
@@ -593,7 +690,12 @@ class VulnerabilityManager:
     async def run_security_scan(self) -> Dict:
         """Run comprehensive security scan"""
         try:
-            scan_results = {"timestamp": timezone.now(), "vulnerabilities": [], "recommendations": [], "risk_score": 0}
+            scan_results = {
+                "timestamp": timezone.now(),
+                "vulnerabilities": [],
+                "recommendations": [],
+                "risk_score": 0,
+            }
 
             # Check for common vulnerabilities
             vulnerabilities = await self._scan_for_vulnerabilities()
@@ -604,7 +706,9 @@ class VulnerabilityManager:
             scan_results["risk_score"] = risk_score
 
             # Generate recommendations
-            recommendations = self._generate_remediation_recommendations(vulnerabilities)
+            recommendations = self._generate_remediation_recommendations(
+                vulnerabilities
+            )
             scan_results["recommendations"] = recommendations
 
             # Store scan results
@@ -645,7 +749,11 @@ class VulnerabilityManager:
             ("security_headers", "Missing security headers", RiskLevel.MEDIUM),
             ("xss_protection", "XSS protection not enabled", RiskLevel.HIGH),
             ("csrf_protection", "CSRF protection not enabled", RiskLevel.HIGH),
-            ("sql_injection", "Potential SQL injection vulnerability", RiskLevel.CRITICAL),
+            (
+                "sql_injection",
+                "Potential SQL injection vulnerability",
+                RiskLevel.CRITICAL,
+            ),
         ]
 
         for check_name, description, severity in web_checks:
@@ -671,8 +779,18 @@ class VulnerabilityManager:
 
         # Check Django security settings
         security_checks = [
-            ("DEBUG", settings.DEBUG, "Debug mode enabled in production", RiskLevel.HIGH),
-            ("SECRET_KEY", len(getattr(settings, "SECRET_KEY", "")) < 50, "Weak secret key", RiskLevel.MEDIUM),
+            (
+                "DEBUG",
+                settings.DEBUG,
+                "Debug mode enabled in production",
+                RiskLevel.HIGH,
+            ),
+            (
+                "SECRET_KEY",
+                len(getattr(settings, "SECRET_KEY", "")) < 50,
+                "Weak secret key",
+                RiskLevel.MEDIUM,
+            ),
             (
                 "ALLOWED_HOSTS",
                 len(getattr(settings, "ALLOWED_HOSTS", ["*"])) > 1,
@@ -726,22 +844,31 @@ class VulnerabilityManager:
         # In production, this would actually test for vulnerabilities
         import random
 
-        return random.random() < 0.1  # 10% chance of finding vulnerability
+        return secrets.random() < 0.1  # 10% chance of finding vulnerability
 
     def _calculate_vulnerability_risk(self, vulnerabilities: List[Dict]) -> float:
         """Calculate overall risk score from vulnerabilities"""
         if not vulnerabilities:
             return 0.0
 
-        severity_weights = {RiskLevel.LOW: 1, RiskLevel.MEDIUM: 3, RiskLevel.HIGH: 7, RiskLevel.CRITICAL: 10}
+        severity_weights = {
+            RiskLevel.LOW: 1,
+            RiskLevel.MEDIUM: 3,
+            RiskLevel.HIGH: 7,
+            RiskLevel.CRITICAL: 10,
+        }
 
-        total_score = sum(severity_weights.get(vuln["severity"], 1) for vuln in vulnerabilities)
+        total_score = sum(
+            severity_weights.get(vuln["severity"], 1) for vuln in vulnerabilities
+        )
 
         # Normalize to 0-100 scale
         max_possible_score = len(vulnerabilities) * 10
         return (total_score / max_possible_score) * 100 if max_possible_score > 0 else 0
 
-    def _generate_remediation_recommendations(self, vulnerabilities: List[Dict]) -> List[Dict]:
+    def _generate_remediation_recommendations(
+        self, vulnerabilities: List[Dict]
+    ) -> List[Dict]:
         """Generate remediation recommendations"""
         recommendations = []
 
@@ -817,14 +944,23 @@ class SecurityComplianceFramework:
     def _setup_hipaa_compliance(self) -> Dict:
         """Setup HIPAA compliance requirements"""
         return {
-            "technical_safeguards": ["Access control", "Audit controls", "Integrity controls", "Transmission security"],
+            "technical_safeguards": [
+                "Access control",
+                "Audit controls",
+                "Integrity controls",
+                "Transmission security",
+            ],
             "administrative_safeguards": [
                 "Security management process",
                 "Workforce security",
                 "Information access management",
                 "Training and awareness",
             ],
-            "physical_safeguards": ["Facility access controls", "Workstation security", "Device and media controls"],
+            "physical_safeguards": [
+                "Facility access controls",
+                "Workstation security",
+                "Device and media controls",
+            ],
         }
 
     def _setup_gdpr_compliance(self) -> Dict:
@@ -894,13 +1030,19 @@ class SecurityComplianceFramework:
             assessment["areas"]["compliance"] = compliance_scores
 
             # Calculate overall score
-            all_scores = [vuln_scan.get("risk_score", 0)] + list(compliance_scores.values())
-            assessment["overall_score"] = 100 - sum(all_scores) / len(all_scores) if all_scores else 100
+            all_scores = [vuln_scan.get("risk_score", 0)] + list(
+                compliance_scores.values()
+            )
+            assessment["overall_score"] = (
+                100 - sum(all_scores) / len(all_scores) if all_scores else 100
+            )
 
             # Generate critical findings
             if vuln_scan.get("vulnerabilities"):
                 critical_vulns = [
-                    vuln for vuln in vuln_scan["vulnerabilities"] if vuln["severity"] == RiskLevel.CRITICAL
+                    vuln
+                    for vuln in vuln_scan["vulnerabilities"]
+                    if vuln["severity"] == RiskLevel.CRITICAL
                 ]
                 assessment["critical_findings"] = critical_vulns
 
@@ -918,9 +1060,15 @@ class SecurityComplianceFramework:
                 "security_metrics": {
                     "total_events": len(self.audit_manager.audit_logs),
                     "critical_events": len(
-                        [e for e in self.audit_manager.audit_logs if e.severity == RiskLevel.CRITICAL]
+                        [
+                            e
+                            for e in self.audit_manager.audit_logs
+                            if e.severity == RiskLevel.CRITICAL
+                        ]
                     ),
-                    "active_vulnerabilities": len(self.vulnerability_manager.vulnerabilities),
+                    "active_vulnerabilities": len(
+                        self.vulnerability_manager.vulnerabilities
+                    ),
                     "compliance_scores": {
                         standard.value: (
                             self.audit_manager.compliance_reports[standard.value].score
@@ -932,7 +1080,11 @@ class SecurityComplianceFramework:
                 },
                 "recent_events": [
                     asdict(event)
-                    for event in sorted(self.audit_manager.audit_logs, key=lambda x: x.timestamp, reverse=True)[:10]
+                    for event in sorted(
+                        self.audit_manager.audit_logs,
+                        key=lambda x: x.timestamp,
+                        reverse=True,
+                    )[:10]
                 ],
             }
 
@@ -958,14 +1110,22 @@ def decrypt_sensitive_data(encrypted_data: str) -> Any:
     return security_framework.encryption_manager.decrypt_data(encrypted_data)
 
 
-def check_user_permission(user: User, resource: str, action: str, context: Dict = None) -> Tuple[bool, str]:
+def check_user_permission(
+    user: User, resource: str, action: str, context: Dict = None
+) -> Tuple[bool, str]:
     """Check user permission"""
-    return security_framework.access_control.check_permission(user, resource, action, context)
+    return security_framework.access_control.check_permission(
+        user, resource, action, context
+    )
 
 
-def log_security_event(event_type: str, user: User = None, request=None, metadata: Dict = None):
+def log_security_event(
+    event_type: str, user: User = None, request=None, metadata: Dict = None
+):
     """Log security event"""
-    return security_framework.audit_manager.log_security_event(event_type, user, request, metadata)
+    return security_framework.audit_manager.log_security_event(
+        event_type, user, request, metadata
+    )
 
 
 async def perform_security_assessment() -> Dict:

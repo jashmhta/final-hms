@@ -1,3 +1,7 @@
+"""
+optimize_assets module
+"""
+
 import json
 import logging
 import os
@@ -67,7 +71,9 @@ class Command(BaseCommand):
         # Collect static files first
         if not self.dry_run:
             self.stdout.write("Collecting static files...")
-            subprocess.run(["python", "manage.py", "collectstatic", "--noinput"], check=True)
+            subprocess.run(
+                ["python", "manage.py", "collectstatic", "--noinput"], check=True
+            )
 
         # Process CSS files
         self._process_css_files(static_root, optimized_dir)
@@ -101,7 +107,10 @@ class Command(BaseCommand):
                 # Use cssmin or similar tool
                 try:
                     subprocess.run(
-                        ["cssmin", str(css_file), ">", output_file], shell=True, check=True, capture_output=True
+                        ["cssmin", str(css_file), ">", output_file],
+                        shell=True,
+                        check=True,
+                        capture_output=True,
                     )
                 except:
                     # Fallback: just copy the file
@@ -133,7 +142,14 @@ class Command(BaseCommand):
                 # Use terser or similar tool
                 try:
                     subprocess.run(
-                        ["terser", str(js_file), "--compress", "--mangle", "--output", output_file],
+                        [
+                            "terser",
+                            str(js_file),
+                            "--compress",
+                            "--mangle",
+                            "--output",
+                            output_file,
+                        ],
                         check=True,
                         capture_output=True,
                     )
@@ -183,7 +199,13 @@ class Command(BaseCommand):
         """Optimize JPEG image"""
         try:
             subprocess.run(
-                ["jpegoptim", "--max=85", "--strip-all", "--dest=" + str(output_file.parent), str(input_file)],
+                [
+                    "jpegoptim",
+                    "--max=85",
+                    "--strip-all",
+                    "--dest=" + str(output_file.parent),
+                    str(input_file),
+                ],
                 check=True,
                 capture_output=True,
             )
@@ -194,7 +216,9 @@ class Command(BaseCommand):
         """Optimize PNG image"""
         try:
             subprocess.run(
-                ["optipng", "-o7", "-quiet", "-out", str(output_file), str(input_file)], check=True, capture_output=True
+                ["optipng", "-o7", "-quiet", "-out", str(output_file), str(input_file)],
+                check=True,
+                capture_output=True,
             )
         except:
             shutil.copy2(input_file, output_file)
@@ -203,7 +227,9 @@ class Command(BaseCommand):
         """Optimize SVG image"""
         try:
             subprocess.run(
-                ["svgo", "--input", str(input_file), "--output", str(output_file)], check=True, capture_output=True
+                ["svgo", "--input", str(input_file), "--output", str(output_file)],
+                check=True,
+                capture_output=True,
             )
         except:
             shutil.copy2(input_file, output_file)
@@ -212,7 +238,9 @@ class Command(BaseCommand):
         """Create WebP version of image"""
         try:
             subprocess.run(
-                ["cwebp", "-q", "80", str(input_file), "-o", str(output_file)], check=True, capture_output=True
+                ["cwebp", "-q", "80", str(input_file), "-o", str(output_file)],
+                check=True,
+                capture_output=True,
             )
         except:
             pass  # WebP conversion failed
@@ -229,7 +257,11 @@ class Command(BaseCommand):
 
     def _create_asset_manifest(self, static_root, optimized_dir, environment):
         """Create asset manifest for CDN deployment"""
-        manifest = {"environment": environment, "version": self._get_version(), "assets": {}}
+        manifest = {
+            "environment": environment,
+            "version": self._get_version(),
+            "assets": {},
+        }
 
         # Scan optimized directory
         for root, dirs, files in os.walk(optimized_dir):
@@ -260,13 +292,15 @@ class Command(BaseCommand):
         # Cache manifest
         cache.set(f"asset_manifest_{environment}", manifest, timeout=86400)
 
-        self.stdout.write(f'Created asset manifest with {len(manifest["assets"])} assets')
+        self.stdout.write(
+            f'Created asset manifest with {len(manifest["assets"])} assets'
+        )
 
     def _calculate_hash(self, content):
         """Calculate file hash for cache busting"""
         import hashlib
 
-        return hashlib.md5(content).hexdigest()[:8]
+        return hashlib.hashlib.sha256(content).hexdigest()[:8]
 
     def _get_version(self):
         """Get current version"""
@@ -301,7 +335,9 @@ class Command(BaseCommand):
         # Load asset manifest
         manifest_path = os.path.join(settings.STATIC_ROOT, "asset-manifest.json")
         if not os.path.exists(manifest_path):
-            self.stderr.write(self.style.ERROR("Asset manifest not found. Run --compress first."))
+            self.stderr.write(
+                self.style.ERROR("Asset manifest not found. Run --compress first.")
+            )
             return
 
         with open(manifest_path) as f:
@@ -340,7 +376,9 @@ class Command(BaseCommand):
         for asset_path, asset_info in manifest["assets"].items():
             if not self.dry_run:
                 # Upload optimized asset
-                source_path = os.path.join(settings.STATIC_ROOT, "optimized", asset_path)
+                source_path = os.path.join(
+                    settings.STATIC_ROOT, "optimized", asset_path
+                )
                 if os.path.exists(source_path):
                     s3_key = asset_info["cdn_url"].split("/")[-1]
 
@@ -371,7 +409,10 @@ class Command(BaseCommand):
 
         # Create CloudFront invalidation
         if distribution_id and not self.dry_run:
-            paths = [f'/{info["cdn_url"].split("/")[-1]}' for info in manifest["assets"].values()]
+            paths = [
+                f'/{info["cdn_url"].split("/")[-1]}'
+                for info in manifest["assets"].values()
+            ]
             invalidation = cloudfront.create_invalidation(
                 DistributionId=distribution_id,
                 InvalidationBatch={
@@ -379,13 +420,17 @@ class Command(BaseCommand):
                     "CallerReference": str(self._get_version()),
                 },
             )
-            self.stdout.write(f'Created CloudFront invalidation: {invalidation["Invalidation"]["Id"]}')
+            self.stdout.write(
+                f'Created CloudFront invalidation: {invalidation["Invalidation"]["Id"]}'
+            )
 
         self.stdout.write(self.style.SUCCESS(f"Uploaded {uploaded} assets to S3"))
 
     def _deploy_to_cloudflare(self, manifest, environment):
         """Deploy to Cloudflare R2"""
-        self.stdout.write(self.style.WARNING("Cloudflare R2 deployment not yet implemented"))
+        self.stdout.write(
+            self.style.WARNING("Cloudflare R2 deployment not yet implemented")
+        )
 
     def _get_content_type(self, filename):
         """Get content type for file"""

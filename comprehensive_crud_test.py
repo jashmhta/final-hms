@@ -1,23 +1,29 @@
+"""
+comprehensive_crud_test module
+"""
+
+import json
+import logging
 import os
 import sys
-import django
-import json
 import time
-import logging
 import uuid
-from datetime import datetime, timedelta, date
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+
+import django
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hms.settings')
 sys.path.insert(0, '/home/azureuser/hms-enterprise-grade/backend')
 try:
     django.setup()
-    from django.db import connection, transaction, DatabaseError, IntegrityError
-    from django.core.management import call_command
-    from django.test.utils import get_runner
-    from django.conf import settings
     from django.apps import apps
+    from django.conf import settings
     from django.contrib.auth import get_user_model
+    from django.core.management import call_command
+    from django.db import DatabaseError, IntegrityError, connection, transaction
+    from django.test.utils import get_runner
     from django.utils import timezone
 except Exception as e:
     print(f"Error setting up Django: {e}")
@@ -272,7 +278,7 @@ class CRUDTestingSuite:
                 'query_type': 'SELECT with LIKE'
             })
             start_time = time.time()
-            from django.db.models import Count, Avg, Max, Q
+            from django.db.models import Avg, Count, Max, Q
             patient_stats = Patient.objects.aggregate(
                 total_count=Count('id'),
                 recent_count=Count('id', filter=Q(created_at__gte=timezone.now() - timedelta(days=30)))
@@ -411,7 +417,7 @@ class CRUDTestingSuite:
                 email=f'delete_{uuid.uuid4().hex[:8]}@example.com',
                 first_name='Delete',
                 last_name='Test',
-                password='testpassword123!'
+                password = os.getenv(\'PASSWORD\', \'testpassword123!\')
             )
             Patient = apps.get_model('patients', 'Patient')
             patient = Patient.objects.create(
@@ -442,7 +448,7 @@ class CRUDTestingSuite:
                     email=f'bulk{i}_{uuid.uuid4().hex[:6]}@example.com',
                     first_name='Bulk',
                     last_name=f'Delete{i}',
-                    password='testpassword123!'
+                    password = os.getenv(\'PASSWORD\', \'testpassword123!\')
                 )
                 test_users.append(test_user)
             usernames_to_delete = [u.username for u in test_users]
@@ -479,7 +485,7 @@ class CRUDTestingSuite:
                 email=f'constraint_{uuid.uuid4().hex[:8]}@example.com',
                 first_name='Constraint',
                 last_name='Test',
-                password='testpassword123!'
+                password = os.getenv(\'PASSWORD\', \'testpassword123!\')
             )
             constraint_user.delete()
             delete_time = time.time() - start_time
@@ -518,7 +524,7 @@ class CRUDTestingSuite:
                 email=f'bulk_{uuid.uuid4().hex[:8]}@example.com',
                 first_name='Bulk',
                 last_name='Test',
-                password='testpassword123!'
+                password = os.getenv(\'PASSWORD\', \'testpassword123!\')
             )
             bulk_patients = []
             for i in range(100):
@@ -602,7 +608,7 @@ class CRUDTestingSuite:
                 email=f'rel_{uuid.uuid4().hex[:8]}@example.com',
                 first_name='Relation',
                 last_name='Test',
-                password='testpassword123!'
+                password = os.getenv(\'PASSWORD\', \'testpassword123!\')
             )
             patient = Patient.objects.create(
                 first_name='Relation',
@@ -706,7 +712,7 @@ class CRUDTestingSuite:
                 email=f'unique_{uuid.uuid4().hex[:8]}@example.com',
                 first_name='Unique',
                 last_name='Test',
-                password='testpassword123!'
+                password = os.getenv(\'PASSWORD\', \'testpassword123!\')
             )
             try:
                 duplicate_user = self.User.objects.create_user(
@@ -714,7 +720,7 @@ class CRUDTestingSuite:
                     email=f'duplicate_{uuid.uuid4().hex[:8]}@example.com',
                     first_name='Duplicate',
                     last_name='User',
-                    password='testpassword123!'
+                    password = os.getenv(\'PASSWORD\', \'testpassword123!\')
                 )
                 unique_result = 'FAILED_UNEXPECTEDLY'
                 duplicate_user.delete()
@@ -798,7 +804,7 @@ class CRUDTestingSuite:
                         email=f'trans_{uuid.uuid4().hex[:8]}@example.com',
                         first_name='Transaction',
                         last_name='Test',
-                        password='testpassword123!'
+                        password = os.getenv(\'PASSWORD\', \'testpassword123!\')
                     )
                     Patient = apps.get_model('patients', 'Patient')
                     patient = Patient.objects.create(
@@ -841,7 +847,7 @@ class CRUDTestingSuite:
                         email=f'fail_{uuid.uuid4().hex[:8]}@example.com',
                         first_name='Fail',
                         last_name='Transaction',
-                        password='testpassword123!'
+                        password = os.getenv(\'PASSWORD\', \'testpassword123!\')
                     )
                     Patient.objects.create(
                         first_name='Fail',
@@ -866,7 +872,7 @@ class CRUDTestingSuite:
                         email=f'outer_{uuid.uuid4().hex[:8]}@example.com',
                         first_name='Outer',
                         last_name='Transaction',
-                        password='testpassword123!'
+                        password = os.getenv(\'PASSWORD\', \'testpassword123!\')
                     )
                     try:
                         with transaction.atomic():

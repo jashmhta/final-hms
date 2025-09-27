@@ -1,12 +1,21 @@
+"""
+routes module
+"""
+
 import io
 from datetime import date
+
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+
 from . import models, schemas
 from .database import get_db
+
 router = APIRouter()
+
+
 def crud_factory(model, schema_create, schema_read):
     def create(item: schema_create, db: Session = Depends(get_db)):
         db_item = model(**item.dict())
@@ -14,9 +23,13 @@ def crud_factory(model, schema_create, schema_read):
         db.commit()
         db.refresh(db_item)
         return db_item
+
     def list_all(db: Session = Depends(get_db)):
         return db.query(model).all()
+
     return create, list_all
+
+
 pg_router = APIRouter(prefix="/pricing_groups", tags=["Pricing Groups"])
 create_pg, list_pg = crud_factory(
     models.PricingGroup, schemas.PricingGroupCreate, schemas.PricingGroupRead
@@ -61,6 +74,8 @@ create_le, list_le = crud_factory(
 )
 le_router.post("/", response_model=schemas.LedgerEntryRead)(create_le)
 le_router.get("/", response_model=list[schemas.LedgerEntryRead])(list_le)
+
+
 def validate_double_entry(journal_entry_id: int, db: Session):
     entries = (
         db.query(models.LedgerEntry).filter_by(journal_entry_id=journal_entry_id).all()
@@ -69,6 +84,8 @@ def validate_double_entry(journal_entry_id: int, db: Session):
     total_credit = sum(e.credit for e in entries)
     if round(total_debit, 2) != round(total_credit, 2):
         raise HTTPException(status_code=400, detail="Double-entry validation failed")
+
+
 def calculate_depreciation(asset: models.Asset):
     if asset.depreciation_method == models.DepreciationMethod.STRAIGHT_LINE:
         annual_dep = (asset.cost - asset.salvage_value) / asset.useful_life
@@ -76,13 +93,21 @@ def calculate_depreciation(asset: models.Asset):
     elif asset.depreciation_method == models.DepreciationMethod.DECLINING_BALANCE:
         rate = 1 - (asset.salvage_value / asset.cost) ** (1 / asset.useful_life)
         return asset.cost * rate
+
+
 def calculate_roi(gain: float, cost: float):
     return (gain - cost) / cost * 100
+
+
 def calculate_break_even(
     fixed_costs: float, price_per_unit: float, variable_cost_per_unit: float
 ):
     return fixed_costs / (price_per_unit - variable_cost_per_unit)
+
+
 report_router = APIRouter(prefix="/reports", tags=["Reports"])
+
+
 @report_router.get("/department_pnl")
 def department_pnl(db: Session = Depends(get_db)):
     data = (
@@ -93,6 +118,8 @@ def department_pnl(db: Session = Depends(get_db)):
         .all()
     )
     return data
+
+
 @report_router.get("/asset_depreciation")
 def asset_depreciation(db: Session = Depends(get_db)):
     assets = db.query(models.Asset).all()
@@ -101,7 +128,11 @@ def asset_depreciation(db: Session = Depends(get_db)):
         dep = calculate_depreciation(asset)
         schedule.append({"asset": asset.name, "annual_depreciation": dep})
     return schedule
+
+
 export_router = APIRouter(prefix="/export", tags=["Export"])
+
+
 @export_router.get("/excel")
 def export_excel(db: Session = Depends(get_db)):
     data = db.query(models.LedgerEntry).all()
@@ -115,6 +146,8 @@ def export_excel(db: Session = Depends(get_db)):
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=export.xlsx"},
     )
+
+
 router.include_router(pg_router)
 router.include_router(dep_router)
 router.include_router(ri_router)

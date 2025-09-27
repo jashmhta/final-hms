@@ -1,26 +1,33 @@
+"""
+query-handler module
+"""
+
 # Query Handler Implementation
 # Enterprise-grade query processing for HMS microservices
 
 import asyncio
 import json
-from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Type, Union
-from enum import Enum
-from abc import ABC, abstractmethod
-from pydantic import BaseModel, Field, validator
-from fastapi import HTTPException, status
-import asyncpg
-from redis.asyncio import Redis
 import logging
+from abc import ABC, abstractmethod
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional, Type, Union
 
-from .event_store import Event, EventType, EventStore, get_event_store
+import asyncpg
+from fastapi import HTTPException, status
+from pydantic import BaseModel, Field, validator
+from redis.asyncio import Redis
+
+from .event_store import Event, EventStore, EventType, get_event_store
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class QueryType(Enum):
     """Query types for HMS read operations"""
+
     # Patient queries
     GET_PATIENT = "get_patient"
     GET_PATIENTS = "get_patients"
@@ -54,8 +61,10 @@ class QueryType(Enum):
     GET_SERVICE_UTILIZATION = "get_service_utilization"
     GET_REVENUE_REPORT = "get_revenue_report"
 
+
 class Query(BaseModel):
     """Base query model"""
+
     id: str
     type: QueryType
     parameters: Dict[str, Any]
@@ -65,8 +74,10 @@ class Query(BaseModel):
     cache_key: Optional[str] = None
     cache_ttl: int = Field(default=300)  # 5 minutes
 
+
 class QueryResult(BaseModel):
     """Query execution result"""
+
     query_id: str
     data: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
@@ -76,6 +87,7 @@ class QueryResult(BaseModel):
     total_count: Optional[int] = None
     page: Optional[int] = None
     page_size: Optional[int] = None
+
 
 class QueryHandler(ABC):
     """Abstract base class for query handlers"""
@@ -95,6 +107,7 @@ class QueryHandler(ABC):
         """Validate the query"""
         pass
 
+
 class ReadModel:
     """Base class for read models"""
 
@@ -113,7 +126,8 @@ class ReadModel:
         """Create read model tables"""
         async with self.postgres_pool.acquire() as conn:
             # Patient read model
-            await conn.execute('''
+            await conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS patient_read_model (
                     id UUID PRIMARY KEY,
                     patient_id UUID UNIQUE NOT NULL,
@@ -134,10 +148,12 @@ class ReadModel:
                     updated_at TIMESTAMP DEFAULT NOW(),
                     last_event_version INTEGER DEFAULT 0
                 );
-            ''')
+            """
+            )
 
             # Appointment read model
-            await conn.execute('''
+            await conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS appointment_read_model (
                     id UUID PRIMARY KEY,
                     appointment_id UUID UNIQUE NOT NULL,
@@ -154,10 +170,12 @@ class ReadModel:
                     updated_at TIMESTAMP DEFAULT NOW(),
                     last_event_version INTEGER DEFAULT 0
                 );
-            ''')
+            """
+            )
 
             # Clinical notes read model
-            await conn.execute('''
+            await conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS clinical_notes_read_model (
                     id UUID PRIMARY KEY,
                     note_id UUID UNIQUE NOT NULL,
@@ -169,10 +187,12 @@ class ReadModel:
                     updated_at TIMESTAMP DEFAULT NOW(),
                     last_event_version INTEGER DEFAULT 0
                 );
-            ''')
+            """
+            )
 
             # Billing read model
-            await conn.execute('''
+            await conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS billing_read_model (
                     id UUID PRIMARY KEY,
                     bill_id UUID UNIQUE NOT NULL,
@@ -184,10 +204,12 @@ class ReadModel:
                     updated_at TIMESTAMP DEFAULT NOW(),
                     last_event_version INTEGER DEFAULT 0
                 );
-            ''')
+            """
+            )
 
             # Analytics read model
-            await conn.execute('''
+            await conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS analytics_read_model (
                     id UUID PRIMARY KEY,
                     metric_type TEXT NOT NULL,
@@ -197,14 +219,26 @@ class ReadModel:
                     created_at TIMESTAMP DEFAULT NOW(),
                     updated_at TIMESTAMP DEFAULT NOW()
                 );
-            ''')
+            """
+            )
 
             # Create indexes
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_patient_status ON patient_read_model(status);')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_appointment_status ON appointment_read_model(status);')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_appointment_time ON appointment_read_model(appointment_time);')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_billing_status ON billing_read_model(status);')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_analytics_type_date ON analytics_read_model(metric_type, metric_date);')
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_patient_status ON patient_read_model(status);"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_appointment_status ON appointment_read_model(status);"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_appointment_time ON appointment_read_model(appointment_time);"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_billing_status ON billing_read_model(status);"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_analytics_type_date ON analytics_read_model(metric_type, metric_date);"
+            )
+
 
 class PatientQueryHandler(QueryHandler):
     """Handler for patient-related queries"""
@@ -238,7 +272,7 @@ class PatientQueryHandler(QueryHandler):
             if not await self.validate(query):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid query parameters"
+                    detail="Invalid query parameters",
                 )
 
             # Check cache first
@@ -249,7 +283,9 @@ class PatientQueryHandler(QueryHandler):
                         query_id=query.id,
                         data=cached_result,
                         cached=True,
-                        processing_time=(datetime.utcnow() - start_time).total_seconds()
+                        processing_time=(
+                            datetime.utcnow() - start_time
+                        ).total_seconds(),
                     )
 
             result = None
@@ -275,7 +311,7 @@ class PatientQueryHandler(QueryHandler):
                 query_id=query.id,
                 data=result,
                 processing_time=processing_time,
-                total_count=len(result) if isinstance(result, list) else 1
+                total_count=len(result) if isinstance(result, list) else 1,
             )
 
         except Exception as e:
@@ -283,9 +319,7 @@ class PatientQueryHandler(QueryHandler):
             logger.error(f"Error handling query {query.id}: {e}")
 
             return QueryResult(
-                query_id=query.id,
-                error=str(e),
-                processing_time=processing_time
+                query_id=query.id, error=str(e), processing_time=processing_time
             )
 
     async def _handle_get_patient(self, query: Query) -> Optional[Dict[str, Any]]:
@@ -293,10 +327,13 @@ class PatientQueryHandler(QueryHandler):
         patient_id = query.parameters["patient_id"]
 
         async with self.read_model.postgres_pool.acquire() as conn:
-            row = await conn.fetchrow('''
+            row = await conn.fetchrow(
+                """
                 SELECT * FROM patient_read_model
                 WHERE patient_id = $1
-            ''', patient_id)
+            """,
+                patient_id,
+            )
 
             if not row:
                 return None
@@ -320,7 +357,15 @@ class PatientQueryHandler(QueryHandler):
             params.append(status)
 
         if search_term:
-            conditions.append("(first_name ILIKE $" + str(len(params) + 1) + " OR last_name ILIKE $" + str(len(params) + 2) + " OR email ILIKE $" + str(len(params) + 3) + ")")
+            conditions.append(
+                "(first_name ILIKE $"
+                + str(len(params) + 1)
+                + " OR last_name ILIKE $"
+                + str(len(params) + 2)
+                + " OR email ILIKE $"
+                + str(len(params) + 3)
+                + ")"
+            )
             params.extend([f"%{search_term}%", f"%{search_term}%", f"%{search_term}%"])
 
         if conditions:
@@ -331,7 +376,7 @@ class PatientQueryHandler(QueryHandler):
         params.extend([page_size, offset])
 
         async with self.read_model.postgres_pool.acquire() as conn:
-            rows = await conn.fetch(' '.join(query_parts), *params)
+            rows = await conn.fetch(" ".join(query_parts), *params)
             return [dict(row) for row in rows]
 
     async def _handle_get_patient_history(self, query: Query) -> List[Dict[str, Any]]:
@@ -347,12 +392,14 @@ class PatientQueryHandler(QueryHandler):
                 "event_type": event.type.value,
                 "timestamp": event.timestamp,
                 "data": event.data,
-                "user_id": event.user_id
+                "user_id": event.user_id,
             }
             for event in events
         ]
 
-    async def _handle_get_patient_appointments(self, query: Query) -> List[Dict[str, Any]]:
+    async def _handle_get_patient_appointments(
+        self, query: Query
+    ) -> List[Dict[str, Any]]:
         """Handle get patient appointments query"""
         patient_id = query.parameters["patient_id"]
         status = query.parameters.get("status")
@@ -367,19 +414,24 @@ class PatientQueryHandler(QueryHandler):
 
             query_parts.append("ORDER BY appointment_time DESC")
 
-            rows = await conn.fetch(' '.join(query_parts), *params)
+            rows = await conn.fetch(" ".join(query_parts), *params)
             return [dict(row) for row in rows]
 
-    async def _handle_get_patient_medical_records(self, query: Query) -> List[Dict[str, Any]]:
+    async def _handle_get_patient_medical_records(
+        self, query: Query
+    ) -> List[Dict[str, Any]]:
         """Handle get patient medical records query"""
         patient_id = query.parameters["patient_id"]
 
         async with self.read_model.postgres_pool.acquire() as conn:
-            rows = await conn.fetch('''
+            rows = await conn.fetch(
+                """
                 SELECT * FROM clinical_notes_read_model
                 WHERE patient_id = $1
                 ORDER BY created_at DESC
-            ''', patient_id)
+            """,
+                patient_id,
+            )
 
             return [dict(row) for row in rows]
 
@@ -396,13 +448,10 @@ class PatientQueryHandler(QueryHandler):
     async def _cache_result(self, cache_key: str, data: Dict[str, Any], ttl: int):
         """Cache result in Redis"""
         try:
-            await self.read_model.redis_client.setex(
-                cache_key,
-                ttl,
-                json.dumps(data)
-            )
+            await self.read_model.redis_client.setex(cache_key, ttl, json.dumps(data))
         except Exception as e:
             logger.error(f"Error caching result: {e}")
+
 
 class AppointmentQueryHandler(QueryHandler):
     """Handler for appointment-related queries"""
@@ -436,7 +485,7 @@ class AppointmentQueryHandler(QueryHandler):
             if not await self.validate(query):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid query parameters"
+                    detail="Invalid query parameters",
                 )
 
             # Check cache first
@@ -447,7 +496,9 @@ class AppointmentQueryHandler(QueryHandler):
                         query_id=query.id,
                         data=cached_result,
                         cached=True,
-                        processing_time=(datetime.utcnow() - start_time).total_seconds()
+                        processing_time=(
+                            datetime.utcnow() - start_time
+                        ).total_seconds(),
                     )
 
             result = None
@@ -473,7 +524,7 @@ class AppointmentQueryHandler(QueryHandler):
                 query_id=query.id,
                 data=result,
                 processing_time=processing_time,
-                total_count=len(result) if isinstance(result, list) else 1
+                total_count=len(result) if isinstance(result, list) else 1,
             )
 
         except Exception as e:
@@ -481,9 +532,7 @@ class AppointmentQueryHandler(QueryHandler):
             logger.error(f"Error handling query {query.id}: {e}")
 
             return QueryResult(
-                query_id=query.id,
-                error=str(e),
-                processing_time=processing_time
+                query_id=query.id, error=str(e), processing_time=processing_time
             )
 
     async def _handle_get_appointment(self, query: Query) -> Optional[Dict[str, Any]]:
@@ -491,10 +540,13 @@ class AppointmentQueryHandler(QueryHandler):
         appointment_id = query.parameters["appointment_id"]
 
         async with self.read_model.postgres_pool.acquire() as conn:
-            row = await conn.fetchrow('''
+            row = await conn.fetchrow(
+                """
                 SELECT * FROM appointment_read_model
                 WHERE appointment_id = $1
-            ''', appointment_id)
+            """,
+                appointment_id,
+            )
 
             if not row:
                 return None
@@ -524,17 +576,21 @@ class AppointmentQueryHandler(QueryHandler):
         params.extend([page_size, offset])
 
         async with self.read_model.postgres_pool.acquire() as conn:
-            rows = await conn.fetch(' '.join(query_parts), *params)
+            rows = await conn.fetch(" ".join(query_parts), *params)
             return [dict(row) for row in rows]
 
-    async def _handle_get_appointments_by_provider(self, query: Query) -> List[Dict[str, Any]]:
+    async def _handle_get_appointments_by_provider(
+        self, query: Query
+    ) -> List[Dict[str, Any]]:
         """Handle get appointments by provider query"""
         provider_id = query.parameters["provider_id"]
         start_date = query.parameters.get("start_date")
         end_date = query.parameters.get("end_date")
 
         async with self.read_model.postgres_pool.acquire() as conn:
-            query_parts = ["SELECT * FROM appointment_read_model WHERE provider_id = $1"]
+            query_parts = [
+                "SELECT * FROM appointment_read_model WHERE provider_id = $1"
+            ]
             params = [provider_id]
 
             if start_date and end_date:
@@ -543,33 +599,44 @@ class AppointmentQueryHandler(QueryHandler):
 
             query_parts.append("ORDER BY appointment_time ASC")
 
-            rows = await conn.fetch(' '.join(query_parts), *params)
+            rows = await conn.fetch(" ".join(query_parts), *params)
             return [dict(row) for row in rows]
 
-    async def _handle_get_appointments_by_date_range(self, query: Query) -> List[Dict[str, Any]]:
+    async def _handle_get_appointments_by_date_range(
+        self, query: Query
+    ) -> List[Dict[str, Any]]:
         """Handle get appointments by date range query"""
         start_date = query.parameters["start_date"]
         end_date = query.parameters["end_date"]
 
         async with self.read_model.postgres_pool.acquire() as conn:
-            rows = await conn.fetch('''
+            rows = await conn.fetch(
+                """
                 SELECT * FROM appointment_read_model
                 WHERE appointment_time BETWEEN $1 AND $2
                 ORDER BY appointment_time ASC
-            ''', start_date, end_date)
+            """,
+                start_date,
+                end_date,
+            )
 
             return [dict(row) for row in rows]
 
-    async def _handle_get_appointments_by_status(self, query: Query) -> List[Dict[str, Any]]:
+    async def _handle_get_appointments_by_status(
+        self, query: Query
+    ) -> List[Dict[str, Any]]:
         """Handle get appointments by status query"""
         status = query.parameters["status"]
 
         async with self.read_model.postgres_pool.acquire() as conn:
-            rows = await conn.fetch('''
+            rows = await conn.fetch(
+                """
                 SELECT * FROM appointment_read_model
                 WHERE status = $1
                 ORDER BY appointment_time ASC
-            ''', status)
+            """,
+                status,
+            )
 
             return [dict(row) for row in rows]
 
@@ -586,13 +653,10 @@ class AppointmentQueryHandler(QueryHandler):
     async def _cache_result(self, cache_key: str, data: Dict[str, Any], ttl: int):
         """Cache result in Redis"""
         try:
-            await self.read_model.redis_client.setex(
-                cache_key,
-                ttl,
-                json.dumps(data)
-            )
+            await self.read_model.redis_client.setex(cache_key, ttl, json.dumps(data))
         except Exception as e:
             logger.error(f"Error caching result: {e}")
+
 
 class AnalyticsQueryHandler(QueryHandler):
     """Handler for analytics queries"""
@@ -603,7 +667,8 @@ class AnalyticsQueryHandler(QueryHandler):
     async def can_handle(self, query: Query) -> bool:
         """Check if this handler can process the query"""
         return query.type.value.startswith("get_") and any(
-            metric in query.type.value for metric in ["system", "user", "service", "revenue"]
+            metric in query.type.value
+            for metric in ["system", "user", "service", "revenue"]
         )
 
     async def validate(self, query: Query) -> bool:
@@ -626,7 +691,7 @@ class AnalyticsQueryHandler(QueryHandler):
             if not await self.validate(query):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid query parameters"
+                    detail="Invalid query parameters",
                 )
 
             result = None
@@ -643,9 +708,7 @@ class AnalyticsQueryHandler(QueryHandler):
             processing_time = (datetime.utcnow() - start_time).total_seconds()
 
             return QueryResult(
-                query_id=query.id,
-                data=result,
-                processing_time=processing_time
+                query_id=query.id, data=result, processing_time=processing_time
             )
 
         except Exception as e:
@@ -653,23 +716,29 @@ class AnalyticsQueryHandler(QueryHandler):
             logger.error(f"Error handling query {query.id}: {e}")
 
             return QueryResult(
-                query_id=query.id,
-                error=str(e),
-                processing_time=processing_time
+                query_id=query.id, error=str(e), processing_time=processing_time
             )
 
     async def _handle_get_system_metrics(self, query: Query) -> Dict[str, Any]:
         """Handle get system metrics query"""
         async with self.read_model.postgres_pool.acquire() as conn:
             # Get patient count
-            patient_count = await conn.fetchval('SELECT COUNT(*) FROM patient_read_model WHERE status = $1', 'active')
+            patient_count = await conn.fetchval(
+                "SELECT COUNT(*) FROM patient_read_model WHERE status = $1", "active"
+            )
 
             # Get appointment count
-            appointment_count = await conn.fetchval('SELECT COUNT(*) FROM appointment_read_model')
+            appointment_count = await conn.fetchval(
+                "SELECT COUNT(*) FROM appointment_read_model"
+            )
 
             # Get billing summary
-            total_billed = await conn.fetchval('SELECT COALESCE(SUM(total_amount), 0) FROM billing_read_model')
-            total_paid = await conn.fetchval('SELECT COALESCE(SUM(paid_amount), 0) FROM billing_read_model')
+            total_billed = await conn.fetchval(
+                "SELECT COALESCE(SUM(total_amount), 0) FROM billing_read_model"
+            )
+            total_paid = await conn.fetchval(
+                "SELECT COALESCE(SUM(paid_amount), 0) FROM billing_read_model"
+            )
 
             return {
                 "total_patients": patient_count,
@@ -677,7 +746,7 @@ class AnalyticsQueryHandler(QueryHandler):
                 "total_billed": float(total_billed),
                 "total_paid": float(total_paid),
                 "outstanding_balance": float(total_billed - total_paid),
-                "generated_at": datetime.utcnow().isoformat()
+                "generated_at": datetime.utcnow().isoformat(),
             }
 
     async def _handle_get_user_activity(self, query: Query) -> List[Dict[str, Any]]:
@@ -690,18 +759,22 @@ class AnalyticsQueryHandler(QueryHandler):
         """Handle get service utilization query"""
         async with self.read_model.postgres_pool.acquire() as conn:
             # Get appointment utilization by type
-            appointment_types = await conn.fetch('''
+            appointment_types = await conn.fetch(
+                """
                 SELECT appointment_type, COUNT(*) as count
                 FROM appointment_read_model
                 GROUP BY appointment_type
-            ''')
+            """
+            )
 
             # Get appointment status distribution
-            appointment_status = await conn.fetch('''
+            appointment_status = await conn.fetch(
+                """
                 SELECT status, COUNT(*) as count
                 FROM appointment_read_model
                 GROUP BY status
-            ''')
+            """
+            )
 
             return {
                 "appointment_types": [
@@ -712,7 +785,7 @@ class AnalyticsQueryHandler(QueryHandler):
                     {"status": row["status"], "count": row["count"]}
                     for row in appointment_status
                 ],
-                "generated_at": datetime.utcnow().isoformat()
+                "generated_at": datetime.utcnow().isoformat(),
             }
 
     async def _handle_get_revenue_report(self, query: Query) -> Dict[str, Any]:
@@ -722,7 +795,8 @@ class AnalyticsQueryHandler(QueryHandler):
 
         async with self.read_model.postgres_pool.acquire() as conn:
             # Get revenue for the period
-            revenue_data = await conn.fetch('''
+            revenue_data = await conn.fetch(
+                """
                 SELECT
                     DATE(created_at) as date,
                     SUM(total_amount) as total_billed,
@@ -732,7 +806,10 @@ class AnalyticsQueryHandler(QueryHandler):
                 WHERE created_at BETWEEN $1 AND $2
                 GROUP BY DATE(created_at)
                 ORDER BY date
-            ''', start_date, end_date)
+            """,
+                start_date,
+                end_date,
+            )
 
             return {
                 "revenue_data": [
@@ -740,21 +817,21 @@ class AnalyticsQueryHandler(QueryHandler):
                         "date": row["date"],
                         "total_billed": float(row["total_billed"]),
                         "total_paid": float(row["total_paid"]),
-                        "bill_count": row["bill_count"]
+                        "bill_count": row["bill_count"],
                     }
                     for row in revenue_data
                 ],
                 "summary": {
-                    "total_billed": sum(float(row["total_billed"]) for row in revenue_data),
+                    "total_billed": sum(
+                        float(row["total_billed"]) for row in revenue_data
+                    ),
                     "total_paid": sum(float(row["total_paid"]) for row in revenue_data),
-                    "total_bills": sum(row["bill_count"] for row in revenue_data)
+                    "total_bills": sum(row["bill_count"] for row in revenue_data),
                 },
-                "period": {
-                    "start_date": start_date,
-                    "end_date": end_date
-                },
-                "generated_at": datetime.utcnow().isoformat()
+                "period": {"start_date": start_date, "end_date": end_date},
+                "generated_at": datetime.utcnow().isoformat(),
             }
+
 
 class QueryDispatcher:
     """Query dispatcher for routing queries to appropriate handlers"""
@@ -777,13 +854,14 @@ class QueryDispatcher:
         return QueryResult(
             query_id=query.id,
             error=f"No handler found for query type: {query.type}",
-            processing_time=0.0
+            processing_time=0.0,
         )
+
 
 # Initialize read model and query handlers
 read_model = ReadModel(
     postgres_url="postgresql://user:password@localhost/hms_read_models",
-    redis_url="redis://localhost:6379"
+    redis_url="redis://localhost:6379",
 )
 
 query_dispatcher = QueryDispatcher(read_model)
@@ -791,10 +869,12 @@ query_dispatcher.register_handler(PatientQueryHandler(read_model))
 query_dispatcher.register_handler(AppointmentQueryHandler(read_model))
 query_dispatcher.register_handler(AnalyticsQueryHandler(read_model))
 
+
 async def initialize_read_model():
     """Initialize the read model"""
     await read_model.initialize()
     await read_model.create_tables()
+
 
 async def dispatch_query(query: Query) -> QueryResult:
     """Dispatch a query using the global dispatcher"""

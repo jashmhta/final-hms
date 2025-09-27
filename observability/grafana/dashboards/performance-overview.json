@@ -2,7 +2,10 @@
   "dashboard": {
     "id": null,
     "title": "HMS Performance Overview",
-    "tags": ["hms", "performance"],
+    "tags": [
+      "hms",
+      "performance"
+    ],
     "timezone": "UTC",
     "panels": [
       {

@@ -1,12 +1,21 @@
+"""
+test_models module
+"""
+
 from datetime import timedelta
+
 import factory
 import pytest
+from insurance_tpa.factories.factories import *
+from insurance_tpa.models import Claim, Patient, PreAuth, Reimbursement
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
-from insurance_tpa.factories.factories import *
-from insurance_tpa.models import Claim, Patient, PreAuth, Reimbursement
+
 User = get_user_model()
+
+
 @pytest.mark.django_db
 class TestPreAuthModel:
     def test_encryption_decryption(self):
@@ -20,6 +29,7 @@ class TestPreAuthModel:
         assert len(preauth.claim_amount_encrypted) > 0
         decrypted_amount = preauth.decrypt_claim_amount()
         assert decrypted_amount == str(original_amount)
+
     def test_auditlog_tracking(self):
         patient = PatientFactory()
         user = UserFactory()
@@ -27,11 +37,13 @@ class TestPreAuthModel:
         preauth.status = "approved"
         preauth.save()
         from auditlog.models import LogEntry
+
         audit_entries = LogEntry.objects.filter(
             content_type__model="preauth", object_id=preauth.id
         )
         assert audit_entries.exists()
         assert audit_entries.first().action == "CHANGE"
+
     def test_retention_cleanup(self):
         patient = PatientFactory()
         user = UserFactory()
@@ -40,15 +52,16 @@ class TestPreAuthModel:
             patient=patient, created_by=user, created_at=old_date
         )
         preauth_recent = PreAuthFactory(patient=patient, created_by=user)
+
     def test_invalid_amount_edge_case(self):
         patient = PatientFactory()
         user = UserFactory()
         with pytest.raises(ValueError):
             PreAuthFactory(claim_amount=-100.00, patient=patient, created_by=user)
         with pytest.raises(ValueError):
-            PreAuthFactory(
-                claim_amount=2000000.00, patient=patient, created_by=user
-            )  
+            PreAuthFactory(claim_amount=2000000.00, patient=patient, created_by=user)
+
+
 @pytest.mark.django_db
 class TestClaimModel:
     def test_encryption_decryption(self):
@@ -61,6 +74,7 @@ class TestClaimModel:
         assert claim.billed_amount_encrypted is not None
         decrypted_billed = claim.decrypt_billed_amount()
         assert decrypted_billed == str(original_billed)
+
     def test_multiple_procedures_validation(self):
         patient = PatientFactory()
         user = UserFactory()
@@ -72,6 +86,8 @@ class TestClaimModel:
             procedures=valid_procedures, patient=patient, created_by=user
         )
         assert claim.procedures == valid_procedures
+
+
 @pytest.mark.django_db
 class TestReimbursementModel:
     def test_encryption_decryption(self):
@@ -81,12 +97,15 @@ class TestReimbursementModel:
         assert reimbursement.paid_amount_encrypted is not None
         decrypted_paid = reimbursement.decrypt_paid_amount()
         assert decrypted_paid == str(original_paid)
+
     def test_transaction_id_uniqueness(self):
         claim = ClaimFactory()
         transaction_id = "TXN123456789"
         ReimbursementFactory(transaction_id=transaction_id, claim=claim)
-        with pytest.raises(Exception):  
+        with pytest.raises(Exception):
             ReimbursementFactory(transaction_id=transaction_id, claim=claim)
+
+
 @pytest.mark.django_db
 class TestRetentionCleanup:
     @pytest.fixture
@@ -101,5 +120,6 @@ class TestRetentionCleanup:
         old_claim = ClaimFactory(patient=patient, created_by=user, created_at=old_date)
         old_reimbursement = ReimbursementFactory(claim=old_claim, created_at=old_date)
         return old_preauth, old_claim, old_reimbursement
+
     def test_cleanup_old_records(self, old_records):
         old_preauth, old_claim, old_reimbursement = old_records

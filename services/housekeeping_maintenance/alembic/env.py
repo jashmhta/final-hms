@@ -1,64 +1,87 @@
+"""
+env module
+"""
+
 import os
 import sys
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import os
 import sys
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import os
 import sys
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import os
 import sys
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
 import os
 import sys
+
 sys.path.append("/root/hms_app/hmsupdt/services/housekeeping_maintenance")
 import os
 import sys
+
 sys.path.append("/root/hms_app/hmsupdt")
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 import os
 import sys
+
 sys.path.append("/root/hms_app/hmsupdt")
 import os
 import sys
+
 sys.path.append("/root/hms_app/hmsupdt/backend")
 import os
 import sys
+
 sys.path.append("/root/hms_app/hmsupdt/backend")
 sys.path.append("/root/hms_app/hmsupdt/services")
 import os
 import sys
+
 sys.path.append("/root/hms_app/hmsupdt/backend")
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import os
 import sys
+
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../backend"))
 )
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import os
 import sys
+
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../backend"))
 )
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import os
 import sys
+
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../backend"))
 )
 import os
 import sys
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 from logging.config import fileConfig
+
 from alembic import context
 from sqlalchemy import engine_from_config, pool
+
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 from models import models as m
+
 target_metadata = m.Base.metadata
+
+
 def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
@@ -69,6 +92,8 @@ def run_migrations_offline() -> None:
     )
     with context.begin_transaction():
         context.run_migrations()
+
+
 def run_migrations_online() -> None:
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
@@ -79,6 +104,8 @@ def run_migrations_online() -> None:
         context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():
             context.run_migrations()
+
+
 if context.is_offline_mode():
     run_migrations_offline()
 else:

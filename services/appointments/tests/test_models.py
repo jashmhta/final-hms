@@ -1,6 +1,13 @@
-import pytest
+"""
+test_models module
+"""
+
 from datetime import datetime, timedelta
-from app.main import AppointmentModel, AppointmentIn
+
+import pytest
+from app.main import AppointmentIn, AppointmentModel
+
+
 def test_appointment_model_creation(db):
     appointment_data = AppointmentIn(
         patient=1,

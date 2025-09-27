@@ -1,7 +1,13 @@
+"""
+fix_exec_eval module
+"""
+
 import ast
 import os
 import shutil
 from pathlib import Path
+
+
 class ExecEvalFixer(ast.NodeTransformer):
     def visit_Call(self, node):
         if isinstance(node.func, ast.Name):
@@ -12,7 +18,7 @@ class ExecEvalFixer(ast.NodeTransformer):
                         f"MANUAL REVIEW NEEDED: exec at {node.lineno} - cannot auto-fix safely"
                     )
                     return node
-                else:  
+                else:
                     new_node = ast.Call(
                         func=ast.Name(id="ast.literal_eval", ctx=ast.Load()),
                         args=[
@@ -28,6 +34,8 @@ class ExecEvalFixer(ast.NodeTransformer):
                     return new_node
         self.generic_visit(node)
         return node
+
+
 def fix_file(filepath):
     try:
         with open(filepath, "r") as f:
@@ -41,6 +49,8 @@ def fix_file(filepath):
         print(f"Fixed {filepath} (backup: {backup_path})")
     except Exception as e:
         print(f"Error fixing {filepath}: {e}")
+
+
 root_dir = Path("/root/hms-enterprise-grade/backend")
 backend_services = ["appointments", "billing", "patients", "lab", "radiology", "ehr"]
 for service in backend_services:

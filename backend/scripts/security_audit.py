@@ -1,3 +1,7 @@
+"""
+security_audit module
+"""
+
 import json
 import os
 import subprocess
@@ -203,7 +207,9 @@ class SecurityAuditor:
         else:
             issues.append("MFA not implemented")
         if (self.base_path / "backend" / "authentication" / "models.py").exists():
-            with open(self.base_path / "backend" / "authentication" / "models.py", "r") as f:
+            with open(
+                self.base_path / "backend" / "authentication" / "models.py", "r"
+            ) as f:
                 content = f.read()
                 if "PasswordPolicy" in content:
                     auth_features.append("Password policies implemented")
@@ -247,7 +253,9 @@ class SecurityAuditor:
         print("📝 Checking audit logging...")
         audit_features = []
         if (self.base_path / "backend" / "authentication" / "models.py").exists():
-            with open(self.base_path / "backend" / "authentication" / "models.py", "r") as f:
+            with open(
+                self.base_path / "backend" / "authentication" / "models.py", "r"
+            ) as f:
                 content = f.read()
                 if "SecurityEvent" in content:
                     audit_features.append("Security event logging implemented")
@@ -299,7 +307,9 @@ class SecurityAuditor:
         total_checks = len(checks)
         passed = sum(1 for check in checks.values() if check.get("status") == "pass")
         failed = sum(1 for check in checks.values() if check.get("status") == "fail")
-        warnings = sum(1 for check in checks.values() if check.get("status") == "warning")
+        warnings = sum(
+            1 for check in checks.values() if check.get("status") == "warning"
+        )
         self.results["summary"] = {
             "total_checks": total_checks,
             "passed": passed,
@@ -322,7 +332,9 @@ class SecurityAuditor:
         print(f"   Failed: {summary['failed']}")
         print(f"   Warnings: {summary['warnings']}")
         print(".1f")
-        print(f"   Overall Status: {'✅ PASS' if summary['overall_status'] == 'pass' else '❌ FAIL'}")
+        print(
+            f"   Overall Status: {'✅ PASS' if summary['overall_status'] == 'pass' else '❌ FAIL'}"
+        )
 
 
 def main():

@@ -50,7 +50,9 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="appointment",
-            index=models.Index(fields=["hospital", "created_at"], name="appointment_hospita_d3f55e_idx"),
+            index=models.Index(
+                fields=["hospital", "created_at"], name="appointment_hospita_d3f55e_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="appointment",

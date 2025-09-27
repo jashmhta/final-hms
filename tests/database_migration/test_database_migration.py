@@ -3,75 +3,108 @@ Comprehensive Database Migration Testing for HMS System
 Tests Django migrations, data integrity, backward compatibility, and healthcare data validation
 """
 
-import pytest
+import json
 import os
 import sys
-import json
 import time
+import uuid
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
+from decimal import Decimal
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
+import pandas as pd
+import psycopg2
+import pytest
+from psycopg2 import sql
+
 import django
+from django.apps import apps
 from django.conf import settings
-from django.test import TestCase, TransactionTestCase
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.db import connection, transaction, DatabaseError
-from django.db.migrations.executor import MigrationExecutor
+from django.db import DatabaseError, connection, transaction
 from django.db.migrations.autodetector import MigrationAutodetector
+from django.db.migrations.executor import MigrationExecutor
 from django.db.migrations.state import ProjectState
-from django.db.models import Count, Sum, Avg, Max, Min
-from django.apps import apps
-import psycopg2
-from psycopg2 import sql
-import pandas as pd
-import numpy as np
-from decimal import Decimal
-import uuid
+from django.db.models import Avg, Count, Max, Min, Sum
+from django.test import TestCase, TransactionTestCase
 
 # Configure Django settings
 if not settings.configured:
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.hms.settings')
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.hms.settings")
     django.setup()
 
 # Import Django models after setup
-from django.contrib.auth.models import User, Group, Permission
+from django.contrib.auth.models import Group, Permission, User
 from django.contrib.contenttypes.models import ContentType
 
-# Import HMS models
-from backend.patients.models import Patient, EmergencyContact, InsuranceInformation, PatientAlert
-from backend.ehr.models import MedicalRecord, Allergy, Assessment, ClinicalNote, PlanOfCare, Encounter, EncounterAttachment, ERtriage
-from backend.appointments.models import Appointment, AppointmentHistory, AppointmentReminder, SurgeryType, OTSlot, OTBooking
-from backend.billing.models import Bill, ServiceCatalog, Discount, DepartmentBudget
-from backend.pharmacy.models import Medication, MedicationBatch, Manufacturer
-from backend.lab.models import LabResult
-from backend.users.models import Department, UserCredential, UserLoginHistory
-from backend.hospitals.models import Hospital, HospitalPlan
-from backend.facilities.models import Facility
-from backend.hr.models import Employee, Department as HRDepartment
-from backend.accounting.models import Account, Transaction, JournalEntry, AccountingAuditLog
+from backend.accounting.models import (
+    Account,
+    AccountingAuditLog,
+    JournalEntry,
+    Transaction,
+)
 from backend.analytics.models import Analytics
-from backend.feedback.models import Feedback, Survey
-from backend.core.models import AuditLog, Notification, QualityMetric
-
-# Healthcare-specific imports
-from backend.libs.encrypted_model_fields.fields import EncryptedCharField, EncryptedTextField
-from backend.core.encryption import EncryptionManager
+from backend.appointments.models import (
+    Appointment,
+    AppointmentHistory,
+    AppointmentReminder,
+    OTBooking,
+    OTSlot,
+    SurgeryType,
+)
+from backend.billing.models import Bill, DepartmentBudget, Discount, ServiceCatalog
 from backend.core.audit import AuditManager
 from backend.core.compliance import ComplianceManager
+from backend.core.encryption import EncryptionManager
+from backend.core.models import AuditLog, Notification, QualityMetric
+from backend.ehr.models import (
+    Allergy,
+    Assessment,
+    ClinicalNote,
+    Encounter,
+    EncounterAttachment,
+    ERtriage,
+    MedicalRecord,
+    PlanOfCare,
+)
+from backend.facilities.models import Facility
+from backend.feedback.models import Feedback, Survey
+from backend.hospitals.models import Hospital, HospitalPlan
+from backend.hr.models import Department as HRDepartment
+from backend.hr.models import Employee
+from backend.lab.models import LabResult
+
+# Healthcare-specific imports
+from backend.libs.encrypted_model_fields.fields import (
+    EncryptedCharField,
+    EncryptedTextField,
+)
+
+# Import HMS models
+from backend.patients.models import (
+    EmergencyContact,
+    InsuranceInformation,
+    Patient,
+    PatientAlert,
+)
+from backend.pharmacy.models import Manufacturer, Medication, MedicationBatch
+from backend.users.models import Department, UserCredential, UserLoginHistory
 
 # Test configuration
 TEST_DATABASE_CONFIG = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'hms_test_migrations',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
-        'HOST': 'localhost',
-        'PORT': '5432',
-        'TEST': {
-            'NAME': 'test_hms_migrations',
-        }
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "hms_test_migrations",
+        "USER": "postgres",
+        "PASSWORD": "postgres",
+        "HOST": "localhost",
+        "PORT": "5432",
+        "TEST": {
+            "NAME": "test_hms_migrations",
+        },
     }
 }
 
@@ -85,7 +118,7 @@ MIGRATION_TEST_SCENARIOS = [
         "test_data_size": 1000,
         "healthcare_data": True,
         "encrypted_fields": ["first_name", "last_name", "email", "phone"],
-        "critical": True
+        "critical": True,
     },
     {
         "name": "Medical Records Migration",
@@ -95,7 +128,7 @@ MIGRATION_TEST_SCENARIOS = [
         "test_data_size": 500,
         "healthcare_data": True,
         "encrypted_fields": ["diagnosis", "treatment", "notes"],
-        "critical": True
+        "critical": True,
     },
     {
         "name": "Appointments Migration",
@@ -105,7 +138,7 @@ MIGRATION_TEST_SCENARIOS = [
         "test_data_size": 2000,
         "healthcare_data": False,
         "encrypted_fields": ["notes"],
-        "critical": False
+        "critical": False,
     },
     {
         "name": "Billing Migration",
@@ -115,7 +148,7 @@ MIGRATION_TEST_SCENARIOS = [
         "test_data_size": 1500,
         "healthcare_data": True,
         "encrypted_fields": ["payment_method", "insurance_info"],
-        "critical": True
+        "critical": True,
     },
     {
         "name": "Accounting Migration",
@@ -125,9 +158,10 @@ MIGRATION_TEST_SCENARIOS = [
         "test_data_size": 1000,
         "healthcare_data": False,
         "encrypted_fields": ["description"],
-        "critical": False
-    }
+        "critical": False,
+    },
 ]
+
 
 class DatabaseMigrationTestFramework:
     """Comprehensive database migration testing framework"""
@@ -144,11 +178,11 @@ class DatabaseMigrationTestFramework:
         try:
             # Connect to PostgreSQL
             conn = psycopg2.connect(
-                host='localhost',
-                port='5432',
-                user='postgres',
-                password='postgres',
-                database='postgres'
+                host="localhost",
+                port="5432",
+                user="postgres",
+                password="postgres",
+                database="postgres",
             )
             conn.autocommit = True
             cursor = conn.cursor()
@@ -160,48 +194,52 @@ class DatabaseMigrationTestFramework:
             cursor.execute(f"CREATE DATABASE {db_name} WITH ENCODING 'UTF8'")
 
             # Create test schema
-            cursor.execute(f"""
+            cursor.execute(
+                f"""
                 CREATE SCHEMA IF NOT EXISTS healthcare_data;
                 CREATE SCHEMA IF NOT EXISTS analytics;
                 CREATE SCHEMA IF NOT EXISTS audit;
-            """)
+            """
+            )
 
             cursor.close()
             conn.close()
 
             return {
-                'success': True,
-                'database_name': db_name,
-                'message': f'Test database {db_name} created successfully'
+                "success": True,
+                "database_name": db_name,
+                "message": f"Test database {db_name} created successfully",
             }
 
         except Exception as e:
             return {
-                'success': False,
-                'database_name': db_name,
-                'message': f'Failed to create test database: {str(e)}'
+                "success": False,
+                "database_name": db_name,
+                "message": f"Failed to create test database: {str(e)}",
             }
 
     def cleanup_test_database(self, db_name: str):
         """Cleanup test database"""
         try:
             conn = psycopg2.connect(
-                host='localhost',
-                port='5432',
-                user='postgres',
-                password='postgres',
-                database='postgres'
+                host="localhost",
+                port="5432",
+                user="postgres",
+                password="postgres",
+                database="postgres",
             )
             conn.autocommit = True
             cursor = conn.cursor()
 
             # Terminate all connections to the database
-            cursor.execute(f"""
+            cursor.execute(
+                f"""
                 SELECT pg_terminate_backend(pg_stat_activity.pid)
                 FROM pg_stat_activity
                 WHERE pg_stat_activity.datname = '{db_name}'
                 AND pid <> pg_backend_pid()
-            """)
+            """
+            )
 
             # Drop database
             cursor.execute(f"DROP DATABASE IF EXISTS {db_name}")
@@ -212,7 +250,9 @@ class DatabaseMigrationTestFramework:
         except Exception as e:
             print(f"Warning: Failed to cleanup test database {db_name}: {str(e)}")
 
-    def generate_test_healthcare_data(self, model_class, count: int, encrypted_fields: List[str]) -> List[Dict]:
+    def generate_test_healthcare_data(
+        self, model_class, count: int, encrypted_fields: List[str]
+    ) -> List[Dict]:
         """Generate anonymized test healthcare data"""
         test_data = []
 
@@ -220,61 +260,90 @@ class DatabaseMigrationTestFramework:
             data = {}
 
             # Generate basic data
-            if hasattr(model_class, 'first_name'):
-                data['first_name'] = f'Test{i:04d}'
-            if hasattr(model_class, 'last_name'):
-                data['last_name'] = f'Patient{i:04d}'
-            if hasattr(model_class, 'email'):
-                data['email'] = f'test{i:04d}@example.com'
-            if hasattr(model_class, 'phone'):
-                data['phone'] = f'555-{i:04d:04d}'
+            if hasattr(model_class, "first_name"):
+                data["first_name"] = f"Test{i:04d}"
+            if hasattr(model_class, "last_name"):
+                data["last_name"] = f"Patient{i:04d}"
+            if hasattr(model_class, "email"):
+                data["email"] = f"test{i:04d}@example.com"
+            if hasattr(model_class, "phone"):
+                data["phone"] = f"555-{i:04d:04d}"
 
             # Generate healthcare-specific data
             if model_class == Patient:
-                data.update({
-                    'date_of_birth': datetime.now() - timedelta(days=i*365),
-                    'gender': 'M' if i % 2 == 0 else 'F',
-                    'blood_type': ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'][i % 8],
-                    'medical_record_number': f'MRN{i:08d}',
-                    'ssn': f'{i:03d}-{i:02d}-{i:04d}',
-                    'address': f'{i:04d} Test Street, Test City, TC 12345',
-                    'emergency_contact_name': f'Emergency Contact {i}',
-                    'emergency_contact_phone': f'555-{i:04d:04d}',
-                    'primary_care_physician': f'Dr. Test{i:04d}',
-                    'insurance_provider': f'Test Insurance {i % 5 + 1}',
-                    'insurance_policy_number': f'POL{i:08d}',
-                    'allergies': 'Penicillin',
-                    'medications': 'Lisinopril 10mg',
-                    'chronic_conditions': 'Hypertension',
-                    'last_visit_date': datetime.now() - timedelta(days=i*30),
-                    'status': 'active'
-                })
+                data.update(
+                    {
+                        "date_of_birth": datetime.now() - timedelta(days=i * 365),
+                        "gender": "M" if i % 2 == 0 else "F",
+                        "blood_type": [
+                            "A+",
+                            "A-",
+                            "B+",
+                            "B-",
+                            "AB+",
+                            "AB-",
+                            "O+",
+                            "O-",
+                        ][i % 8],
+                        "medical_record_number": f"MRN{i:08d}",
+                        "ssn": f"{i:03d}-{i:02d}-{i:04d}",
+                        "address": f"{i:04d} Test Street, Test City, TC 12345",
+                        "emergency_contact_name": f"Emergency Contact {i}",
+                        "emergency_contact_phone": f"555-{i:04d:04d}",
+                        "primary_care_physician": f"Dr. Test{i:04d}",
+                        "insurance_provider": f"Test Insurance {i % 5 + 1}",
+                        "insurance_policy_number": f"POL{i:08d}",
+                        "allergies": "Penicillin",
+                        "medications": "Lisinopril 10mg",
+                        "chronic_conditions": "Hypertension",
+                        "last_visit_date": datetime.now() - timedelta(days=i * 30),
+                        "status": "active",
+                    }
+                )
 
             elif model_class == MedicalRecord:
-                data.update({
-                    'patient_id': i + 1,  # Assuming patient with this ID exists
-                    'record_date': datetime.now() - timedelta(days=i*7),
-                    'record_type': ['diagnosis', 'treatment', 'follow-up', 'lab_result'][i % 4],
-                    'diagnosis': f'Test diagnosis {i}',
-                    'treatment': f'Test treatment {i}',
-                    'notes': f'Test medical notes for patient {i}',
-                    'physician_id': 1,
-                    'facility_id': 1,
-                    'is_confidential': i % 10 == 0  # 10% are confidential
-                })
+                data.update(
+                    {
+                        "patient_id": i + 1,  # Assuming patient with this ID exists
+                        "record_date": datetime.now() - timedelta(days=i * 7),
+                        "record_type": [
+                            "diagnosis",
+                            "treatment",
+                            "follow-up",
+                            "lab_result",
+                        ][i % 4],
+                        "diagnosis": f"Test diagnosis {i}",
+                        "treatment": f"Test treatment {i}",
+                        "notes": f"Test medical notes for patient {i}",
+                        "physician_id": 1,
+                        "facility_id": 1,
+                        "is_confidential": i % 10 == 0,  # 10% are confidential
+                    }
+                )
 
             elif model_class == Appointment:
-                data.update({
-                    'patient_id': i + 1,
-                    'appointment_date': datetime.now() + timedelta(days=i),
-                    'appointment_time': datetime.now().replace(hour=9+i%8, minute=0),
-                    'appointment_type': ['consultation', 'follow-up', 'procedure', 'emergency'][i % 4],
-                    'status': ['scheduled', 'confirmed', 'completed', 'cancelled'][i % 4],
-                    'physician_id': 1,
-                    'facility_id': 1,
-                    'notes': f'Test appointment notes {i}',
-                    'reminder_sent': True
-                })
+                data.update(
+                    {
+                        "patient_id": i + 1,
+                        "appointment_date": datetime.now() + timedelta(days=i),
+                        "appointment_time": datetime.now().replace(
+                            hour=9 + i % 8, minute=0
+                        ),
+                        "appointment_type": [
+                            "consultation",
+                            "follow-up",
+                            "procedure",
+                            "emergency",
+                        ][i % 4],
+                        "status": ["scheduled", "confirmed", "completed", "cancelled"][
+                            i % 4
+                        ],
+                        "physician_id": 1,
+                        "facility_id": 1,
+                        "notes": f"Test appointment notes {i}",
+                        "reminder_sent": True,
+                    }
+                )
 
             # Encrypt sensitive fields
             for field in encrypted_fields:
@@ -288,15 +357,15 @@ class DatabaseMigrationTestFramework:
     def run_migration_test(self, scenario: Dict[str, Any]) -> Dict[str, Any]:
         """Run comprehensive migration test for a given scenario"""
         result = {
-            'scenario': scenario['name'],
-            'app': scenario['app'],
-            'success': False,
-            'migration_time': 0,
-            'data_integrity_check': False,
-            'backward_compatibility': False,
-            'performance_metrics': {},
-            'errors': [],
-            'warnings': []
+            "scenario": scenario["name"],
+            "app": scenario["app"],
+            "success": False,
+            "migration_time": 0,
+            "data_integrity_check": False,
+            "backward_compatibility": False,
+            "performance_metrics": {},
+            "errors": [],
+            "warnings": [],
         }
 
         test_db_name = f"test_migration_{scenario['app']}_{int(time.time())}"
@@ -304,217 +373,240 @@ class DatabaseMigrationTestFramework:
         try:
             # Setup test database
             setup_result = self.setup_test_database(test_db_name)
-            if not setup_result['success']:
-                result['errors'].append(setup_result['message'])
+            if not setup_result["success"]:
+                result["errors"].append(setup_result["message"])
                 return result
 
             self.test_databases.append(test_db_name)
 
             # Get model class
             try:
-                model_class = apps.get_model(scenario['app'], scenario['app'].capitalize())
+                model_class = apps.get_model(
+                    scenario["app"], scenario["app"].capitalize()
+                )
             except LookupError:
-                model_class = apps.get_model(scenario['app'], scenario['app'][:-1].capitalize())
+                model_class = apps.get_model(
+                    scenario["app"], scenario["app"][:-1].capitalize()
+                )
 
             # Generate test data
-            if scenario['healthcare_data']:
+            if scenario["healthcare_data"]:
                 test_data = self.generate_test_healthcare_data(
-                    model_class, scenario['test_data_size'], scenario['encrypted_fields']
+                    model_class,
+                    scenario["test_data_size"],
+                    scenario["encrypted_fields"],
                 )
 
             # Configure Django for test database
-            original_db_config = settings.DATABASES['default'].copy()
-            settings.DATABASES['default'].update({
-                'NAME': test_db_name,
-                'TEST': {'NAME': test_db_name}
-            })
+            original_db_config = settings.DATABASES["default"].copy()
+            settings.DATABASES["default"].update(
+                {"NAME": test_db_name, "TEST": {"NAME": test_db_name}}
+            )
 
             # Create migration executor
             executor = MigrationExecutor(connection)
 
             # Get migration states
-            from_state = executor.loader.project_state(scenario['from_migration'])
-            to_state = executor.loader.project_state(scenario['to_migration'])
+            from_state = executor.loader.project_state(scenario["from_migration"])
+            to_state = executor.loader.project_state(scenario["to_migration"])
 
             # Test forward migration
             start_time = time.time()
 
             try:
                 # Apply migrations from start state
-                executor.migrate([scenario['from_migration']])
+                executor.migrate([scenario["from_migration"]])
 
                 # Insert test data if healthcare data
-                if scenario['healthcare_data'] and test_data:
-                    model_class.objects.bulk_create([
-                        model_class(**data) for data in test_data[:100]  # Test with subset
-                    ])
+                if scenario["healthcare_data"] and test_data:
+                    model_class.objects.bulk_create(
+                        [
+                            model_class(**data)
+                            for data in test_data[:100]  # Test with subset
+                        ]
+                    )
 
                 # Apply target migration
-                executor.migrate([scenario['to_migration']])
+                executor.migrate([scenario["to_migration"]])
 
                 migration_time = time.time() - start_time
-                result['migration_time'] = migration_time
-                result['performance_metrics']['migration_time'] = migration_time
+                result["migration_time"] = migration_time
+                result["performance_metrics"]["migration_time"] = migration_time
 
                 # Test data integrity
                 integrity_result = self.test_data_integrity(model_class, scenario)
-                result['data_integrity_check'] = integrity_result['success']
-                result.update(integrity_result['metrics'])
+                result["data_integrity_check"] = integrity_result["success"]
+                result.update(integrity_result["metrics"])
 
                 # Test backward compatibility
                 backward_result = self.test_backward_compatibility(executor, scenario)
-                result['backward_compatibility'] = backward_result['success']
+                result["backward_compatibility"] = backward_result["success"]
 
-                if not backward_result['success']:
-                    result['errors'].extend(backward_result['errors'])
+                if not backward_result["success"]:
+                    result["errors"].extend(backward_result["errors"])
 
                 # Test encryption integrity for healthcare data
-                if scenario['healthcare_data'] and scenario['encrypted_fields']:
+                if scenario["healthcare_data"] and scenario["encrypted_fields"]:
                     encryption_result = self.test_encryption_integrity(
-                        model_class, scenario['encrypted_fields']
+                        model_class, scenario["encrypted_fields"]
                     )
-                    result['encryption_integrity'] = encryption_result['success']
-                    if not encryption_result['success']:
-                        result['warnings'].extend(encryption_result['warnings'])
+                    result["encryption_integrity"] = encryption_result["success"]
+                    if not encryption_result["success"]:
+                        result["warnings"].extend(encryption_result["warnings"])
 
-                result['success'] = True
+                result["success"] = True
 
             except Exception as e:
-                result['errors'].append(f"Migration failed: {str(e)}")
+                result["errors"].append(f"Migration failed: {str(e)}")
 
             finally:
                 # Restore original database configuration
-                settings.DATABASES['default'] = original_db_config
+                settings.DATABASES["default"] = original_db_config
 
         except Exception as e:
-            result['errors'].append(f"Test setup failed: {str(e)}")
+            result["errors"].append(f"Test setup failed: {str(e)}")
 
         return result
 
-    def test_data_integrity(self, model_class, scenario: Dict[str, Any]) -> Dict[str, Any]:
+    def test_data_integrity(
+        self, model_class, scenario: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Test data integrity after migration"""
-        result = {
-            'success': True,
-            'metrics': {},
-            'errors': []
-        }
+        result = {"success": True, "metrics": {}, "errors": []}
 
         try:
             # Test record count
             record_count = model_class.objects.count()
-            result['metrics']['record_count'] = record_count
+            result["metrics"]["record_count"] = record_count
 
             # Test field accessibility
             for field in model_class._meta.fields:
                 try:
                     # Test field exists and is accessible
                     field_name = field.name
-                    result['metrics'][f'field_{field_name}'] = 'accessible'
+                    result["metrics"][f"field_{field_name}"] = "accessible"
 
                     # Test field type consistency
                     field_type = field.get_internal_type()
-                    result['metrics'][f'field_{field_name}_type'] = field_type
+                    result["metrics"][f"field_{field_name}_type"] = field_type
 
                 except Exception as e:
-                    result['errors'].append(f"Field {field.name} issue: {str(e)}")
-                    result['success'] = False
+                    result["errors"].append(f"Field {field.name} issue: {str(e)}")
+                    result["success"] = False
 
             # Test data consistency for healthcare data
-            if scenario['healthcare_data']:
+            if scenario["healthcare_data"]:
                 # Test required fields have values
                 required_fields = [
-                    f.name for f in model_class._meta.fields
-                    if not f.null and f.default != 'NOT_PROVIDED' and not f.blank
+                    f.name
+                    for f in model_class._meta.fields
+                    if not f.null and f.default != "NOT_PROVIDED" and not f.blank
                 ]
 
                 for field in required_fields:
                     try:
                         # Check for null values in required fields
-                        null_count = model_class.objects.filter(**{f"{field}__isnull": True}).count()
+                        null_count = model_class.objects.filter(
+                            **{f"{field}__isnull": True}
+                        ).count()
                         if null_count > 0:
-                            result['errors'].append(f"Required field {field} has {null_count} null values")
-                            result['success'] = False
+                            result["errors"].append(
+                                f"Required field {field} has {null_count} null values"
+                            )
+                            result["success"] = False
 
-                        result['metrics'][f'required_field_{field}_null_count'] = null_count
+                        result["metrics"][
+                            f"required_field_{field}_null_count"
+                        ] = null_count
 
                     except Exception as e:
-                        result['errors'].append(f"Required field {field} check failed: {str(e)}")
-                        result['success'] = False
+                        result["errors"].append(
+                            f"Required field {field} check failed: {str(e)}"
+                        )
+                        result["success"] = False
 
                 # Test encrypted field integrity
-                if scenario['encrypted_fields']:
-                    for field in scenario['encrypted_fields']:
+                if scenario["encrypted_fields"]:
+                    for field in scenario["encrypted_fields"]:
                         try:
                             # Test encrypted fields can be decrypted
                             sample_record = model_class.objects.first()
                             if sample_record and hasattr(sample_record, field):
                                 encrypted_value = getattr(sample_record, field)
                                 if encrypted_value:
-                                    decrypted_value = self.encryption_manager.decrypt(encrypted_value)
-                                    result['metrics'][f'encrypted_field_{field}_decrypted'] = True
+                                    decrypted_value = self.encryption_manager.decrypt(
+                                        encrypted_value
+                                    )
+                                    result["metrics"][
+                                        f"encrypted_field_{field}_decrypted"
+                                    ] = True
 
                         except Exception as e:
-                            result['errors'].append(f"Encrypted field {field} integrity issue: {str(e)}")
-                            result['success'] = False
+                            result["errors"].append(
+                                f"Encrypted field {field} integrity issue: {str(e)}"
+                            )
+                            result["success"] = False
 
             # Test performance metrics
             start_time = time.time()
             model_class.objects.count()  # Simple count query
             query_time = time.time() - start_time
-            result['metrics']['count_query_time'] = query_time
+            result["metrics"]["count_query_time"] = query_time
 
             # Test indexing performance
-            if hasattr(model_class, 'medical_record_number'):
+            if hasattr(model_class, "medical_record_number"):
                 start_time = time.time()
-                model_class.objects.filter(medical_record_number__startswith='TEST').count()
+                model_class.objects.filter(
+                    medical_record_number__startswith="TEST"
+                ).count()
                 indexed_query_time = time.time() - start_time
-                result['metrics']['indexed_query_time'] = indexed_query_time
+                result["metrics"]["indexed_query_time"] = indexed_query_time
 
         except Exception as e:
-            result['errors'].append(f"Data integrity test failed: {str(e)}")
-            result['success'] = False
+            result["errors"].append(f"Data integrity test failed: {str(e)}")
+            result["success"] = False
 
         return result
 
-    def test_backward_compatibility(self, executor: MigrationExecutor, scenario: Dict[str, Any]) -> Dict[str, Any]:
+    def test_backward_compatibility(
+        self, executor: MigrationExecutor, scenario: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Test backward compatibility of migration"""
-        result = {
-            'success': True,
-            'errors': []
-        }
+        result = {"success": True, "errors": []}
 
         try:
             # Test rollback capability
-            executor.migrate([scenario['from_migration']])
+            executor.migrate([scenario["from_migration"]])
 
             # Test that we can still access basic data structure
             try:
                 # Get model class
-                model_class = apps.get_model(scenario['app'], scenario['app'].capitalize())
+                model_class = apps.get_model(
+                    scenario["app"], scenario["app"].capitalize()
+                )
 
                 # Test basic operations
                 record_count = model_class.objects.count()
-                result['rollback_record_count'] = record_count
+                result["rollback_record_count"] = record_count
 
             except Exception as e:
-                result['errors'].append(f"Rollback compatibility issue: {str(e)}")
-                result['success'] = False
+                result["errors"].append(f"Rollback compatibility issue: {str(e)}")
+                result["success"] = False
 
             # Migrate forward again
-            executor.migrate([scenario['to_migration']])
+            executor.migrate([scenario["to_migration"]])
 
         except Exception as e:
-            result['errors'].append(f"Backward compatibility test failed: {str(e)}")
-            result['success'] = False
+            result["errors"].append(f"Backward compatibility test failed: {str(e)}")
+            result["success"] = False
 
         return result
 
-    def test_encryption_integrity(self, model_class, encrypted_fields: List[str]) -> Dict[str, Any]:
+    def test_encryption_integrity(
+        self, model_class, encrypted_fields: List[str]
+    ) -> Dict[str, Any]:
         """Test encryption integrity for healthcare data"""
-        result = {
-            'success': True,
-            'warnings': []
-        }
+        result = {"success": True, "warnings": []}
 
         try:
             # Test encryption/decryption consistency
@@ -526,15 +618,21 @@ class DatabaseMigrationTestFramework:
                         encrypted_value = getattr(record, field)
                         if encrypted_value:
                             try:
-                                decrypted_value = self.encryption_manager.decrypt(encrypted_value)
+                                decrypted_value = self.encryption_manager.decrypt(
+                                    encrypted_value
+                                )
                                 # Test that decrypted value is reasonable
                                 if len(str(decrypted_value)) == 0:
-                                    result['warnings'].append(f"Field {field} decrypted to empty value")
-                                    result['success'] = False
+                                    result["warnings"].append(
+                                        f"Field {field} decrypted to empty value"
+                                    )
+                                    result["success"] = False
 
                             except Exception as e:
-                                result['warnings'].append(f"Failed to decrypt field {field}: {str(e)}")
-                                result['success'] = False
+                                result["warnings"].append(
+                                    f"Failed to decrypt field {field}: {str(e)}"
+                                )
+                                result["success"] = False
 
             # Test encryption key rotation (if applicable)
             try:
@@ -544,15 +642,15 @@ class DatabaseMigrationTestFramework:
                 decrypted_v1 = self.encryption_manager.decrypt(encrypted_v1)
 
                 if decrypted_v1 != test_data:
-                    result['warnings'].append("Encryption/decryption roundtrip failed")
-                    result['success'] = False
+                    result["warnings"].append("Encryption/decryption roundtrip failed")
+                    result["success"] = False
 
             except Exception as e:
-                result['warnings'].append(f"Encryption key test failed: {str(e)}")
+                result["warnings"].append(f"Encryption key test failed: {str(e)}")
 
         except Exception as e:
-            result['warnings'].append(f"Encryption integrity test failed: {str(e)}")
-            result['success'] = False
+            result["warnings"].append(f"Encryption integrity test failed: {str(e)}")
+            result["success"] = False
 
         return result
 
@@ -565,38 +663,51 @@ class DatabaseMigrationTestFramework:
     def run_comprehensive_migration_tests(self) -> Dict[str, Any]:
         """Run comprehensive migration tests for all scenarios"""
         results = {
-            'total_scenarios': len(MIGRATION_TEST_SCENARIOS),
-            'passed_scenarios': 0,
-            'failed_scenarios': 0,
-            'total_migration_time': 0,
-            'scenario_results': [],
-            'summary': {}
+            "total_scenarios": len(MIGRATION_TEST_SCENARIOS),
+            "passed_scenarios": 0,
+            "failed_scenarios": 0,
+            "total_migration_time": 0,
+            "scenario_results": [],
+            "summary": {},
         }
 
         for scenario in MIGRATION_TEST_SCENARIOS:
             print(f"Testing migration scenario: {scenario['name']}")
             result = self.run_migration_test(scenario)
-            results['scenario_results'].append(result)
-            results['total_migration_time'] += result.get('migration_time', 0)
+            results["scenario_results"].append(result)
+            results["total_migration_time"] += result.get("migration_time", 0)
 
-            if result['success']:
-                results['passed_scenarios'] += 1
+            if result["success"]:
+                results["passed_scenarios"] += 1
             else:
-                results['failed_scenarios'] += 1
+                results["failed_scenarios"] += 1
 
         # Generate summary
-        results['summary'] = {
-            'success_rate': (results['passed_scenarios'] / results['total_scenarios']) * 100,
-            'average_migration_time': results['total_migration_time'] / results['total_scenarios'],
-            'critical_migrations_passed': len([
-                r for r in results['scenario_results']
-                if r['success'] and MIGRATION_TEST_SCENARIOS[
-                    MIGRATION_TEST_SCENARIOS.index(next(s for s in MIGRATION_TEST_SCENARIOS if s['name'] == r['scenario']))
-                ]['critical']
-            ])
+        results["summary"] = {
+            "success_rate": (results["passed_scenarios"] / results["total_scenarios"])
+            * 100,
+            "average_migration_time": results["total_migration_time"]
+            / results["total_scenarios"],
+            "critical_migrations_passed": len(
+                [
+                    r
+                    for r in results["scenario_results"]
+                    if r["success"]
+                    and MIGRATION_TEST_SCENARIOS[
+                        MIGRATION_TEST_SCENARIOS.index(
+                            next(
+                                s
+                                for s in MIGRATION_TEST_SCENARIOS
+                                if s["name"] == r["scenario"]
+                            )
+                        )
+                    ]["critical"]
+                ]
+            ),
         }
 
         return results
+
 
 class TestDjangoMigrations(TestCase):
     """Test Django migrations framework"""
@@ -630,8 +741,8 @@ class TestDjangoMigrations(TestCase):
 
             # Test plan structure
             for migration in plan:
-                self.assertTrue(hasattr(migration, 'app_label'))
-                self.assertTrue(hasattr(migration, 'name'))
+                self.assertTrue(hasattr(migration, "app_label"))
+                self.assertTrue(hasattr(migration, "name"))
 
         except Exception as e:
             self.fail(f"Migration plan generation failed: {str(e)}")
@@ -647,7 +758,7 @@ class TestDjangoMigrations(TestCase):
 
             # Test that models are accessible
             try:
-                patient_model = project_state.apps.get_model('patients', 'Patient')
+                patient_model = project_state.apps.get_model("patients", "Patient")
                 self.assertIsNotNone(patient_model)
             except LookupError:
                 # Model might not exist in initial state
@@ -655,6 +766,7 @@ class TestDjangoMigrations(TestCase):
 
         except Exception as e:
             self.fail(f"Migration state consistency test failed: {str(e)}")
+
 
 class TestPatientDataMigration(TransactionTestCase):
     """Test patient data migration specifically"""
@@ -665,17 +777,21 @@ class TestPatientDataMigration(TransactionTestCase):
 
     def test_patient_model_migration(self):
         """Test patient model migration with healthcare data"""
-        scenario = next(s for s in MIGRATION_TEST_SCENARIOS if s['app'] == 'patients')
+        scenario = next(s for s in MIGRATION_TEST_SCENARIOS if s["app"] == "patients")
 
         result = self.framework.run_migration_test(scenario)
 
-        self.assertTrue(result['success'], f"Patient migration failed: {result['errors']}")
-        self.assertTrue(result['data_integrity_check'], "Data integrity check failed")
-        self.assertTrue(result['backward_compatibility'], "Backward compatibility failed")
+        self.assertTrue(
+            result["success"], f"Patient migration failed: {result['errors']}"
+        )
+        self.assertTrue(result["data_integrity_check"], "Data integrity check failed")
+        self.assertTrue(
+            result["backward_compatibility"], "Backward compatibility failed"
+        )
 
         # Test healthcare-specific requirements
-        self.assertIn('encryption_integrity', result)
-        self.assertTrue(result['encryption_integrity'], "Encryption integrity failed")
+        self.assertIn("encryption_integrity", result)
+        self.assertTrue(result["encryption_integrity"], "Encryption integrity failed")
 
     def test_patient_encrypted_fields(self):
         """Test patient encrypted field migration"""
@@ -683,39 +799,41 @@ class TestPatientDataMigration(TransactionTestCase):
 
         # Create test patient
         patient_data = {
-            'first_name': 'John',
-            'last_name': 'Doe',
-            'email': 'john.doe@example.com',
-            'phone': '555-123-4567',
-            'date_of_birth': datetime.now() - timedelta(days=30*365),
-            'gender': 'M',
-            'blood_type': 'A+',
-            'medical_record_number': 'MRN12345678',
-            'ssn': '123-45-6789',
-            'address': '123 Test St, Test City, TC 12345',
-            'emergency_contact_name': 'Jane Doe',
-            'emergency_contact_phone': '555-987-6543',
-            'primary_care_physician': 'Dr. Smith',
-            'insurance_provider': 'Test Insurance',
-            'insurance_policy_number': 'POL12345678',
-            'allergies': 'Penicillin',
-            'medications': 'Lisinopril 10mg',
-            'chronic_conditions': 'Hypertension',
-            'last_visit_date': datetime.now(),
-            'status': 'active'
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "john.doe@example.com",
+            "phone": "555-123-4567",
+            "date_of_birth": datetime.now() - timedelta(days=30 * 365),
+            "gender": "M",
+            "blood_type": "A+",
+            "medical_record_number": "MRN12345678",
+            "ssn": "123-45-6789",
+            "address": "123 Test St, Test City, TC 12345",
+            "emergency_contact_name": "Jane Doe",
+            "emergency_contact_phone": "555-987-6543",
+            "primary_care_physician": "Dr. Smith",
+            "insurance_provider": "Test Insurance",
+            "insurance_policy_number": "POL12345678",
+            "allergies": "Penicillin",
+            "medications": "Lisinopril 10mg",
+            "chronic_conditions": "Hypertension",
+            "last_visit_date": datetime.now(),
+            "status": "active",
         }
 
         patient = Patient.objects.create(**patient_data)
 
         # Test encrypted fields are not stored in plaintext
-        self.assertNotEqual(patient.first_name, 'John')  # Should be encrypted
-        self.assertNotEqual(patient.last_name, 'Doe')   # Should be encrypted
-        self.assertNotEqual(patient.email, 'john.doe@example.com')  # Should be encrypted
+        self.assertNotEqual(patient.first_name, "John")  # Should be encrypted
+        self.assertNotEqual(patient.last_name, "Doe")  # Should be encrypted
+        self.assertNotEqual(
+            patient.email, "john.doe@example.com"
+        )  # Should be encrypted
 
         # Test decryption works
         encryption_manager = EncryptionManager()
         decrypted_first_name = encryption_manager.decrypt(patient.first_name)
-        self.assertEqual(decrypted_first_name, 'John')
+        self.assertEqual(decrypted_first_name, "John")
 
     def test_patient_data_integrity(self):
         """Test patient data integrity after migration"""
@@ -725,16 +843,16 @@ class TestPatientDataMigration(TransactionTestCase):
         patients = []
         for i in range(10):
             patient_data = {
-                'first_name': f'Test{i}',
-                'last_name': f'Patient{i}',
-                'email': f'test{i}@example.com',
-                'phone': f'555-{i:04d}',
-                'date_of_birth': datetime.now() - timedelta(days=i*365),
-                'gender': 'M' if i % 2 == 0 else 'F',
-                'blood_type': ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'][i % 8],
-                'medical_record_number': f'MRN{i:08d}',
-                'ssn': f'{i:03d}-{i:02d}-{i:04d}',
-                'status': 'active'
+                "first_name": f"Test{i}",
+                "last_name": f"Patient{i}",
+                "email": f"test{i}@example.com",
+                "phone": f"555-{i:04d}",
+                "date_of_birth": datetime.now() - timedelta(days=i * 365),
+                "gender": "M" if i % 2 == 0 else "F",
+                "blood_type": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"][i % 8],
+                "medical_record_number": f"MRN{i:08d}",
+                "ssn": f"{i:03d}-{i:02d}-{i:04d}",
+                "status": "active",
             }
             patients.append(Patient.objects.create(**patient_data))
 
@@ -743,14 +861,17 @@ class TestPatientDataMigration(TransactionTestCase):
         self.assertEqual(len(all_patients), 10)
 
         # Test filtering
-        male_patients = Patient.objects.filter(gender='M')
+        male_patients = Patient.objects.filter(gender="M")
         self.assertEqual(male_patients.count(), 5)
 
         # Test medical record number uniqueness
-        mrn_count = Patient.objects.values('medical_record_number').annotate(
-            count=Count('medical_record_number')
-        ).filter(count__gt=1)
+        mrn_count = (
+            Patient.objects.values("medical_record_number")
+            .annotate(count=Count("medical_record_number"))
+            .filter(count__gt=1)
+        )
         self.assertEqual(mrn_count.count(), 0)
+
 
 class TestMedicalRecordsMigration(TransactionTestCase):
     """Test medical records migration"""
@@ -761,12 +882,14 @@ class TestMedicalRecordsMigration(TransactionTestCase):
 
     def test_medical_record_migration(self):
         """Test medical record migration with confidential data"""
-        scenario = next(s for s in MIGRATION_TEST_SCENARIOS if s['app'] == 'ehr')
+        scenario = next(s for s in MIGRATION_TEST_SCENARIOS if s["app"] == "ehr")
 
         result = self.framework.run_migration_test(scenario)
 
-        self.assertTrue(result['success'], f"Medical record migration failed: {result['errors']}")
-        self.assertTrue(result['data_integrity_check'], "Data integrity check failed")
+        self.assertTrue(
+            result["success"], f"Medical record migration failed: {result['errors']}"
+        )
+        self.assertTrue(result["data_integrity_check"], "Data integrity check failed")
 
     def test_confidential_data_handling(self):
         """Test confidential medical record data handling"""
@@ -775,27 +898,27 @@ class TestMedicalRecordsMigration(TransactionTestCase):
 
         # Create test patient
         patient = Patient.objects.create(
-            first_name='John',
-            last_name='Doe',
-            email='john.doe@example.com',
-            phone='555-123-4567',
-            date_of_birth=datetime.now() - timedelta(days=30*365),
-            gender='M',
-            medical_record_number='MRN12345678',
-            status='active'
+            first_name="John",
+            last_name="Doe",
+            email="john.doe@example.com",
+            phone="555-123-4567",
+            date_of_birth=datetime.now() - timedelta(days=30 * 365),
+            gender="M",
+            medical_record_number="MRN12345678",
+            status="active",
         )
 
         # Create confidential medical record
         medical_record = MedicalRecord.objects.create(
             patient=patient,
             record_date=datetime.now(),
-            record_type='diagnosis',
-            diagnosis='Confidential Condition',
-            treatment='Confidential Treatment',
-            notes='Confidential medical notes',
+            record_type="diagnosis",
+            diagnosis="Confidential Condition",
+            treatment="Confidential Treatment",
+            notes="Confidential medical notes",
             physician_id=1,
             facility_id=1,
-            is_confidential=True
+            is_confidential=True,
         )
 
         # Test confidential flag is respected
@@ -804,7 +927,8 @@ class TestMedicalRecordsMigration(TransactionTestCase):
         # Test encrypted fields
         encryption_manager = EncryptionManager()
         decrypted_diagnosis = encryption_manager.decrypt(medical_record.diagnosis)
-        self.assertEqual(decrypted_diagnosis, 'Confidential Condition')
+        self.assertEqual(decrypted_diagnosis, "Confidential Condition")
+
 
 class TestAppointmentsMigration(TransactionTestCase):
     """Test appointments migration"""
@@ -815,12 +939,16 @@ class TestAppointmentsMigration(TransactionTestCase):
 
     def test_appointment_migration(self):
         """Test appointment migration"""
-        scenario = next(s for s in MIGRATION_TEST_SCENARIOS if s['app'] == 'appointments')
+        scenario = next(
+            s for s in MIGRATION_TEST_SCENARIOS if s["app"] == "appointments"
+        )
 
         result = self.framework.run_migration_test(scenario)
 
-        self.assertTrue(result['success'], f"Appointment migration failed: {result['errors']}")
-        self.assertTrue(result['data_integrity_check'], "Data integrity check failed")
+        self.assertTrue(
+            result["success"], f"Appointment migration failed: {result['errors']}"
+        )
+        self.assertTrue(result["data_integrity_check"], "Data integrity check failed")
 
     def test_appointment_scheduling_logic(self):
         """Test appointment scheduling logic after migration"""
@@ -829,14 +957,14 @@ class TestAppointmentsMigration(TransactionTestCase):
 
         # Create test patient
         patient = Patient.objects.create(
-            first_name='John',
-            last_name='Doe',
-            email='john.doe@example.com',
-            phone='555-123-4567',
-            date_of_birth=datetime.now() - timedelta(days=30*365),
-            gender='M',
-            medical_record_number='MRN12345678',
-            status='active'
+            first_name="John",
+            last_name="Doe",
+            email="john.doe@example.com",
+            phone="555-123-4567",
+            date_of_birth=datetime.now() - timedelta(days=30 * 365),
+            gender="M",
+            medical_record_number="MRN12345678",
+            status="active",
         )
 
         # Create appointments
@@ -845,11 +973,11 @@ class TestAppointmentsMigration(TransactionTestCase):
             appointment = Appointment.objects.create(
                 patient=patient,
                 appointment_date=datetime.now().date() + timedelta(days=i),
-                appointment_time=datetime.now().replace(hour=9+i, minute=0),
-                appointment_type='consultation',
-                status='scheduled',
+                appointment_time=datetime.now().replace(hour=9 + i, minute=0),
+                appointment_type="consultation",
+                status="scheduled",
                 physician_id=1,
-                facility_id=1
+                facility_id=1,
             )
             appointments.append(appointment)
 
@@ -858,8 +986,11 @@ class TestAppointmentsMigration(TransactionTestCase):
         self.assertEqual(patient_appointments.count(), 5)
 
         # Test date filtering
-        today_appointments = Appointment.objects.filter(appointment_date=datetime.now().date())
+        today_appointments = Appointment.objects.filter(
+            appointment_date=datetime.now().date()
+        )
         self.assertEqual(today_appointments.count(), 1)
+
 
 class TestBillingMigration(TransactionTestCase):
     """Test billing migration"""
@@ -870,12 +1001,14 @@ class TestBillingMigration(TransactionTestCase):
 
     def test_billing_migration(self):
         """Test billing migration with financial data"""
-        scenario = next(s for s in MIGRATION_TEST_SCENARIOS if s['app'] == 'billing')
+        scenario = next(s for s in MIGRATION_TEST_SCENARIOS if s["app"] == "billing")
 
         result = self.framework.run_migration_test(scenario)
 
-        self.assertTrue(result['success'], f"Billing migration failed: {result['errors']}")
-        self.assertTrue(result['data_integrity_check'], "Data integrity check failed")
+        self.assertTrue(
+            result["success"], f"Billing migration failed: {result['errors']}"
+        )
+        self.assertTrue(result["data_integrity_check"], "Data integrity check failed")
 
     def test_financial_data_integrity(self):
         """Test financial data integrity after migration"""
@@ -884,32 +1017,32 @@ class TestBillingMigration(TransactionTestCase):
 
         # Create test patient
         patient = Patient.objects.create(
-            first_name='John',
-            last_name='Doe',
-            email='john.doe@example.com',
-            phone='555-123-4567',
-            date_of_birth=datetime.now() - timedelta(days=30*365),
-            gender='M',
-            medical_record_number='MRN12345678',
-            status='active'
+            first_name="John",
+            last_name="Doe",
+            email="john.doe@example.com",
+            phone="555-123-4567",
+            date_of_birth=datetime.now() - timedelta(days=30 * 365),
+            gender="M",
+            medical_record_number="MRN12345678",
+            status="active",
         )
 
         # Create service catalog entries
         services = [
             ServiceCatalog.objects.create(
-                service_code='CONSULT',
-                service_name='General Consultation',
-                description='General medical consultation',
-                cost=Decimal('150.00'),
-                category='consultation'
+                service_code="CONSULT",
+                service_name="General Consultation",
+                description="General medical consultation",
+                cost=Decimal("150.00"),
+                category="consultation",
             ),
             ServiceCatalog.objects.create(
-                service_code='LAB',
-                service_name='Blood Test',
-                description='Complete blood count',
-                cost=Decimal('75.00'),
-                category='laboratory'
-            )
+                service_code="LAB",
+                service_name="Blood Test",
+                description="Complete blood count",
+                cost=Decimal("75.00"),
+                category="laboratory",
+            ),
         ]
 
         # Create bill
@@ -917,10 +1050,10 @@ class TestBillingMigration(TransactionTestCase):
             patient=patient,
             bill_date=datetime.now().date(),
             due_date=datetime.now().date() + timedelta(days=30),
-            total_amount=Decimal('225.00'),
-            status='pending',
-            payment_method='insurance',
-            insurance_info='Test Insurance Co.'
+            total_amount=Decimal("225.00"),
+            status="pending",
+            payment_method="insurance",
+            insurance_info="Test Insurance Co.",
         )
 
         # Test financial calculations
@@ -930,7 +1063,8 @@ class TestBillingMigration(TransactionTestCase):
         # Test payment method encryption
         encryption_manager = EncryptionManager()
         decrypted_payment_method = encryption_manager.decrypt(bill.payment_method)
-        self.assertEqual(decrypted_payment_method, 'insurance')
+        self.assertEqual(decrypted_payment_method, "insurance")
+
 
 class TestMigrationPerformance(TransactionTestCase):
     """Test migration performance"""
@@ -943,45 +1077,52 @@ class TestMigrationPerformance(TransactionTestCase):
         """Test migration performance with large datasets"""
         # Test with a larger dataset
         scenario = {
-            'name': 'Large Dataset Performance Test',
-            'app': 'patients',
-            'from_migration': '0001_initial',
-            'to_migration': '0005_patient_patients_pa_hospita_8adb46_idx_and_more',
-            'test_data_size': 5000,
-            'healthcare_data': True,
-            'encrypted_fields': ["first_name", "last_name", "email", "phone"],
-            'critical': True
+            "name": "Large Dataset Performance Test",
+            "app": "patients",
+            "from_migration": "0001_initial",
+            "to_migration": "0005_patient_patients_pa_hospita_8adb46_idx_and_more",
+            "test_data_size": 5000,
+            "healthcare_data": True,
+            "encrypted_fields": ["first_name", "last_name", "email", "phone"],
+            "critical": True,
         }
 
         result = self.framework.run_migration_test(scenario)
 
-        self.assertTrue(result['success'], f"Large dataset migration failed: {result['errors']}")
+        self.assertTrue(
+            result["success"], f"Large dataset migration failed: {result['errors']}"
+        )
 
         # Check performance metrics
-        migration_time = result.get('migration_time', 0)
-        self.assertLess(migration_time, 300, f"Migration took too long: {migration_time} seconds")
+        migration_time = result.get("migration_time", 0)
+        self.assertLess(
+            migration_time, 300, f"Migration took too long: {migration_time} seconds"
+        )
 
         # Check data integrity
-        self.assertTrue(result['data_integrity_check'], "Data integrity check failed")
+        self.assertTrue(result["data_integrity_check"], "Data integrity check failed")
 
     def test_concurrent_migration_safety(self):
         """Test concurrent migration safety"""
         # This would test multiple concurrent migrations
         # For now, we'll test basic migration safety
         scenario = {
-            'name': 'Concurrent Migration Safety Test',
-            'app': 'patients',
-            'from_migration': '0001_initial',
-            'to_migration': '0005_patient_patients_pa_hospita_8adb46_idx_and_more',
-            'test_data_size': 100,
-            'healthcare_data': True,
-            'encrypted_fields': ["first_name", "last_name", "email", "phone"],
-            'critical': True
+            "name": "Concurrent Migration Safety Test",
+            "app": "patients",
+            "from_migration": "0001_initial",
+            "to_migration": "0005_patient_patients_pa_hospita_8adb46_idx_and_more",
+            "test_data_size": 100,
+            "healthcare_data": True,
+            "encrypted_fields": ["first_name", "last_name", "email", "phone"],
+            "critical": True,
         }
 
         result = self.framework.run_migration_test(scenario)
 
-        self.assertTrue(result['success'], f"Concurrent migration test failed: {result['errors']}")
+        self.assertTrue(
+            result["success"], f"Concurrent migration test failed: {result['errors']}"
+        )
+
 
 class TestMigrationRollback(TransactionTestCase):
     """Test migration rollback capabilities"""
@@ -993,20 +1134,24 @@ class TestMigrationRollback(TransactionTestCase):
     def test_migration_rollback(self):
         """Test migration rollback functionality"""
         scenario = {
-            'name': 'Migration Rollback Test',
-            'app': 'patients',
-            'from_migration': '0001_initial',
-            'to_migration': '0005_patient_patients_pa_hospita_8adb46_idx_and_more',
-            'test_data_size': 50,
-            'healthcare_data': True,
-            'encrypted_fields': ["first_name", "last_name", "email", "phone"],
-            'critical': True
+            "name": "Migration Rollback Test",
+            "app": "patients",
+            "from_migration": "0001_initial",
+            "to_migration": "0005_patient_patients_pa_hospita_8adb46_idx_and_more",
+            "test_data_size": 50,
+            "healthcare_data": True,
+            "encrypted_fields": ["first_name", "last_name", "email", "phone"],
+            "critical": True,
         }
 
         result = self.framework.run_migration_test(scenario)
 
-        self.assertTrue(result['success'], f"Migration rollback test failed: {result['errors']}")
-        self.assertTrue(result['backward_compatibility'], "Backward compatibility failed")
+        self.assertTrue(
+            result["success"], f"Migration rollback test failed: {result['errors']}"
+        )
+        self.assertTrue(
+            result["backward_compatibility"], "Backward compatibility failed"
+        )
 
     def test_data_preservation_after_rollback(self):
         """Test data preservation after rollback"""
@@ -1014,21 +1159,22 @@ class TestMigrationRollback(TransactionTestCase):
 
         # Create test patient
         patient = Patient.objects.create(
-            first_name='John',
-            last_name='Doe',
-            email='john.doe@example.com',
-            phone='555-123-4567',
-            date_of_birth=datetime.now() - timedelta(days=30*365),
-            gender='M',
-            medical_record_number='MRN12345678',
-            status='active'
+            first_name="John",
+            last_name="Doe",
+            email="john.doe@example.com",
+            phone="555-123-4567",
+            date_of_birth=datetime.now() - timedelta(days=30 * 365),
+            gender="M",
+            medical_record_number="MRN12345678",
+            status="active",
         )
 
         patient_id = patient.id
 
         # Test that patient data can be retrieved after operations
         retrieved_patient = Patient.objects.get(id=patient_id)
-        self.assertEqual(retrieved_patient.medical_record_number, 'MRN12345678')
+        self.assertEqual(retrieved_patient.medical_record_number, "MRN12345678")
+
 
 class TestMigrationSecurity(TransactionTestCase):
     """Test migration security and compliance"""
@@ -1043,26 +1189,26 @@ class TestMigrationSecurity(TransactionTestCase):
 
         # Create patient with PHI
         patient = Patient.objects.create(
-            first_name='John',
-            last_name='Doe',
-            email='john.doe@example.com',
-            phone='555-123-4567',
-            date_of_birth=datetime.now() - timedelta(days=30*365),
-            gender='M',
-            blood_type='A+',
-            medical_record_number='MRN12345678',
-            ssn='123-45-6789',
-            address='123 Test St, Test City, TC 12345',
-            emergency_contact_name='Jane Doe',
-            emergency_contact_phone='555-987-6543',
-            primary_care_physician='Dr. Smith',
-            insurance_provider='Test Insurance',
-            insurance_policy_number='POL12345678',
-            allergies='Penicillin',
-            medications='Lisinopril 10mg',
-            chronic_conditions='Hypertension',
+            first_name="John",
+            last_name="Doe",
+            email="john.doe@example.com",
+            phone="555-123-4567",
+            date_of_birth=datetime.now() - timedelta(days=30 * 365),
+            gender="M",
+            blood_type="A+",
+            medical_record_number="MRN12345678",
+            ssn="123-45-6789",
+            address="123 Test St, Test City, TC 12345",
+            emergency_contact_name="Jane Doe",
+            emergency_contact_phone="555-987-6543",
+            primary_care_physician="Dr. Smith",
+            insurance_provider="Test Insurance",
+            insurance_policy_number="POL12345678",
+            allergies="Penicillin",
+            medications="Lisinopril 10mg",
+            chronic_conditions="Hypertension",
             last_visit_date=datetime.now(),
-            status='active'
+            status="active",
         )
 
         # Test that PHI fields are encrypted
@@ -1070,17 +1216,20 @@ class TestMigrationSecurity(TransactionTestCase):
 
         # Test SSN encryption
         decrypted_ssn = encryption_manager.decrypt(patient.ssn)
-        self.assertEqual(decrypted_ssn, '123-45-6789')
+        self.assertEqual(decrypted_ssn, "123-45-6789")
 
         # Test that raw database query doesn't expose PHI
         with connection.cursor() as cursor:
-            cursor.execute("SELECT first_name, last_name, email FROM patients_patient WHERE id = %s", [patient.id])
+            cursor.execute(
+                "SELECT first_name, last_name, email FROM patients_patient WHERE id = %s",
+                [patient.id],
+            )
             row = cursor.fetchone()
 
             # The values should be encrypted, not plaintext
-            self.assertNotEqual(row[0], 'John')  # Should be encrypted
-            self.assertNotEqual(row[1], 'Doe')   # Should be encrypted
-            self.assertNotEqual(row[2], 'john.doe@example.com')  # Should be encrypted
+            self.assertNotEqual(row[0], "John")  # Should be encrypted
+            self.assertNotEqual(row[1], "Doe")  # Should be encrypted
+            self.assertNotEqual(row[2], "john.doe@example.com")  # Should be encrypted
 
     def test_audit_trail_maintenance(self):
         """Test audit trail maintenance during migration"""
@@ -1089,16 +1238,17 @@ class TestMigrationSecurity(TransactionTestCase):
         # Create audit log entry
         audit_log = AuditLog.objects.create(
             user_id=1,
-            action='test_migration',
-            object_type='Patient',
+            action="test_migration",
+            object_type="Patient",
             object_id=1,
-            details='Test migration audit',
-            ip_address='127.0.0.1'
+            details="Test migration audit",
+            ip_address="127.0.0.1",
         )
 
         # Test audit log is preserved
         retrieved_log = AuditLog.objects.get(id=audit_log.id)
-        self.assertEqual(retrieved_log.action, 'test_migration')
+        self.assertEqual(retrieved_log.action, "test_migration")
+
 
 # Test runners and utilities
 def run_comprehensive_migration_tests():
@@ -1123,7 +1273,7 @@ def run_comprehensive_migration_tests():
 ## Scenario Results
 """
 
-        for result in results['scenario_results']:
+        for result in results["scenario_results"]:
             report += f"""
 ### {result['scenario']}
 - **Status**: {'✅ PASS' if result['success'] else '❌ FAIL'}
@@ -1132,25 +1282,28 @@ def run_comprehensive_migration_tests():
 - **Backward Compatible**: {'✅ PASS' if result['backward_compatibility'] else '❌ FAIL'}
 """
 
-            if result['errors']:
+            if result["errors"]:
                 report += "- **Errors**:\n"
-                for error in result['errors']:
+                for error in result["errors"]:
                     report += f"  - {error}\n"
 
-            if result['warnings']:
+            if result["warnings"]:
                 report += "- **Warnings**:\n"
-                for warning in result['warnings']:
+                for warning in result["warnings"]:
                     report += f"  - {warning}\n"
 
         # Save report
-        with open('/tmp/migration_test_report.md', 'w') as f:
+        with open("/tmp/migration_test_report.md", "w") as f:
             f.write(report)
 
-        print(f"Migration tests completed. Report saved to /tmp/migration_test_report.md")
+        print(
+            f"Migration tests completed. Report saved to /tmp/migration_test_report.md"
+        )
         return results
 
     finally:
         framework.cleanup_all_test_databases()
+
 
 def validate_database_schema_consistency():
     """Validate database schema consistency across environments"""
@@ -1161,12 +1314,14 @@ def validate_database_schema_consistency():
         # For now, we'll validate the current schema
         with connection.cursor() as cursor:
             # Get table information
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT table_name, column_name, data_type, is_nullable
                 FROM information_schema.columns
                 WHERE table_schema = 'public'
                 ORDER BY table_name, ordinal_position
-            """)
+            """
+            )
             schema_info = cursor.fetchall()
 
             # Create schema report
@@ -1186,15 +1341,18 @@ def validate_database_schema_consistency():
                 report += f"| {column_name} | {data_type} | {is_nullable} |\n"
 
             # Save schema report
-            with open('/tmp/schema_validation_report.md', 'w') as f:
+            with open("/tmp/schema_validation_report.md", "w") as f:
                 f.write(report)
 
-            print("Schema validation completed. Report saved to /tmp/schema_validation_report.md")
+            print(
+                "Schema validation completed. Report saved to /tmp/schema_validation_report.md"
+            )
             return schema_info
 
     except Exception as e:
         print(f"Schema validation failed: {str(e)}")
         return None
+
 
 if __name__ == "__main__":
     # Run comprehensive tests
@@ -1208,7 +1366,9 @@ if __name__ == "__main__":
     # Print summary
     print(f"\nTest Summary:")
     print(f"Success Rate: {results['summary']['success_rate']:.1f}%")
-    print(f"Critical Migrations: {results['summary']['critical_migrations_passed']}/{len([s for s in MIGRATION_TEST_SCENARIOS if s['critical']])}")
+    print(
+        f"Critical Migrations: {results['summary']['critical_migrations_passed']}/{len([s for s in MIGRATION_TEST_SCENARIOS if s['critical']])}"
+    )
 
     # Run Django tests
     print("\nRunning Django migration tests...")
@@ -1217,7 +1377,7 @@ if __name__ == "__main__":
 
     django.setup()
     test_runner = get_runner(settings)()
-    failures = test_runner.run_tests(['__main__'])
+    failures = test_runner.run_tests(["__main__"])
 
     if failures:
         print(f"❌ {failures} Django test(s) failed")

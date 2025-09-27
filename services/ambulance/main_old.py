@@ -1,9 +1,14 @@
+"""
+main_old module
+"""
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(
     title="Ambulance Service API",
     description="API for ambulance service in HMS Enterprise-Grade System",
-    version="1.0.0"
+    version="1.0.0",
 )
 app.add_middleware(
     CORSMiddleware,
@@ -12,12 +17,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
 @app.get("/")
 async def root():
     return {"message": "Ambulance Service API", "status": "running"}
+
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "ambulance"}
+
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

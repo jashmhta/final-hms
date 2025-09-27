@@ -1,5 +1,10 @@
+"""
+main module
+"""
+
 import os
 from datetime import datetime, timezone
+
 import requests
 from fastapi import Depends, FastAPI, Header, HTTPException
 from jose import JWTError, jwt
@@ -7,6 +12,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
+
 app = FastAPI(title="Triage Service", version="1.2.0")
 Instrumentator().instrument(app).expose(app)
 JWT_SECRET = os.getenv("JWT_SECRET", "change-me")
@@ -18,15 +24,21 @@ OPA_URL = os.getenv("OPA_URL")
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
+
+
 class TriageInput(BaseModel):
     age: int
     heart_rate: int
     systolic_bp: int
     spo2: int
     temperature_c: float
+
+
 class TriageResult(BaseModel):
     score: int
     priority: str
+
+
 class TriageRecord(Base):
     __tablename__ = "triage_records"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -39,6 +51,8 @@ class TriageRecord(Base):
     score = Column(Integer)
     priority = Column(String)
     created_at = Column(DateTime, default=datetime.now(tz=timezone.utc))
+
+
 def require_auth(authorization: str | None = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -47,24 +61,34 @@ def require_auth(authorization: str | None = Header(None)):
         return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+
 def ensure_module_enabled(claims: dict, flag: str):
     if claims is None:
         raise HTTPException(status_code=401, detail="Invalid token")
     enabled = claims.get(flag, True)
     if not enabled:
         raise HTTPException(status_code=403, detail=f"Module disabled: {flag}")
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
 def get_db() -> Session:
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+
+
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
+
+
 @app.post("/api/triage/score", response_model=TriageResult)
 def score(
     payload: TriageInput,

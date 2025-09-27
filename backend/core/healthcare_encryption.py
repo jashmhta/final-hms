@@ -7,11 +7,11 @@ import os
 import ssl
 from typing import Dict, Optional, Tuple
 
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import constant_time, hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from cryptography.hazmat.primitives import constant_time
+
 from django.conf import settings
 
 
@@ -23,16 +23,16 @@ class HealthcareEncryptionManager:
 
     def __init__(self):
         self.encryption_key = self._get_or_generate_encryption_key()
-        self.tls_versions = ['TLSv1.2', 'TLSv1.3']
+        self.tls_versions = ["TLSv1.2", "TLSv1.3"]
         self.cipher_suites = [
-            'TLS_AES_256_GCM_SHA384',
-            'TLS_CHACHA20_POLY1305_SHA256',
-            'TLS_AES_128_GCM_SHA256'
+            "TLS_AES_256_GCM_SHA384",
+            "TLS_CHACHA20_POLY1305_SHA256",
+            "TLS_AES_128_GCM_SHA256",
         ]
 
     def _get_or_generate_encryption_key(self) -> bytes:
         """Get or generate a 256-bit encryption key for healthcare data"""
-        key = os.getenv('HEALTHCARE_ENCRYPTION_KEY')
+        key = os.getenv("HEALTHCARE_ENCRYPTION_KEY")
         if key:
             return key.encode()
         # Generate key if not exists (for development only)
@@ -44,7 +44,7 @@ class HealthcareEncryptionManager:
         Returns encrypted data and encryption metadata
         """
         if not data:
-            return b'', {}
+            return b"", {}
 
         # Generate IV for each encryption
         iv = os.urandom(12)
@@ -53,21 +53,18 @@ class HealthcareEncryptionManager:
         context_tag = self._generate_context_tag(context)
 
         # Encrypt data with AES-256-GCM
-        cipher = Cipher(
-            algorithms.AES(self.encryption_key),
-            modes.GCM(iv, tag=None)
-        )
+        cipher = Cipher(algorithms.AES(self.encryption_key), modes.GCM(iv, tag=None))
         encryptor = cipher.encryptor()
         encryptor.authenticate_additional_data(context_tag.encode())
         ciphertext = encryptor.update(data.encode()) + encryptor.finalize()
 
         # Return ciphertext with metadata
         return ciphertext, {
-            'iv': iv.hex(),
-            'tag': encryptor.tag.hex(),
-            'context_tag': context_tag.hex(),
-            'algorithm': 'AES-256-GCM',
-            'key_id': os.getenv('ENCRYPTION_KEY_ID', 'default')
+            "iv": iv.hex(),
+            "tag": encryptor.tag.hex(),
+            "context_tag": context_tag.hex(),
+            "algorithm": "AES-256-GCM",
+            "key_id": os.getenv("ENCRYPTION_KEY_ID", "default"),
         }
 
     def decrypt_phi(self, ciphertext: bytes, metadata: Dict) -> str:
@@ -75,22 +72,19 @@ class HealthcareEncryptionManager:
         Decrypt Protected Health Information with verification
         """
         if not ciphertext:
-            return ''
+            return ""
 
         # Extract metadata
-        iv = bytes.fromhex(metadata['iv'])
-        tag = bytes.fromhex(metadata['tag'])
-        context_tag = bytes.fromhex(metadata['context_tag'])
+        iv = bytes.fromhex(metadata["iv"])
+        tag = bytes.fromhex(metadata["tag"])
+        context_tag = bytes.fromhex(metadata["context_tag"])
 
         # Verify algorithm
-        if metadata['algorithm'] != 'AES-256-GCM':
+        if metadata["algorithm"] != "AES-256-GCM":
             raise ValueError("Unsupported encryption algorithm")
 
         # Decrypt with AES-256-GCM
-        cipher = Cipher(
-            algorithms.AES(self.encryption_key),
-            modes.GCM(iv, tag)
-        )
+        cipher = Cipher(algorithms.AES(self.encryption_key), modes.GCM(iv, tag))
         decryptor = cipher.decryptor()
         decryptor.authenticate_additional_data(context_tag)
         plaintext = decryptor.update(ciphertext) + decryptor.finalize()
@@ -100,14 +94,16 @@ class HealthcareEncryptionManager:
     def _generate_context_tag(self, context: Dict = None) -> bytes:
         """Generate context tag for additional security"""
         if not context:
-            return b'hms_phi_context'
+            return b"hms_phi_context"
 
-        context_string = "|".join([
-            context.get('data_type', 'unknown'),
-            context.get('user_role', 'unknown'),
-            context.get('patient_id', 'anonymous'),
-            context.get('timestamp', '0')
-        ])
+        context_string = "|".join(
+            [
+                context.get("data_type", "unknown"),
+                context.get("user_role", "unknown"),
+                context.get("patient_id", "anonymous"),
+                context.get("timestamp", "0"),
+            ]
+        )
         return context_string.encode()
 
     def get_ssl_context(self) -> ssl.SSLContext:
@@ -121,7 +117,7 @@ class HealthcareEncryptionManager:
         context.maximum_version = ssl.TLSVersion.TLSv1_3
 
         # Use only secure cipher suites
-        context.set_ciphers(':'.join(self.cipher_suites))
+        context.set_ciphers(":".join(self.cipher_suites))
 
         # Enable HSTS
         context.options |= ssl.OP_NO_COMPRESSION
@@ -135,20 +131,17 @@ class HealthcareEncryptionManager:
 
     def generate_key_pair(self) -> Tuple[bytes, bytes]:
         """Generate RSA key pair for asymmetric encryption"""
-        private_key = rsa.generate_private_key(
-            public_exponent=65537,
-            key_size=4096
-        )
+        private_key = rsa.generate_private_key(public_exponent=65537, key_size=4096)
 
         private_pem = private_key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
+            encryption_algorithm=serialization.NoEncryption(),
         )
 
         public_pem = private_key.public_key().public_bytes(
             encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
         )
 
         return private_pem, public_pem
@@ -159,7 +152,9 @@ class HealthcareEncryptionManager:
 
         # For RSA, we need to encrypt smaller chunks
         max_chunk_size = 470  # For 4096-bit RSA
-        chunks = [data[i:i+max_chunk_size] for i in range(0, len(data), max_chunk_size)]
+        chunks = [
+            data[i : i + max_chunk_size] for i in range(0, len(data), max_chunk_size)
+        ]
 
         encrypted_chunks = []
         for chunk in chunks:
@@ -168,23 +163,25 @@ class HealthcareEncryptionManager:
                 padding.OAEP(
                     mgf=padding.MGF1(algorithm=hashes.SHA256()),
                     algorithm=hashes.SHA256(),
-                    label=None
-                )
+                    label=None,
+                ),
             )
             encrypted_chunks.append(encrypted)
 
-        return b''.join(encrypted_chunks)
+        return b"".join(encrypted_chunks)
 
-    def decrypt_with_private_key(self, ciphertext: bytes, private_key_pem: bytes) -> str:
+    def decrypt_with_private_key(
+        self, ciphertext: bytes, private_key_pem: bytes
+    ) -> str:
         """Decrypt data with RSA private key"""
-        private_key = serialization.load_pem_private_key(
-            private_key_pem,
-            password=None
-        )
+        private_key = serialization.load_pem_private_key(private_key_pem, password=None)
 
         # Decrypt in chunks
         chunk_size = 512  # For 4096-bit RSA
-        chunks = [ciphertext[i:i+chunk_size] for i in range(0, len(ciphertext), chunk_size)]
+        chunks = [
+            ciphertext[i : i + chunk_size]
+            for i in range(0, len(ciphertext), chunk_size)
+        ]
 
         decrypted_chunks = []
         for chunk in chunks:
@@ -193,12 +190,12 @@ class HealthcareEncryptionManager:
                 padding.OAEP(
                     mgf=padding.MGF1(algorithm=hashes.SHA256()),
                     algorithm=hashes.SHA256(),
-                    label=None
-                )
+                    label=None,
+                ),
             )
             decrypted_chunks.append(decrypted)
 
-        return b''.join(decrypted_chunks).decode()
+        return b"".join(decrypted_chunks).decode()
 
     def secure_compare(self, a: str, b: str) -> bool:
         """
@@ -218,7 +215,7 @@ class HealthcareEncryptionManager:
             algorithm=hashes.SHA256(),
             length=32,
             salt=salt,
-            info=b'hms_phi_hash'.encode()
+            info=b"hms_phi_hash".encode(),
         )
 
         return hkdf.derive(data.encode()).hex()
@@ -238,10 +235,7 @@ class DatabaseEncryptionManager:
 
     def encrypt_field(self, field_value: str, field_name: str) -> Tuple[str, Dict]:
         """Encrypt a database field with field-specific context"""
-        context = {
-            'field_name': field_name,
-            'table': 'encrypted_field'
-        }
+        context = {"field_name": field_name, "table": "encrypted_field"}
         ciphertext, metadata = healthcare_encryption.encrypt_phi(field_value, context)
         return ciphertext.hex(), metadata
 
@@ -271,8 +265,13 @@ class TransmissionEncryptionManager:
     def encrypt_api_response(self, data: dict) -> dict:
         """Encrypt sensitive fields in API responses"""
         sensitive_fields = [
-            'ssn', 'medical_record_number', 'diagnosis',
-            'treatment', 'medication', 'phone', 'email'
+            "ssn",
+            "medical_record_number",
+            "diagnosis",
+            "treatment",
+            "medication",
+            "phone",
+            "email",
         ]
 
         encrypted_data = {}
@@ -294,12 +293,11 @@ class TransmissionEncryptionManager:
             return False
 
         # Additional TLS validation
-        tls_version = request.environ.get('SSL_PROTOCOL')
-        cipher_suite = request.environ.get('SSL_CIPHER')
+        tls_version = request.environ.get("SSL_PROTOCOL")
+        cipher_suite = request.environ.get("SSL_CIPHER")
 
-        return (
-            tls_version in healthcare_encryption.tls_versions and
-            any(cipher in cipher_suite for cipher in healthcare_encryption.cipher_suites)
+        return tls_version in healthcare_encryption.tls_versions and any(
+            cipher in cipher_suite for cipher in healthcare_encryption.cipher_suites
         )
 
 

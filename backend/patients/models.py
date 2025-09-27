@@ -1,3 +1,7 @@
+"""
+models module
+"""
+
 import uuid
 from datetime import date, timedelta
 
@@ -103,8 +107,12 @@ class PreferredLanguage(models.TextChoices):
 
 class Patient(TenantModel):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    medical_record_number = models.CharField(max_length=50, db_index=True, default="TEMP")
-    external_id = models.CharField(max_length=100, blank=True, help_text="External system patient ID")
+    medical_record_number = models.CharField(
+        max_length=50, db_index=True, default="TEMP"
+    )
+    external_id = models.CharField(
+        max_length=100, blank=True, help_text="External system patient ID"
+    )
     first_name = EncryptedCharField(max_length=100)
     middle_name = EncryptedCharField(max_length=100, blank=True)
     last_name = EncryptedCharField(max_length=100)
@@ -113,7 +121,9 @@ class Patient(TenantModel):
     preferred_name = EncryptedCharField(max_length=100, blank=True)
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=20, choices=PatientGender.choices)
-    marital_status = models.CharField(max_length=25, choices=MaritalStatus.choices, default=MaritalStatus.UNKNOWN)
+    marital_status = models.CharField(
+        max_length=25, choices=MaritalStatus.choices, default=MaritalStatus.UNKNOWN
+    )
     race = models.CharField(
         max_length=25,
         choices=RaceChoices.choices,
@@ -144,10 +154,18 @@ class Patient(TenantModel):
     state = models.CharField(max_length=50, blank=True)
     zip_code = models.CharField(max_length=20, blank=True)
     country = models.CharField(max_length=50, default="US")
-    blood_type = models.CharField(max_length=10, choices=BloodType.choices, default=BloodType.UNKNOWN)
-    weight_kg = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
-    height_cm = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
-    status = models.CharField(max_length=20, choices=PatientStatus.choices, default=PatientStatus.ACTIVE)
+    blood_type = models.CharField(
+        max_length=10, choices=BloodType.choices, default=BloodType.UNKNOWN
+    )
+    weight_kg = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True
+    )
+    height_cm = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True
+    )
+    status = models.CharField(
+        max_length=20, choices=PatientStatus.choices, default=PatientStatus.ACTIVE
+    )
     date_of_death = models.DateField(null=True, blank=True)
     cause_of_death = models.CharField(max_length=500, blank=True)
     organ_donor = models.BooleanField(default=False)
@@ -226,7 +244,9 @@ class Patient(TenantModel):
         ordering = ["last_name", "first_name"]
 
     def __str__(self) -> str:
-        return f"{self.last_name}, {self.first_name} (MRN: {self.medical_record_number})"
+        return (
+            f"{self.last_name}, {self.first_name} (MRN: {self.medical_record_number})"
+        )
 
     def get_full_name(self):
         parts = [self.first_name, self.middle_name, self.last_name, self.suffix]
@@ -239,7 +259,10 @@ class Patient(TenantModel):
         return (
             today.year
             - self.date_of_birth.year
-            - ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
+            - (
+                (today.month, today.day)
+                < (self.date_of_birth.month, self.date_of_birth.day)
+            )
         )
 
     def get_age_at_date(self, reference_date):
@@ -248,7 +271,10 @@ class Patient(TenantModel):
         return (
             reference_date.year
             - self.date_of_birth.year
-            - ((reference_date.month, reference_date.day) < (self.date_of_birth.month, self.date_of_birth.day))
+            - (
+                (reference_date.month, reference_date.day)
+                < (self.date_of_birth.month, self.date_of_birth.day)
+            )
         )
 
     def is_minor(self):
@@ -271,7 +297,9 @@ class Patient(TenantModel):
                 "medical_record_number": self.medical_record_number,
                 "first_name": self.first_name,
                 "last_name": self.last_name,
-                "date_of_birth": (self.date_of_birth.isoformat() if self.date_of_birth else None),
+                "date_of_birth": (
+                    self.date_of_birth.isoformat() if self.date_of_birth else None
+                ),
                 "gender": self.gender,
                 "status": self.status,
                 "hospital_id": self.hospital_id,
@@ -296,7 +324,9 @@ class Patient(TenantModel):
 
     @classmethod
     def get_optimized_queryset(cls, hospital_id=None, prefetch_related=None):
-        queryset = cls.objects.select_related("primary_care_physician", "hospital", "created_by", "updated_by")
+        queryset = cls.objects.select_related(
+            "primary_care_physician", "hospital", "created_by", "updated_by"
+        )
         if prefetch_related:
             queryset = queryset.prefetch_related(*prefetch_related)
         if hospital_id:
@@ -310,7 +340,9 @@ class Patient(TenantModel):
         if patient_data:
             return patient_data
         try:
-            patient = cls.objects.select_related("hospital", "primary_care_physician").get(id=patient_id)
+            patient = cls.objects.select_related(
+                "hospital", "primary_care_physician"
+            ).get(id=patient_id)
             patient._cache_patient_data()
             return patient
         except cls.DoesNotExist:
@@ -318,7 +350,9 @@ class Patient(TenantModel):
 
     @classmethod
     def get_patients_by_hospital(cls, hospital_id, status=None, limit=None):
-        cache_key = enhanced_cache.generate_cache_key("hospital_patients", hospital_id, status, limit)
+        cache_key = enhanced_cache.generate_cache_key(
+            "hospital_patients", hospital_id, status, limit
+        )
         patients = enhanced_cache.cache.get(cache_key)
         if patients:
             return patients
@@ -333,7 +367,9 @@ class Patient(TenantModel):
 
     @classmethod
     def search_patients(cls, hospital_id, query, limit=50):
-        cache_key = enhanced_cache.generate_cache_key("patient_search", hospital_id, query, limit)
+        cache_key = enhanced_cache.generate_cache_key(
+            "patient_search", hospital_id, query, limit
+        )
         results = enhanced_cache.cache.get(cache_key)
         if results:
             return results
@@ -352,7 +388,9 @@ class Patient(TenantModel):
 
 
 class EmergencyContact(models.Model):
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="emergency_contacts")
+    patient = models.ForeignKey(
+        Patient, on_delete=models.CASCADE, related_name="emergency_contacts"
+    )
     first_name = models.CharField(max_length=100)
     middle_name = models.CharField(max_length=100, blank=True)
     last_name = models.CharField(max_length=100)
@@ -411,7 +449,9 @@ class EmergencyContact(models.Model):
 
 
 class InsuranceInformation(models.Model):
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="insurance_plans")
+    patient = models.ForeignKey(
+        Patient, on_delete=models.CASCADE, related_name="insurance_plans"
+    )
     insurance_name = models.CharField(max_length=200)
     insurance_type = models.CharField(
         max_length=20,
@@ -443,9 +483,15 @@ class InsuranceInformation(models.Model):
     )
     policy_holder_dob = models.DateField(null=True, blank=True)
     policy_holder_ssn = EncryptedCharField(max_length=20, blank=True)
-    copay_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    deductible_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    out_of_pocket_max = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    copay_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    deductible_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    out_of_pocket_max = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
     is_active = models.BooleanField(default=True)
     verification_date = models.DateField(null=True, blank=True)
     verification_status = models.CharField(
@@ -477,7 +523,9 @@ class InsuranceInformation(models.Model):
 
 
 class PatientAlert(models.Model):
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="alerts")
+    patient = models.ForeignKey(
+        Patient, on_delete=models.CASCADE, related_name="alerts"
+    )
     alert_type = models.CharField(
         max_length=30,
         choices=[
@@ -509,10 +557,14 @@ class PatientAlert(models.Model):
     description = models.TextField()
     is_active = models.BooleanField(default=True)
     requires_acknowledgment = models.BooleanField(default=False)
-    acknowledged_by = models.ForeignKey("users.User", on_delete=models.SET_NULL, null=True, blank=True)
+    acknowledged_by = models.ForeignKey(
+        "users.User", on_delete=models.SET_NULL, null=True, blank=True
+    )
     acknowledged_at = models.DateTimeField(null=True, blank=True)
     expires_at = models.DateTimeField(null=True, blank=True)
-    created_by = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="created_patient_alerts")
+    created_by = models.ForeignKey(
+        "users.User", on_delete=models.CASCADE, related_name="created_patient_alerts"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

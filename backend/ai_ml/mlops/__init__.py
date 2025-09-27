@@ -1,3 +1,7 @@
+"""
+__init__ module
+"""
+
 import json
 import logging
 import subprocess
@@ -123,24 +127,36 @@ class ModelTrainingPipeline:
                 raise ValueError("Training data validation failed")
             env_setup = self._setup_training_environment(model_type)
             self._log_execution(execution, f"Training environment setup: {env_setup}")
-            training_result = self._execute_training(model_type, training_config, data_path, validation_split)
-            self._log_execution(execution, f"Model training completed: {training_result}")
-            validation_result = self._validate_trained_model(training_result["model_path"], model_type)
+            training_result = self._execute_training(
+                model_type, training_config, data_path, validation_split
+            )
+            self._log_execution(
+                execution, f"Model training completed: {training_result}"
+            )
+            validation_result = self._validate_trained_model(
+                training_result["model_path"], model_type
+            )
             self._log_execution(execution, f"Model validation: {validation_result}")
-            model_id = self._register_trained_model(training_result, validation_result, model_type)
+            model_id = self._register_trained_model(
+                training_result, validation_result, model_type
+            )
             self._log_execution(execution, f"Model registered: {model_id}")
             artifacts = self._generate_artifacts(training_result, validation_result)
             execution.artifacts = artifacts
             execution.status = PipelineStatus.SUCCESS
             execution.end_time = timezone.now()
-            execution.duration = (execution.end_time - execution.start_time).total_seconds()
+            execution.duration = (
+                execution.end_time - execution.start_time
+            ).total_seconds()
             self._log_execution(execution, "Pipeline completed successfully")
             return execution
         except Exception as e:
             execution.status = PipelineStatus.FAILED
             execution.error_message = str(e)
             execution.end_time = timezone.now()
-            execution.duration = (execution.end_time - execution.start_time).total_seconds()
+            execution.duration = (
+                execution.end_time - execution.start_time
+            ).total_seconds()
             self._log_execution(execution, f"Pipeline failed: {str(e)}")
             return execution
 
@@ -149,7 +165,11 @@ class ModelTrainingPipeline:
             if not Path(data_path).exists():
                 logger.error(f"Training data file not found: {data_path}")
                 return False
-            data = pd.read_csv(data_path) if data_path.endswith(".csv") else pd.read_parquet(data_path)
+            data = (
+                pd.read_csv(data_path)
+                if data_path.endswith(".csv")
+                else pd.read_parquet(data_path)
+            )
             if len(data) < self.config.MIN_VALIDATION_SAMPLE_SIZE:
                 logger.error(f"Insufficient training data: {len(data)} samples")
                 return False
@@ -172,8 +192,16 @@ class ModelTrainingPipeline:
     def _setup_training_environment(self, model_type: ModelType) -> Dict[str, Any]:
         env_config = {
             "python_version": "3.9",
-            "framework": ("tensorflow" if model_type in [ModelType.IMAGING, ModelType.NLP] else "sklearn"),
-            "gpu_enabled": (True if model_type in [ModelType.IMAGING, ModelType.DIAGNOSTIC] else False),
+            "framework": (
+                "tensorflow"
+                if model_type in [ModelType.IMAGING, ModelType.NLP]
+                else "sklearn"
+            ),
+            "gpu_enabled": (
+                True
+                if model_type in [ModelType.IMAGING, ModelType.DIAGNOSTIC]
+                else False
+            ),
             "memory_limit": "16GB",
             "timeout": self.config.MAX_PIPELINE_DURATION,
         }
@@ -206,7 +234,9 @@ class ModelTrainingPipeline:
         Path(training_result["model_path"]).touch()
         return training_result
 
-    def _validate_trained_model(self, model_path: str, model_type: ModelType) -> Dict[str, Any]:
+    def _validate_trained_model(
+        self, model_path: str, model_type: ModelType
+    ) -> Dict[str, Any]:
         validation_result = {
             "accuracy": 0.89,
             "precision": 0.87,
@@ -255,7 +285,9 @@ class ModelTrainingPipeline:
         )
         return model_id
 
-    def _generate_artifacts(self, training_result: Dict[str, Any], validation_result: Dict[str, Any]) -> Dict[str, str]:
+    def _generate_artifacts(
+        self, training_result: Dict[str, Any], validation_result: Dict[str, Any]
+    ) -> Dict[str, str]:
         artifacts = {
             "model_file": training_result["model_path"],
             "training_log": f"/tmp/training_log_{int(timezone.now().timestamp())}.txt",
@@ -300,8 +332,12 @@ class DeploymentPipeline:
             prereqs_valid = self._validate_deployment_prerequisites(model_id)
             if not prereqs_valid:
                 raise ValueError("Deployment prerequisites validation failed")
-            validation_result = self._perform_deployment_validation(model_id, validation_level)
-            self._log_execution(execution, f"Deployment validation: {validation_result}")
+            validation_result = self._perform_deployment_validation(
+                model_id, validation_level
+            )
+            self._log_execution(
+                execution, f"Deployment validation: {validation_result}"
+            )
             deployment_result = self._execute_deployment(model_id, deployment_config)
             self._log_execution(execution, f"Model deployment: {deployment_result}")
             health_check = self._perform_health_check(deployment_result["endpoint"])
@@ -310,14 +346,18 @@ class DeploymentPipeline:
             self._log_execution(execution, "Deployment status updated")
             execution.status = PipelineStatus.SUCCESS
             execution.end_time = timezone.now()
-            execution.duration = (execution.end_time - execution.start_time).total_seconds()
+            execution.duration = (
+                execution.end_time - execution.start_time
+            ).total_seconds()
             self._log_execution(execution, "Pipeline completed successfully")
             return execution
         except Exception as e:
             execution.status = PipelineStatus.FAILED
             execution.error_message = str(e)
             execution.end_time = timezone.now()
-            execution.duration = (execution.end_time - execution.start_time).total_seconds()
+            execution.duration = (
+                execution.end_time - execution.start_time
+            ).total_seconds()
             self._log_execution(execution, f"Pipeline failed: {str(e)}")
             return execution
 
@@ -327,7 +367,9 @@ class DeploymentPipeline:
             if not model_info:
                 logger.error(f"Model {model_id} not found in registry")
                 return False
-            validation_results = model_info.get("metadata", {}).get("validation_results", {})
+            validation_results = model_info.get("metadata", {}).get(
+                "validation_results", {}
+            )
             if not validation_results.get("meets_thresholds", False):
                 logger.error(f"Model {model_id} does not meet performance thresholds")
                 return False
@@ -351,7 +393,9 @@ class DeploymentPipeline:
     def _is_service_running(self, service_name: str) -> bool:
         return True
 
-    def _perform_deployment_validation(self, model_id: str, validation_level: ValidationLevel) -> Dict[str, Any]:
+    def _perform_deployment_validation(
+        self, model_id: str, validation_level: ValidationLevel
+    ) -> Dict[str, Any]:
         validation_result = {
             "validation_level": validation_level.value,
             "validation_timestamp": timezone.now().isoformat(),
@@ -375,7 +419,10 @@ class DeploymentPipeline:
         validation_result["validation_score"] = validation_result["tests_passed"] / (
             validation_result["tests_passed"] + validation_result["tests_failed"]
         )
-        validation_result["passed"] = validation_result["validation_score"] >= self.config.MIN_CLINICAL_VALIDATION_SCORE
+        validation_result["passed"] = (
+            validation_result["validation_score"]
+            >= self.config.MIN_CLINICAL_VALIDATION_SCORE
+        )
         return validation_result
 
     def _technical_validation(self, model_id: str) -> Dict[str, Any]:
@@ -434,7 +481,9 @@ class DeploymentPipeline:
             ],
         }
 
-    def _execute_deployment(self, model_id: str, deployment_config: Dict[str, Any]) -> Dict[str, Any]:
+    def _execute_deployment(
+        self, model_id: str, deployment_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         deployment_result = {
             "deployment_id": f"dep_{model_id}_{int(timezone.now().timestamp())}",
             "endpoint": f"https://api.hospital.com/models/{model_id}",
@@ -493,7 +542,9 @@ class MLOpsOrchestrator:
     def execute_training_pipeline(
         self, model_type: ModelType, training_config: Dict[str, Any], data_path: str
     ) -> PipelineExecution:
-        return self.training_pipeline.train_model(model_type, training_config, data_path)
+        return self.training_pipeline.train_model(
+            model_type, training_config, data_path
+        )
 
     def execute_deployment_pipeline(
         self,
@@ -501,12 +552,16 @@ class MLOpsOrchestrator:
         deployment_config: Dict[str, Any],
         validation_level: ValidationLevel = ValidationLevel.TECHNICAL,
     ) -> PipelineExecution:
-        return self.deployment_pipeline.deploy_model(model_id, deployment_config, validation_level)
+        return self.deployment_pipeline.deploy_model(
+            model_id, deployment_config, validation_level
+        )
 
     def monitor_model_performance(self, model_id: str) -> Dict[str, Any]:
         try:
             performance_metrics = self.model_monitoring.get_model_performance(model_id)
-            degradation_detected = self._check_performance_degradation(model_id, performance_metrics)
+            degradation_detected = self._check_performance_degradation(
+                model_id, performance_metrics
+            )
             drift_detected = self.model_monitoring.detect_drift(model_id)
             monitoring_report = {
                 "model_id": model_id,
@@ -523,17 +578,23 @@ class MLOpsOrchestrator:
             logger.error(f"Error monitoring model {model_id}: {str(e)}")
             return {"error": str(e)}
 
-    def _check_performance_degradation(self, model_id: str, performance_metrics: Dict[str, Any]) -> bool:
+    def _check_performance_degradation(
+        self, model_id: str, performance_metrics: Dict[str, Any]
+    ) -> bool:
         try:
             model_info = self.model_registry.get_model_info(model_id)
-            baseline_metrics = model_info.get("metadata", {}).get("validation_results", {})
+            baseline_metrics = model_info.get("metadata", {}).get(
+                "validation_results", {}
+            )
             for metric in ["accuracy", "precision", "recall", "f1_score"]:
                 if metric in performance_metrics and metric in baseline_metrics:
                     current_value = performance_metrics[metric]
                     baseline_value = baseline_metrics[metric]
                     degradation = (baseline_value - current_value) / baseline_value
                     if degradation > self.config.PERFORMANCE_DEGRADATION_THRESHOLD:
-                        logger.warning(f"Performance degradation detected for {metric}: {degradation:.2%}")
+                        logger.warning(
+                            f"Performance degradation detected for {metric}: {degradation:.2%}"
+                        )
                         return True
             return False
         except Exception as e:
@@ -573,7 +634,9 @@ class MLOpsOrchestrator:
                 ValidationLevel.TECHNICAL,
             )
             if rollback_result.status == PipelineStatus.SUCCESS:
-                logger.info(f"Successfully rolled back model {model_id} to {previous_version}")
+                logger.info(
+                    f"Successfully rolled back model {model_id} to {previous_version}"
+                )
                 return True
             else:
                 logger.error(f"Rollback failed for model {model_id}")
@@ -605,7 +668,9 @@ def create_mlops_api():
                 model_type = ModelType(request.data.get("model_type"))
                 training_config = request.data.get("training_config", {})
                 data_path = request.data.get("data_path")
-                execution = self.orchestrator.execute_training_pipeline(model_type, training_config, data_path)
+                execution = self.orchestrator.execute_training_pipeline(
+                    model_type, training_config, data_path
+                )
                 return Response(
                     {
                         "execution_id": execution.execution_id,
@@ -625,8 +690,12 @@ def create_mlops_api():
             try:
                 model_id = request.data.get("model_id")
                 deployment_config = request.data.get("deployment_config", {})
-                validation_level = ValidationLevel(request.data.get("validation_level", "technical"))
-                execution = self.orchestrator.execute_deployment_pipeline(model_id, deployment_config, validation_level)
+                validation_level = ValidationLevel(
+                    request.data.get("validation_level", "technical")
+                )
+                execution = self.orchestrator.execute_deployment_pipeline(
+                    model_id, deployment_config, validation_level
+                )
                 return Response(
                     {
                         "execution_id": execution.execution_id,
@@ -645,7 +714,9 @@ def create_mlops_api():
         def monitor_model(self, request):
             try:
                 model_id = request.query_params.get("model_id")
-                monitoring_report = self.orchestrator.monitor_model_performance(model_id)
+                monitoring_report = self.orchestrator.monitor_model_performance(
+                    model_id
+                )
                 return Response(monitoring_report, status=status.HTTP_200_OK)
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -661,7 +732,9 @@ def create_mlops_api():
                         "success": success,
                         "timestamp": timezone.now().isoformat(),
                     },
-                    status=(status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST),
+                    status=(
+                        status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST
+                    ),
                 )
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

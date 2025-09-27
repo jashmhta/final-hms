@@ -1,3 +1,7 @@
+"""
+views module
+"""
+
 import joblib
 import numpy as np
 from drf_spectacular.utils import OpenApiResponse, extend_schema
@@ -34,8 +38,13 @@ class OverviewStatsView(APIView):
             filters["hospital_id"] = getattr(user, "hospital_id", None)
         patients_count = Patient.objects.filter(**filters).count()
         today = timezone.localdate()
-        appointments_today = Appointment.objects.filter(**filters, start_at__date=today).count()
-        revenue_cents = Bill.objects.filter(**filters).aggregate(total=Sum("paid_cents"))["total"] or 0
+        appointments_today = Appointment.objects.filter(
+            **filters, start_at__date=today
+        ).count()
+        revenue_cents = (
+            Bill.objects.filter(**filters).aggregate(total=Sum("paid_cents"))["total"]
+            or 0
+        )
         return Response(
             {
                 "patients_count": patients_count,

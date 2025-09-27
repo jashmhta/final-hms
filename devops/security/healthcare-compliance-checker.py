@@ -4,21 +4,23 @@ HMS Enterprise-Grade Healthcare Compliance Checker
 Specialized compliance validation for healthcare systems (HIPAA, GDPR, PCI-DSS)
 """
 
-import os
-import sys
-import json
-import re
-import logging
+import ast
 import hashlib
+import json
+import logging
+import os
+import re
 import subprocess
+import sys
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Any, Set
-from dataclasses import dataclass, asdict
 from enum import Enum
 from pathlib import Path
-import ast
-import pandas as pd
+from typing import Any, Dict, List, Optional, Set, Tuple
+
 import numpy as np
+import pandas as pd
+
 
 class ComplianceFramework(Enum):
     HIPAA = "hipaa"
@@ -27,17 +29,20 @@ class ComplianceFramework(Enum):
     SOC2 = "soc2"
     FHIR = "fhir"
 
+
 class ComplianceStatus(Enum):
     COMPLIANT = "compliant"
     NON_COMPLIANT = "non_compliant"
     PARTIALLY_COMPLIANT = "partially_compliant"
     NOT_ASSESSED = "not_assessed"
 
+
 class RiskLevel(Enum):
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
+
 
 @dataclass
 class ComplianceViolation:
@@ -53,6 +58,7 @@ class ComplianceViolation:
     references: List[str]
     metadata: Dict[str, Any]
 
+
 @dataclass
 class ComplianceCheckResult:
     framework: ComplianceFramework
@@ -63,6 +69,7 @@ class ComplianceCheckResult:
     failed_checks: int
     violations: List[ComplianceViolation]
     metadata: Dict[str, Any]
+
 
 class HealthcareComplianceChecker:
     """Enterprise-grade healthcare compliance checker"""
@@ -85,7 +92,7 @@ class HealthcareComplianceChecker:
     def _load_config(self, config_path: str) -> Dict:
         """Load compliance checker configuration"""
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 return yaml.safe_load(f)
         except FileNotFoundError:
             return self._get_default_config()
@@ -97,35 +104,35 @@ class HealthcareComplianceChecker:
                 "hipaa": {"enabled": True, "strict_mode": True},
                 "gdpr": {"enabled": True, "strict_mode": False},
                 "pci_dss": {"enabled": True, "strict_mode": True},
-                "fhir": {"enabled": True, "strict_mode": True}
+                "fhir": {"enabled": True, "strict_mode": True},
             },
             "scan_targets": {
                 "source_code": True,
                 "configurations": True,
                 "databases": True,
-                "infrastructure": True
+                "infrastructure": True,
             },
             "reporting": {
                 "detailed_report": True,
                 "include_evidence": True,
-                "include_remediation": True
-            }
+                "include_remediation": True,
+            },
         }
 
     def _setup_logging(self) -> logging.Logger:
         """Setup logging for compliance checker"""
-        logger = logging.getLogger('hms_compliance_checker')
+        logger = logging.getLogger("hms_compliance_checker")
         logger.setLevel(logging.INFO)
 
         formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'
+            "%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s"
         )
 
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(logging.INFO)
         console_handler.setFormatter(formatter)
 
-        file_handler = logging.FileHandler('/var/log/hms/compliance-checker.log')
+        file_handler = logging.FileHandler("/var/log/hms/compliance-checker.log")
         file_handler.setLevel(logging.DEBUG)
         file_handler.setFormatter(formatter)
 
@@ -146,10 +153,10 @@ class HealthcareComplianceChecker:
                     r"def\s+\w+.*authentication",
                     r"@login_required",
                     r"permission_classes",
-                    r"has_perm"
+                    r"has_perm",
                 ],
                 "file_patterns": ["*.py"],
-                "remediation": "Implement proper authentication and authorization controls"
+                "remediation": "Implement proper authentication and authorization controls",
             },
             {
                 "rule_id": "HIPAA-164.312(a)(2)(iv)",
@@ -161,10 +168,10 @@ class HealthcareComplianceChecker:
                     r"encrypt",
                     r"decrypt",
                     r"ssl_context",
-                    r"TLS"
+                    r"TLS",
                 ],
                 "file_patterns": ["*.py"],
-                "remediation": "Implement encryption for all PHI data at rest and in transit"
+                "remediation": "Implement encryption for all PHI data at rest and in transit",
             },
             {
                 "rule_id": "HIPAA-164.312(b)",
@@ -175,25 +182,20 @@ class HealthcareComplianceChecker:
                     r"audit_log",
                     r"logging",
                     r"LogEntry",
-                    r"AuditTrail"
+                    r"AuditTrail",
                 ],
                 "file_patterns": ["*.py"],
-                "remediation": "Implement comprehensive audit logging for all PHI access"
+                "remediation": "Implement comprehensive audit logging for all PHI access",
             },
             {
                 "rule_id": "HIPAA-164.312(e)(1)",
                 "title": "Transmission Security",
                 "description": "Implement technical security measures to guard against unauthorized access to electronic protected health information that is being transmitted over an electronic communications network.",
                 "risk_level": RiskLevel.CRITICAL,
-                "check_patterns": [
-                    r"https://",
-                    r"wss://",
-                    r"SSL",
-                    r"TLS"
-                ],
+                "check_patterns": [r"https://", r"wss://", r"SSL", r"TLS"],
                 "file_patterns": ["*.py", "*.js", "*.jsx"],
-                "remediation": "Ensure all data transmission uses secure protocols"
-            }
+                "remediation": "Ensure all data transmission uses secure protocols",
+            },
         ]
 
     def _load_gdpr_rules(self) -> List[Dict]:
@@ -208,10 +210,10 @@ class HealthcareComplianceChecker:
                     r"security",
                     r"encryption",
                     r"access_control",
-                    r"backup"
+                    r"backup",
                 ],
                 "file_patterns": ["*.py"],
-                "remediation": "Implement comprehensive security measures"
+                "remediation": "Implement comprehensive security measures",
             },
             {
                 "rule_id": "GDPR-17",
@@ -221,11 +223,11 @@ class HealthcareComplianceChecker:
                 "check_patterns": [
                     r"data_minimization",
                     r"privacy_by_design",
-                    r"default_privacy"
+                    r"default_privacy",
                 ],
                 "file_patterns": ["*.py"],
-                "remediation": "Implement privacy by design and default"
-            }
+                "remediation": "Implement privacy by design and default",
+            },
         ]
 
     def _load_pci_dss_rules(self) -> List[Dict]:
@@ -236,29 +238,19 @@ class HealthcareComplianceChecker:
                 "title": "Keep Cardholder Data to a Minimum",
                 "description": "Keep cardholder data storage to a minimum.",
                 "risk_level": RiskLevel.CRITICAL,
-                "check_patterns": [
-                    r"card_number",
-                    r"cvv",
-                    r"expiry",
-                    r"credit_card"
-                ],
+                "check_patterns": [r"card_number", r"cvv", r"expiry", r"credit_card"],
                 "file_patterns": ["*.py", "*.js", "*.jsx"],
-                "remediation": "Minimize cardholder data storage and implement tokenization"
+                "remediation": "Minimize cardholder data storage and implement tokenization",
             },
             {
                 "rule_id": "PCI-4.1",
                 "title": "Use Strong Cryptography",
                 "description": "Use strong cryptography and security protocols to safeguard sensitive cardholder data during transmission over open, public networks.",
                 "risk_level": RiskLevel.CRITICAL,
-                "check_patterns": [
-                    r"AES-256",
-                    r"TLS 1.2",
-                    r"TLS 1.3",
-                    r"HTTPS"
-                ],
+                "check_patterns": [r"AES-256", r"TLS 1.2", r"TLS 1.3", r"HTTPS"],
                 "file_patterns": ["*.py"],
-                "remediation": "Implement strong cryptography for all sensitive data"
-            }
+                "remediation": "Implement strong cryptography for all sensitive data",
+            },
         ]
 
     def _load_fhir_rules(self) -> List[Dict]:
@@ -269,14 +261,9 @@ class HealthcareComplianceChecker:
                 "title": "FHIR Security",
                 "description": "Implement appropriate security measures for FHIR APIs and data access.",
                 "risk_level": RiskLevel.HIGH,
-                "check_patterns": [
-                    r"@require_auth",
-                    r"oauth2",
-                    r"SMART",
-                    r"FHIR"
-                ],
+                "check_patterns": [r"@require_auth", r"oauth2", r"SMART", r"FHIR"],
                 "file_patterns": ["*.py"],
-                "remediation": "Implement FHIR security best practices"
+                "remediation": "Implement FHIR security best practices",
             }
         ]
 
@@ -286,28 +273,28 @@ class HealthcareComplianceChecker:
             {
                 "pattern": r"\b\d{3}-\d{2}-\d{4}\b",  # SSN
                 "category": "identifier",
-                "description": "Social Security Number"
+                "description": "Social Security Number",
             },
             {
                 "pattern": r"\b[A-Za-z]\d{3}\d{2}\d{4}\b",  # Medical Record Number
                 "category": "identifier",
-                "description": "Medical Record Number"
+                "description": "Medical Record Number",
             },
             {
                 "pattern": r"\b\d{10}\b",  # Phone Number
                 "category": "contact",
-                "description": "Phone Number"
+                "description": "Phone Number",
             },
             {
                 "pattern": r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b",  # Credit Card
                 "category": "financial",
-                "description": "Credit Card Number"
+                "description": "Credit Card Number",
             },
             {
                 "pattern": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",  # Email
                 "category": "contact",
-                "description": "Email Address"
-            }
+                "description": "Email Address",
+            },
         ]
 
     def _load_security_patterns(self) -> List[Dict]:
@@ -317,20 +304,20 @@ class HealthcareComplianceChecker:
                 "pattern": r"password\s*=\s*['\"]\w+['\"]",
                 "category": "hardcoded_credentials",
                 "severity": RiskLevel.CRITICAL,
-                "description": "Hardcoded password detected"
+                "description": "Hardcoded password detected",
             },
             {
                 "pattern": r"api_key\s*=\s*['\"]\w+['\"]",
                 "category": "hardcoded_credentials",
                 "severity": RiskLevel.CRITICAL,
-                "description": "Hardcoded API key detected"
+                "description": "Hardcoded API key detected",
             },
             {
                 "pattern": r"DEBUG\s*=\s*True",
                 "category": "debug_mode",
                 "severity": RiskLevel.HIGH,
-                "description": "Debug mode enabled in production"
-            }
+                "description": "Debug mode enabled in production",
+            },
         ]
 
     def run_comprehensive_check(self) -> Dict[str, ComplianceCheckResult]:
@@ -396,8 +383,8 @@ class HealthcareComplianceChecker:
             violations=violations,
             metadata={
                 "strict_mode": self.config["frameworks"]["hipaa"]["strict_mode"],
-                "scan_timestamp": datetime.now().isoformat()
-            }
+                "scan_timestamp": datetime.now().isoformat(),
+            },
         )
 
     def check_gdpr_compliance(self) -> ComplianceCheckResult:
@@ -435,8 +422,8 @@ class HealthcareComplianceChecker:
             violations=violations,
             metadata={
                 "strict_mode": self.config["frameworks"]["gdpr"]["strict_mode"],
-                "scan_timestamp": datetime.now().isoformat()
-            }
+                "scan_timestamp": datetime.now().isoformat(),
+            },
         )
 
     def check_pci_dss_compliance(self) -> ComplianceCheckResult:
@@ -474,8 +461,8 @@ class HealthcareComplianceChecker:
             violations=violations,
             metadata={
                 "strict_mode": self.config["frameworks"]["pci_dss"]["strict_mode"],
-                "scan_timestamp": datetime.now().isoformat()
-            }
+                "scan_timestamp": datetime.now().isoformat(),
+            },
         )
 
     def check_fhir_compliance(self) -> ComplianceCheckResult:
@@ -513,11 +500,13 @@ class HealthcareComplianceChecker:
             violations=violations,
             metadata={
                 "strict_mode": self.config["frameworks"]["fhir"]["strict_mode"],
-                "scan_timestamp": datetime.now().isoformat()
-            }
+                "scan_timestamp": datetime.now().isoformat(),
+            },
         )
 
-    def _check_rule(self, rule: Dict, framework: ComplianceFramework) -> List[ComplianceViolation]:
+    def _check_rule(
+        self, rule: Dict, framework: ComplianceFramework
+    ) -> List[ComplianceViolation]:
         """Check a specific compliance rule"""
         violations = []
         file_patterns = rule.get("file_patterns", ["*.py"])
@@ -533,37 +522,45 @@ class HealthcareComplianceChecker:
 
         return violations
 
-    def _check_file_for_rule(self, file_path: Path, rule: Dict, framework: ComplianceFramework, patterns: List[str]) -> List[ComplianceViolation]:
+    def _check_file_for_rule(
+        self,
+        file_path: Path,
+        rule: Dict,
+        framework: ComplianceFramework,
+        patterns: List[str],
+    ) -> List[ComplianceViolation]:
         """Check a specific file for compliance rule violations"""
         violations = []
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
 
             for pattern in patterns:
                 matches = re.finditer(pattern, content, re.IGNORECASE)
                 for match in matches:
-                    line_number = content[:match.start()].count('\n') + 1
-                    line_content = content.split('\n')[line_number - 1].strip()
+                    line_number = content[: match.start()].count("\n") + 1
+                    line_content = content.split("\n")[line_number - 1].strip()
 
                     violation = ComplianceViolation(
-                        id=f"{framework.value}-{rule['rule_id']}-{hashlib.md5(f'{file_path}:{line_number}'.encode()).hexdigest()[:8]}",
+                        id=f"{framework.value}-{rule['rule_id']}-{hashlib.hashlib.sha256(f'{file_path}:{line_number}'.encode()).hexdigest()[:8]}",
                         framework=framework,
-                        rule_id=rule['rule_id'],
-                        title=rule['title'],
-                        description=rule['description'],
-                        risk_level=rule['risk_level'],
+                        rule_id=rule["rule_id"],
+                        title=rule["title"],
+                        description=rule["description"],
+                        risk_level=rule["risk_level"],
                         location=f"{file_path}:{line_number}",
                         evidence=line_content,
-                        remediation=rule.get('remediation', 'Review and fix the compliance issue'),
-                        references=rule.get('references', []),
+                        remediation=rule.get(
+                            "remediation", "Review and fix the compliance issue"
+                        ),
+                        references=rule.get("references", []),
                         metadata={
                             "file_path": str(file_path),
                             "line_number": line_number,
                             "pattern_matched": pattern,
-                            "matched_text": match.group()
-                        }
+                            "matched_text": match.group(),
+                        },
                     )
                     violations.append(violation)
 
@@ -580,17 +577,17 @@ class HealthcareComplianceChecker:
         for file_path in Path(".").rglob("*.py"):
             if file_path.is_file() and not self._should_skip_file(file_path):
                 try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
+                    with open(file_path, "r", encoding="utf-8") as f:
                         content = f.read()
 
                     for phi_pattern in phi_patterns:
                         matches = re.finditer(phi_pattern["pattern"], content)
                         for match in matches:
-                            line_number = content[:match.start()].count('\n') + 1
-                            line_content = content.split('\n')[line_number - 1].strip()
+                            line_number = content[: match.start()].count("\n") + 1
+                            line_content = content.split("\n")[line_number - 1].strip()
 
                             violation = ComplianceViolation(
-                                id=f"PHI-{hashlib.md5(f'{file_path}:{line_number}'.encode()).hexdigest()[:8]}",
+                                id=f"PHI-{hashlib.hashlib.sha256(f'{file_path}:{line_number}'.encode()).hexdigest()[:8]}",
                                 framework=ComplianceFramework.HIPAA,
                                 rule_id="HIPAA-PHI-DATA",
                                 title=f"Potential PHI Data Found: {phi_pattern['description']}",
@@ -604,8 +601,8 @@ class HealthcareComplianceChecker:
                                     "file_path": str(file_path),
                                     "line_number": line_number,
                                     "phi_category": phi_pattern["category"],
-                                    "matched_text": match.group()
-                                }
+                                    "matched_text": match.group(),
+                                },
                             )
                             violations.append(violation)
 
@@ -622,21 +619,23 @@ class HealthcareComplianceChecker:
         for file_path in Path(".").rglob("*.py"):
             if file_path.is_file() and not self._should_skip_file(file_path):
                 try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
+                    with open(file_path, "r", encoding="utf-8") as f:
                         content = f.read()
 
                     for security_pattern in security_patterns:
-                        matches = re.finditer(security_pattern["pattern"], content, re.IGNORECASE)
+                        matches = re.finditer(
+                            security_pattern["pattern"], content, re.IGNORECASE
+                        )
                         for match in matches:
-                            line_number = content[:match.start()].count('\n') + 1
-                            line_content = content.split('\n')[line_number - 1].strip()
+                            line_number = content[: match.start()].count("\n") + 1
+                            line_content = content.split("\n")[line_number - 1].strip()
 
                             violation = ComplianceViolation(
-                                id=f"SEC-{hashlib.md5(f'{file_path}:{line_number}'.encode()).hexdigest()[:8]}",
+                                id=f"SEC-{hashlib.hashlib.sha256(f'{file_path}:{line_number}'.encode()).hexdigest()[:8]}",
                                 framework=ComplianceFramework.HIPAA,
                                 rule_id="HIPAA-SECURITY",
                                 title=f"Security Vulnerability: {security_pattern['description']}",
-                                description=security_pattern['description'],
+                                description=security_pattern["description"],
                                 risk_level=security_pattern["severity"],
                                 location=f"{file_path}:{line_number}",
                                 evidence=line_content,
@@ -645,14 +644,18 @@ class HealthcareComplianceChecker:
                                 metadata={
                                     "file_path": str(file_path),
                                     "line_number": line_number,
-                                    "vulnerability_category": security_pattern["category"],
-                                    "matched_text": match.group()
-                                }
+                                    "vulnerability_category": security_pattern[
+                                        "category"
+                                    ],
+                                    "matched_text": match.group(),
+                                },
                             )
                             violations.append(violation)
 
                 except Exception as e:
-                    self.logger.error(f"Error scanning file {file_path} for security patterns: {e}")
+                    self.logger.error(
+                        f"Error scanning file {file_path} for security patterns: {e}"
+                    )
 
         return violations
 
@@ -662,18 +665,22 @@ class HealthcareComplianceChecker:
 
         # Check for data export functionality
         export_functions = [
-            "export_data", "data_export", "download_data", "export_user_data"
+            "export_data",
+            "data_export",
+            "download_data",
+            "export_user_data",
         ]
 
         # Check for data deletion functionality
         deletion_functions = [
-            "delete_account", "delete_data", "remove_user", "gdpr_delete"
+            "delete_account",
+            "delete_data",
+            "remove_user",
+            "gdpr_delete",
         ]
 
         # Check for data access functionality
-        access_functions = [
-            "get_my_data", "access_data", "view_data", "data_access"
-        ]
+        access_functions = ["get_my_data", "access_data", "view_data", "data_access"]
 
         # Scan for these functions
         all_functions = export_functions + deletion_functions + access_functions
@@ -681,7 +688,7 @@ class HealthcareComplianceChecker:
         for file_path in Path(".").rglob("*.py"):
             if file_path.is_file() and not self._should_skip_file(file_path):
                 try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
+                    with open(file_path, "r", encoding="utf-8") as f:
                         content = f.read()
 
                     tree = ast.parse(content)
@@ -696,7 +703,7 @@ class HealthcareComplianceChecker:
 
                     if missing_functions:
                         violation = ComplianceViolation(
-                            id=f"GDPR-DSR-{hashlib.md5(str(file_path).encode()).hexdigest()[:8]}",
+                            id=f"GDPR-DSR-{hashlib.hashlib.sha256(str(file_path).encode()).hexdigest()[:8]}",
                             framework=ComplianceFramework.GDPR,
                             rule_id="GDPR-DSR",
                             title="Missing Data Subject Rights Implementation",
@@ -708,13 +715,15 @@ class HealthcareComplianceChecker:
                             references=["GDPR Article 15-22"],
                             metadata={
                                 "file_path": str(file_path),
-                                "missing_functions": list(missing_functions)
-                            }
+                                "missing_functions": list(missing_functions),
+                            },
                         )
                         violations.append(violation)
 
                 except Exception as e:
-                    self.logger.error(f"Error checking data subject rights in {file_path}: {e}")
+                    self.logger.error(
+                        f"Error checking data subject rights in {file_path}: {e}"
+                    )
 
         return violations
 
@@ -729,23 +738,23 @@ class HealthcareComplianceChecker:
             r"\b\d{3,4}\b",  # CVV (3-4 digits)
             r"card_number",
             r"credit_card",
-            r"payment_method"
+            r"payment_method",
         ]
 
         for file_path in Path(".").rglob("*.py"):
             if file_path.is_file() and not self._should_skip_file(file_path):
                 try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
+                    with open(file_path, "r", encoding="utf-8") as f:
                         content = f.read()
 
                     for pattern in card_data_patterns:
                         matches = re.finditer(pattern, content, re.IGNORECASE)
                         for match in matches:
-                            line_number = content[:match.start()].count('\n') + 1
-                            line_content = content.split('\n')[line_number - 1].strip()
+                            line_number = content[: match.start()].count("\n") + 1
+                            line_content = content.split("\n")[line_number - 1].strip()
 
                             violation = ComplianceViolation(
-                                id=f"PCI-DATA-{hashlib.md5(f'{file_path}:{line_number}'.encode()).hexdigest()[:8]}",
+                                id=f"PCI-DATA-{hashlib.hashlib.sha256(f'{file_path}:{line_number}'.encode()).hexdigest()[:8]}",
                                 framework=ComplianceFramework.PCI_DSS,
                                 rule_id="PCI-DATA-STORAGE",
                                 title="Potential Cardholder Data Found",
@@ -758,13 +767,15 @@ class HealthcareComplianceChecker:
                                 metadata={
                                     "file_path": str(file_path),
                                     "line_number": line_number,
-                                    "matched_text": match.group()
-                                }
+                                    "matched_text": match.group(),
+                                },
                             )
                             violations.append(violation)
 
                 except Exception as e:
-                    self.logger.error(f"Error scanning file {file_path} for cardholder data: {e}")
+                    self.logger.error(
+                        f"Error scanning file {file_path} for cardholder data: {e}"
+                    )
 
         return violations
 
@@ -773,12 +784,14 @@ class HealthcareComplianceChecker:
         violations = []
 
         # Look for FHIR-related files
-        fhir_files = list(Path(".").rglob("*fhir*.py")) + list(Path(".").rglob("api/*.py"))
+        fhir_files = list(Path(".").rglob("*fhir*.py")) + list(
+            Path(".").rglob("api/*.py")
+        )
 
         for file_path in fhir_files:
             if file_path.is_file() and not self._should_skip_file(file_path):
                 try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
+                    with open(file_path, "r", encoding="utf-8") as f:
                         content = f.read()
 
                     # Check for OAuth2/SMART on FHIR implementation
@@ -787,14 +800,17 @@ class HealthcareComplianceChecker:
                         r"SMART",
                         r"@require_auth",
                         r"authentication",
-                        r"authorization"
+                        r"authorization",
                     ]
 
-                    security_implemented = any(re.search(pattern, content, re.IGNORECASE) for pattern in security_patterns)
+                    security_implemented = any(
+                        re.search(pattern, content, re.IGNORECASE)
+                        for pattern in security_patterns
+                    )
 
                     if not security_implemented:
                         violation = ComplianceViolation(
-                            id=f"FHIR-SEC-{hashlib.md5(str(file_path).encode()).hexdigest()[:8]}",
+                            id=f"FHIR-SEC-{hashlib.hashlib.sha256(str(file_path).encode()).hexdigest()[:8]}",
                             framework=ComplianceFramework.FHIR,
                             rule_id="FHIR-SEC-1",
                             title="Missing FHIR Security Implementation",
@@ -806,13 +822,15 @@ class HealthcareComplianceChecker:
                             references=["FHIR Security Guidelines"],
                             metadata={
                                 "file_path": str(file_path),
-                                "security_patterns_found": security_implemented
-                            }
+                                "security_patterns_found": security_implemented,
+                            },
                         )
                         violations.append(violation)
 
                 except Exception as e:
-                    self.logger.error(f"Error checking FHIR security in {file_path}: {e}")
+                    self.logger.error(
+                        f"Error checking FHIR security in {file_path}: {e}"
+                    )
 
         return violations
 
@@ -827,22 +845,30 @@ class HealthcareComplianceChecker:
             "*/.git/*",
             "*/__pycache__/*",
             "*.pyc",
-            "*/.*"
+            "*/.*",
         ]
 
         file_str = str(file_path)
-        return any(file_str.startswith(pattern.replace("*", "")) for pattern in skip_patterns)
+        return any(
+            file_str.startswith(pattern.replace("*", "")) for pattern in skip_patterns
+        )
 
-    def _determine_overall_status(self, score: float, violations: List[ComplianceViolation]) -> ComplianceStatus:
+    def _determine_overall_status(
+        self, score: float, violations: List[ComplianceViolation]
+    ) -> ComplianceStatus:
         """Determine overall compliance status"""
-        if score >= 90 and not any(v.risk_level == RiskLevel.CRITICAL for v in violations):
+        if score >= 90 and not any(
+            v.risk_level == RiskLevel.CRITICAL for v in violations
+        ):
             return ComplianceStatus.COMPLIANT
         elif score >= 70:
             return ComplianceStatus.PARTIALLY_COMPLIANT
         else:
             return ComplianceStatus.NON_COMPLIANT
 
-    def generate_compliance_report(self, results: Dict[str, ComplianceCheckResult]) -> Dict:
+    def generate_compliance_report(
+        self, results: Dict[str, ComplianceCheckResult]
+    ) -> Dict:
         """Generate comprehensive compliance report"""
         self.logger.info("Generating compliance report")
 
@@ -855,14 +881,18 @@ class HealthcareComplianceChecker:
             framework_scores[framework.value] = {
                 "score": result.score,
                 "status": result.overall_status.value,
-                "violations_count": len(result.violations)
+                "violations_count": len(result.violations),
             }
 
         # Calculate overall score
-        overall_score = sum(r.score for r in results.values()) / len(results) if results else 0
+        overall_score = (
+            sum(r.score for r in results.values()) / len(results) if results else 0
+        )
 
         # Determine overall status
-        critical_violations = [v for v in all_violations if v.risk_level == RiskLevel.CRITICAL]
+        critical_violations = [
+            v for v in all_violations if v.risk_level == RiskLevel.CRITICAL
+        ]
         high_violations = [v for v in all_violations if v.risk_level == RiskLevel.HIGH]
 
         if overall_score >= 90 and not critical_violations and not high_violations:
@@ -873,7 +903,9 @@ class HealthcareComplianceChecker:
             overall_status = ComplianceStatus.NON_COMPLIANT
 
         # Generate recommendations
-        recommendations = self._generate_compliance_recommendations(all_violations, results)
+        recommendations = self._generate_compliance_recommendations(
+            all_violations, results
+        )
 
         report = {
             "report_metadata": {
@@ -881,27 +913,49 @@ class HealthcareComplianceChecker:
                 "overall_score": overall_score,
                 "overall_status": overall_status.value,
                 "total_violations": len(all_violations),
-                "frameworks_checked": list(results.keys())
+                "frameworks_checked": list(results.keys()),
             },
             "framework_results": framework_scores,
             "violation_summary": {
-                "by_framework": {framework.value: len(result.violations) for framework, result in results.items()},
-                "by_risk_level": {
-                    "critical": len([v for v in all_violations if v.risk_level == RiskLevel.CRITICAL]),
-                    "high": len([v for v in all_violations if v.risk_level == RiskLevel.HIGH]),
-                    "medium": len([v for v in all_violations if v.risk_level == RiskLevel.MEDIUM]),
-                    "low": len([v for v in all_violations if v.risk_level == RiskLevel.LOW])
+                "by_framework": {
+                    framework.value: len(result.violations)
+                    for framework, result in results.items()
                 },
-                "by_category": self._categorize_violations(all_violations)
+                "by_risk_level": {
+                    "critical": len(
+                        [
+                            v
+                            for v in all_violations
+                            if v.risk_level == RiskLevel.CRITICAL
+                        ]
+                    ),
+                    "high": len(
+                        [v for v in all_violations if v.risk_level == RiskLevel.HIGH]
+                    ),
+                    "medium": len(
+                        [v for v in all_violations if v.risk_level == RiskLevel.MEDIUM]
+                    ),
+                    "low": len(
+                        [v for v in all_violations if v.risk_level == RiskLevel.LOW]
+                    ),
+                },
+                "by_category": self._categorize_violations(all_violations),
             },
-            "top_violations": [asdict(v) for v in sorted(all_violations, key=lambda x: x.risk_level.value, reverse=True)[:10]],
+            "top_violations": [
+                asdict(v)
+                for v in sorted(
+                    all_violations, key=lambda x: x.risk_level.value, reverse=True
+                )[:10]
+            ],
             "recommendations": recommendations,
-            "remediation_plan": self._generate_remediation_plan(all_violations)
+            "remediation_plan": self._generate_remediation_plan(all_violations),
         }
 
         return report
 
-    def _categorize_violations(self, violations: List[ComplianceViolation]) -> Dict[str, int]:
+    def _categorize_violations(
+        self, violations: List[ComplianceViolation]
+    ) -> Dict[str, int]:
         """Categorize violations by type"""
         categories = {}
         for violation in violations:
@@ -909,36 +963,52 @@ class HealthcareComplianceChecker:
             categories[category] = categories.get(category, 0) + 1
         return categories
 
-    def _generate_compliance_recommendations(self, violations: List[ComplianceViolation], results: Dict[str, ComplianceCheckResult]) -> List[str]:
+    def _generate_compliance_recommendations(
+        self,
+        violations: List[ComplianceViolation],
+        results: Dict[str, ComplianceCheckResult],
+    ) -> List[str]:
         """Generate compliance recommendations"""
         recommendations = []
 
         # Critical issues first
-        critical_violations = [v for v in violations if v.risk_level == RiskLevel.CRITICAL]
+        critical_violations = [
+            v for v in violations if v.risk_level == RiskLevel.CRITICAL
+        ]
         if critical_violations:
-            recommendations.append(f"🚨 Address {len(critical_violations)} critical violations immediately")
+            recommendations.append(
+                f"🚨 Address {len(critical_violations)} critical violations immediately"
+            )
 
         # High-risk issues
         high_violations = [v for v in violations if v.risk_level == RiskLevel.HIGH]
         if high_violations:
-            recommendations.append(f"⚠️ Prioritize {len(high_violations)} high-risk violations")
+            recommendations.append(
+                f"⚠️ Prioritize {len(high_violations)} high-risk violations"
+            )
 
         # Framework-specific recommendations
         for framework, result in results.items():
             if result.score < 70:
-                recommendations.append(f"📋 Improve {framework.value.upper()} compliance (current score: {result.score:.1f}%)")
+                recommendations.append(
+                    f"📋 Improve {framework.value.upper()} compliance (current score: {result.score:.1f}%)"
+                )
 
         # Security recommendations
         security_violations = [v for v in violations if "security" in v.title.lower()]
         if security_violations:
-            recommendations.append(f"🔒 Implement additional security controls for {len(security_violations)} security issues")
+            recommendations.append(
+                f"🔒 Implement additional security controls for {len(security_violations)} security issues"
+            )
 
         return recommendations
 
     def _generate_remediation_plan(self, violations: List[ComplianceViolation]) -> Dict:
         """Generate remediation plan"""
         # Group violations by risk level
-        critical_violations = [v for v in violations if v.risk_level == RiskLevel.CRITICAL]
+        critical_violations = [
+            v for v in violations if v.risk_level == RiskLevel.CRITICAL
+        ]
         high_violations = [v for v in violations if v.risk_level == RiskLevel.HIGH]
         medium_violations = [v for v in violations if v.risk_level == RiskLevel.MEDIUM]
         low_violations = [v for v in violations if v.risk_level == RiskLevel.LOW]
@@ -948,41 +1018,59 @@ class HealthcareComplianceChecker:
                 "description": "Critical violations requiring immediate attention",
                 "violations": [asdict(v) for v in critical_violations],
                 "timeline": "24-48 hours",
-                "priority": "Critical"
+                "priority": "Critical",
             },
             "short_term_actions": {
                 "description": "High-risk violations to address within 30 days",
                 "violations": [asdict(v) for v in high_violations],
                 "timeline": "30 days",
-                "priority": "High"
+                "priority": "High",
             },
             "medium_term_actions": {
                 "description": "Medium-risk violations to address within 90 days",
                 "violations": [asdict(v) for v in medium_violations],
                 "timeline": "90 days",
-                "priority": "Medium"
+                "priority": "Medium",
             },
             "long_term_actions": {
                 "description": "Low-risk violations for continuous improvement",
                 "violations": [asdict(v) for v in low_violations],
                 "timeline": "180 days",
-                "priority": "Low"
-            }
+                "priority": "Low",
+            },
         }
+
 
 def main():
     """Main function for healthcare compliance checker"""
     import argparse
 
-    parser = argparse.ArgumentParser(description='HMS Healthcare Compliance Checker')
-    parser.add_argument('--config', '-c', default='devops/security/compliance-config.yaml',
-                       help='Path to configuration file')
-    parser.add_argument('--framework', '-f', choices=['hipaa', 'gdpr', 'pci_dss', 'fhir', 'all'],
-                       default='all', help='Compliance framework to check')
-    parser.add_argument('--output', '-o', default='compliance-report.json',
-                       help='Output file for compliance report')
-    parser.add_argument('--detailed', '-d', action='store_true',
-                       help='Generate detailed report with all violations')
+    parser = argparse.ArgumentParser(description="HMS Healthcare Compliance Checker")
+    parser.add_argument(
+        "--config",
+        "-c",
+        default="devops/security/compliance-config.yaml",
+        help="Path to configuration file",
+    )
+    parser.add_argument(
+        "--framework",
+        "-f",
+        choices=["hipaa", "gdpr", "pci_dss", "fhir", "all"],
+        default="all",
+        help="Compliance framework to check",
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        default="compliance-report.json",
+        help="Output file for compliance report",
+    )
+    parser.add_argument(
+        "--detailed",
+        "-d",
+        action="store_true",
+        help="Generate detailed report with all violations",
+    )
 
     args = parser.parse_args()
 
@@ -990,14 +1078,14 @@ def main():
     checker = HealthcareComplianceChecker(args.config)
 
     # Run compliance checks
-    if args.framework == 'all':
+    if args.framework == "all":
         results = checker.run_comprehensive_check()
     else:
         framework_map = {
-            'hipaa': checker.check_hipaa_compliance,
-            'gdpr': checker.check_gdpr_compliance,
-            'pci_dss': checker.check_pci_dss_compliance,
-            'fhir': checker.check_fhir_compliance
+            "hipaa": checker.check_hipaa_compliance,
+            "gdpr": checker.check_gdpr_compliance,
+            "pci_dss": checker.check_pci_dss_compliance,
+            "fhir": checker.check_fhir_compliance,
         }
         results = {args.framework: framework_map[args.framework]()}
 
@@ -1005,7 +1093,7 @@ def main():
     report = checker.generate_compliance_report(results)
 
     # Save report
-    with open(args.output, 'w') as f:
+    with open(args.output, "w") as f:
         json.dump(report, f, indent=2, default=str)
 
     print(f"🏥 Compliance check completed. Report saved to {args.output}")
@@ -1016,8 +1104,11 @@ def main():
     print(f"Overall Status: {report['report_metadata']['overall_status'].upper()}")
     print(f"Total Violations: {report['report_metadata']['total_violations']}")
 
-    for framework, score_data in report['framework_results'].items():
-        print(f"{framework.upper()}: {score_data['score']:.1f}% ({score_data['status']})")
+    for framework, score_data in report["framework_results"].items():
+        print(
+            f"{framework.upper()}: {score_data['score']:.1f}% ({score_data['status']})"
+        )
+
 
 if __name__ == "__main__":
     main()

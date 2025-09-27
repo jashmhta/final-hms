@@ -1,60 +1,68 @@
+"""
+comprehensive_test_executor module
+"""
+
 import asyncio
 import json
 import logging
 import os
+import subprocess
 import sys
+import threading
 import time
 import unittest
+import wave
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple
-import subprocess
-import threading
-import requests
-import pytest
-import coverage
-import allure
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
-import pandas as pd
-import numpy as np
-from bs4 import BeautifulSoup
+from typing import Any, Dict, List, Optional, Tuple
+
 import a11y as axe
-import locust
-from locust import HttpUser, task, between
-import postman
-from k6 import K6
-import jmeter
-from zapv2 import ZAPv2
-from burp import Burp
-import lighthouse
-import wave
-import browserstack
-import saucelabs
-import rest_assured
-import pytest_bdd
-import behave
-import robotframework
-import testcomplete
+import allure
+import appdynamics
 import appium
+import behave
+import browserstack
+import datadog
 import docker
-import kubernetes
-import prometheus_client
+import dynatrace
+import elasticsearch
 import grafana_api
 import influxdb_client
-import elasticsearch
-import logstash
 import jaeger_client
-import opentracing
-import sentry_sdk
-import datadog
+import jmeter
+import kubernetes
+import lighthouse
+import locust
+import logstash
 import newrelic
-import dynatrace
-import appdynamics
+import numpy as np
+import opentracing
+import pandas as pd
+import postman
+import prometheus_client
+import pytest
+import pytest_bdd
+import requests
+import rest_assured
+import robotframework
+import saucelabs
+import sentry_sdk
+import testcomplete
+from bs4 import BeautifulSoup
+from burp import Burp
+from k6 import K6
+from locust import HttpUser, between, task
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+from zapv2 import ZAPv2
+
+import coverage
+
+
 class ComprehensiveTestExecutor:
     def __init__(self):
         self.base_url = os.getenv('HMS_BASE_URL', 'http://localhost:8000')
@@ -376,7 +384,7 @@ class ComprehensiveTestExecutor:
             conn = psycopg2.connect(
                 dbname="hms",
                 user="hms_user",
-                password="hms_password",
+                password=os.getenv('PASSWORD', 'hms_password'),
                 host="localhost",
                 port="5432"
             )

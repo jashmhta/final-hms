@@ -106,7 +106,7 @@ class DatabaseMonitor:
                     max_connections=5,  # Limited to prevent leaks
                     socket_connect_timeout=5,
                     socket_timeout=5,
-                    retry_on_timeout=True
+                    retry_on_timeout=True,
                 )
 
                 self.redis_client = redis.Redis(connection_pool=self._redis_pool)
@@ -144,20 +144,35 @@ class DatabaseMonitor:
         # Prometheus metrics
         self.prometheus_metrics = {
             "connections_active": metrics.Gauge(
-                "hms_database_connections_active", "Number of active database connections"
+                "hms_database_connections_active",
+                "Number of active database connections",
             ),
-            "connections_idle": metrics.Gauge("hms_database_connections_idle", "Number of idle database connections"),
+            "connections_idle": metrics.Gauge(
+                "hms_database_connections_idle", "Number of idle database connections"
+            ),
             "query_duration_avg": metrics.Gauge(
-                "hms_database_query_duration_avg_seconds", "Average query duration in seconds"
+                "hms_database_query_duration_avg_seconds",
+                "Average query duration in seconds",
             ),
-            "slow_queries_count": metrics.Counter("hms_database_slow_queries_total", "Total number of slow queries"),
-            "cache_hit_ratio": metrics.Gauge("hms_database_cache_hit_ratio", "Database cache hit ratio (0-1)"),
-            "deadlocks_count": metrics.Counter("hms_database_deadlocks_total", "Total number of deadlocks detected"),
+            "slow_queries_count": metrics.Counter(
+                "hms_database_slow_queries_total", "Total number of slow queries"
+            ),
+            "cache_hit_ratio": metrics.Gauge(
+                "hms_database_cache_hit_ratio", "Database cache hit ratio (0-1)"
+            ),
+            "deadlocks_count": metrics.Counter(
+                "hms_database_deadlocks_total", "Total number of deadlocks detected"
+            ),
             "replication_lag": metrics.Gauge(
-                "hms_database_replication_lag_seconds", "Database replication lag in seconds"
+                "hms_database_replication_lag_seconds",
+                "Database replication lag in seconds",
             ),
-            "table_bloat_ratio": metrics.Gauge("hms_database_table_bloat_ratio", "Table bloat ratio (0-1)"),
-            "index_usage_ratio": metrics.Gauge("hms_database_index_usage_ratio", "Index usage ratio (0-1)"),
+            "table_bloat_ratio": metrics.Gauge(
+                "hms_database_table_bloat_ratio", "Table bloat ratio (0-1)"
+            ),
+            "index_usage_ratio": metrics.Gauge(
+                "hms_database_index_usage_ratio", "Index usage ratio (0-1)"
+            ),
         }
 
         # Alert thresholds
@@ -297,7 +312,10 @@ class DatabaseMonitor:
                 if row:
                     metrics = [
                         DatabaseMetric(
-                            name="queries_total", value=row[0], metric_type=MetricType.COUNTER, timestamp=timestamp
+                            name="queries_total",
+                            value=row[0],
+                            metric_type=MetricType.COUNTER,
+                            timestamp=timestamp,
                         ),
                         DatabaseMetric(
                             name="query_duration_avg",
@@ -464,7 +482,9 @@ class DatabaseMonitor:
                     ]
 
                     # Update Prometheus metrics
-                    self.prometheus_metrics["table_bloat_ratio"].set((row[0] or 0) / 100)
+                    self.prometheus_metrics["table_bloat_ratio"].set(
+                        (row[0] or 0) / 100
+                    )
 
                     self._store_metrics(metrics)
 
@@ -517,7 +537,10 @@ class DatabaseMonitor:
 
                 metrics = [
                     DatabaseMetric(
-                        name="blocked_queries", value=blocked_queries, metric_type=MetricType.GAUGE, timestamp=timestamp
+                        name="blocked_queries",
+                        value=blocked_queries,
+                        metric_type=MetricType.GAUGE,
+                        timestamp=timestamp,
                     )
                 ]
 
@@ -531,7 +554,11 @@ class DatabaseMonitor:
         for metric in metrics:
             # Store in Redis for quick access
             key = f"metric:{metric.name}"
-            data = {"value": metric.value, "timestamp": metric.timestamp.isoformat(), "tags": metric.tags or {}}
+            data = {
+                "value": metric.value,
+                "timestamp": metric.timestamp.isoformat(),
+                "tags": metric.tags or {},
+            }
             self.redis_client.lpush(key, json.dumps(data))
             self.redis_client.ltrim(key, 0, 999)  # Keep last 1000 values
 
@@ -564,7 +591,12 @@ class DatabaseMonitor:
                     )
 
     def _trigger_alert(
-        self, metric_name: str, current_value: float, threshold: float, severity: AlertSeverity, message: str
+        self,
+        metric_name: str,
+        current_value: float,
+        threshold: float,
+        severity: AlertSeverity,
+        message: str,
     ):
         """Trigger an alert"""
         alert_id = f"{metric_name}_{int(time.time())}"
@@ -572,7 +604,11 @@ class DatabaseMonitor:
         # Check if similar alert already exists and not resolved
         existing_alert = None
         for alert in self.active_alerts.values():
-            if alert.metric_name == metric_name and not alert.resolved and alert.severity == severity:
+            if (
+                alert.metric_name == metric_name
+                and not alert.resolved
+                and alert.severity == severity
+            ):
                 existing_alert = alert
                 break
 
@@ -611,7 +647,9 @@ class DatabaseMonitor:
             self._send_slack_alert(alert)
 
         # PagerDuty notification
-        if alert.severity == AlertSeverity.CRITICAL and hasattr(settings, "PAGERDUTY_API_KEY"):
+        if alert.severity == AlertSeverity.CRITICAL and hasattr(
+            settings, "PAGERDUTY_API_KEY"
+        ):
             self._send_pagerduty_alert(alert)
 
     def _send_email_alert(self, alert: Alert):
@@ -671,9 +709,21 @@ Please check the database monitoring dashboard for details.
                         "title": f"Database Alert: {alert.name}",
                         "text": alert.message,
                         "fields": [
-                            {"title": "Severity", "value": alert.severity.value, "short": True},
-                            {"title": "Current Value", "value": str(alert.current_value), "short": True},
-                            {"title": "Threshold", "value": str(alert.threshold), "short": True},
+                            {
+                                "title": "Severity",
+                                "value": alert.severity.value,
+                                "short": True,
+                            },
+                            {
+                                "title": "Current Value",
+                                "value": str(alert.current_value),
+                                "short": True,
+                            },
+                            {
+                                "title": "Threshold",
+                                "value": str(alert.threshold),
+                                "short": True,
+                            },
                             {
                                 "title": "Timestamp",
                                 "value": alert.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
@@ -685,7 +735,9 @@ Please check the database monitoring dashboard for details.
                 ]
             }
 
-            response = requests.post(settings.SLACK_WEBHOOK_URL, json=payload, timeout=10)
+            response = requests.post(
+                settings.SLACK_WEBHOOK_URL, json=payload, timeout=10
+            )
 
             if response.status_code == 200:
                 logger.info(f"Slack alert sent for {alert.name}")
@@ -701,13 +753,20 @@ Please check the database monitoring dashboard for details.
             if not settings.PAGERDUTY_API_KEY:
                 return
 
-            headers = {"Content-Type": "application/json", "Authorization": f"Token token={settings.PAGERDUTY_API_KEY}"}
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Token token={settings.PAGERDUTY_API_KEY}",
+            }
 
             payload = {
                 "payload": {
                     "summary": alert.message,
                     "source": "hms-database-monitor",
-                    "severity": "critical" if alert.severity == AlertSeverity.CRITICAL else "error",
+                    "severity": (
+                        "critical"
+                        if alert.severity == AlertSeverity.CRITICAL
+                        else "error"
+                    ),
                     "timestamp": alert.timestamp.isoformat(),
                     "custom_details": {
                         "metric_name": alert.metric_name,
@@ -718,7 +777,10 @@ Please check the database monitoring dashboard for details.
             }
 
             response = requests.post(
-                "https://events.pagerduty.com/v2/enqueue", headers=headers, json=payload, timeout=10
+                "https://events.pagerduty.com/v2/enqueue",
+                headers=headers,
+                json=payload,
+                timeout=10,
             )
 
             if response.status_code == 202:
@@ -735,14 +797,31 @@ Please check the database monitoring dashboard for details.
             "timestamp": datetime.now().isoformat(),
             "metrics": {},
             "active_alerts": len(self.active_alerts),
-            "critical_alerts": len([a for a in self.active_alerts.values() if a.severity == AlertSeverity.CRITICAL]),
+            "critical_alerts": len(
+                [
+                    a
+                    for a in self.active_alerts.values()
+                    if a.severity == AlertSeverity.CRITICAL
+                ]
+            ),
         }
 
         # Get latest values for key metrics
-        for metric_name in ["connections_active", "query_duration_avg", "cache_hit_ratio", "replication_lag"]:
-            if metric_name in self.metrics_history and self.metrics_history[metric_name]:
+        for metric_name in [
+            "connections_active",
+            "query_duration_avg",
+            "cache_hit_ratio",
+            "replication_lag",
+        ]:
+            if (
+                metric_name in self.metrics_history
+                and self.metrics_history[metric_name]
+            ):
                 latest = self.metrics_history[metric_name][-1]
-                summary["metrics"][metric_name] = {"value": latest.value, "timestamp": latest.timestamp.isoformat()}
+                summary["metrics"][metric_name] = {
+                    "value": latest.value,
+                    "timestamp": latest.timestamp.isoformat(),
+                }
 
         return summary
 
@@ -798,15 +877,36 @@ Please check the database monitoring dashboard for details.
             "metrics": {},
             "alerts": {
                 "active": len(self.active_alerts),
-                "critical": len([a for a in self.active_alerts.values() if a.severity == AlertSeverity.CRITICAL]),
-                "high": len([a for a in self.active_alerts.values() if a.severity == AlertSeverity.HIGH]),
-                "medium": len([a for a in self.active_alerts.values() if a.severity == AlertSeverity.MEDIUM]),
+                "critical": len(
+                    [
+                        a
+                        for a in self.active_alerts.values()
+                        if a.severity == AlertSeverity.CRITICAL
+                    ]
+                ),
+                "high": len(
+                    [
+                        a
+                        for a in self.active_alerts.values()
+                        if a.severity == AlertSeverity.HIGH
+                    ]
+                ),
+                "medium": len(
+                    [
+                        a
+                        for a in self.active_alerts.values()
+                        if a.severity == AlertSeverity.MEDIUM
+                    ]
+                ),
             },
             "recommendations": [],
         }
 
         # Analyze metrics
-        if "cache_hit_ratio" in self.metrics_history and self.metrics_history["cache_hit_ratio"]:
+        if (
+            "cache_hit_ratio" in self.metrics_history
+            and self.metrics_history["cache_hit_ratio"]
+        ):
             latest_cache_ratio = self.metrics_history["cache_hit_ratio"][-1].value
             report["metrics"]["cache_hit_ratio"] = latest_cache_ratio
             if latest_cache_ratio < 0.7:
@@ -814,11 +914,16 @@ Please check the database monitoring dashboard for details.
                     "Low cache hit ratio detected. Consider increasing shared_buffers or optimizing queries."
                 )
 
-        if "query_duration_avg" in self.metrics_history and self.metrics_history["query_duration_avg"]:
+        if (
+            "query_duration_avg" in self.metrics_history
+            and self.metrics_history["query_duration_avg"]
+        ):
             latest_query_time = self.metrics_history["query_duration_avg"][-1].value
             report["metrics"]["avg_query_duration"] = latest_query_time
             if latest_query_time > 1.0:
-                report["recommendations"].append("Slow average query time detected. Review and optimize slow queries.")
+                report["recommendations"].append(
+                    "Slow average query time detected. Review and optimize slow queries."
+                )
 
         # Determine overall health
         if report["alerts"]["critical"] > 0:

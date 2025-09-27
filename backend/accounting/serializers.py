@@ -1,3 +1,7 @@
+"""
+serializers module
+"""
+
 from rest_framework import serializers
 
 from django.utils import timezone
@@ -50,7 +54,9 @@ class CurrencySerializer(serializers.ModelSerializer):
                 is_base_currency=True,
             ).exists()
             if existing_base:
-                raise serializers.ValidationError("Only one base currency allowed per hospital")
+                raise serializers.ValidationError(
+                    "Only one base currency allowed per hospital"
+                )
         return data
 
 
@@ -72,7 +78,9 @@ class ChartOfAccountsSerializer(serializers.ModelSerializer):
 
     def get_children(self, obj):
         if obj.children.exists():
-            return ChartOfAccountsSerializer(obj.children.all(), many=True, context=self.context).data
+            return ChartOfAccountsSerializer(
+                obj.children.all(), many=True, context=self.context
+            ).data
         return []
 
 
@@ -97,7 +105,10 @@ class VendorSerializer(serializers.ModelSerializer):
         from django.db.models import Sum
 
         total_expenses = (
-            Expense.objects.filter(vendor=obj, is_paid=False).aggregate(total=Sum("net_amount_cents"))["total"] or 0
+            Expense.objects.filter(vendor=obj, is_paid=False).aggregate(
+                total=Sum("net_amount_cents")
+            )["total"]
+            or 0
         )
         return total_expenses
 
@@ -114,9 +125,9 @@ class CustomerSerializer(serializers.ModelSerializer):
         from django.db.models import Sum
 
         total_receivables = (
-            AccountingInvoice.objects.filter(customer=obj, status__in=["SENT", "OVERDUE", "PARTIAL"]).aggregate(
-                total=Sum("balance_cents")
-            )["total"]
+            AccountingInvoice.objects.filter(
+                customer=obj, status__in=["SENT", "OVERDUE", "PARTIAL"]
+            ).aggregate(total=Sum("balance_cents"))["total"]
             or 0
         )
         return total_receivables
@@ -141,7 +152,9 @@ class ServicePackageSerializer(serializers.ModelSerializer):
 
     def get_profit_margin(self, obj):
         if obj.cost_price_cents > 0:
-            margin = ((obj.base_price_cents - obj.cost_price_cents) / obj.base_price_cents) * 100
+            margin = (
+                (obj.base_price_cents - obj.cost_price_cents) / obj.base_price_cents
+            ) * 100
             return round(margin, 2)
         return 0.0
 
@@ -164,7 +177,9 @@ class InvoiceLineItemSerializer(serializers.ModelSerializer):
 
     def get_profit_margin(self, obj):
         if obj.cost_price_cents > 0 and obj.unit_price_cents > 0:
-            margin = ((obj.unit_price_cents - obj.cost_price_cents) / obj.unit_price_cents) * 100
+            margin = (
+                (obj.unit_price_cents - obj.cost_price_cents) / obj.unit_price_cents
+            ) * 100
             return round(margin, 2)
         return 0.0
 
@@ -204,14 +219,22 @@ class AccountingInvoiceSerializer(serializers.ModelSerializer):
             + data.get("patient_percentage", 100)
         )
         if total_percentage != 100:
-            raise serializers.ValidationError("Split billing percentages must total 100%")
+            raise serializers.ValidationError(
+                "Split billing percentages must total 100%"
+            )
         return data
 
 
 class AccountingPaymentSerializer(serializers.ModelSerializer):
-    invoice_number = serializers.CharField(source="invoice.invoice_number", read_only=True)
-    received_by_name = serializers.CharField(source="received_by.get_full_name", read_only=True)
-    bank_account_name = serializers.CharField(source="bank_account.account_name", read_only=True)
+    invoice_number = serializers.CharField(
+        source="invoice.invoice_number", read_only=True
+    )
+    received_by_name = serializers.CharField(
+        source="received_by.get_full_name", read_only=True
+    )
+    bank_account_name = serializers.CharField(
+        source="bank_account.account_name", read_only=True
+    )
     currency_symbol = serializers.CharField(source="currency.symbol", read_only=True)
 
     class Meta:
@@ -228,8 +251,12 @@ class AccountingPaymentSerializer(serializers.ModelSerializer):
 class ExpenseSerializer(serializers.ModelSerializer):
     vendor_name = serializers.CharField(source="vendor.name", read_only=True)
     cost_center_name = serializers.CharField(source="cost_center.name", read_only=True)
-    created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True)
-    approved_by_name = serializers.CharField(source="approved_by.get_full_name", read_only=True)
+    created_by_name = serializers.CharField(
+        source="created_by.get_full_name", read_only=True
+    )
+    approved_by_name = serializers.CharField(
+        source="approved_by.get_full_name", read_only=True
+    )
     currency_symbol = serializers.CharField(source="currency.symbol", read_only=True)
 
     class Meta:
@@ -263,9 +290,15 @@ class BankAccountSerializer(serializers.ModelSerializer):
 
 
 class BankTransactionSerializer(serializers.ModelSerializer):
-    bank_account_name = serializers.CharField(source="bank_account.account_name", read_only=True)
-    reconciled_payment_number = serializers.CharField(source="reconciled_payment.payment_number", read_only=True)
-    reconciled_expense_number = serializers.CharField(source="reconciled_expense.expense_number", read_only=True)
+    bank_account_name = serializers.CharField(
+        source="bank_account.account_name", read_only=True
+    )
+    reconciled_payment_number = serializers.CharField(
+        source="reconciled_payment.payment_number", read_only=True
+    )
+    reconciled_expense_number = serializers.CharField(
+        source="reconciled_expense.expense_number", read_only=True
+    )
 
     class Meta:
         model = BankTransaction
@@ -309,10 +342,16 @@ class DepreciationScheduleSerializer(serializers.ModelSerializer):
 
 
 class PayrollEntrySerializer(serializers.ModelSerializer):
-    employee_name = serializers.CharField(source="employee.get_full_name", read_only=True)
+    employee_name = serializers.CharField(
+        source="employee.get_full_name", read_only=True
+    )
     cost_center_name = serializers.CharField(source="cost_center.name", read_only=True)
-    created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True)
-    approved_by_name = serializers.CharField(source="approved_by.get_full_name", read_only=True)
+    created_by_name = serializers.CharField(
+        source="created_by.get_full_name", read_only=True
+    )
+    approved_by_name = serializers.CharField(
+        source="approved_by.get_full_name", read_only=True
+    )
 
     class Meta:
         model = PayrollEntry
@@ -329,9 +368,15 @@ class PayrollEntrySerializer(serializers.ModelSerializer):
 
 
 class InsuranceClaimSerializer(serializers.ModelSerializer):
-    invoice_number = serializers.CharField(source="invoice.invoice_number", read_only=True)
-    insurance_company_name = serializers.CharField(source="insurance_company.name", read_only=True)
-    patient_name = serializers.CharField(source="invoice.patient.get_full_name", read_only=True)
+    invoice_number = serializers.CharField(
+        source="invoice.invoice_number", read_only=True
+    )
+    insurance_company_name = serializers.CharField(
+        source="insurance_company.name", read_only=True
+    )
+    patient_name = serializers.CharField(
+        source="invoice.patient.get_full_name", read_only=True
+    )
     claim_age_days = serializers.SerializerMethodField()
 
     class Meta:
@@ -352,8 +397,12 @@ class InsuranceClaimSerializer(serializers.ModelSerializer):
 
 class TDSEntrySerializer(serializers.ModelSerializer):
     vendor_name = serializers.CharField(source="vendor.name", read_only=True)
-    employee_name = serializers.CharField(source="employee.get_full_name", read_only=True)
-    expense_number = serializers.CharField(source="expense.expense_number", read_only=True)
+    employee_name = serializers.CharField(
+        source="employee.get_full_name", read_only=True
+    )
+    expense_number = serializers.CharField(
+        source="expense.expense_number", read_only=True
+    )
 
     class Meta:
         model = TDSEntry
@@ -367,7 +416,9 @@ class TDSEntrySerializer(serializers.ModelSerializer):
 
 
 class BookLockSerializer(serializers.ModelSerializer):
-    locked_by_name = serializers.CharField(source="locked_by.get_full_name", read_only=True)
+    locked_by_name = serializers.CharField(
+        source="locked_by.get_full_name", read_only=True
+    )
 
     class Meta:
         model = BookLock
@@ -393,12 +444,16 @@ class VendorPayoutSerializer(serializers.ModelSerializer):
         )
 
     def get_items(self, obj):
-        return VendorPayoutItemSerializer(obj.items.all(), many=True, context=self.context).data
+        return VendorPayoutItemSerializer(
+            obj.items.all(), many=True, context=self.context
+        ).data
 
 
 class VendorPayoutItemSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source="patient.get_full_name", read_only=True)
-    service_name = serializers.CharField(source="invoice_line_item.description", read_only=True)
+    service_name = serializers.CharField(
+        source="invoice_line_item.description", read_only=True
+    )
 
     class Meta:
         model = VendorPayoutItem
@@ -406,9 +461,15 @@ class VendorPayoutItemSerializer(serializers.ModelSerializer):
 
 
 class LedgerEntrySerializer(serializers.ModelSerializer):
-    debit_account_name = serializers.CharField(source="debit_account.account_name", read_only=True)
-    credit_account_name = serializers.CharField(source="credit_account.account_name", read_only=True)
-    created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True)
+    debit_account_name = serializers.CharField(
+        source="debit_account.account_name", read_only=True
+    )
+    credit_account_name = serializers.CharField(
+        source="credit_account.account_name", read_only=True
+    )
+    created_by_name = serializers.CharField(
+        source="created_by.get_full_name", read_only=True
+    )
     amount_currency = serializers.ReadOnlyField()
 
     class Meta:
@@ -431,7 +492,9 @@ class FinancialYearSerializer(serializers.ModelSerializer):
 
 
 class BudgetSerializer(serializers.ModelSerializer):
-    financial_year_name = serializers.CharField(source="financial_year.name", read_only=True)
+    financial_year_name = serializers.CharField(
+        source="financial_year.name", read_only=True
+    )
     cost_center_name = serializers.CharField(source="cost_center.name", read_only=True)
     account_name = serializers.CharField(source="account.account_name", read_only=True)
 
@@ -515,7 +578,9 @@ class BulkInvoiceCreateSerializer(serializers.Serializer):
 
 
 class BankReconciliationSerializer(serializers.Serializer):
-    bank_account = serializers.PrimaryKeyRelatedField(queryset=BankAccount.objects.all())
+    bank_account = serializers.PrimaryKeyRelatedField(
+        queryset=BankAccount.objects.all()
+    )
     tolerance_cents = serializers.IntegerField(default=100, min_value=0)
 
     def validate(self, data):
@@ -551,7 +616,9 @@ class ExportRequestSerializer(serializers.Serializer):
     start_date = serializers.DateField(required=False)
     end_date = serializers.DateField(required=False)
     as_of_date = serializers.DateField(required=False)
-    cost_center = serializers.PrimaryKeyRelatedField(queryset=CostCenter.objects.all(), required=False)
+    cost_center = serializers.PrimaryKeyRelatedField(
+        queryset=CostCenter.objects.all(), required=False
+    )
 
     def validate(self, data):
         if data.get("start_date") and data.get("end_date"):
@@ -566,7 +633,9 @@ class ExportRequestSerializer(serializers.Serializer):
         ]
         if data["report_type"] in period_required_reports:
             if not (data.get("start_date") and data.get("end_date")):
-                raise serializers.ValidationError(f"{data['report_type']} requires start_date and end_date")
+                raise serializers.ValidationError(
+                    f"{data['report_type']} requires start_date and end_date"
+                )
         snapshot_required_reports = [
             "TRIAL_BALANCE",
             "BALANCE_SHEET",
@@ -574,7 +643,9 @@ class ExportRequestSerializer(serializers.Serializer):
         ]
         if data["report_type"] in snapshot_required_reports:
             if not data.get("as_of_date"):
-                raise serializers.ValidationError(f"{data['report_type']} requires as_of_date")
+                raise serializers.ValidationError(
+                    f"{data['report_type']} requires as_of_date"
+                )
         return data
 
 
@@ -612,7 +683,9 @@ class ReconciliationStatusSerializer(serializers.Serializer):
 
 
 class RecurringInvoiceSerializer(serializers.ModelSerializer):
-    template_invoice_number = serializers.CharField(source="template_invoice.invoice_number", read_only=True)
+    template_invoice_number = serializers.CharField(
+        source="template_invoice.invoice_number", read_only=True
+    )
     days_until_next = serializers.SerializerMethodField()
 
     class Meta:
@@ -634,7 +707,9 @@ class TaxLiabilitySerializer(serializers.ModelSerializer):
 
 
 class ReportScheduleSerializer(serializers.ModelSerializer):
-    created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True)
+    created_by_name = serializers.CharField(
+        source="created_by.get_full_name", read_only=True
+    )
     next_run_in_days = serializers.SerializerMethodField()
 
     class Meta:

@@ -193,3 +193,6 @@ safety==3.6.1
 sphinx==8.1.3
 sphinx-rtd-theme==3.0.1
 drf-spectacular-sidecar==2024.12.1
+
+# Security enhancements
+django-ratelimit==4.1.0

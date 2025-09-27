@@ -1,3 +1,7 @@
+"""
+microservices module
+"""
+
 import asyncio
 import logging
 from abc import ABC, abstractmethod
@@ -122,7 +126,13 @@ HEALTHCARE_SERVICE_BOUNDARIES = {
     "lab": ServiceBoundary(
         domain=HealthcareDomain.SUPPORT_SERVICES,
         name="lab",
-        responsibilities=["test_ordering", "result_processing", "quality_control", "specimen_tracking", "reporting"],
+        responsibilities=[
+            "test_ordering",
+            "result_processing",
+            "quality_control",
+            "specimen_tracking",
+            "reporting",
+        ],
         dependencies=["patients", "ehr"],
         priority=ServicePriority.HIGH,
         sla_threshold_ms=600,
@@ -154,7 +164,9 @@ class ServiceRegistry:
         self.services: Dict[str, Dict] = {}
         self.health_checks: Dict[str, asyncio.Task] = {}
 
-    async def register_service(self, service_name: str, address: str, port: int, health_check_url: str = None):
+    async def register_service(
+        self, service_name: str, address: str, port: int, health_check_url: str = None
+    ):
         try:
             await self.consul.agent.service.register(
                 name=service_name,
@@ -162,7 +174,9 @@ class ServiceRegistry:
                 address=address,
                 port=port,
                 check=consul.Check.http(
-                    health_check_url or f"http://{address}:{port}/health", interval="10s", timeout="5s"
+                    health_check_url or f"http://{address}:{port}/health",
+                    interval="10s",
+                    timeout="5s",
                 ),
             )
             self.services[service_name] = {
@@ -200,7 +214,9 @@ class ServiceRegistry:
             import aiohttp
 
             async with aiohttp.ClientSession() as session:
-                async with session.get(service["health_check_url"], timeout=aiohttp.ClientTimeout(total=5)) as response:
+                async with session.get(
+                    service["health_check_url"], timeout=aiohttp.ClientTimeout(total=5)
+                ) as response:
                     is_healthy = response.status == 200
                     service["status"] = "healthy" if is_healthy else "unhealthy"
                     return is_healthy
@@ -235,7 +251,9 @@ class CircuitBreaker:
     def _should_attempt_reset(self) -> bool:
         if self.last_failure_time is None:
             return True
-        return (asyncio.get_event_loop().time() - self.last_failure_time) >= self.recovery_timeout
+        return (
+            asyncio.get_event_loop().time() - self.last_failure_time
+        ) >= self.recovery_timeout
 
     def _on_success(self):
         self.failure_count = 0
@@ -246,7 +264,9 @@ class CircuitBreaker:
         self.last_failure_time = asyncio.get_event_loop().time()
         if self.failure_count >= self.failure_threshold:
             self.state = "open"
-            logging.warning(f"Circuit breaker opened due to {self.failure_count} failures")
+            logging.warning(
+                f"Circuit breaker opened due to {self.failure_count} failures"
+            )
 
 
 class CircuitBreakerOpenError(Exception):
@@ -260,14 +280,18 @@ class ServiceMesh:
         self.grpc_channels: Dict[str, grpc.aio.Channel] = {}
 
     async def initialize(self):
-        await self.service_registry.register_service("service-mesh", "localhost", 5000, "/health")
+        await self.service_registry.register_service(
+            "service-mesh", "localhost", 5000, "/health"
+        )
 
     def get_circuit_breaker(self, service_name: str) -> CircuitBreaker:
         if service_name not in self.circuit_breakers:
             self.circuit_breakers[service_name] = CircuitBreaker()
         return self.circuit_breakers[service_name]
 
-    async def create_grpc_channel(self, service_name: str, address: str, port: int) -> grpc.aio.Channel:
+    async def create_grpc_channel(
+        self, service_name: str, address: str, port: int
+    ) -> grpc.aio.Channel:
         channel_key = f"{service_name}_{address}_{port}"
         if channel_key not in self.grpc_channels:
             self.grpc_channels[channel_key] = grpc.aio.insecure_channel(
@@ -281,7 +305,9 @@ class ServiceMesh:
             )
         return self.grpc_channels[channel_key]
 
-    async def call_service(self, service_name: str, method_name: str, request_data: Any, timeout: int = 30) -> Any:
+    async def call_service(
+        self, service_name: str, method_name: str, request_data: Any, timeout: int = 30
+    ) -> Any:
         circuit_breaker = self.get_circuit_breaker(service_name)
         instances = await self.service_registry.discover_services(service_name)
         if not instances:
@@ -295,9 +321,13 @@ class ServiceMesh:
             return await circuit_breaker.call_service(service_call)
         except CircuitBreakerOpenError:
             logging.error(f"Circuit breaker open for service {service_name}")
-            raise ServiceUnavailableError(f"Service {service_name} temporarily unavailable")
+            raise ServiceUnavailableError(
+                f"Service {service_name} temporarily unavailable"
+            )
 
-    async def _make_service_call(self, instance: Dict, method_name: str, request_data: Any) -> Any:
+    async def _make_service_call(
+        self, instance: Dict, method_name: str, request_data: Any
+    ) -> Any:
         return {"status": "success", "data": request_data}
 
 
@@ -318,7 +348,9 @@ class ServiceLifecycle:
     async def start(self):
         try:
             logging.info(f"Starting service {self.service_name}")
-            await service_mesh.service_registry.register_service(self.service_name, "localhost", 8000, "/health")
+            await service_mesh.service_registry.register_service(
+                self.service_name, "localhost", 8000, "/health"
+            )
             await self._initialize_service()
             self.health_check_task = asyncio.create_task(self._run_health_check())
             self.is_running = True
@@ -347,7 +379,9 @@ class ServiceLifecycle:
     async def _run_health_check(self):
         while self.is_running:
             try:
-                is_healthy = await service_mesh.service_registry.health_check(self.service_name)
+                is_healthy = await service_mesh.service_registry.health_check(
+                    self.service_name
+                )
                 if not is_healthy:
                     logging.warning(f"Service {self.service_name} health check failed")
                 await asyncio.sleep(30)

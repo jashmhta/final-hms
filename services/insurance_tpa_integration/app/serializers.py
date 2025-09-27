@@ -1,14 +1,23 @@
+"""
+serializers module
+"""
+
 import logging
 from typing import List, Optional
+
 from cryptography.fernet import Fernet
-from django.conf import settings
-from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
 from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
 from rest_framework import serializers
+
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
+
 class PreAuthPydantic(BaseModel):
     patient_id: str = Field(..., min_length=1, max_length=50)
     policy_number: str = Field(..., min_length=5, max_length=20)
@@ -16,6 +25,7 @@ class PreAuthPydantic(BaseModel):
     estimated_amount: float = Field(..., gt=0, le=1000000)
     diagnosis_code: Optional[str] = Field(None, min_length=1, max_length=10)
     status: str = Field("pending", pattern="^(pending|approved|rejected)$")
+
     class Config:
         schema_extra = {
             "examples": [
@@ -29,6 +39,7 @@ class PreAuthPydantic(BaseModel):
                 }
             ]
         }
+
     @validator("estimated_amount")
     def validate_amount(cls, v):
         if v <= 0:
@@ -36,6 +47,8 @@ class PreAuthPydantic(BaseModel):
         if v > 1000000:
             raise ValueError("Estimated amount exceeds maximum limit of $1,000,000")
         return v
+
+
 class ClaimPydantic(BaseModel):
     patient_id: str = Field(..., min_length=1, max_length=50)
     policy_number: str = Field(..., min_length=5, max_length=20)
@@ -46,6 +59,7 @@ class ClaimPydantic(BaseModel):
         "submitted", pattern="^(submitted|processing|approved|rejected|paid)$"
     )
     tpa_transaction_id: Optional[str] = Field(None, max_length=100)
+
     class Config:
         schema_extra = {
             "examples": [
@@ -60,6 +74,7 @@ class ClaimPydantic(BaseModel):
                 }
             ]
         }
+
     @validator("claim_amount")
     def validate_claim_amount(cls, v):
         if v <= 0:
@@ -67,19 +82,23 @@ class ClaimPydantic(BaseModel):
         if v > 500000:
             raise ValueError("Claim amount exceeds maximum limit of $500,000")
         return v
+
     @validator("procedure_codes")
-    def validate_procedure_codes(cls, v):
+    def validate_procedure_cocryptography.fernet.Fernet(cls, v):
         for code in v:
             if len(code) < 1 or len(code) > 10:
                 raise ValueError("Each procedure code must be between 1-10 characters")
             if not code.isalnum():
                 raise ValueError("Procedure codes must be alphanumeric")
         return v
+
+
 class ReimbursementPydantic(BaseModel):
     claim_id: str = Field(..., min_length=1, max_length=50)
     reimbursed_amount: float = Field(..., gt=0, le=500000)
     status: str = Field("processed", pattern="^(processed|pending|failed)$")
     transaction_id: str = Field(..., min_length=1, max_length=100)
+
     class Config:
         schema_extra = {
             "examples": [
@@ -91,6 +110,7 @@ class ReimbursementPydantic(BaseModel):
                 }
             ]
         }
+
     @validator("reimbursed_amount")
     def validate_reimbursed_amount(cls, v):
         if v <= 0:
@@ -98,14 +118,17 @@ class ReimbursementPydantic(BaseModel):
         if v > 500000:
             raise ValueError("Reimbursed amount exceeds maximum limit of $500,000")
         return v
+
     @validator("transaction_id")
     def validate_transaction_id(cls, v):
         if not v.isalnum():
             raise ValueError("Transaction ID must be alphanumeric")
         return v
+
+
 class PreAuthSerializer(serializers.ModelSerializer):
     class Meta:
-        model = PreAuth  
+        model = PreAuth
         fields = [
             "id",
             "patient_id",
@@ -118,12 +141,14 @@ class PreAuthSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
     def validate(self, data):
         try:
             pydantic_model = PreAuthPydantic(**data)
         except PydanticValidationError as e:
             raise serializers.ValidationError({"pydantic_errors": e.errors()})
         return data
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
         if hasattr(instance, "patient_id_encrypted") and instance.patient_id_encrypted:
@@ -143,6 +168,7 @@ class PreAuthSerializer(serializers.ModelSerializer):
                 data["patient_id"] = "***DECRYPTION_FAILED***"
                 data["decryption_error"] = str(e)
         return data
+
     def create(self, validated_data):
         validated_data["created_by"] = self.context["request"].user
         instance = super().create(validated_data)
@@ -150,9 +176,11 @@ class PreAuthSerializer(serializers.ModelSerializer):
             f'Created PreAuth {instance.id} for user {self.context["request"].user.id}'
         )
         return instance
+
+
 class ClaimSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Claim  
+        model = Claim
         fields = [
             "id",
             "patient_id",
@@ -166,12 +194,14 @@ class ClaimSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
     def validate(self, data):
         try:
             pydantic_model = ClaimPydantic(**data)
         except PydanticValidationError as e:
             raise serializers.ValidationError({"pydantic_errors": e.errors()})
         return data
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
         if hasattr(instance, "patient_id_encrypted") and instance.patient_id_encrypted:
@@ -191,6 +221,7 @@ class ClaimSerializer(serializers.ModelSerializer):
                 data["patient_id"] = "***DECRYPTION_FAILED***"
                 data["decryption_error"] = str(e)
         return data
+
     def create(self, validated_data):
         validated_data["created_by"] = self.context["request"].user
         instance = super().create(validated_data)
@@ -198,9 +229,11 @@ class ClaimSerializer(serializers.ModelSerializer):
             f'Created Claim {instance.id} for user {self.context["request"].user.id}'
         )
         return instance
+
+
 class ReimbursementSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Reimbursement  
+        model = Reimbursement
         fields = [
             "id",
             "claim_id",
@@ -211,12 +244,14 @@ class ReimbursementSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
     def validate(self, data):
         try:
             pydantic_model = ReimbursementPydantic(**data)
         except PydanticValidationError as e:
             raise serializers.ValidationError({"pydantic_errors": e.errors()})
         return data
+
     def create(self, validated_data):
         validated_data["created_by"] = self.context["request"].user
         instance = super().create(validated_data)
@@ -224,9 +259,15 @@ class ReimbursementSerializer(serializers.ModelSerializer):
             f'Created Reimbursement {instance.id} for user {self.context["request"].user.id}'
         )
         return instance
+
+
 class PreAuthBulkSerializer(serializers.ListSerializer):
     child = PreAuthSerializer()
+
+
 class ClaimBulkSerializer(serializers.ListSerializer):
     child = ClaimSerializer()
+
+
 class ReimbursementBulkSerializer(serializers.ListSerializer):
     child = ReimbursementSerializer()

@@ -256,8 +256,7 @@
     "automated_updates": true,
     "automated_patching": true,
     "automated_hardening": true,
-    "automated_auditing": true,
-    "automated_compliance": true
+    "automated_auditing": true
   },
   "quality_gates": {
     "overall_quality_score": {

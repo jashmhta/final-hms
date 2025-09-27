@@ -1,3 +1,7 @@
+"""
+models module
+"""
+
 from django.db import models
 
 
@@ -33,7 +37,9 @@ class Plan(models.Model):
 
 
 class HospitalPlan(models.Model):
-    hospital = models.OneToOneField(Hospital, on_delete=models.CASCADE, related_name="subscription")
+    hospital = models.OneToOneField(
+        Hospital, on_delete=models.CASCADE, related_name="subscription"
+    )
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT)
     enable_opd = models.BooleanField(null=True, blank=True)
     enable_ipd = models.BooleanField(null=True, blank=True)

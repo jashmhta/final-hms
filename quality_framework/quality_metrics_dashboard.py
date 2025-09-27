@@ -1,18 +1,24 @@
+"""
+quality_metrics_dashboard module
+"""
+
 import asyncio
 import json
 import logging
+import sqlite3
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Tuple
-from dataclasses import dataclass, asdict
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 import plotly.express as px
-from plotly.subplots import make_subplots
+import plotly.graph_objects as go
 import redis
-import sqlite3
-from pathlib import Path
+from plotly.subplots import make_subplots
+
 logger = logging.getLogger(__name__)
 class MetricCategory(Enum):
     TEST_COVERAGE = "test_coverage"

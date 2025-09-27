@@ -1,3 +1,7 @@
+"""
+models module
+"""
+
 import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -12,7 +16,9 @@ User = get_user_model()
 
 
 class TallyIntegration(TimeStampedModel):
-    hospital = models.OneToOneField("hospitals.Hospital", on_delete=models.CASCADE, related_name="tally_config")
+    hospital = models.OneToOneField(
+        "hospitals.Hospital", on_delete=models.CASCADE, related_name="tally_config"
+    )
     tally_server_url = models.URLField(help_text="Tally Prime server URL")
     company_name = models.CharField(max_length=200)
     tally_license_key = models.CharField(max_length=100, blank=True)
@@ -74,7 +80,9 @@ class DepartmentBudget(TimeStampedModel):
         ],
         default="DRAFT",
     )
-    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    approved_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True
+    )
     approved_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -89,12 +97,16 @@ class DepartmentBudget(TimeStampedModel):
 
     @property
     def remaining_budget(self):
-        effective_budget = self.revised_budget if self.revised_budget > 0 else self.allocated_budget
+        effective_budget = (
+            self.revised_budget if self.revised_budget > 0 else self.allocated_budget
+        )
         return effective_budget - self.spent_amount - self.committed_amount
 
     @property
     def utilization_percentage(self):
-        effective_budget = self.revised_budget if self.revised_budget > 0 else self.allocated_budget
+        effective_budget = (
+            self.revised_budget if self.revised_budget > 0 else self.allocated_budget
+        )
         if effective_budget == 0:
             return 0
         return (self.spent_amount / effective_budget) * 100
@@ -183,7 +195,9 @@ class AssetRegister(TimeStampedModel):
     )
     useful_life_years = models.IntegerField(default=5)
     salvage_value = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    depreciation_rate = models.DecimalField(max_digits=5, decimal_places=2, default=20.00)
+    depreciation_rate = models.DecimalField(
+        max_digits=5, decimal_places=2, default=20.00
+    )
     current_status = models.CharField(
         max_length=20,
         choices=[
@@ -224,7 +238,9 @@ class AssetRegister(TimeStampedModel):
             start_date = self.purchase_date
         years_elapsed = (timezone.now().date() - start_date).days / 365.25
         if self.depreciation_method == "STRAIGHT_LINE":
-            annual_depreciation = (self.total_cost - self.salvage_value) / self.useful_life_years
+            annual_depreciation = (
+                self.total_cost - self.salvage_value
+            ) / self.useful_life_years
             total_depreciation = min(
                 annual_depreciation * years_elapsed,
                 self.total_cost - self.salvage_value,
@@ -261,10 +277,14 @@ class ProfitLossStatement(TimeStampedModel):
     other_revenue = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     staff_costs = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     medical_supplies = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    equipment_depreciation = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    equipment_depreciation = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0
+    )
     utilities = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     maintenance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    administrative_costs = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    administrative_costs = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0
+    )
     marketing_costs = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     finance_costs = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     other_expenses = models.DecimalField(max_digits=15, decimal_places=2, default=0)
@@ -272,7 +292,9 @@ class ProfitLossStatement(TimeStampedModel):
     operating_profit = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     net_profit = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     is_finalized = models.BooleanField(default=False)
-    finalized_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    finalized_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True
+    )
     finalized_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -287,7 +309,12 @@ class ProfitLossStatement(TimeStampedModel):
 
     @property
     def total_revenue(self):
-        return self.patient_revenue + self.insurance_revenue + self.referral_revenue + self.other_revenue
+        return (
+            self.patient_revenue
+            + self.insurance_revenue
+            + self.referral_revenue
+            + self.other_revenue
+        )
 
     @property
     def total_direct_costs(self):
@@ -320,9 +347,13 @@ class BreakEvenAnalysis(TimeStampedModel):
     period_months = models.IntegerField(default=12)
     breakeven_units = models.IntegerField(default=0)
     breakeven_revenue = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    margin_of_safety_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    margin_of_safety_percentage = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0
+    )
     current_monthly_units = models.IntegerField(default=0)
-    current_monthly_revenue = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    current_monthly_revenue = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0
+    )
 
     class Meta:
         indexes = [
@@ -334,13 +365,17 @@ class BreakEvenAnalysis(TimeStampedModel):
         return f"Break-even Analysis: {self.analysis_name}"
 
     def calculate_breakeven(self):
-        contribution_per_unit = self.selling_price_per_unit - self.variable_cost_per_unit
+        contribution_per_unit = (
+            self.selling_price_per_unit - self.variable_cost_per_unit
+        )
         if contribution_per_unit > 0:
             self.breakeven_units = int(self.fixed_costs_monthly / contribution_per_unit)
             self.breakeven_revenue = self.breakeven_units * self.selling_price_per_unit
             if self.current_monthly_units > 0:
                 safety_units = self.current_monthly_units - self.breakeven_units
-                self.margin_of_safety_percentage = (safety_units / self.current_monthly_units) * 100
+                self.margin_of_safety_percentage = (
+                    safety_units / self.current_monthly_units
+                ) * 100
         self.save()
 
 

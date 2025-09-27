@@ -3,29 +3,39 @@ AI Ethics and Fairness Framework for Healthcare AI Systems
 Ensures ethical deployment and operation of AI models in healthcare settings
 """
 
-import numpy as np
-import pandas as pd
-from typing import Dict, List, Optional, Tuple, Union, Any
+import json
+import logging
+import time
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import aif360
-from aif360.datasets import BinaryLabelDataset, StandardDataset
-from aif360.metrics import BinaryLabelDatasetMetric, ClassificationMetric
-from aif360.algorithms.preprocessing import Reweighing, DisparateImpactRemover
-from aif360.algorithms.inprocessing import PrejudiceRemover, AdversarialDebiasing
-from aif360.algorithms.postprocessing import EqOddsPostprocessing, CalibratedEqOddsPostprocessing
-import shap
 import lime
 import lime.lime_tabular
 import matplotlib.pyplot as plt
-import seaborn as sns
-from datetime import datetime
-import logging
-import json
-import yaml
-from pydantic import BaseModel, Field
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+import numpy as np
+import pandas as pd
 import prometheus_client
-import time
+import seaborn as sns
+import shap
+import yaml
+from aif360.algorithms.inprocessing import AdversarialDebiasing, PrejudiceRemover
+from aif360.algorithms.postprocessing import (
+    CalibratedEqOddsPostprocessing,
+    EqOddsPostprocessing,
+)
+from aif360.algorithms.preprocessing import DisparateImpactRemover, Reweighing
+from aif360.datasets import BinaryLabelDataset, StandardDataset
+from aif360.metrics import BinaryLabelDatasetMetric, ClassificationMetric
+from pydantic import BaseModel, Field
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
+from sklearn.model_selection import train_test_split
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,28 +43,27 @@ logger = logging.getLogger(__name__)
 
 # Prometheus metrics
 FAIRNESS_METRICS = prometheus_client.Gauge(
-    'hms_ai_fairness_metrics',
-    'AI fairness metrics',
-    ['metric_name', 'model_name', 'protected_attribute']
+    "hms_ai_fairness_metrics",
+    "AI fairness metrics",
+    ["metric_name", "model_name", "protected_attribute"],
 )
 
 BIAS_DETECTED = prometheus_client.Counter(
-    'hms_ai_bias_detected_total',
-    'Total bias detections in AI models',
-    ['bias_type', 'model_name']
+    "hms_ai_bias_detected_total",
+    "Total bias detections in AI models",
+    ["bias_type", "model_name"],
 )
 
 ETHICS_VIOLATIONS = prometheus_client.Counter(
-    'hms_ai_ethics_violations_total',
-    'Total ethics violations detected',
-    ['violation_type', 'model_name']
+    "hms_ai_ethics_violations_total",
+    "Total ethics violations detected",
+    ["violation_type", "model_name"],
 )
 
 EXPLAINABILITY_SCORE = prometheus_client.Gauge(
-    'hms_ai_explainability_score',
-    'Model explainability score (0-100)',
-    ['model_name']
+    "hms_ai_explainability_score", "Model explainability score (0-100)", ["model_name"]
 )
+
 
 # Pydantic models
 class EthicsConfig(BaseModel):
@@ -66,6 +75,7 @@ class EthicsConfig(BaseModel):
     audit_frequency_days: int = 30
     stakeholder_notification_threshold: float = 0.1
 
+
 class BiasDetectionResult(BaseModel):
     bias_type: str
     detected: bool
@@ -74,6 +84,7 @@ class BiasDetectionResult(BaseModel):
     threshold: float
     affected_groups: List[str]
     recommendations: List[str]
+
 
 class EthicsAuditReport(BaseModel):
     model_name: str
@@ -85,6 +96,7 @@ class EthicsAuditReport(BaseModel):
     recommendations: List[str]
     requires_action: bool
     next_audit_date: str
+
 
 class HealthcareAIEthicsFramework:
     """
@@ -100,11 +112,14 @@ class HealthcareAIEthicsFramework:
 
         # Initialize fairness metrics
         self.fairness_metrics = {
-            'statistical_parity_difference': {'threshold': 0.1, 'direction': 'absolute'},
-            'disparate_impact': {'threshold': 0.8, 'direction': 'lower_bound'},
-            'equal_opportunity_difference': {'threshold': 0.1, 'direction': 'absolute'},
-            'average_odds_difference': {'threshold': 0.1, 'direction': 'absolute'},
-            'theil_index': {'threshold': 0.1, 'direction': 'upper_bound'}
+            "statistical_parity_difference": {
+                "threshold": 0.1,
+                "direction": "absolute",
+            },
+            "disparate_impact": {"threshold": 0.8, "direction": "lower_bound"},
+            "equal_opportunity_difference": {"threshold": 0.1, "direction": "absolute"},
+            "average_odds_difference": {"threshold": 0.1, "direction": "absolute"},
+            "theil_index": {"threshold": 0.1, "direction": "upper_bound"},
         }
 
         # Initialize explainability tools
@@ -116,12 +131,14 @@ class HealthcareAIEthicsFramework:
 
         # Bias mitigation strategies
         self.mitigation_strategies = {
-            'preprocessing': [Reweighing, DisparateImpactRemover],
-            'inprocessing': [PrejudiceRemover, AdversarialDebiasing],
-            'postprocessing': [EqOddsPostprocessing, CalibratedEqOddsPostprocessing]
+            "preprocessing": [Reweighing, DisparateImpactRemover],
+            "inprocessing": [PrejudiceRemover, AdversarialDebiasing],
+            "postprocessing": [EqOddsPostprocessing, CalibratedEqOddsPostprocessing],
         }
 
-    def prepare_dataset(self, data: pd.DataFrame, label_name: str, favorable_label: int = 1) -> BinaryLabelDataset:
+    def prepare_dataset(
+        self, data: pd.DataFrame, label_name: str, favorable_label: int = 1
+    ) -> BinaryLabelDataset:
         """
         Prepare dataset for fairness analysis using AIF360
 
@@ -140,7 +157,9 @@ class HealthcareAIEthicsFramework:
                 label_name=label_name,
                 favorable_classes=[favorable_label],
                 protected_attribute_names=self.protected_attributes,
-                categorical_features=data.select_dtypes(include=['object']).columns.tolist()
+                categorical_features=data.select_dtypes(
+                    include=["object"]
+                ).columns.tolist(),
             )
 
             return dataset
@@ -148,8 +167,12 @@ class HealthcareAIEthicsFramework:
             logger.error(f"Error preparing dataset: {e}")
             raise
 
-    def detect_bias(self, dataset: BinaryLabelDataset, privileged_groups: List[Dict],
-                    unprivileged_groups: List[Dict]) -> List[BiasDetectionResult]:
+    def detect_bias(
+        self,
+        dataset: BinaryLabelDataset,
+        privileged_groups: List[Dict],
+        unprivileged_groups: List[Dict],
+    ) -> List[BiasDetectionResult]:
         """
         Detect various types of bias in the dataset
 
@@ -164,36 +187,43 @@ class HealthcareAIEthicsFramework:
         bias_results = []
 
         # Calculate fairness metrics
-        metric = BinaryLabelDatasetMetric(dataset, privileged_groups, unprivileged_groups)
+        metric = BinaryLabelDatasetMetric(
+            dataset, privileged_groups, unprivileged_groups
+        )
 
         # Statistical Parity Difference
         try:
             stat_parity = metric.statistical_parity_difference()
-            threshold = self.fairness_thresholds.get('statistical_parity_difference', 0.1)
+            threshold = self.fairness_thresholds.get(
+                "statistical_parity_difference", 0.1
+            )
             severity = self.calculate_severity(abs(stat_parity), threshold)
 
             bias_result = BiasDetectionResult(
-                bias_type='statistical_parity_difference',
+                bias_type="statistical_parity_difference",
                 detected=abs(stat_parity) > threshold,
                 severity=severity,
                 metric_value=stat_parity,
                 threshold=threshold,
-                affected_groups=self.get_affected_groups(privileged_groups, unprivileged_groups),
-                recommendations=self.get_bias_recommendations('statistical_parity', stat_parity)
+                affected_groups=self.get_affected_groups(
+                    privileged_groups, unprivileged_groups
+                ),
+                recommendations=self.get_bias_recommendations(
+                    "statistical_parity", stat_parity
+                ),
             )
             bias_results.append(bias_result)
 
             # Update Prometheus metrics
             FAIRNESS_METRICS.labels(
-                metric_name='statistical_parity_difference',
+                metric_name="statistical_parity_difference",
                 model_name=self.model_name,
-                protected_attribute=','.join([str(g) for g in privileged_groups])
+                protected_attribute=",".join([str(g) for g in privileged_groups]),
             ).set(stat_parity)
 
             if abs(stat_parity) > threshold:
                 BIAS_DETECTED.labels(
-                    bias_type='statistical_parity',
-                    model_name=self.model_name
+                    bias_type="statistical_parity", model_name=self.model_name
                 ).inc()
         except Exception as e:
             logger.error(f"Error calculating statistical parity: {e}")
@@ -201,76 +231,89 @@ class HealthcareAIEthicsFramework:
         # Disparate Impact
         try:
             disparate_impact = metric.disparate_impact()
-            threshold = self.fairness_thresholds.get('disparate_impact', 0.8)
+            threshold = self.fairness_thresholds.get("disparate_impact", 0.8)
             severity = self.calculate_di_severity(disparate_impact, threshold)
 
             bias_result = BiasDetectionResult(
-                bias_type='disparate_impact',
+                bias_type="disparate_impact",
                 detected=disparate_impact < threshold,
                 severity=severity,
                 metric_value=disparate_impact,
                 threshold=threshold,
-                affected_groups=self.get_affected_groups(privileged_groups, unprivileged_groups),
-                recommendations=self.get_bias_recommendations('disparate_impact', disparate_impact)
+                affected_groups=self.get_affected_groups(
+                    privileged_groups, unprivileged_groups
+                ),
+                recommendations=self.get_bias_recommendations(
+                    "disparate_impact", disparate_impact
+                ),
             )
             bias_results.append(bias_result)
 
             FAIRNESS_METRICS.labels(
-                metric_name='disparate_impact',
+                metric_name="disparate_impact",
                 model_name=self.model_name,
-                protected_attribute=','.join([str(g) for g in privileged_groups])
+                protected_attribute=",".join([str(g) for g in privileged_groups]),
             ).set(disparate_impact)
 
             if disparate_impact < threshold:
                 BIAS_DETECTED.labels(
-                    bias_type='disparate_impact',
-                    model_name=self.model_name
+                    bias_type="disparate_impact", model_name=self.model_name
                 ).inc()
         except Exception as e:
             logger.error(f"Error calculating disparate impact: {e}")
 
         # Equal Opportunity Difference (requires predictions)
-        if hasattr(dataset, 'labels') and hasattr(dataset, 'scores'):
+        if hasattr(dataset, "labels") and hasattr(dataset, "scores"):
             try:
                 class_metric = ClassificationMetric(
-                    dataset, dataset,
+                    dataset,
+                    dataset,
                     privileged_groups=privileged_groups,
-                    unprivileged_groups=unprivileged_groups
+                    unprivileged_groups=unprivileged_groups,
                 )
 
                 eq_opp_diff = class_metric.equal_opportunity_difference()
-                threshold = self.fairness_thresholds.get('equal_opportunity_difference', 0.1)
+                threshold = self.fairness_thresholds.get(
+                    "equal_opportunity_difference", 0.1
+                )
                 severity = self.calculate_severity(abs(eq_opp_diff), threshold)
 
                 bias_result = BiasDetectionResult(
-                    bias_type='equal_opportunity_difference',
+                    bias_type="equal_opportunity_difference",
                     detected=abs(eq_opp_diff) > threshold,
                     severity=severity,
                     metric_value=eq_opp_diff,
                     threshold=threshold,
-                    affected_groups=self.get_affected_groups(privileged_groups, unprivileged_groups),
-                    recommendations=self.get_bias_recommendations('equal_opportunity', eq_opp_diff)
+                    affected_groups=self.get_affected_groups(
+                        privileged_groups, unprivileged_groups
+                    ),
+                    recommendations=self.get_bias_recommendations(
+                        "equal_opportunity", eq_opp_diff
+                    ),
                 )
                 bias_results.append(bias_result)
 
                 FAIRNESS_METRICS.labels(
-                    metric_name='equal_opportunity_difference',
+                    metric_name="equal_opportunity_difference",
                     model_name=self.model_name,
-                    protected_attribute=','.join([str(g) for g in privileged_groups])
+                    protected_attribute=",".join([str(g) for g in privileged_groups]),
                 ).set(eq_opp_diff)
 
                 if abs(eq_opp_diff) > threshold:
                     BIAS_DETECTED.labels(
-                        bias_type='equal_opportunity',
-                        model_name=self.model_name
+                        bias_type="equal_opportunity", model_name=self.model_name
                     ).inc()
             except Exception as e:
                 logger.error(f"Error calculating equal opportunity difference: {e}")
 
         return bias_results
 
-    def mitigate_bias(self, dataset: BinaryLabelDataset, mitigation_type: str = 'preprocessing',
-                      strategy: str = 'reweighing') -> BinaryLabelDataset:
+    def mitigate_bias(
+        self,
+        dataset: BinaryLabelDataset,
+        mitigation_type: str = "preprocessing",
+        strategy: str = "reweighing",
+    ) -> BinaryLabelDataset:
         """
         Apply bias mitigation strategies
 
@@ -283,26 +326,32 @@ class HealthcareAIEthicsFramework:
             Mitigated dataset
         """
         try:
-            if mitigation_type == 'preprocessing':
-                if strategy == 'reweighing':
+            if mitigation_type == "preprocessing":
+                if strategy == "reweighing":
                     mitigator = Reweighing(
-                        unprivileged_groups=[{attr: 0 for attr in self.protected_attributes}],
-                        privileged_groups=[{attr: 1 for attr in self.protected_attributes}]
+                        unprivileged_groups=[
+                            {attr: 0 for attr in self.protected_attributes}
+                        ],
+                        privileged_groups=[
+                            {attr: 1 for attr in self.protected_attributes}
+                        ],
                     )
                     dataset_transf = mitigator.fit_transform(dataset)
                     return dataset_transf
 
-                elif strategy == 'disparate_impact_remover':
+                elif strategy == "disparate_impact_remover":
                     mitigator = DisparateImpactRemover(repair_level=1.0)
                     dataset_transf = mitigator.fit_transform(dataset)
                     return dataset_transf
 
-            elif mitigation_type == 'inprocessing':
+            elif mitigation_type == "inprocessing":
                 # In-processing mitigation requires model training
-                logger.info("In-processing mitigation requires integration with model training")
+                logger.info(
+                    "In-processing mitigation requires integration with model training"
+                )
                 return dataset
 
-            elif mitigation_type == 'postprocessing':
+            elif mitigation_type == "postprocessing":
                 # Post-processing requires predictions
                 logger.info("Post-processing mitigation requires model predictions")
                 return dataset
@@ -318,30 +367,32 @@ class HealthcareAIEthicsFramework:
         ratio = value / threshold
 
         if ratio >= 3:
-            return 'critical'
+            return "critical"
         elif ratio >= 2:
-            return 'high'
+            return "high"
         elif ratio >= 1.5:
-            return 'medium'
+            return "medium"
         else:
-            return 'low'
+            return "low"
 
     def calculate_di_severity(self, di_value: float, threshold: float) -> str:
         """Calculate severity for disparate impact (lower is worse)"""
         if di_value < 0.5:
-            return 'critical'
+            return "critical"
         elif di_value < 0.65:
-            return 'high'
+            return "high"
         elif di_value < threshold:
-            return 'medium'
+            return "medium"
         else:
-            return 'low'
+            return "low"
 
-    def get_affected_groups(self, privileged_groups: List[Dict], unprivileged_groups: List[Dict]) -> List[str]:
+    def get_affected_groups(
+        self, privileged_groups: List[Dict], unprivileged_groups: List[Dict]
+    ) -> List[str]:
         """Get list of affected groups"""
         groups = []
         for group in privileged_groups + unprivileged_groups:
-            group_str = ', '.join([f"{k}={v}" for k, v in group.items()])
+            group_str = ", ".join([f"{k}={v}" for k, v in group.items()])
             groups.append(group_str)
         return groups
 
@@ -349,43 +400,59 @@ class HealthcareAIEthicsFramework:
         """Get recommendations for addressing detected bias"""
         recommendations = []
 
-        if bias_type == 'statistical_parity_difference':
+        if bias_type == "statistical_parity_difference":
             if abs(value) > 0.2:
-                recommendations.extend([
-                    "Consider re-sampling techniques to balance representation",
-                    "Review data collection processes for systemic biases",
-                    "Implement preprocessing bias mitigation (e.g., reweighing)"
-                ])
+                recommendations.extend(
+                    [
+                        "Consider re-sampling techniques to balance representation",
+                        "Review data collection processes for systemic biases",
+                        "Implement preprocessing bias mitigation (e.g., reweighing)",
+                    ]
+                )
             else:
-                recommendations.extend([
-                    "Monitor for worsening bias over time",
-                    "Consider fairness-aware algorithms in model selection"
-                ])
+                recommendations.extend(
+                    [
+                        "Monitor for worsening bias over time",
+                        "Consider fairness-aware algorithms in model selection",
+                    ]
+                )
 
-        elif bias_type == 'disparate_impact':
+        elif bias_type == "disparate_impact":
             if value < 0.5:
-                recommendations.extend([
-                    "Immediate action required: disparate impact exceeds legal thresholds",
-                    "Review feature engineering for proxy variables",
-                    "Consider adversarial debiasing techniques"
-                ])
+                recommendations.extend(
+                    [
+                        "Immediate action required: disparate impact exceeds legal thresholds",
+                        "Review feature engineering for proxy variables",
+                        "Consider adversarial debiasing techniques",
+                    ]
+                )
             else:
-                recommendations.extend([
-                    "Apply bias mitigation algorithms",
-                    "Review model impact on protected groups"
-                ])
+                recommendations.extend(
+                    [
+                        "Apply bias mitigation algorithms",
+                        "Review model impact on protected groups",
+                    ]
+                )
 
-        elif bias_type == 'equal_opportunity_difference':
-            recommendations.extend([
-                "Evaluate model performance across different groups",
-                "Consider threshold adjustment for different groups",
-                "Review training data representation"
-            ])
+        elif bias_type == "equal_opportunity_difference":
+            recommendations.extend(
+                [
+                    "Evaluate model performance across different groups",
+                    "Consider threshold adjustment for different groups",
+                    "Review training data representation",
+                ]
+            )
 
         return recommendations
 
-    def explain_predictions(self, model, X_train: np.ndarray, X_test: np.ndarray,
-                          feature_names: List[str], sample_idx: int = 0) -> Dict:
+    def explain_predictions(
+        self,
+        model,
+        X_train: np.ndarray,
+        X_test: np.ndarray,
+        feature_names: List[str],
+        sample_idx: int = 0,
+    ) -> Dict:
         """
         Generate explanations for model predictions using SHAP and LIME
 
@@ -407,15 +474,17 @@ class HealthcareAIEthicsFramework:
                 self.explainer = shap.KernelExplainer(model.predict_proba, X_train)
 
             # SHAP explanation
-            shap_values = self.explainer.shap_values(X_test[sample_idx:sample_idx+1])
-            explanations['shap'] = {
-                'values': shap_values[1][0],  # Assuming binary classification
-                'base_value': self.explainer.expected_value[1],
-                'feature_importance': sorted(
+            shap_values = self.explainer.shap_values(
+                X_test[sample_idx : sample_idx + 1]
+            )
+            explanations["shap"] = {
+                "values": shap_values[1][0],  # Assuming binary classification
+                "base_value": self.explainer.expected_value[1],
+                "feature_importance": sorted(
                     zip(feature_names, shap_values[1][0]),
                     key=lambda x: abs(x[1]),
-                    reverse=True
-                )[:10]
+                    reverse=True,
+                )[:10],
             }
 
             # Initialize LIME explainer if not already done
@@ -423,26 +492,25 @@ class HealthcareAIEthicsFramework:
                 self.lime_explainer = lime.lime_tabular.LimeTabularExplainer(
                     X_train,
                     feature_names=feature_names,
-                    class_names=['Negative', 'Positive'],
-                    discretize_continuous=True
+                    class_names=["Negative", "Positive"],
+                    discretize_continuous=True,
                 )
 
             # LIME explanation
             lime_exp = self.lime_explainer.explain_instance(
-                X_test[sample_idx],
-                model.predict_proba,
-                num_features=10,
-                top_labels=1
+                X_test[sample_idx], model.predict_proba, num_features=10, top_labels=1
             )
-            explanations['lime'] = {
-                'local_exp': lime_exp.as_list(label=1),
-                'intercept': lime_exp.intercept[1],
-                'score': lime_exp.score
+            explanations["lime"] = {
+                "local_exp": lime_exp.as_list(label=1),
+                "intercept": lime_exp.intercept[1],
+                "score": lime_exp.score,
             }
 
             # Calculate explainability score
             explainability_score = self.calculate_explainability_score(explanations)
-            EXPLAINABILITY_SCORE.labels(model_name=self.model_name).set(explainability_score)
+            EXPLAINABILITY_SCORE.labels(model_name=self.model_name).set(
+                explainability_score
+            )
 
             return explanations
 
@@ -459,17 +527,17 @@ class HealthcareAIEthicsFramework:
         max_score = 0
 
         # Check SHAP explanation
-        if 'shap' in explanations:
-            shap_exp = explanations['shap']
+        if "shap" in explanations:
+            shap_exp = explanations["shap"]
             # Score based on number of important features and clarity
-            score += min(len(shap_exp['feature_importance']) * 10, 50)
+            score += min(len(shap_exp["feature_importance"]) * 10, 50)
             max_score += 50
 
         # Check LIME explanation
-        if 'lime' in explanations:
-            lime_exp = explanations['lime']
+        if "lime" in explanations:
+            lime_exp = explanations["lime"]
             # Score based on explanation fidelity
-            score += lime_exp['score'] * 50
+            score += lime_exp["score"] * 50
             max_score += 50
 
         return (score / max_score) * 100 if max_score > 0 else 0
@@ -484,20 +552,20 @@ class HealthcareAIEthicsFramework:
         compliance = {}
 
         # Check data anonymization
-        compliance['data_anonymization'] = self.check_data_anonymization()
+        compliance["data_anonymization"] = self.check_data_anonymization()
 
         # Check encryption requirements
-        compliance['encryption_at_rest'] = self.check_encryption_at_rest()
-        compliance['encryption_in_transit'] = self.check_encryption_in_transit()
+        compliance["encryption_at_rest"] = self.check_encryption_at_rest()
+        compliance["encryption_in_transit"] = self.check_encryption_in_transit()
 
         # Check access controls
-        compliance['access_controls'] = self.check_access_controls()
+        compliance["access_controls"] = self.check_access_controls()
 
         # Check audit logging
-        compliance['audit_logging'] = self.check_audit_logging()
+        compliance["audit_logging"] = self.check_audit_logging()
 
         # Check data retention policies
-        compliance['data_retention'] = self.check_data_retention()
+        compliance["data_retention"] = self.check_data_retention()
 
         return compliance
 
@@ -532,8 +600,14 @@ class HealthcareAIEthicsFramework:
         # In production, this would verify retention policies
         return True
 
-    def perform_ethics_audit(self, data: pd.DataFrame, model: Any, label_name: str,
-                           privileged_groups: List[Dict], unprivileged_groups: List[Dict]) -> EthicsAuditReport:
+    def perform_ethics_audit(
+        self,
+        data: pd.DataFrame,
+        model: Any,
+        label_name: str,
+        privileged_groups: List[Dict],
+        unprivileged_groups: List[Dict],
+    ) -> EthicsAuditReport:
         """
         Perform comprehensive ethics audit
 
@@ -552,14 +626,18 @@ class HealthcareAIEthicsFramework:
             dataset = self.prepare_dataset(data, label_name)
 
             # Detect bias
-            bias_results = self.detect_bias(dataset, privileged_groups, unprivileged_groups)
+            bias_results = self.detect_bias(
+                dataset, privileged_groups, unprivileged_groups
+            )
 
             # Check privacy compliance
             privacy_compliance = self.audit_privacy_compliance()
 
             # Check explainability
             feature_names = data.drop(columns=[label_name]).columns.tolist()
-            X_train, X_test = train_test_split(data.drop(columns=[label_name]), test_size=0.2, random_state=42)
+            X_train, X_test = train_test_split(
+                data.drop(columns=[label_name]), test_size=0.2, random_state=42
+            )
 
             explanations = self.explain_predictions(
                 model, X_train.values, X_test.values, feature_names
@@ -578,10 +656,10 @@ class HealthcareAIEthicsFramework:
 
             # Determine if action is required
             requires_action = (
-                any(r.severity in ['high', 'critical'] for r in bias_results) or
-                not all(privacy_compliance.values()) or
-                explainability_score < 70 or
-                overall_score < 75
+                any(r.severity in ["high", "critical"] for r in bias_results)
+                or not all(privacy_compliance.values())
+                or explainability_score < 70
+                or overall_score < 75
             )
 
             # Create audit report
@@ -594,7 +672,9 @@ class HealthcareAIEthicsFramework:
                 overall_ethics_score=overall_score,
                 recommendations=recommendations,
                 requires_action=requires_action,
-                next_audit_date=(datetime.utcnow() + timedelta(days=self.config.audit_frequency_days)).isoformat()
+                next_audit_date=(
+                    datetime.utcnow() + timedelta(days=self.config.audit_frequency_days)
+                ).isoformat(),
             )
 
             # Store audit history
@@ -605,8 +685,7 @@ class HealthcareAIEthicsFramework:
                 for result in bias_results:
                     if result.detected:
                         ETHICS_VIOLATIONS.labels(
-                            violation_type=result.bias_type,
-                            model_name=self.model_name
+                            violation_type=result.bias_type, model_name=self.model_name
                         ).inc()
 
             return report
@@ -615,19 +694,22 @@ class HealthcareAIEthicsFramework:
             logger.error(f"Error performing ethics audit: {e}")
             raise
 
-    def calculate_overall_ethics_score(self, bias_results: List[BiasDetectionResult],
-                                     privacy_compliance: Dict[str, bool],
-                                     explainability_score: float) -> float:
+    def calculate_overall_ethics_score(
+        self,
+        bias_results: List[BiasDetectionResult],
+        privacy_compliance: Dict[str, bool],
+        explainability_score: float,
+    ) -> float:
         """Calculate overall ethics score (0-100)"""
         # Bias score (40% weight)
         bias_penalty = 0
         for result in bias_results:
             if result.detected:
-                if result.severity == 'critical':
+                if result.severity == "critical":
                     bias_penalty += 30
-                elif result.severity == 'high':
+                elif result.severity == "high":
                     bias_penalty += 20
-                elif result.severity == 'medium':
+                elif result.severity == "medium":
                     bias_penalty += 10
                 else:
                     bias_penalty += 5
@@ -635,38 +717,49 @@ class HealthcareAIEthicsFramework:
         bias_score = max(0, 100 - bias_penalty) * 0.4
 
         # Privacy score (40% weight)
-        privacy_score = (sum(privacy_compliance.values()) / len(privacy_compliance)) * 100 * 0.4
+        privacy_score = (
+            (sum(privacy_compliance.values()) / len(privacy_compliance)) * 100 * 0.4
+        )
 
         # Explainability score (20% weight)
         explainability_weighted = explainability_score * 0.2
 
         return bias_score + privacy_score + explainability_weighted
 
-    def generate_audit_recommendations(self, bias_results: List[BiasDetectionResult],
-                                     privacy_compliance: Dict[str, bool],
-                                     explainability_score: float) -> List[str]:
+    def generate_audit_recommendations(
+        self,
+        bias_results: List[BiasDetectionResult],
+        privacy_compliance: Dict[str, bool],
+        explainability_score: float,
+    ) -> List[str]:
         """Generate comprehensive recommendations based on audit results"""
         recommendations = []
 
         # Bias recommendations
-        critical_biases = [r for r in bias_results if r.severity == 'critical']
+        critical_biases = [r for r in bias_results if r.severity == "critical"]
         if critical_biases:
-            recommendations.append("CRITICAL: Immediate action required to address bias")
+            recommendations.append(
+                "CRITICAL: Immediate action required to address bias"
+            )
             for bias in critical_biases:
                 recommendations.extend(bias.recommendations)
 
         # Privacy recommendations
         privacy_issues = [k for k, v in privacy_compliance.items() if not v]
         if privacy_issues:
-            recommendations.append(f"Address privacy compliance issues: {', '.join(privacy_issues)}")
+            recommendations.append(
+                f"Address privacy compliance issues: {', '.join(privacy_issues)}"
+            )
 
         # Explainability recommendations
         if explainability_score < 70:
-            recommendations.extend([
-                "Improve model explainability",
-                "Consider using more interpretable models",
-                "Implement better explanation visualization"
-            ])
+            recommendations.extend(
+                [
+                    "Improve model explainability",
+                    "Consider using more interpretable models",
+                    "Implement better explanation visualization",
+                ]
+            )
 
         # General recommendations
         if any(r.detected for r in bias_results):
@@ -735,16 +828,16 @@ class HealthcareAIEthicsFramework:
             fairness_results=report.fairness_results,
             privacy_compliance=report.privacy_compliance,
             explainability_score=report.explainability_score,
-            recommendations=report.recommendations
+            recommendations=report.recommendations,
         )
 
-    def export_audit_results(self, report: EthicsAuditReport, format: str = 'json'):
+    def export_audit_results(self, report: EthicsAuditReport, format: str = "json"):
         """Export audit results in various formats"""
-        if format == 'json':
+        if format == "json":
             return report.json(indent=2)
-        elif format == 'yaml':
+        elif format == "yaml":
             return yaml.dump(report.dict(), default_flow_style=False)
-        elif format == 'markdown':
+        elif format == "markdown":
             return self.generate_ethics_report(report)
         else:
             raise ValueError(f"Unsupported export format: {format}")
@@ -775,6 +868,7 @@ class HealthcareAIEthicsFramework:
             # In production, this would send emails, Slack notifications, etc.
             logger.warning(f"NOTIFYING STAKEHOLDERS: {message}")
 
+
 # Example usage
 if __name__ == "__main__":
     # Configuration
@@ -784,31 +878,33 @@ if __name__ == "__main__":
         fairness_thresholds={
             "statistical_parity_difference": 0.1,
             "disparate_impact": 0.8,
-            "equal_opportunity_difference": 0.1
+            "equal_opportunity_difference": 0.1,
         },
         explainability_required=True,
         privacy_requirements={
             "hipaa_compliant": True,
             "gdpr_compliant": True,
-            "data_retention_days": 365
-        }
+            "data_retention_days": 365,
+        },
     )
 
     # Initialize framework
     ethics_framework = HealthcareAIEthicsFramework(ethics_config)
 
     # Example data (would be real patient data in production)
-    example_data = pd.DataFrame({
-        'age': [65, 45, 78, 34, 56, 72, 41, 63],
-        'gender': [1, 0, 1, 0, 1, 0, 1, 0],  # 1: male, 0: female
-        'race': [1, 0, 1, 0, 1, 0, 1, 0],    # 1: group A, 0: group B
-        'comorbidities': [2, 1, 3, 0, 2, 4, 1, 2],
-        'readmission': [1, 0, 1, 0, 1, 1, 0, 1]  # Target variable
-    })
+    example_data = pd.DataFrame(
+        {
+            "age": [65, 45, 78, 34, 56, 72, 41, 63],
+            "gender": [1, 0, 1, 0, 1, 0, 1, 0],  # 1: male, 0: female
+            "race": [1, 0, 1, 0, 1, 0, 1, 0],  # 1: group A, 0: group B
+            "comorbidities": [2, 1, 3, 0, 2, 4, 1, 2],
+            "readmission": [1, 0, 1, 0, 1, 1, 0, 1],  # Target variable
+        }
+    )
 
     # Perform audit
-    privileged_groups = [{'race': 1}]
-    unprivileged_groups = [{'race': 0}]
+    privileged_groups = [{"race": 1}]
+    unprivileged_groups = [{"race": 0}]
 
     # Note: In production, you would provide a real model
     audit_report = ethics_framework.perform_ethics_audit(
@@ -816,7 +912,7 @@ if __name__ == "__main__":
         model=None,  # Would be actual model
         label_name="readmission",
         privileged_groups=privileged_groups,
-        unprivileged_groups=unprivileged_groups
+        unprivileged_groups=unprivileged_groups,
     )
 
     # Print report

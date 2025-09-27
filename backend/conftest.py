@@ -1,3 +1,7 @@
+"""
+conftest module
+"""
+
 import pytest
 from factory.django import DjangoModelFactory
 from faker import Faker

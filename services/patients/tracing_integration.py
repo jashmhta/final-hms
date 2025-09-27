@@ -3,16 +3,21 @@ Distributed tracing integration for Patients Service
 Example implementation for other services to follow
 """
 
-import os
 import logging
+import os
+from contextlib import asynccontextmanager
+from typing import Any, Dict
+
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-from typing import Dict, Any
 
-from ..common.otel_config import setup_otel, trace_async, get_tracer, get_meter
-from ..common.correlation_id import CorrelationIDMiddleware, get_correlation_id, with_correlation_id
+from ..common.correlation_id import (
+    CorrelationIDMiddleware,
+    get_correlation_id,
+    with_correlation_id,
+)
 from ..common.middleware import create_middleware_stack
+from ..common.otel_config import get_meter, get_tracer, setup_otel, trace_async
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +25,7 @@ logger = logging.getLogger(__name__)
 SERVICE_NAME = "patients-service"
 SERVICE_VERSION = "1.0.0"
 ENVIRONMENT = os.getenv("ENVIRONMENT", "production")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -31,7 +37,7 @@ async def lifespan(app: FastAPI):
         environment=ENVIRONMENT,
         metrics_enabled=True,
         traces_enabled=True,
-        logs_enabled=True
+        logs_enabled=True,
     )
 
     # Get tracer and meter
@@ -42,15 +48,14 @@ async def lifespan(app: FastAPI):
     if meter:
         # Create counters for patient operations
         patient_operations_counter = meter.create_counter(
-            "patient_operations_total",
-            description="Total patient operations"
+            "patient_operations_total", description="Total patient operations"
         )
 
         # Create histogram for patient query times
         patient_query_duration = meter.create_histogram(
             "patient_query_duration_seconds",
             description="Patient query duration",
-            buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0]
+            buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0],
         )
 
         # Store metrics in app state
@@ -63,12 +68,13 @@ async def lifespan(app: FastAPI):
 
     logger.info(f"{SERVICE_NAME} shutting down")
 
+
 # Create FastAPI app
 app = FastAPI(
     title="HMS Patients Service",
     description="Patients management microservice",
     version=SERVICE_VERSION,
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -88,15 +94,16 @@ app = create_middleware_stack(
     rate_limit_config={
         "rate_limit": 1000,  # requests per minute
         "window_size": 60,
-        "strategies": ["ip", "user"]
+        "strategies": ["ip", "user"],
     },
     enable_security_headers=True,
     enable_cache_control=True,
-    enable_body_logging=False
+    enable_body_logging=False,
 )
 
 # Add correlation ID middleware
 app.add_middleware(CorrelationIDMiddleware)
+
 
 # Traced endpoint examples
 @app.get("/health")
@@ -107,16 +114,14 @@ async def health_check(request: Request) -> Dict[str, Any]:
         "status": "healthy",
         "service": SERVICE_NAME,
         "version": SERVICE_VERSION,
-        "correlation_id": get_correlation_id()
+        "correlation_id": get_correlation_id(),
     }
+
 
 @app.get("/api/patients")
 @trace_async("list_patients")
 async def list_patients(
-    request: Request,
-    skip: int = 0,
-    limit: int = 100,
-    search: str = None
+    request: Request, skip: int = 0, limit: int = 100, search: str = None
 ) -> Dict[str, Any]:
     """List patients with tracing and metrics"""
     tracer = get_tracer()
@@ -129,37 +134,31 @@ async def list_patients(
 
         # Simulate database query
         import asyncio
+
         await asyncio.sleep(0.01)  # Simulate query time
 
         # Get metrics from app state
-        if hasattr(request.app.state, 'patient_operations_counter'):
+        if hasattr(request.app.state, "patient_operations_counter"):
             request.app.state.patient_operations_counter.add(
-                1,
-                attributes={
-                    "operation": "list",
-                    "status": "success"
-                }
+                1, attributes={"operation": "list", "status": "success"}
             )
 
-        if hasattr(request.app.state, 'patient_query_duration'):
+        if hasattr(request.app.state, "patient_query_duration"):
             request.app.state.patient_query_duration.record(
-                0.01,
-                attributes={
-                    "operation": "list",
-                    "has_search": search is not None
-                }
+                0.01, attributes={"operation": "list", "has_search": search is not None}
             )
 
         # Return dummy data
         return {
             "patients": [
                 {"id": 1, "name": "John Doe", "age": 35},
-                {"id": 2, "name": "Jane Smith", "age": 28}
+                {"id": 2, "name": "Jane Smith", "age": 28},
             ],
             "total": 2,
             "skip": skip,
-            "limit": limit
+            "limit": limit,
         }
+
 
 @app.get("/api/patients/{patient_id}")
 @trace_async("get_patient")
@@ -177,16 +176,13 @@ async def get_patient(patient_id: int, request: Request) -> Dict[str, Any]:
 
         # Simulate database query
         import asyncio
+
         await asyncio.sleep(0.005)
 
         # Record metrics
-        if hasattr(request.app.state, 'patient_operations_counter'):
+        if hasattr(request.app.state, "patient_operations_counter"):
             request.app.state.patient_operations_counter.add(
-                1,
-                attributes={
-                    "operation": "get",
-                    "status": "success"
-                }
+                1, attributes={"operation": "get", "status": "success"}
             )
 
         # Check cache first
@@ -201,7 +197,9 @@ async def get_patient(patient_id: int, request: Request) -> Dict[str, Any]:
         if not cache_hit:
             # Database query
             with tracer.start_as_current_span("database_query") as db_span:
-                db_span.set_attribute("db.statement", "SELECT * FROM patients WHERE id = ?")
+                db_span.set_attribute(
+                    "db.statement", "SELECT * FROM patients WHERE id = ?"
+                )
                 db_span.set_attribute("db.table", "patients")
                 await asyncio.sleep(0.01)
 
@@ -212,7 +210,7 @@ async def get_patient(patient_id: int, request: Request) -> Dict[str, Any]:
                     "age": 35,
                     "medical_record_number": "MRN123456",
                     "admission_date": "2024-01-15",
-                    "department": "Cardiology"
+                    "department": "Cardiology",
                 }
 
                 # Cache the result
@@ -229,9 +227,12 @@ async def get_patient(patient_id: int, request: Request) -> Dict[str, Any]:
 
         return {"error": "Patient not found"}
 
+
 @app.post("/api/patients")
 @trace_async("create_patient")
-async def create_patient(patient_data: Dict[str, Any], request: Request) -> Dict[str, Any]:
+async def create_patient(
+    patient_data: Dict[str, Any], request: Request
+) -> Dict[str, Any]:
     """Create new patient with tracing"""
     tracer = get_tracer()
     correlation_id = get_correlation_id()
@@ -256,24 +257,17 @@ async def create_patient(patient_data: Dict[str, Any], request: Request) -> Dict
             patient_id = 12345
 
             # Record metrics
-            if hasattr(request.app.state, 'patient_operations_counter'):
+            if hasattr(request.app.state, "patient_operations_counter"):
                 request.app.state.patient_operations_counter.add(
-                    1,
-                    attributes={
-                        "operation": "create",
-                        "status": "success"
-                    }
+                    1, attributes={"operation": "create", "status": "success"}
                 )
 
         # Trigger background tasks
         await self._create_patient_index(patient_id, tracer)
         await self._send_welcome_notification(patient_data.get("email"), tracer)
 
-        return {
-            "id": patient_id,
-            "status": "created",
-            "correlation_id": correlation_id
-        }
+        return {"id": patient_id, "status": "created", "correlation_id": correlation_id}
+
 
 @with_correlation_id
 async def _get_patient_appointments(self, patient_id: int, tracer):
@@ -285,11 +279,12 @@ async def _get_patient_appointments(self, patient_id: int, tracer):
         # Simulate appointment data
         appointments = [
             {"id": 1, "date": "2024-01-20", "type": "Follow-up"},
-            {"id": 2, "date": "2024-01-25", "type": "Lab test"}
+            {"id": 2, "date": "2024-01-25", "type": "Lab test"},
         ]
 
         span.set_attribute("appointments.count", len(appointments))
         return appointments
+
 
 @with_correlation_id
 async def _get_patient_medications(self, patient_id: int, tracer):
@@ -299,6 +294,7 @@ async def _get_patient_medications(self, patient_id: int, tracer):
         await asyncio.sleep(0.003)  # Simulate API call to pharmacy service
         return []
 
+
 @with_correlation_id
 async def _get_patient_lab_results(self, patient_id: int, tracer):
     """Get patient lab results"""
@@ -307,6 +303,7 @@ async def _get_patient_lab_results(self, patient_id: int, tracer):
         await asyncio.sleep(0.007)  # Simulate API call to lab service
         return []
 
+
 @with_correlation_id
 async def _create_patient_index(self, patient_id: int, tracer):
     """Create search index for patient"""
@@ -314,6 +311,7 @@ async def _create_patient_index(self, patient_id: int, tracer):
         span.set_attribute("patient.id", patient_id)
         span.set_attribute("index.type", "elasticsearch")
         await asyncio.sleep(0.01)  # Simulate indexing operation
+
 
 @with_correlation_id
 async def _send_welcome_notification(self, email: str, tracer):
@@ -325,6 +323,7 @@ async def _send_welcome_notification(self, email: str, tracer):
         span.set_attribute("notification.type", "welcome_email")
         span.set_attribute("notification.recipient", email)
         await asyncio.sleep(0.02)  # Simulate email sending
+
 
 # Error handling with tracing
 @app.exception_handler(Exception)
@@ -344,13 +343,14 @@ async def global_exception_handler(request: Request, exc: Exception):
         "Unhandled exception",
         error=str(exc),
         correlation_id=correlation_id,
-        path=request.url.path
+        path=request.url.path,
     )
 
     return JSONResponse(
         {"error": "Internal server error", "correlation_id": correlation_id},
-        status_code=500
+        status_code=500,
     )
+
 
 # Health check for Kubernetes
 @app.get("/ready")
@@ -358,23 +358,23 @@ async def readiness_check() -> Dict[str, Any]:
     """Readiness probe"""
     return {"status": "ready", "service": SERVICE_NAME}
 
+
 @app.get("/live")
 async def liveness_check() -> Dict[str, Any]:
     """Liveness probe"""
     return {"status": "alive", "service": SERVICE_NAME}
+
 
 # Metrics endpoint for Prometheus
 @app.get("/metrics")
 async def metrics_endpoint() -> str:
     """Prometheus metrics endpoint"""
     from prometheus_client import generate_latest
+
     return generate_latest()
+
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "tracing_integration:app",
-        host="0.0.0.0",
-        port=8000,
-        log_level="info"
-    )
+
+    uvicorn.run("tracing_integration:app", host="0.0.0.0", port=8000, log_level="info")

@@ -1,9 +1,24 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text, JSON, Float, Enum
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime
 import enum
+from datetime import datetime
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+
 Base = declarative_base()
+
+
 class DoctorSpecialization(enum.Enum):
     CARDIOLOGY = "cardiology"
     NEUROLOGY = "neurology"
@@ -16,6 +31,8 @@ class DoctorSpecialization(enum.Enum):
     ANESTHESIOLOGY = "anesthesiology"
     EMERGENCY_MEDICINE = "emergency_medicine"
     GENERAL_MEDICINE = "general_medicine"
+
+
 class Doctor(Base):
     __tablename__ = "doctors"
     id = Column(Integer, primary_key=True, index=True)
@@ -35,6 +52,8 @@ class Doctor(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     department = relationship("Department")
+
+
 class Department(Base):
     __tablename__ = "departments"
     id = Column(Integer, primary_key=True, index=True)
@@ -45,30 +64,36 @@ class Department(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class DoctorSchedule(Base):
     __tablename__ = "doctor_schedules"
     id = Column(Integer, primary_key=True, index=True)
     doctor_id = Column(Integer, ForeignKey("doctors.id"))
-    day_of_week = Column(Integer)  
+    day_of_week = Column(Integer)
     start_time = Column(String)
     end_time = Column(String)
     is_available = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     doctor = relationship("Doctor")
+
+
 class DoctorLeave(Base):
     __tablename__ = "doctor_leaves"
     id = Column(Integer, primary_key=True, index=True)
     doctor_id = Column(Integer, ForeignKey("doctors.id"))
-    leave_type = Column(String)  
+    leave_type = Column(String)
     start_date = Column(DateTime)
     end_date = Column(DateTime)
     reason = Column(Text, nullable=True)
-    status = Column(String)  
+    status = Column(String)
     approved_by = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     doctor = relationship("Doctor")
+
+
 class DoctorPerformance(Base):
     __tablename__ = "doctor_performance"
     id = Column(Integer, primary_key=True, index=True)

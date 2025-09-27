@@ -4,14 +4,14 @@ HMS Enterprise-Grade Redundancy Elimination Validation
 Validates that redundancy has been effectively eliminated across the system.
 """
 
-import os
-import sys
 import ast
-import re
-from pathlib import Path
-from typing import Dict, List, Set, Tuple, Any
-from collections import defaultdict, Counter
 import json
+import os
+import re
+import sys
+from collections import Counter, defaultdict
+from pathlib import Path
+from typing import Any, Dict, List, Set, Tuple
 
 
 class RedundancyValidator:
@@ -26,7 +26,7 @@ class RedundancyValidator:
             "duplicate_lines": 0,
             "redundant_patterns": 0,
             "shared_components_used": 0,
-            "efficiency_score": 0
+            "efficiency_score": 0,
         }
 
     def validate_system(self) -> Dict[str, Any]:
@@ -40,7 +40,7 @@ class RedundancyValidator:
             "configuration_analysis": self._analyze_configuration(),
             "shared_library_usage": self._analyze_shared_library_usage(),
             "service_consistency": self._analyze_service_consistency(),
-            "recommendations": []
+            "recommendations": [],
         }
 
         # Calculate overall metrics
@@ -61,7 +61,7 @@ class RedundancyValidator:
             "config_files": 0,
             "duplicate_files": 0,
             "file_size_distribution": defaultdict(int),
-            "duplicate_names": defaultdict(list)
+            "duplicate_names": defaultdict(list),
         }
 
         for file_path in self.root_path.rglob("*"):
@@ -71,7 +71,10 @@ class RedundancyValidator:
                 # Analyze by file type
                 if file_path.suffix == ".py":
                     file_stats["python_files"] += 1
-                elif file_path.name in ["docker-compose.yml", "deployment.yaml"] or file_path.suffix in [".yml", ".yaml"]:
+                elif file_path.name in [
+                    "docker-compose.yml",
+                    "deployment.yaml",
+                ] or file_path.suffix in [".yml", ".yaml"]:
                     file_stats["config_files"] += 1
 
                 # Check for duplicate file names
@@ -113,14 +116,14 @@ class RedundancyValidator:
             "error_handling_patterns": 0,
             "import_statements": Counter(),
             "function_definitions": Counter(),
-            "class_definitions": Counter()
+            "class_definitions": Counter(),
         }
 
         python_files = list(self.root_path.rglob("*.py"))
 
         for file_path in python_files:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     content = f.read()
                     tree = ast.parse(content)
 
@@ -138,11 +141,17 @@ class RedundancyValidator:
                         patterns["class_definitions"][node.name] += 1
 
                 # Analyze text patterns
-                patterns["timestamp_fields"] += content.count("created_at = Column(DateTime, default=datetime.utcnow)")
-                patterns["health_check_endpoints"] += content.count('def health_check(')
-                patterns["cors_middleware"] += content.count('CORSMiddleware')
-                patterns["base_model_patterns"] += content.count('class.*Model.*Base:')
-                patterns["crud_operations"] += content.count('.get_multi(') + content.count('.create(') + content.count('.update(')
+                patterns["timestamp_fields"] += content.count(
+                    "created_at = Column(DateTime, default=datetime.utcnow)"
+                )
+                patterns["health_check_endpoints"] += content.count("def health_check(")
+                patterns["cors_middleware"] += content.count("CORSMiddleware")
+                patterns["base_model_patterns"] += content.count("class.*Model.*Base:")
+                patterns["crud_operations"] += (
+                    content.count(".get_multi(")
+                    + content.count(".create(")
+                    + content.count(".update(")
+                )
 
             except:
                 continue
@@ -162,19 +171,25 @@ class RedundancyValidator:
                 "postgres_image": 0,
                 "resource_limits": 0,
                 "health_checks": 0,
-                "env_variables": 0
-            }
+                "env_variables": 0,
+            },
         }
 
         # Analyze Docker Compose files
         for file_path in self.root_path.rglob("docker-compose.yml"):
             config_stats["docker_compose_files"] += 1
             try:
-                with open(file_path, 'r') as f:
+                with open(file_path, "r") as f:
                     content = f.read()
-                    config_stats["configuration_patterns"]["postgres_image"] += content.count("postgres:")
-                    config_stats["configuration_patterns"]["resource_limits"] += content.count("mem_limit")
-                    config_stats["configuration_patterns"]["health_checks"] += content.count("healthcheck")
+                    config_stats["configuration_patterns"][
+                        "postgres_image"
+                    ] += content.count("postgres:")
+                    config_stats["configuration_patterns"][
+                        "resource_limits"
+                    ] += content.count("mem_limit")
+                    config_stats["configuration_patterns"][
+                        "health_checks"
+                    ] += content.count("healthcheck")
             except:
                 pass
 
@@ -182,11 +197,17 @@ class RedundancyValidator:
         for file_path in self.root_path.rglob("deployment.yaml"):
             config_stats["k8s_deployment_files"] += 1
             try:
-                with open(file_path, 'r') as f:
+                with open(file_path, "r") as f:
                     content = f.read()
-                    config_stats["configuration_patterns"]["resource_limits"] += content.count("resources:")
-                    config_stats["configuration_patterns"]["health_checks"] += content.count("livenessProbe")
-                    config_stats["configuration_patterns"]["env_variables"] += content.count("env:")
+                    config_stats["configuration_patterns"][
+                        "resource_limits"
+                    ] += content.count("resources:")
+                    config_stats["configuration_patterns"][
+                        "health_checks"
+                    ] += content.count("livenessProbe")
+                    config_stats["configuration_patterns"][
+                        "env_variables"
+                    ] += content.count("env:")
             except:
                 pass
 
@@ -209,15 +230,15 @@ class RedundancyValidator:
                 "HMSBaseModel": 0,
                 "BaseCRUD": 0,
                 "BaseConfig": 0,
-                "ServiceBuilder": 0
-            }
+                "ServiceBuilder": 0,
+            },
         }
 
         python_files = list(self.root_path.rglob("*.py"))
 
         for file_path in python_files:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     content = f.read()
 
                 # Check for shared library imports
@@ -231,7 +252,10 @@ class RedundancyValidator:
                         shared_usage["shared_components_used"] += 1
 
                 # Check if this is a service using shared libraries
-                if any(f"from shared.{comp}" in content for comp in ["service", "database", "api", "config"]):
+                if any(
+                    f"from shared.{comp}" in content
+                    for comp in ["service", "database", "api", "config"]
+                ):
                     shared_usage["services_using_shared"] += 1
 
             except:
@@ -248,7 +272,7 @@ class RedundancyValidator:
             "consistent_health_checks": 0,
             "consistent_error_handling": 0,
             "consistent_logging": 0,
-            "inconsistent_patterns": []
+            "inconsistent_patterns": [],
         }
 
         # Find main.py files in services
@@ -257,7 +281,7 @@ class RedundancyValidator:
 
         for file_path in service_files:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     content = f.read()
 
                 # Check for consistent patterns
@@ -289,7 +313,9 @@ class RedundancyValidator:
 
         # Shared library usage (40 points)
         if shared_usage["services_using_shared"] > 0:
-            usage_ratio = shared_usage["services_using_shared"] / max(consistency["services_found"], 1)
+            usage_ratio = shared_usage["services_using_shared"] / max(
+                consistency["services_found"], 1
+            )
             efficiency_score += min(40, usage_ratio * 40)
 
         # Configuration consistency (30 points)
@@ -298,7 +324,9 @@ class RedundancyValidator:
 
         # Service consistency (20 points)
         if consistency["services_found"] > 0:
-            consistency_ratio = consistency["consistent_health_checks"] / consistency["services_found"]
+            consistency_ratio = (
+                consistency["consistent_health_checks"] / consistency["services_found"]
+            )
             efficiency_score += min(20, consistency_ratio * 20)
 
         # Shared components (10 points)
@@ -313,23 +341,36 @@ class RedundancyValidator:
 
         # File structure recommendations
         if results["file_analysis"]["duplicate_files"] > 20:
-            recommendations.append("High number of duplicate files found. Consider consolidating similar configurations.")
+            recommendations.append(
+                "High number of duplicate files found. Consider consolidating similar configurations."
+            )
 
         # Shared library usage recommendations
         if results["shared_library_usage"]["services_using_shared"] < 5:
-            recommendations.append("Low shared library adoption. Migrate more services to use shared components.")
+            recommendations.append(
+                "Low shared library adoption. Migrate more services to use shared components."
+            )
 
         # Configuration recommendations
         if results["configuration_analysis"]["docker_compose_files"] > 10:
-            recommendations.append("Many Docker Compose files found. Use template-based configuration generation.")
+            recommendations.append(
+                "Many Docker Compose files found. Use template-based configuration generation."
+            )
 
         # Consistency recommendations
-        if results["service_consistency"]["consistent_health_checks"] < results["service_consistency"]["services_found"]:
-            recommendations.append("Inconsistent health check implementations. Standardize using shared patterns.")
+        if (
+            results["service_consistency"]["consistent_health_checks"]
+            < results["service_consistency"]["services_found"]
+        ):
+            recommendations.append(
+                "Inconsistent health check implementations. Standardize using shared patterns."
+            )
 
         # Performance recommendations
         if self.metrics["efficiency_score"] < 70:
-            recommendations.append("Low efficiency score. Focus on shared library adoption and configuration consolidation.")
+            recommendations.append(
+                "Low efficiency score. Focus on shared library adoption and configuration consolidation."
+            )
 
         return recommendations
 
@@ -373,7 +414,7 @@ class RedundancyValidator:
 ## Recommendations
 """
 
-        for i, rec in enumerate(results['recommendations'], 1):
+        for i, rec in enumerate(results["recommendations"], 1):
             report += f"{i}. {rec}\n"
 
         return report
@@ -400,9 +441,9 @@ def main():
     # Print summary
     print(f"\n🎯 VALIDATION COMPLETE")
     print(f"   Efficiency Score: {validator.metrics['efficiency_score']}/100")
-    if validator.metrics['efficiency_score'] >= 80:
+    if validator.metrics["efficiency_score"] >= 80:
         print("   ✅ EXCELLENT - Redundancy elimination successful!")
-    elif validator.metrics['efficiency_score'] >= 60:
+    elif validator.metrics["efficiency_score"] >= 60:
         print("   ⚠️  GOOD - Redundancy elimination progress made, room for improvement")
     else:
         print("   ❌ NEEDS WORK - Significant redundancy still present")

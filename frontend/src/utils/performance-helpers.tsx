@@ -224,7 +224,7 @@ export const LazyImage = memo(({
 LazyImage.displayName = 'LazyImage'
 
 // Debounce utility
-export const useDebounce = <T>(value: T, delay: number): T => {
+export const useDebounce = <T,>(value: T, delay: number): T => {
   const [debouncedValue, setDebouncedValue] = React.useState<T>(value)
 
   React.useEffect(() => {

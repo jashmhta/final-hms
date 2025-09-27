@@ -1,4 +1,9 @@
+"""
+seed_demo module
+"""
+
 import random
+import secrets
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
@@ -18,7 +23,9 @@ class Command(BaseCommand):
         hospital, _ = Hospital.objects.get_or_create(
             name="Demo Hospital", defaults={"code": "DEMO", "address": "123 Main St"}
         )
-        plan, _ = Plan.objects.get_or_create(name="Enterprise", defaults={"max_users": 500})
+        plan, _ = Plan.objects.get_or_create(
+            name="Enterprise", defaults={"max_users": 500}
+        )
         HospitalPlan.objects.get_or_create(hospital=hospital, defaults={"plan": plan})
         admin, created = User.objects.get_or_create(
             username="admin",
@@ -56,8 +63,8 @@ class Command(BaseCommand):
         last_names = ["Brown", "Smith", "Johnson", "Williams", "Jones"]
         patients = []
         for i in range(10):
-            fn = random.choice(first_names)
-            ln = random.choice(last_names)
+            fn = secrets.choice(first_names)
+            ln = secrets.choice(last_names)
             p, _ = Patient.objects.get_or_create(
                 hospital=hospital,
                 first_name=fn,
@@ -75,12 +82,14 @@ class Command(BaseCommand):
             end = start + timezone.timedelta(minutes=30)
             Appointment.objects.get_or_create(
                 hospital=hospital,
-                patient=random.choice(patients),
+                patient=secrets.choice(patients),
                 doctor=doctor,
                 start_at=start,
                 end_at=end,
                 defaults={"reason": "Consultation"},
             )
         self.stdout.write(
-            self.style.SUCCESS("Demo data seeded. Users: admin/admin123, hadmin/admin123, drsmith/doctor123")
+            self.style.SUCCESS(
+                "Demo data seeded. Users: admin/admin123, hadmin/admin123, drsmith/doctor123"
+            )
         )

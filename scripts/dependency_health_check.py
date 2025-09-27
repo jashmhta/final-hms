@@ -1,12 +1,18 @@
+"""
+dependency_health_check module
+"""
+
 import json
-import os
-import sys
-import subprocess
-import requests
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
 import logging
+import os
+import subprocess
+import sys
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import requests
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',

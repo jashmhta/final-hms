@@ -144,11 +144,14 @@ class HealthcareAIManager:
             self.medical_nlp = spacy.load("en_core_medical_lg")  # Medical NLP model
 
             # Clinical notes analysis
-            self.clinical_notes_analyzer = pipeline("text-classification", model="emilyalsentzer/Bio_ClinicalBERT")
+            self.clinical_notes_analyzer = pipeline(
+                "text-classification", model="emilyalsentzer/Bio_ClinicalBERT"
+            )
 
             # Drug interaction detection
             self.drug_interaction_analyzer = pipeline(
-                "text-classification", model="samrawal/bert-base-uncased-drug-interaction"
+                "text-classification",
+                model="samrawal/bert-base-uncased-drug-interaction",
             )
 
         except Exception as e:
@@ -171,7 +174,9 @@ class HealthcareAIManager:
             confidences = []
 
             # Predictive model
-            pred_outcome = self._predict_with_model("patient_outcome_predictor", features)
+            pred_outcome = self._predict_with_model(
+                "patient_outcome_predictor", features
+            )
             predictions.append(pred_outcome["prediction"])
             confidences.append(pred_outcome["confidence"])
 
@@ -184,10 +189,14 @@ class HealthcareAIManager:
             final_prediction = self._ensemble_predictions(predictions, confidences)
 
             # Generate interpretation
-            interpretation = self._generate_outcome_interpretation(final_prediction, features, patient_data)
+            interpretation = self._generate_outcome_interpretation(
+                final_prediction, features, patient_data
+            )
 
             # Generate recommendations
-            recommendations = self._generate_outcome_recommendations(final_prediction, patient_data)
+            recommendations = self._generate_outcome_recommendations(
+                final_prediction, patient_data
+            )
 
             result = PredictionResult(
                 prediction=final_prediction,
@@ -208,7 +217,9 @@ class HealthcareAIManager:
             self.logger.error(f"Patient outcome prediction error: {e}")
             raise
 
-    def predict_disease_risk(self, patient_data: PatientData, disease: str) -> PredictionResult:
+    def predict_disease_risk(
+        self, patient_data: PatientData, disease: str
+    ) -> PredictionResult:
         """Predict disease risk for specific conditions"""
         try:
             # Check cache first
@@ -221,7 +232,9 @@ class HealthcareAIManager:
             features = self._extract_disease_features(patient_data, disease)
 
             # Get risk prediction
-            risk_prediction = self._predict_with_model(f"disease_risk_{disease}", features)
+            risk_prediction = self._predict_with_model(
+                f"disease_risk_{disease}", features
+            )
 
             # Generate interpretation
             interpretation = self._generate_disease_risk_interpretation(
@@ -289,7 +302,12 @@ class HealthcareAIManager:
             doc = self.medical_nlp(clinical_notes)
             for ent in doc.ents:
                 results["entities"].append(
-                    {"text": ent.text, "label": ent.label_, "start": ent.start_char, "end": ent.end_char}
+                    {
+                        "text": ent.text,
+                        "label": ent.label_,
+                        "start": ent.start_char,
+                        "end": ent.end_char,
+                    }
                 )
 
             # Analyze sentiment and urgency
@@ -311,7 +329,9 @@ class HealthcareAIManager:
             self.logger.error(f"Clinical notes analysis error: {e}")
             raise
 
-    def detect_drug_interactions(self, medications: List[str], patient_data: PatientData) -> Dict[str, Any]:
+    def detect_drug_interactions(
+        self, medications: List[str], patient_data: PatientData
+    ) -> Dict[str, Any]:
         """Detect potential drug interactions"""
         try:
             interactions = []
@@ -324,24 +344,32 @@ class HealthcareAIManager:
                         interactions.append(interaction)
 
             # Check interactions with patient conditions
-            condition_interactions = self._check_condition_interactions(medications, patient_data)
+            condition_interactions = self._check_condition_interactions(
+                medications, patient_data
+            )
 
             # Check dosage interactions
-            dosage_interactions = self._check_dosage_interactions(medications, patient_data)
+            dosage_interactions = self._check_dosage_interactions(
+                medications, patient_data
+            )
 
             return {
                 "drug_interactions": interactions,
                 "condition_interactions": condition_interactions,
                 "dosage_interactions": dosage_interactions,
                 "severity_score": self._calculate_interaction_severity(interactions),
-                "recommendations": self._generate_interaction_recommendations(interactions),
+                "recommendations": self._generate_interaction_recommendations(
+                    interactions
+                ),
             }
 
         except Exception as e:
             self.logger.error(f"Drug interaction detection error: {e}")
             raise
 
-    def generate_treatment_recommendations(self, patient_data: PatientData) -> Dict[str, Any]:
+    def generate_treatment_recommendations(
+        self, patient_data: PatientData
+    ) -> Dict[str, Any]:
         """Generate AI-powered treatment recommendations"""
         try:
             recommendations = {
@@ -358,30 +386,42 @@ class HealthcareAIManager:
             features = self._extract_treatment_features(patient_data)
 
             # Get treatment predictions
-            treatment_prediction = self._predict_with_model("treatment_recommender", features)
+            treatment_prediction = self._predict_with_model(
+                "treatment_recommender", features
+            )
 
             # Generate primary treatment recommendation
             recommendations["primary_treatment"] = treatment_prediction["prediction"]
 
             # Generate alternative treatments
-            recommendations["alternative_treatments"] = self._generate_alternative_treatments(
-                patient_data, treatment_prediction["prediction"]
+            recommendations["alternative_treatments"] = (
+                self._generate_alternative_treatments(
+                    patient_data, treatment_prediction["prediction"]
+                )
             )
 
             # Generate lifestyle recommendations
-            recommendations["lifestyle_changes"] = self._generate_lifestyle_recommendations(patient_data)
+            recommendations["lifestyle_changes"] = (
+                self._generate_lifestyle_recommendations(patient_data)
+            )
 
             # Generate follow-up schedule
-            recommendations["follow_up_schedule"] = self._generate_follow_up_schedule(patient_data)
+            recommendations["follow_up_schedule"] = self._generate_follow_up_schedule(
+                patient_data
+            )
 
             # Generate monitoring parameters
-            recommendations["monitoring_parameters"] = self._generate_monitoring_parameters(patient_data)
+            recommendations["monitoring_parameters"] = (
+                self._generate_monitoring_parameters(patient_data)
+            )
 
             # Identify risk factors
             recommendations["risk_factors"] = self._identify_risk_factors(patient_data)
 
             # Identify contraindications
-            recommendations["contraindications"] = self._identify_contraindications(patient_data)
+            recommendations["contraindications"] = self._identify_contraindications(
+                patient_data
+            )
 
             return recommendations
 
@@ -399,7 +439,9 @@ class HealthcareAIManager:
         features["gender_female"] = 1 if patient_data.gender == "female" else 0
 
         # Medical history features
-        chronic_conditions = len([h for h in patient_data.medical_history if self._is_chronic_condition(h)])
+        chronic_conditions = len(
+            [h for h in patient_data.medical_history if self._is_chronic_condition(h)]
+        )
         features["chronic_condition_count"] = chronic_conditions
 
         # Medication features
@@ -408,23 +450,35 @@ class HealthcareAIManager:
         # Lab result features
         if patient_data.lab_results:
             features["abnormal_labs"] = len(
-                [lab for lab, value in patient_data.lab_results.items() if not self._is_normal_lab_value(lab, value)]
+                [
+                    lab
+                    for lab, value in patient_data.lab_results.items()
+                    if not self._is_normal_lab_value(lab, value)
+                ]
             )
 
         # Vital signs features
         if patient_data.vital_signs:
-            features["bp_systolic"] = patient_data.vital_signs.get("blood_pressure_systolic", 120)
-            features["bp_diastolic"] = patient_data.vital_signs.get("blood_pressure_diastolic", 80)
+            features["bp_systolic"] = patient_data.vital_signs.get(
+                "blood_pressure_systolic", 120
+            )
+            features["bp_diastolic"] = patient_data.vital_signs.get(
+                "blood_pressure_diastolic", 80
+            )
             features["heart_rate"] = patient_data.vital_signs.get("heart_rate", 70)
             features["temperature"] = patient_data.vital_signs.get("temperature", 98.6)
 
         # Symptom features
         features["symptom_count"] = len(patient_data.symptoms)
-        features["severe_symptoms"] = len([s for s in patient_data.symptoms if self._is_severe_symptom(s)])
+        features["severe_symptoms"] = len(
+            [s for s in patient_data.symptoms if self._is_severe_symptom(s)]
+        )
 
         return features
 
-    def _extract_disease_features(self, patient_data: PatientData, disease: str) -> Dict[str, float]:
+    def _extract_disease_features(
+        self, patient_data: PatientData, disease: str
+    ) -> Dict[str, float]:
         """Extract disease-specific features"""
         features = self._extract_outcome_features(patient_data)
 
@@ -434,17 +488,23 @@ class HealthcareAIManager:
 
         return features
 
-    def _extract_treatment_features(self, patient_data: PatientData) -> Dict[str, float]:
+    def _extract_treatment_features(
+        self, patient_data: PatientData
+    ) -> Dict[str, float]:
         """Extract features for treatment recommendation"""
         features = self._extract_outcome_features(patient_data)
 
         # Add treatment-specific features
         features["treatment_history"] = len(patient_data.treatment_plan)
-        features["treatment_adherence"] = self._calculate_treatment_adherence(patient_data)
+        features["treatment_adherence"] = self._calculate_treatment_adherence(
+            patient_data
+        )
 
         return features
 
-    def _predict_with_model(self, model_name: str, features: Dict[str, float]) -> Dict[str, Any]:
+    def _predict_with_model(
+        self, model_name: str, features: Dict[str, float]
+    ) -> Dict[str, Any]:
         """Make prediction with specified model"""
         try:
             model = self.model_registry.get(model_name)
@@ -468,11 +528,15 @@ class HealthcareAIManager:
             self.logger.error(f"Model prediction error: {e}")
             raise
 
-    def _ensemble_predictions(self, predictions: List[Any], confidences: List[float]) -> Any:
+    def _ensemble_predictions(
+        self, predictions: List[Any], confidences: List[float]
+    ) -> Any:
         """Ensemble multiple predictions"""
         # Simple weighted average based on confidence
         if isinstance(predictions[0], (int, float)):
-            return sum(p * c for p, c in zip(predictions, confidences)) / sum(confidences)
+            return sum(p * c for p, c in zip(predictions, confidences)) / sum(
+                confidences
+            )
         else:
             # For classification, use weighted voting
             vote_counts = {}
@@ -575,7 +639,9 @@ class HealthcareAIManager:
             return {
                 "findings": self._interpret_ultrasound_prediction(prediction),
                 "confidence": float(prediction.max()),
-                "recommendations": self._generate_ultrasound_recommendations(prediction),
+                "recommendations": self._generate_ultrasound_recommendations(
+                    prediction
+                ),
             }
 
         except Exception as e:
@@ -600,7 +666,10 @@ class HealthcareAIManager:
                 "severity": "moderate",  # mild, moderate, severe
                 "description": f"Potential interaction between {med1} and {med2}",
                 "effects": ["increased risk of side effects"],
-                "recommendations": ["Monitor patient closely", "Consider alternative medications"],
+                "recommendations": [
+                    "Monitor patient closely",
+                    "Consider alternative medications",
+                ],
             }
 
             # Cache result
@@ -630,9 +699,13 @@ class HealthcareAIManager:
             "complications": f"Patient has {probability:.1%} risk of developing complications. Close monitoring recommended.",
         }
 
-        return interpretations.get(outcome, f"Prediction: {outcome} with {probability:.1%} confidence")
+        return interpretations.get(
+            outcome, f"Prediction: {outcome} with {probability:.1%} confidence"
+        )
 
-    def _generate_outcome_recommendations(self, prediction: Any, patient_data: PatientData) -> List[str]:
+    def _generate_outcome_recommendations(
+        self, prediction: Any, patient_data: PatientData
+    ) -> List[str]:
         """Generate recommendations based on outcome prediction"""
         recommendations = []
 
@@ -661,7 +734,9 @@ class HealthcareAIManager:
         """Load predictive AI models"""
         try:
             # Patient outcome predictor
-            outcome_model = self._load_or_create_model("patient_outcome_predictor", "predictive")
+            outcome_model = self._load_or_create_model(
+                "patient_outcome_predictor", "predictive"
+            )
             if outcome_model:
                 self.model_registry["patient_outcome_predictor"] = outcome_model
 
@@ -679,7 +754,9 @@ class HealthcareAIManager:
             # Disease risk models
             diseases = ["diabetes", "heart_disease", "cancer", "respiratory"]
             for disease in diseases:
-                model = self._load_or_create_model(f"disease_risk_{disease}", "classification")
+                model = self._load_or_create_model(
+                    f"disease_risk_{disease}", "classification"
+                )
                 if model:
                     self.model_registry[f"disease_risk_{disease}"] = model
 
@@ -690,7 +767,9 @@ class HealthcareAIManager:
         """Load NLP models"""
         try:
             # Clinical notes analyzer
-            self.model_registry["clinical_notes_analyzer"] = self.clinical_notes_analyzer
+            self.model_registry["clinical_notes_analyzer"] = (
+                self.clinical_notes_analyzer
+            )
 
         except Exception as e:
             self.logger.error(f"NLP model loading error: {e}")
@@ -749,11 +828,17 @@ class HealthcareAIManager:
             ]
         )
 
-        model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+        model.compile(
+            optimizer="adam",
+            loss="sparse_categorical_crossentropy",
+            metrics=["accuracy"],
+        )
 
         return model
 
-    def _prepare_feature_vector(self, features: Dict[str, float], model_name: str) -> List[float]:
+    def _prepare_feature_vector(
+        self, features: Dict[str, float], model_name: str
+    ) -> List[float]:
         """Prepare feature vector for model input"""
         # This would handle feature scaling and ordering
         return list(features.values())
@@ -790,14 +875,22 @@ class HealthcareAIManager:
                 "recommendations": result.recommendations,
             }
 
-            self.redis_client.setex(cache_key, self.prediction_cache_ttl, json.dumps(data))
+            self.redis_client.setex(
+                cache_key, self.prediction_cache_ttl, json.dumps(data)
+            )
 
         except Exception as e:
             self.logger.error(f"Cache storage error: {e}")
 
     def _is_chronic_condition(self, condition: str) -> bool:
         """Check if condition is chronic"""
-        chronic_conditions = ["diabetes", "hypertension", "heart_disease", "asthma", "copd"]
+        chronic_conditions = [
+            "diabetes",
+            "hypertension",
+            "heart_disease",
+            "asthma",
+            "copd",
+        ]
         return condition.lower() in chronic_conditions
 
     def _is_normal_lab_value(self, lab: str, value: float) -> bool:
@@ -818,7 +911,12 @@ class HealthcareAIManager:
 
     def _is_severe_symptom(self, symptom: str) -> bool:
         """Check if symptom is severe"""
-        severe_symptoms = ["chest_pain", "shortness_of_breath", "severe_headache", "unconsciousness"]
+        severe_symptoms = [
+            "chest_pain",
+            "shortness_of_breath",
+            "severe_headache",
+            "unconsciousness",
+        ]
         return symptom.lower() in severe_symptoms
 
     def _get_disease_specific_features(self, disease: str) -> Dict[str, float]:
@@ -872,45 +970,66 @@ class HealthcareAIManager:
         # This would analyze text for urgency indicators
         return "low"
 
-    def _generate_note_recommendations(self, analysis_results: Dict[str, Any]) -> List[str]:
+    def _generate_note_recommendations(
+        self, analysis_results: Dict[str, Any]
+    ) -> List[str]:
         """Generate recommendations from clinical notes analysis"""
         return ["Continue current treatment plan"]
 
-    def _check_condition_interactions(self, medications: List[str], patient_data: PatientData) -> List[Dict[str, Any]]:
+    def _check_condition_interactions(
+        self, medications: List[str], patient_data: PatientData
+    ) -> List[Dict[str, Any]]:
         """Check interactions with patient conditions"""
         return []
 
-    def _check_dosage_interactions(self, medications: List[str], patient_data: PatientData) -> List[Dict[str, Any]]:
+    def _check_dosage_interactions(
+        self, medications: List[str], patient_data: PatientData
+    ) -> List[Dict[str, Any]]:
         """Check dosage interactions"""
         return []
 
-    def _calculate_interaction_severity(self, interactions: List[Dict[str, Any]]) -> float:
+    def _calculate_interaction_severity(
+        self, interactions: List[Dict[str, Any]]
+    ) -> float:
         """Calculate interaction severity score"""
         if not interactions:
             return 0.0
 
         severity_scores = {"mild": 1, "moderate": 2, "severe": 3}
-        total_score = sum(severity_scores.get(interaction.get("severity", "mild"), 1) for interaction in interactions)
+        total_score = sum(
+            severity_scores.get(interaction.get("severity", "mild"), 1)
+            for interaction in interactions
+        )
         return total_score / len(interactions)
 
-    def _generate_interaction_recommendations(self, interactions: List[Dict[str, Any]]) -> List[str]:
+    def _generate_interaction_recommendations(
+        self, interactions: List[Dict[str, Any]]
+    ) -> List[str]:
         """Generate recommendations for drug interactions"""
         recommendations = []
         for interaction in interactions:
             recommendations.extend(interaction.get("recommendations", []))
         return list(set(recommendations))
 
-    def _generate_alternative_treatments(self, patient_data: PatientData, primary_treatment: str) -> List[str]:
+    def _generate_alternative_treatments(
+        self, patient_data: PatientData, primary_treatment: str
+    ) -> List[str]:
         """Generate alternative treatment options"""
         return []
 
-    def _generate_lifestyle_recommendations(self, patient_data: PatientData) -> List[str]:
+    def _generate_lifestyle_recommendations(
+        self, patient_data: PatientData
+    ) -> List[str]:
         """Generate lifestyle recommendations"""
         return ["Exercise regularly", "Maintain healthy diet"]
 
     def _generate_follow_up_schedule(self, patient_data: PatientData) -> Dict[str, Any]:
         """Generate follow-up schedule"""
-        return {"initial_follow_up": "1 week", "subsequent_follow_ups": "1 month", "monitoring_frequency": "weekly"}
+        return {
+            "initial_follow_up": "1 week",
+            "subsequent_follow_ups": "1 month",
+            "monitoring_frequency": "weekly",
+        }
 
     def _generate_monitoring_parameters(self, patient_data: PatientData) -> List[str]:
         """Generate monitoring parameters"""

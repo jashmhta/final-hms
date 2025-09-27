@@ -3,39 +3,52 @@ Comprehensive unit tests for core HMS module
 """
 
 import json
-import pytest
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+from rest_framework import status
+from rest_framework.test import APIClient
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase
-from django.utils import timezone
 from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
+from django.utils import timezone
 
-from core.models import AuditLog, SystemConfig, Notification, Task, IntegrationLog
+from core.middleware import AuditMiddleware, PerformanceMiddleware, SecurityMiddleware
+from core.models import AuditLog, IntegrationLog, Notification, SystemConfig, Task
+from core.permissions import IsDoctor, IsHospitalAdmin, IsNurse, IsStaff, IsSuperUser
 from core.serializers import (
-    AuditLogSerializer, SystemConfigSerializer, NotificationSerializer,
-    TaskSerializer, IntegrationLogSerializer
+    AuditLogSerializer,
+    IntegrationLogSerializer,
+    NotificationSerializer,
+    SystemConfigSerializer,
+    TaskSerializer,
 )
-from core.views import (
-    AuditLogViewSet, SystemConfigViewSet, NotificationViewSet,
-    TaskViewSet, IntegrationLogViewSet
+from core.tasks import (
+    cleanup_old_logs,
+    generate_daily_report,
+    send_email_notification,
+    send_sms_notification,
 )
 from core.utils import (
-    generate_unique_id, encrypt_sensitive_data, decrypt_sensitive_data,
-    validate_phone_number, validate_email, calculate_age,
-    format_currency, parse_date, send_notification
+    calculate_age,
+    decrypt_sensitive_data,
+    encrypt_sensitive_data,
+    format_currency,
+    generate_unique_id,
+    parse_date,
+    send_notification,
+    validate_email,
+    validate_phone_number,
 )
-from core.permissions import (
-    IsSuperUser, IsHospitalAdmin, IsDoctor, IsNurse, IsStaff
-)
-from core.middleware import SecurityMiddleware, AuditMiddleware, PerformanceMiddleware
-from core.tasks import (
-    send_email_notification, send_sms_notification,
-    cleanup_old_logs, generate_daily_report
+from core.views import (
+    AuditLogViewSet,
+    IntegrationLogViewSet,
+    NotificationViewSet,
+    SystemConfigViewSet,
+    TaskViewSet,
 )
 
 User = get_user_model()
@@ -49,14 +62,14 @@ class CoreModelTests(TestCase):
             username="testuser",
             email="test@example.com",
             password="SecurePass123!",
-            role="staff"
+            role="staff",
         )
         self.hospital_data = {
             "name": "Test Hospital",
             "code": "TEST001",
             "address": "123 Test St",
             "phone": "+1234567890",
-            "email": "test@hospital.com"
+            "email": "test@hospital.com",
         }
 
     def test_audit_log_creation(self):
@@ -68,7 +81,7 @@ class CoreModelTests(TestCase):
             resource_id=self.user.id,
             ip_address="127.0.0.1",
             user_agent="test-agent",
-            details={"login_method": "password"}
+            details={"login_method": "password"},
         )
 
         self.assertEqual(audit_log.user, self.user)
@@ -85,7 +98,7 @@ class CoreModelTests(TestCase):
             value="test_value",
             description="Test configuration",
             data_type="string",
-            is_active=True
+            is_active=True,
         )
 
         self.assertEqual(config.key, "test_config")
@@ -103,7 +116,7 @@ class CoreModelTests(TestCase):
             message="This is a test notification",
             notification_type="info",
             priority="medium",
-            is_read=False
+            is_read=False,
         )
 
         self.assertEqual(notification.user, self.user)
@@ -121,7 +134,7 @@ class CoreModelTests(TestCase):
             created_by=self.user,
             status="pending",
             priority="medium",
-            due_date=timezone.now() + timedelta(days=1)
+            due_date=timezone.now() + timedelta(days=1),
         )
 
         self.assertEqual(task.title, "Test Task")
@@ -139,7 +152,7 @@ class CoreModelTests(TestCase):
             request_data={"param": "value"},
             response_data={"result": "success"},
             status_code=200,
-            duration_ms=150
+            duration_ms=150,
         )
 
         self.assertEqual(integration_log.service, "external_api")
@@ -156,13 +169,13 @@ class CoreSerializerTests(TestCase):
             username="testuser",
             email="test@example.com",
             password="SecurePass123!",
-            role="staff"
+            role="staff",
         )
         self.audit_log = AuditLog.objects.create(
             user=self.user,
             action="test_action",
             resource_type="test_resource",
-            resource_id=1
+            resource_id=1,
         )
 
     def test_audit_log_serializer(self):
@@ -170,25 +183,23 @@ class CoreSerializerTests(TestCase):
         serializer = AuditLogSerializer(self.audit_log)
         data = serializer.data
 
-        self.assertEqual(data['action'], "test_action")
-        self.assertEqual(data['resource_type'], "test_resource")
-        self.assertEqual(data['resource_id'], 1)
-        self.assertIn('timestamp', data)
-        self.assertIn('user', data)
+        self.assertEqual(data["action"], "test_action")
+        self.assertEqual(data["resource_type"], "test_resource")
+        self.assertEqual(data["resource_id"], 1)
+        self.assertIn("timestamp", data)
+        self.assertIn("user", data)
 
     def test_system_config_serializer(self):
         """Test system config serializer"""
         config = SystemConfig.objects.create(
-            key="test_key",
-            value="test_value",
-            data_type="string"
+            key="test_key", value="test_value", data_type="string"
         )
         serializer = SystemConfigSerializer(config)
         data = serializer.data
 
-        self.assertEqual(data['key'], "test_key")
-        self.assertEqual(data['value'], "test_value")
-        self.assertEqual(data['data_type'], "string")
+        self.assertEqual(data["key"], "test_key")
+        self.assertEqual(data["value"], "test_value")
+        self.assertEqual(data["data_type"], "string")
 
     def test_notification_serializer(self):
         """Test notification serializer"""
@@ -196,14 +207,14 @@ class CoreSerializerTests(TestCase):
             user=self.user,
             title="Test Notification",
             message="Test message",
-            notification_type="info"
+            notification_type="info",
         )
         serializer = NotificationSerializer(notification)
         data = serializer.data
 
-        self.assertEqual(data['title'], "Test Notification")
-        self.assertEqual(data['message'], "Test message")
-        self.assertEqual(data['notification_type'], "info")
+        self.assertEqual(data["title"], "Test Notification")
+        self.assertEqual(data["message"], "Test message")
+        self.assertEqual(data["notification_type"], "info")
 
     def test_task_serializer(self):
         """Test task serializer"""
@@ -211,15 +222,15 @@ class CoreSerializerTests(TestCase):
             title="Test Task",
             assigned_to=self.user,
             created_by=self.user,
-            status="pending"
+            status="pending",
         )
         serializer = TaskSerializer(task)
         data = serializer.data
 
-        self.assertEqual(data['title'], "Test Task")
-        self.assertEqual(data['status'], "pending")
-        self.assertIn('assigned_to', data)
-        self.assertIn('created_by', data)
+        self.assertEqual(data["title"], "Test Task")
+        self.assertEqual(data["status"], "pending")
+        self.assertIn("assigned_to", data)
+        self.assertIn("created_by", data)
 
     def test_integration_log_serializer(self):
         """Test integration log serializer"""
@@ -227,14 +238,14 @@ class CoreSerializerTests(TestCase):
             service="test_service",
             operation="GET",
             endpoint="https://api.example.com",
-            status_code=200
+            status_code=200,
         )
         serializer = IntegrationLogSerializer(integration_log)
         data = serializer.data
 
-        self.assertEqual(data['service'], "test_service")
-        self.assertEqual(data['operation'], "GET")
-        self.assertEqual(data['status_code'], 200)
+        self.assertEqual(data["service"], "test_service")
+        self.assertEqual(data["operation"], "GET")
+        self.assertEqual(data["status_code"], 200)
 
 
 class CoreViewTests(TestCase):
@@ -246,18 +257,18 @@ class CoreViewTests(TestCase):
             username="testuser",
             email="test@example.com",
             password="SecurePass123!",
-            role="staff"
+            role="staff",
         )
         self.audit_log = AuditLog.objects.create(
             user=self.user,
             action="test_action",
             resource_type="test_resource",
-            resource_id=1
+            resource_id=1,
         )
 
     def test_audit_log_viewset_unauthorized(self):
         """Test audit log viewset requires authentication"""
-        response = self.client.get(reverse('auditlog-list'))
+        response = self.client.get(reverse("auditlog-list"))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_audit_log_viewset_authorized(self):
@@ -265,9 +276,9 @@ class CoreViewTests(TestCase):
         from rest_framework_simplejwt.tokens import RefreshToken
 
         token = RefreshToken.for_user(self.user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token.access_token}')
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
 
-        response = self.client.get(reverse('auditlog-list'))
+        response = self.client.get(reverse("auditlog-list"))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_notification_viewset_create(self):
@@ -275,16 +286,16 @@ class CoreViewTests(TestCase):
         from rest_framework_simplejwt.tokens import RefreshToken
 
         token = RefreshToken.for_user(self.user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token.access_token}')
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
 
         notification_data = {
             "title": "Test Notification",
             "message": "Test message",
             "notification_type": "info",
-            "priority": "medium"
+            "priority": "medium",
         }
 
-        response = self.client.post(reverse('notification-list'), notification_data)
+        response = self.client.post(reverse("notification-list"), notification_data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         notification = Notification.objects.get(title="Test Notification")
@@ -295,35 +306,35 @@ class CoreViewTests(TestCase):
         from rest_framework_simplejwt.tokens import RefreshToken
 
         token = RefreshToken.for_user(self.user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token.access_token}')
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
 
         Task.objects.create(
             title="Test Task",
             assigned_to=self.user,
             created_by=self.user,
-            status="pending"
+            status="pending",
         )
 
-        response = self.client.get(reverse('task-list'))
+        response = self.client.get(reverse("task-list"))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(len(response.data["results"]), 1)
 
     def test_system_config_viewset_retrieve(self):
         """Test system config viewset retrieve"""
         from rest_framework_simplejwt.tokens import RefreshToken
 
         config = SystemConfig.objects.create(
-            key="test_key",
-            value="test_value",
-            data_type="string"
+            key="test_key", value="test_value", data_type="string"
         )
 
         token = RefreshToken.for_user(self.user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token.access_token}')
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
 
-        response = self.client.get(reverse('systemconfig-detail', kwargs={'pk': config.pk}))
+        response = self.client.get(
+            reverse("systemconfig-detail", kwargs={"pk": config.pk})
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['key'], "test_key")
+        self.assertEqual(response.data["key"], "test_key")
 
 
 class CoreUtilityTests(TestCase):
@@ -352,18 +363,9 @@ class CoreUtilityTests(TestCase):
 
     def test_validate_phone_number(self):
         """Test phone number validation"""
-        valid_numbers = [
-            "+1234567890",
-            "+1 (234) 567-8900",
-            "+44 20 7946 0958"
-        ]
+        valid_numbers = ["+1234567890", "+1 (234) 567-8900", "+44 20 7946 0958"]
 
-        invalid_numbers = [
-            "1234567890",
-            "abc1234567",
-            "",
-            None
-        ]
+        invalid_numbers = ["1234567890", "abc1234567", "", None]
 
         for number in valid_numbers:
             self.assertTrue(validate_phone_number(number))
@@ -376,16 +378,10 @@ class CoreUtilityTests(TestCase):
         valid_emails = [
             "test@example.com",
             "user.name@domain.co.uk",
-            "user+tag@example.org"
+            "user+tag@example.org",
         ]
 
-        invalid_emails = [
-            "invalid-email",
-            "@example.com",
-            "user@",
-            "",
-            None
-        ]
+        invalid_emails = ["invalid-email", "@example.com", "user@", "", None]
 
         for email in valid_emails:
             self.assertTrue(validate_email(email))
@@ -418,7 +414,7 @@ class CoreUtilityTests(TestCase):
         self.assertEqual(parsed_date.month, 1)
         self.assertEqual(parsed_date.day, 15)
 
-    @patch('core.utils.send_notification')
+    @patch("core.utils.send_notification")
     def test_send_notification(self, mock_send_notification):
         """Test notification sending"""
         user = Mock()
@@ -437,31 +433,31 @@ class CorePermissionTests(TestCase):
         self.superuser = User.objects.create_superuser(
             username="superuser",
             email="superuser@example.com",
-            password="SecurePass123!"
+            password="SecurePass123!",
         )
         self.admin = User.objects.create_user(
             username="admin",
             email="admin@hospital.com",
             password="SecurePass123!",
-            role="admin"
+            role="admin",
         )
         self.doctor = User.objects.create_user(
             username="doctor",
             email="doctor@hospital.com",
             password="SecurePass123!",
-            role="doctor"
+            role="doctor",
         )
         self.nurse = User.objects.create_user(
             username="nurse",
             email="nurse@hospital.com",
             password="SecurePass123!",
-            role="nurse"
+            role="nurse",
         )
         self.staff = User.objects.create_user(
             username="staff",
             email="staff@hospital.com",
             password="SecurePass123!",
-            role="staff"
+            role="staff",
         )
 
     def test_is_super_user_permission(self):
@@ -534,25 +530,24 @@ class CoreMiddlewareTests(TestCase):
 
     def test_security_middleware(self):
         """Test security middleware"""
-        response = self.client.get('/')
+        response = self.client.get("/")
 
-        self.assertIn('X-Content-Type-Options', response)
-        self.assertIn('X-Frame-Options', response)
-        self.assertIn('X-XSS-Protection', response)
+        self.assertIn("X-Content-Type-Options", response)
+        self.assertIn("X-Frame-Options", response)
+        self.assertIn("X-XSS-Protection", response)
 
     def test_audit_middleware(self):
         """Test audit middleware"""
         user = User.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="SecurePass123!"
+            username="testuser", email="test@example.com", password="SecurePass123!"
         )
 
         from rest_framework_simplejwt.tokens import RefreshToken
-        token = RefreshToken.for_user(user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token.access_token}')
 
-        response = self.client.get('/')
+        token = RefreshToken.for_user(user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
+
+        response = self.client.get("/")
 
         # Check if audit log was created
         audit_log = AuditLog.objects.filter(user=user).first()
@@ -561,10 +556,10 @@ class CoreMiddlewareTests(TestCase):
 
     def test_performance_middleware(self):
         """Test performance middleware"""
-        response = self.client.get('/')
+        response = self.client.get("/")
 
-        self.assertIn('X-Response-Time', response)
-        response_time = float(response['X-Response-Time'])
+        self.assertIn("X-Response-Time", response)
+        response_time = float(response["X-Response-Time"])
         self.assertGreaterEqual(response_time, 0)
 
 
@@ -573,12 +568,10 @@ class CoreTaskTests(TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="SecurePass123!"
+            username="testuser", email="test@example.com", password="SecurePass123!"
         )
 
-    @patch('core.tasks.send_email_notification.delay')
+    @patch("core.tasks.send_email_notification.delay")
     def test_send_email_notification_task(self, mock_send_email):
         """Test email notification task"""
         user_id = self.user.id
@@ -589,7 +582,7 @@ class CoreTaskTests(TestCase):
 
         mock_send_email.assert_called_once_with(user_id, subject, message)
 
-    @patch('core.tasks.send_sms_notification.delay')
+    @patch("core.tasks.send_sms_notification.delay")
     def test_send_sms_notification_task(self, mock_send_sms):
         """Test SMS notification task"""
         user_id = self.user.id
@@ -599,7 +592,7 @@ class CoreTaskTests(TestCase):
 
         mock_send_sms.assert_called_once_with(user_id, message)
 
-    @patch('core.tasks.cleanup_old_logs.delay')
+    @patch("core.tasks.cleanup_old_logs.delay")
     def test_cleanup_old_logs_task(self, mock_cleanup):
         """Test cleanup old logs task"""
         days = 30
@@ -608,7 +601,7 @@ class CoreTaskTests(TestCase):
 
         mock_cleanup.assert_called_once_with(days)
 
-    @patch('core.tasks.generate_daily_report.delay')
+    @patch("core.tasks.generate_daily_report.delay")
     def test_generate_daily_report_task(self, mock_generate_report):
         """Test generate daily report task"""
         report_date = timezone.now().date()
@@ -626,7 +619,7 @@ class CoreIntegrationTests(TestCase):
             username="testuser",
             email="test@example.com",
             password="SecurePass123!",
-            role="staff"
+            role="staff",
         )
 
     def test_audit_log_integration(self):
@@ -637,7 +630,7 @@ class CoreIntegrationTests(TestCase):
             action="user_profile_update",
             resource_type="user",
             resource_id=self.user.id,
-            details={"updated_fields": ["email", "phone"]}
+            details={"updated_fields": ["email", "phone"]},
         )
 
         # Verify audit log is created correctly
@@ -653,7 +646,7 @@ class CoreIntegrationTests(TestCase):
             title="Profile Updated",
             message="Your profile has been updated successfully",
             notification_type="success",
-            priority="medium"
+            priority="medium",
         )
 
         # Verify notification is created
@@ -671,7 +664,7 @@ class CoreIntegrationTests(TestCase):
             created_by=self.user,
             status="pending",
             priority="high",
-            due_date=timezone.now() + timedelta(days=3)
+            due_date=timezone.now() + timedelta(days=3),
         )
 
         # Verify task is created
@@ -686,7 +679,7 @@ class CoreIntegrationTests(TestCase):
             key="email_notifications_enabled",
             value="true",
             data_type="boolean",
-            description="Enable email notifications"
+            description="Enable email notifications",
         )
 
         # Verify config is created
@@ -704,7 +697,7 @@ class CoreIntegrationTests(TestCase):
             request_data={"amount": 100, "currency": "USD"},
             response_data={"success": True, "transaction_id": "txn_123"},
             status_code=200,
-            duration_ms=250
+            duration_ms=250,
         )
 
         # Verify integration log is created
@@ -719,9 +712,7 @@ class CorePerformanceTests(TestCase):
     def test_audit_log_query_performance(self):
         """Test audit log query performance"""
         user = User.objects.create_user(
-            username="perfuser",
-            email="perf@example.com",
-            password="SecurePass123!"
+            username="perfuser", email="perf@example.com", password="SecurePass123!"
         )
 
         # Create multiple audit logs
@@ -730,21 +721,19 @@ class CorePerformanceTests(TestCase):
                 user=user,
                 action=f"test_action_{i}",
                 resource_type="test_resource",
-                resource_id=i
+                resource_id=i,
             )
 
         # Test query performance
         with self.assertNumQueries(1):
-            logs = AuditLog.objects.filter(user=user).select_related('user')
+            logs = AuditLog.objects.filter(user=user).select_related("user")
             list(logs)
 
     def test_system_config_cache_performance(self):
         """Test system config cache performance"""
         # Create system config
         SystemConfig.objects.create(
-            key="test_cache_key",
-            value="test_cache_value",
-            data_type="string"
+            key="test_cache_key", value="test_cache_value", data_type="string"
         )
 
         # Test cache hit
@@ -758,9 +747,7 @@ class CorePerformanceTests(TestCase):
     def test_notification_bulk_create_performance(self):
         """Test notification bulk create performance"""
         user = User.objects.create_user(
-            username="bulkuser",
-            email="bulk@example.com",
-            password="SecurePass123!"
+            username="bulkuser", email="bulk@example.com", password="SecurePass123!"
         )
 
         # Create notifications in bulk
@@ -772,7 +759,7 @@ class CorePerformanceTests(TestCase):
                     title=f"Test Notification {i}",
                     message=f"Test message {i}",
                     notification_type="info",
-                    priority="medium"
+                    priority="medium",
                 )
             )
 
@@ -791,7 +778,7 @@ class CoreSecurityTests(TestCase):
         user = User.objects.create_user(
             username="securityuser",
             email="security@example.com",
-            password="SecurePass123!"
+            password="SecurePass123!",
         )
 
         # Create audit log with sensitive data
@@ -801,7 +788,7 @@ class CoreSecurityTests(TestCase):
             resource_type="patient_record",
             resource_id=1,
             details={"accessed_fields": ["diagnosis", "treatment"]},
-            ip_address="192.168.1.100"
+            ip_address="192.168.1.100",
         )
 
         # Verify sensitive data is logged
@@ -816,7 +803,7 @@ class CoreSecurityTests(TestCase):
             key="api_secret_key",
             value="encrypted_secret_value",
             data_type="string",
-            is_sensitive=True
+            is_sensitive=True,
         )
 
         # Verify sensitive config is created
@@ -827,9 +814,7 @@ class CoreSecurityTests(TestCase):
     def test_notification_security(self):
         """Test notification security"""
         user = User.objects.create_user(
-            username="notifuser",
-            email="notif@example.com",
-            password="SecurePass123!"
+            username="notifuser", email="notif@example.com", password="SecurePass123!"
         )
 
         # Create notification with sensitive information
@@ -839,7 +824,7 @@ class CoreSecurityTests(TestCase):
             message="Unusual login activity detected",
             notification_type="security",
             priority="high",
-            is_sensitive=True
+            is_sensitive=True,
         )
 
         # Verify sensitive notification is created
@@ -857,7 +842,7 @@ class CoreSecurityTests(TestCase):
             request_data={"amount": 100, "card_number": "****-****-****-1234"},
             response_data={"success": True, "transaction_id": "txn_123"},
             status_code=200,
-            is_sensitive=True
+            is_sensitive=True,
         )
 
         # Verify sensitive integration log is created
@@ -872,9 +857,7 @@ class CoreEdgeCaseTests(TestCase):
     def test_audit_log_edge_cases(self):
         """Test audit log edge cases"""
         user = User.objects.create_user(
-            username="edgeuser",
-            email="edge@example.com",
-            password="SecurePass123!"
+            username="edgeuser", email="edge@example.com", password="SecurePass123!"
         )
 
         # Test with empty details
@@ -883,7 +866,7 @@ class CoreEdgeCaseTests(TestCase):
             action="test_action",
             resource_type="test_resource",
             resource_id=1,
-            details={}
+            details={},
         )
 
         self.assertEqual(audit_log.details, {})
@@ -894,7 +877,7 @@ class CoreEdgeCaseTests(TestCase):
             action="test_action_2",
             resource_type="test_resource",
             resource_id=2,
-            details=None
+            details=None,
         )
 
         self.assertIsNone(audit_log.details)
@@ -903,18 +886,14 @@ class CoreEdgeCaseTests(TestCase):
         """Test system config edge cases"""
         # Test with empty value
         config = SystemConfig.objects.create(
-            key="empty_config",
-            value="",
-            data_type="string"
+            key="empty_config", value="", data_type="string"
         )
 
         self.assertEqual(config.value, "")
 
         # Test with None value
         config = SystemConfig.objects.create(
-            key="null_config",
-            value=None,
-            data_type="null"
+            key="null_config", value=None, data_type="null"
         )
 
         self.assertIsNone(config.value)
@@ -922,17 +901,12 @@ class CoreEdgeCaseTests(TestCase):
     def test_notification_edge_cases(self):
         """Test notification edge cases"""
         user = User.objects.create_user(
-            username="edgeuser2",
-            email="edge2@example.com",
-            password="SecurePass123!"
+            username="edgeuser2", email="edge2@example.com", password="SecurePass123!"
         )
 
         # Test with empty message
         notification = Notification.objects.create(
-            user=user,
-            title="Empty Message",
-            message="",
-            notification_type="info"
+            user=user, title="Empty Message", message="", notification_type="info"
         )
 
         self.assertEqual(notification.message, "")
@@ -943,7 +917,7 @@ class CoreEdgeCaseTests(TestCase):
             user=user,
             title="Long Message",
             message=long_message,
-            notification_type="info"
+            notification_type="info",
         )
 
         self.assertEqual(len(notification.message), 10000)
@@ -951,9 +925,7 @@ class CoreEdgeCaseTests(TestCase):
     def test_task_edge_cases(self):
         """Test task edge cases"""
         user = User.objects.create_user(
-            username="edgeuser3",
-            email="edge3@example.com",
-            password="SecurePass123!"
+            username="edgeuser3", email="edge3@example.com", password="SecurePass123!"
         )
 
         # Test with empty description
@@ -962,7 +934,7 @@ class CoreEdgeCaseTests(TestCase):
             description="",
             assigned_to=user,
             created_by=user,
-            status="pending"
+            status="pending",
         )
 
         self.assertEqual(task.description, "")
@@ -975,7 +947,7 @@ class CoreEdgeCaseTests(TestCase):
             assigned_to=user,
             created_by=user,
             status="pending",
-            due_date=past_date
+            due_date=past_date,
         )
 
         self.assertEqual(task.status, "pending")
@@ -995,7 +967,7 @@ class CoreModuleUnitTests:
 
     def test_encrypt_decrypt_roundtrip(self):
         """Test encryption/decryption roundtrip"""
-        from core.utils import encrypt_sensitive_data, decrypt_sensitive_data
+        from core.utils import decrypt_sensitive_data, encrypt_sensitive_data
 
         original_data = "sensitive_test_data"
         encrypted = encrypt_sensitive_data(original_data)
@@ -1004,14 +976,17 @@ class CoreModuleUnitTests:
         assert original_data == decrypted
         assert original_data != encrypted
 
-    @pytest.mark.parametrize("phone_number,expected", [
-        ("+1234567890", True),
-        ("+1 (234) 567-8900", True),
-        ("1234567890", False),
-        ("invalid", False),
-        ("", False),
-        (None, False)
-    ])
+    @pytest.mark.parametrize(
+        "phone_number,expected",
+        [
+            ("+1234567890", True),
+            ("+1 (234) 567-8900", True),
+            ("1234567890", False),
+            ("invalid", False),
+            ("", False),
+            (None, False),
+        ],
+    )
     def test_validate_phone_number_parametrized(self, phone_number, expected):
         """Test phone number validation with parametrized inputs"""
         from core.utils import validate_phone_number
@@ -1019,14 +994,17 @@ class CoreModuleUnitTests:
         result = validate_phone_number(phone_number)
         assert result == expected
 
-    @pytest.mark.parametrize("email,expected", [
-        ("test@example.com", True),
-        ("user.name@domain.co.uk", True),
-        ("invalid-email", False),
-        ("@example.com", False),
-        ("", False),
-        (None, False)
-    ])
+    @pytest.mark.parametrize(
+        "email,expected",
+        [
+            ("test@example.com", True),
+            ("user.name@domain.co.uk", True),
+            ("invalid-email", False),
+            ("@example.com", False),
+            ("", False),
+            (None, False),
+        ],
+    )
     def test_validate_email_parametrized(self, email, expected):
         """Test email validation with parametrized inputs"""
         from core.utils import validate_email
@@ -1036,8 +1014,9 @@ class CoreModuleUnitTests:
 
     def test_calculate_age_with_future_date(self):
         """Test age calculation with future date"""
-        from core.utils import calculate_age
         from datetime import date, timedelta
+
+        from core.utils import calculate_age
 
         future_date = date.today() + timedelta(days=1)
         age = calculate_age(future_date)
@@ -1059,8 +1038,8 @@ class CoreModuleUnitTests:
         with pytest.raises(ValueError):
             parse_date("invalid-date")
 
-    @patch('core.utils.cache.get')
-    @patch('core.utils.cache.set')
+    @patch("core.utils.cache.get")
+    @patch("core.utils.cache.set")
     def test_system_config_caching(self, mock_cache_set, mock_cache_get):
         """Test system config caching"""
         from core.models import SystemConfig
@@ -1070,9 +1049,7 @@ class CoreModuleUnitTests:
 
         # Create config
         config = SystemConfig.objects.create(
-            key="test_cache_config",
-            value="test_value",
-            data_type="string"
+            key="test_cache_config", value="test_value", data_type="string"
         )
 
         # Verify cache was called
@@ -1081,21 +1058,20 @@ class CoreModuleUnitTests:
 
     def test_audit_log_str_representation(self):
         """Test audit log string representation"""
-        from core.models import AuditLog
         from django.contrib.auth import get_user_model
+
+        from core.models import AuditLog
 
         User = get_user_model()
         user = User.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="SecurePass123!"
+            username="testuser", email="test@example.com", password="SecurePass123!"
         )
 
         audit_log = AuditLog.objects.create(
             user=user,
             action="test_action",
             resource_type="test_resource",
-            resource_id=1
+            resource_id=1,
         )
 
         str_repr = str(audit_log)
@@ -1104,21 +1080,20 @@ class CoreModuleUnitTests:
 
     def test_notification_str_representation(self):
         """Test notification string representation"""
-        from core.models import Notification
         from django.contrib.auth import get_user_model
+
+        from core.models import Notification
 
         User = get_user_model()
         user = User.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="SecurePass123!"
+            username="testuser", email="test@example.com", password="SecurePass123!"
         )
 
         notification = Notification.objects.create(
             user=user,
             title="Test Notification",
             message="Test message",
-            notification_type="info"
+            notification_type="info",
         )
 
         str_repr = str(notification)
@@ -1127,21 +1102,17 @@ class CoreModuleUnitTests:
 
     def test_task_str_representation(self):
         """Test task string representation"""
-        from core.models import Task
         from django.contrib.auth import get_user_model
+
+        from core.models import Task
 
         User = get_user_model()
         user = User.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="SecurePass123!"
+            username="testuser", email="test@example.com", password="SecurePass123!"
         )
 
         task = Task.objects.create(
-            title="Test Task",
-            assigned_to=user,
-            created_by=user,
-            status="pending"
+            title="Test Task", assigned_to=user, created_by=user, status="pending"
         )
 
         str_repr = str(task)

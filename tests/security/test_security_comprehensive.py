@@ -11,33 +11,38 @@ This module implements comprehensive security tests including:
 - Penetration testing scenarios
 """
 
-import pytest
-import json
-import requests
-import jwt
-import hashlib
 import base64
+import hashlib
+import json
 import time
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, MagicMock
-from django.test import TestCase, Client
-from django.urls import reverse
-from django.contrib.auth import get_user_model
-from django.core.management import call_command
-from rest_framework.test import APIClient
+from unittest.mock import MagicMock, Mock, patch
+
+import jwt
+import pytest
+import requests
 from rest_framework import status
 from rest_framework.authtoken.models import Token
+from rest_framework.test import APIClient
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+
+from django.contrib.auth import get_user_model
+from django.core.management import call_command
+from django.test import Client, TestCase
+from django.urls import reverse
+
+from ..conftest import HealthcareDataMixin, PerformanceTestingMixin
 
 # Import security framework
 from .security_framework import (
-    SecurityTestingFramework, SecurityTestResult, HMSSecurityTestCase
+    HMSSecurityTestCase,
+    SecurityTestingFramework,
+    SecurityTestResult,
 )
-from ..conftest import HealthcareDataMixin, PerformanceTestingMixin
 
 User = get_user_model()
 

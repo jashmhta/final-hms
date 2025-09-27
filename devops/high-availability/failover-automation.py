@@ -1,31 +1,36 @@
+import secrets
+
 #!/usr/bin/env python3
 """
 HMS Enterprise-Grade Failover Automation System
 Automated failover and failback for high availability healthcare systems
 """
 
+import json
+import logging
 import os
 import sys
-import json
-import time
-import boto3
-import logging
-import requests
 import threading
+import time
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass, asdict
 from enum import Enum
-from kubernetes import client, config
-from kubernetes.client.rest import ApiException
+from typing import Any, Dict, List, Optional, Tuple
+
+import boto3
 
 # Healthcare-specific imports
 import psycopg2
 import redis
+import requests
 from elasticsearch import Elasticsearch
+from kubernetes import client, config
+from kubernetes.client.rest import ApiException
+
 
 class FailoverState(Enum):
     """Failover states"""
+
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     FAILOVER_IN_PROGRESS = "failover_in_progress"
@@ -34,17 +39,21 @@ class FailoverState(Enum):
     FAILBACK_COMPLETE = "failback_complete"
     EMERGENCY = "emergency"
 
+
 class RegionStatus(Enum):
     """Region status"""
+
     ACTIVE = "active"
     STANDBY = "standby"
     DR = "disaster_recovery"
     FAILED = "failed"
     MAINTENANCE = "maintenance"
 
+
 @dataclass
 class HealthCheckResult:
     """Health check result data structure"""
+
     service_name: str
     region: str
     status: str
@@ -59,9 +68,11 @@ class HealthCheckResult:
         if self.metadata is None:
             self.metadata = {}
 
+
 @dataclass
 class FailoverDecision:
     """Failover decision data structure"""
+
     trigger_service: str
     trigger_region: str
     target_region: str
@@ -71,18 +82,23 @@ class FailoverDecision:
     health_checks: List[HealthCheckResult]
     impact_assessment: Dict[str, Any]
 
+
 class HMSFailoverManager:
     """Enterprise-grade failover automation for healthcare systems"""
 
-    def __init__(self, config_path: str = "devops/high-availability/failover-config.json"):
+    def __init__(
+        self, config_path: str = "devops/high-availability/failover-config.json"
+    ):
         self.config = self._load_config(config_path)
         self.logger = self._setup_logging()
 
         # Initialize AWS clients
-        self.ec2_client = boto3.client('ec2', region_name=self.config['primary_region'])
-        self.rds_client = boto3.client('rds', region_name=self.config['primary_region'])
-        self.elbv2_client = boto3.client('elbv2', region_name=self.config['primary_region'])
-        self.route53_client = boto3.client('route53')
+        self.ec2_client = boto3.client("ec2", region_name=self.config["primary_region"])
+        self.rds_client = boto3.client("rds", region_name=self.config["primary_region"])
+        self.elbv2_client = boto3.client(
+            "elbv2", region_name=self.config["primary_region"]
+        )
+        self.route53_client = boto3.client("route53")
 
         # Initialize Kubernetes client
         try:
@@ -102,9 +118,9 @@ class HMSFailoverManager:
 
         # Failover state
         self.current_state = FailoverState.HEALTHY
-        self.active_region = self.config['primary_region']
-        self.standby_regions = self.config['standby_regions']
-        self.dr_region = self.config['dr_region']
+        self.active_region = self.config["primary_region"]
+        self.standby_regions = self.config["standby_regions"]
+        self.dr_region = self.config["dr_region"]
 
         # Health monitoring
         self.health_check_thread = None
@@ -121,7 +137,7 @@ class HMSFailoverManager:
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         """Load failover configuration"""
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 return json.load(f)
         except FileNotFoundError:
             self.logger.warning(f"Config file {config_path} not found, using defaults")
@@ -141,45 +157,45 @@ class HMSFailoverManager:
                 "primary_endpoint": "hms-db-primary.example.com",
                 "secondary_endpoint": "hms-db-secondary.example.com",
                 "connection_timeout": 5,
-                "query_timeout": 30
+                "query_timeout": 30,
             },
             "redis": {
                 "primary_endpoint": "hms-redis-primary.example.com",
                 "secondary_endpoint": "hms-redis-secondary.example.com",
-                "cluster_mode": True
+                "cluster_mode": True,
             },
             "application": {
                 "health_check_endpoints": [
                     "/health",
                     "/api/health",
-                    "/api/patients/health"
+                    "/api/patients/health",
                 ],
                 "critical_services": [
                     "hms-api",
                     "hms-database",
                     "hms-cache",
-                    "hms-storage"
-                ]
+                    "hms-storage",
+                ],
             },
             "failback": {
                 "enabled": True,
                 "cooldown_period": 3600,  # 1 hour
-                "health_stability_period": 1800  # 30 minutes
+                "health_stability_period": 1800,  # 30 minutes
             },
             "notifications": {
-                "slack_webhook": os.getenv('SLACK_FAILOVER_WEBHOOK'),
-                "pagerduty_service": os.getenv('PAGERDUTY_FAILOVER_SERVICE'),
-                "email_recipients": ["failover-team@hms-enterprise.com"]
-            }
+                "slack_webhook": os.getenv("SLACK_FAILOVER_WEBHOOK"),
+                "pagerduty_service": os.getenv("PAGERDUTY_FAILOVER_SERVICE"),
+                "email_recipients": ["failover-team@hms-enterprise.com"],
+            },
         }
 
     def _setup_logging(self) -> logging.Logger:
         """Setup comprehensive logging for failover system"""
-        logger = logging.getLogger('hms_failover_manager')
+        logger = logging.getLogger("hms_failover_manager")
         logger.setLevel(logging.INFO)
 
         formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'
+            "%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s"
         )
 
         # Console handler
@@ -190,17 +206,18 @@ class HMSFailoverManager:
 
         # File handler with rotation
         from logging.handlers import RotatingFileHandler
+
         file_handler = RotatingFileHandler(
-            '/var/log/hms/failover-manager.log',
-            maxBytes=10*1024*1024,  # 10MB
-            backupCount=5
+            "/var/log/hms/failover-manager.log",
+            maxBytes=10 * 1024 * 1024,  # 10MB
+            backupCount=5,
         )
         file_handler.setLevel(logging.DEBUG)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 
         # Audit log handler
-        audit_handler = logging.FileHandler('/var/log/hms/failover-audit.log')
+        audit_handler = logging.FileHandler("/var/log/hms/failover-audit.log")
         audit_handler.setLevel(logging.INFO)
         audit_handler.setFormatter(formatter)
         logger.addHandler(audit_handler)
@@ -215,52 +232,48 @@ class HMSFailoverManager:
                 "triggers": {
                     "database_unavailable": {
                         "consecutive_failures": 3,
-                        "severity": "critical"
+                        "severity": "critical",
                     },
                     "api_error_rate": {
                         "threshold": 0.5,  # 50% error rate
                         "duration": 300,  # 5 minutes
-                        "severity": "critical"
+                        "severity": "critical",
                     },
                     "high_latency": {
                         "threshold": 10.0,  # 10 seconds
                         "duration": 180,  # 3 minutes
-                        "severity": "high"
+                        "severity": "high",
                     },
                     "resource_exhaustion": {
                         "cpu_threshold": 95,
                         "memory_threshold": 95,
-                        "severity": "high"
-                    }
-                }
+                        "severity": "high",
+                    },
+                },
             },
             "healthcare_specific": {
                 "patient_data_unavailable": {
                     "max_duration": 60,  # 1 minute
-                    "severity": "critical"
+                    "severity": "critical",
                 },
                 "emergency_systems_down": {
                     "max_duration": 30,  # 30 seconds
-                    "severity": "critical"
+                    "severity": "critical",
                 },
                 "appointment_system_down": {
                     "max_duration": 300,  # 5 minutes
-                    "severity": "high"
-                }
+                    "severity": "high",
+                },
             },
             "regional_failover": {
                 "criteria": {
                     "zone_failure": True,
                     "network_partition": True,
                     "power_outage": True,
-                    "natural_disaster": True
+                    "natural_disaster": True,
                 },
-                "priority": [
-                    "us-east-1",
-                    "us-west-2",
-                    "eu-central-1"
-                ]
-            }
+                "priority": ["us-east-1", "us-west-2", "eu-central-1"],
+            },
         }
 
     def start_failover_monitoring(self):
@@ -273,14 +286,12 @@ class HMSFailoverManager:
 
         # Start health monitoring threads
         self.health_check_thread = threading.Thread(
-            target=self._health_check_loop,
-            daemon=True
+            target=self._health_check_loop, daemon=True
         )
         self.health_check_thread.start()
 
         self.failover_decision_thread = threading.Thread(
-            target=self._failover_decision_loop,
-            daemon=True
+            target=self._failover_decision_loop, daemon=True
         )
         self.failover_decision_thread.start()
 
@@ -306,40 +317,40 @@ class HMSFailoverManager:
         try:
             # Initialize primary database connection
             self.primary_db_conn = psycopg2.connect(
-                host=self.config['database']['primary_endpoint'],
-                database=os.getenv('DB_NAME', 'hms_enterprise'),
-                user=os.getenv('DB_USER', 'hms_user'),
-                password=os.getenv('DB_PASSWORD'),
-                connect_timeout=self.config['database']['connection_timeout']
+                host=self.config["database"]["primary_endpoint"],
+                database=os.getenv("DB_NAME", "hms_enterprise"),
+                user=os.getenv("DB_USER", "hms_user"),
+                password=os.getenv("DB_PASSWORD"),
+                connect_timeout=self.config["database"]["connection_timeout"],
             )
 
             # Initialize secondary database connection
             self.secondary_db_conn = psycopg2.connect(
-                host=self.config['database']['secondary_endpoint'],
-                database=os.getenv('DB_NAME', 'hms_enterprise'),
-                user=os.getenv('DB_USER', 'hms_user'),
-                password=os.getenv('DB_PASSWORD'),
-                connect_timeout=self.config['database']['connection_timeout']
+                host=self.config["database"]["secondary_endpoint"],
+                database=os.getenv("DB_NAME", "hms_enterprise"),
+                user=os.getenv("DB_USER", "hms_user"),
+                password=os.getenv("DB_PASSWORD"),
+                connect_timeout=self.config["database"]["connection_timeout"],
             )
 
             # Initialize Redis connections
-            if self.config['redis']['cluster_mode']:
+            if self.config["redis"]["cluster_mode"]:
                 self.primary_redis = redis.RedisCluster(
-                    host=self.config['redis']['primary_endpoint'].split(':')[0],
-                    port=6379
+                    host=self.config["redis"]["primary_endpoint"].split(":")[0],
+                    port=6379,
                 )
                 self.secondary_redis = redis.RedisCluster(
-                    host=self.config['redis']['secondary_endpoint'].split(':')[0],
-                    port=6379
+                    host=self.config["redis"]["secondary_endpoint"].split(":")[0],
+                    port=6379,
                 )
             else:
                 self.primary_redis = redis.Redis(
-                    host=self.config['redis']['primary_endpoint'].split(':')[0],
-                    port=6379
+                    host=self.config["redis"]["primary_endpoint"].split(":")[0],
+                    port=6379,
                 )
                 self.secondary_redis = redis.Redis(
-                    host=self.config['redis']['secondary_endpoint'].split(':')[0],
-                    port=6379
+                    host=self.config["redis"]["secondary_endpoint"].split(":")[0],
+                    port=6379,
                 )
 
             self.logger.info("Database and cache connections initialized")
@@ -370,14 +381,18 @@ class HMSFailoverManager:
                 health_results = self._perform_health_checks()
 
                 # Analyze health results
-                critical_failures = [r for r in health_results if r.status == "critical"]
+                critical_failures = [
+                    r for r in health_results if r.status == "critical"
+                ]
                 high_failures = [r for r in health_results if r.status == "high"]
 
                 if critical_failures:
                     consecutive_failures += 1
-                    self.logger.warning(f"Detected {len(critical_failures)} critical failures")
+                    self.logger.warning(
+                        f"Detected {len(critical_failures)} critical failures"
+                    )
 
-                    if consecutive_failures >= self.config['failover_threshold']:
+                    if consecutive_failures >= self.config["failover_threshold"]:
                         self._trigger_failover(critical_failures)
                 else:
                     consecutive_failures = 0
@@ -389,7 +404,7 @@ class HMSFailoverManager:
                 if len(self.health_check_history) > 1000:
                     self.health_check_history = self.health_check_history[-1000:]
 
-                time.sleep(self.config['health_check_interval'])
+                time.sleep(self.config["health_check_interval"])
 
             except Exception as e:
                 self.logger.error(f"Error in health check loop: {str(e)}")
@@ -434,13 +449,15 @@ class HMSFailoverManager:
 
                 response_time = (time.time() - start_time) * 1000
 
-                results.append(HealthCheckResult(
-                    service_name="postgres-primary",
-                    region=self.config['primary_region'],
-                    status="healthy",
-                    response_time=response_time,
-                    metadata={"type": "database", "role": "primary"}
-                ))
+                results.append(
+                    HealthCheckResult(
+                        service_name="postgres-primary",
+                        region=self.config["primary_region"],
+                        status="healthy",
+                        response_time=response_time,
+                        metadata={"type": "database", "role": "primary"},
+                    )
+                )
 
                 # Check replication status
                 with self.primary_db_conn.cursor() as cursor:
@@ -448,23 +465,29 @@ class HMSFailoverManager:
                     replication_status = cursor.fetchall()
 
                 for replica in replication_status:
-                    results.append(HealthCheckResult(
-                        service_name=f"postgres-replica-{replica[1]}",
-                        region=self.config['primary_region'],
-                        status="healthy" if replica[8] else "degraded",  # replication_sync
-                        response_time=response_time,
-                        metadata={"type": "replication", "lag_bytes": replica[9]}
-                    ))
+                    results.append(
+                        HealthCheckResult(
+                            service_name=f"postgres-replica-{replica[1]}",
+                            region=self.config["primary_region"],
+                            status=(
+                                "healthy" if replica[8] else "degraded"
+                            ),  # replication_sync
+                            response_time=response_time,
+                            metadata={"type": "replication", "lag_bytes": replica[9]},
+                        )
+                    )
 
             except Exception as e:
-                results.append(HealthCheckResult(
-                    service_name="postgres-primary",
-                    region=self.config['primary_region'],
-                    status="critical",
-                    response_time=0,
-                    error_message=str(e),
-                    metadata={"type": "database", "role": "primary"}
-                ))
+                results.append(
+                    HealthCheckResult(
+                        service_name="postgres-primary",
+                        region=self.config["primary_region"],
+                        status="critical",
+                        response_time=0,
+                        error_message=str(e),
+                        metadata={"type": "database", "role": "primary"},
+                    )
+                )
 
             # Check secondary database
             start_time = time.time()
@@ -474,23 +497,27 @@ class HMSFailoverManager:
                     cursor.fetchone()
 
                 response_time = (time.time() - start_time) * 1000
-                results.append(HealthCheckResult(
-                    service_name="postgres-secondary",
-                    region=self.config['standby_regions'][0],
-                    status="healthy",
-                    response_time=response_time,
-                    metadata={"type": "database", "role": "secondary"}
-                ))
+                results.append(
+                    HealthCheckResult(
+                        service_name="postgres-secondary",
+                        region=self.config["standby_regions"][0],
+                        status="healthy",
+                        response_time=response_time,
+                        metadata={"type": "database", "role": "secondary"},
+                    )
+                )
 
             except Exception as e:
-                results.append(HealthCheckResult(
-                    service_name="postgres-secondary",
-                    region=self.config['standby_regions'][0],
-                    status="critical",
-                    response_time=0,
-                    error_message=str(e),
-                    metadata={"type": "database", "role": "secondary"}
-                ))
+                results.append(
+                    HealthCheckResult(
+                        service_name="postgres-secondary",
+                        region=self.config["standby_regions"][0],
+                        status="critical",
+                        response_time=0,
+                        error_message=str(e),
+                        metadata={"type": "database", "role": "secondary"},
+                    )
+                )
 
         except Exception as e:
             self.logger.error(f"Error checking database health: {str(e)}")
@@ -508,57 +535,70 @@ class HMSFailoverManager:
                 self.primary_redis.ping()
                 response_time = (time.time() - start_time) * 1000
 
-                results.append(HealthCheckResult(
-                    service_name="redis-primary",
-                    region=self.config['primary_region'],
-                    status="healthy",
-                    response_time=response_time,
-                    metadata={"type": "cache", "role": "primary"}
-                ))
-
-                # Check cluster info if in cluster mode
-                if self.config['redis']['cluster_mode']:
-                    cluster_info = self.primary_redis.cluster_info()
-                    results.append(HealthCheckResult(
-                        service_name="redis-cluster",
-                        region=self.config['primary_region'],
+                results.append(
+                    HealthCheckResult(
+                        service_name="redis-primary",
+                        region=self.config["primary_region"],
                         status="healthy",
                         response_time=response_time,
-                        metadata={"type": "cluster", "nodes": len(cluster_info['nodes'])}
-                    ))
+                        metadata={"type": "cache", "role": "primary"},
+                    )
+                )
+
+                # Check cluster info if in cluster mode
+                if self.config["redis"]["cluster_mode"]:
+                    cluster_info = self.primary_redis.cluster_info()
+                    results.append(
+                        HealthCheckResult(
+                            service_name="redis-cluster",
+                            region=self.config["primary_region"],
+                            status="healthy",
+                            response_time=response_time,
+                            metadata={
+                                "type": "cluster",
+                                "nodes": len(cluster_info["nodes"]),
+                            },
+                        )
+                    )
 
             except Exception as e:
-                results.append(HealthCheckResult(
-                    service_name="redis-primary",
-                    region=self.config['primary_region'],
-                    status="critical",
-                    response_time=0,
-                    error_message=str(e),
-                    metadata={"type": "cache", "role": "primary"}
-                ))
+                results.append(
+                    HealthCheckResult(
+                        service_name="redis-primary",
+                        region=self.config["primary_region"],
+                        status="critical",
+                        response_time=0,
+                        error_message=str(e),
+                        metadata={"type": "cache", "role": "primary"},
+                    )
+                )
 
             # Check secondary Redis
             start_time = time.time()
             try:
                 self.secondary_redis.ping()
                 response_time = (time.time() - start_time) * 1000
-                results.append(HealthCheckResult(
-                    service_name="redis-secondary",
-                    region=self.config['standby_regions'][0],
-                    status="healthy",
-                    response_time=response_time,
-                    metadata={"type": "cache", "role": "secondary"}
-                ))
+                results.append(
+                    HealthCheckResult(
+                        service_name="redis-secondary",
+                        region=self.config["standby_regions"][0],
+                        status="healthy",
+                        response_time=response_time,
+                        metadata={"type": "cache", "role": "secondary"},
+                    )
+                )
 
             except Exception as e:
-                results.append(HealthCheckResult(
-                    service_name="redis-secondary",
-                    region=self.config['standby_regions'][0],
-                    status="critical",
-                    response_time=0,
-                    error_message=str(e),
-                    metadata={"type": "cache", "role": "secondary"}
-                ))
+                results.append(
+                    HealthCheckResult(
+                        service_name="redis-secondary",
+                        region=self.config["standby_regions"][0],
+                        status="critical",
+                        response_time=0,
+                        error_message=str(e),
+                        metadata={"type": "cache", "role": "secondary"},
+                    )
+                )
 
         except Exception as e:
             self.logger.error(f"Error checking Redis health: {str(e)}")
@@ -574,35 +614,49 @@ class HMSFailoverManager:
             # In a real implementation, this would check actual endpoints
             app_services = [
                 ("hms-api", "us-east-1", "https://api.hms-enterprise.com/health"),
-                ("hms-patient-api", "us-east-1", "https://api.hms-enterprise.com/api/patients/health"),
-                ("hms-appointment-api", "us-east-1", "https://api.hms-enterprise.com/api/appointments/health")
+                (
+                    "hms-patient-api",
+                    "us-east-1",
+                    "https://api.hms-enterprise.com/api/patients/health",
+                ),
+                (
+                    "hms-appointment-api",
+                    "us-east-1",
+                    "https://api.hms-enterprise.com/api/appointments/health",
+                ),
             ]
 
             for service_name, region, endpoint in app_services:
                 try:
                     start_time = time.time()
-                    response = requests.get(endpoint, timeout=self.config['health_check_timeout'])
+                    response = requests.get(
+                        endpoint, timeout=self.config["health_check_timeout"]
+                    )
                     response_time = (time.time() - start_time) * 1000
 
                     status = "healthy" if response.status_code == 200 else "degraded"
 
-                    results.append(HealthCheckResult(
-                        service_name=service_name,
-                        region=region,
-                        status=status,
-                        response_time=response_time,
-                        metadata={"type": "application", "endpoint": endpoint}
-                    ))
+                    results.append(
+                        HealthCheckResult(
+                            service_name=service_name,
+                            region=region,
+                            status=status,
+                            response_time=response_time,
+                            metadata={"type": "application", "endpoint": endpoint},
+                        )
+                    )
 
                 except Exception as e:
-                    results.append(HealthCheckResult(
-                        service_name=service_name,
-                        region=region,
-                        status="critical",
-                        response_time=0,
-                        error_message=str(e),
-                        metadata={"type": "application", "endpoint": endpoint}
-                    ))
+                    results.append(
+                        HealthCheckResult(
+                            service_name=service_name,
+                            region=region,
+                            status="critical",
+                            response_time=0,
+                            error_message=str(e),
+                            metadata={"type": "application", "endpoint": endpoint},
+                        )
+                    )
 
         except Exception as e:
             self.logger.error(f"Error checking application health: {str(e)}")
@@ -617,59 +671,87 @@ class HMSFailoverManager:
             # Check Kubernetes cluster health
             try:
                 nodes = self.k8s_client.list_node()
-                ready_nodes = sum(1 for node in nodes.items if any(
-                    condition.type == "Ready" and condition.status == "True"
-                    for condition in node.status.conditions
-                ))
+                ready_nodes = sum(
+                    1
+                    for node in nodes.items
+                    if any(
+                        condition.type == "Ready" and condition.status == "True"
+                        for condition in node.status.conditions
+                    )
+                )
 
-                results.append(HealthCheckResult(
-                    service_name="kubernetes-cluster",
-                    region=self.config['primary_region'],
-                    status="healthy" if ready_nodes > 0 else "critical",
-                    response_time=0,
-                    metadata={"type": "infrastructure", "total_nodes": len(nodes.items), "ready_nodes": ready_nodes}
-                ))
+                results.append(
+                    HealthCheckResult(
+                        service_name="kubernetes-cluster",
+                        region=self.config["primary_region"],
+                        status="healthy" if ready_nodes > 0 else "critical",
+                        response_time=0,
+                        metadata={
+                            "type": "infrastructure",
+                            "total_nodes": len(nodes.items),
+                            "ready_nodes": ready_nodes,
+                        },
+                    )
+                )
 
             except Exception as e:
-                results.append(HealthCheckResult(
-                    service_name="kubernetes-cluster",
-                    region=self.config['primary_region'],
-                    status="critical",
-                    response_time=0,
-                    error_message=str(e),
-                    metadata={"type": "infrastructure"}
-                ))
+                results.append(
+                    HealthCheckResult(
+                        service_name="kubernetes-cluster",
+                        region=self.config["primary_region"],
+                        status="critical",
+                        response_time=0,
+                        error_message=str(e),
+                        metadata={"type": "infrastructure"},
+                    )
+                )
 
             # Check load balancer health
             try:
                 lbs = self.elbv2_client.describe_load_balancers()
                 healthy_lbs = 0
 
-                for lb in lbs['LoadBalancers']:
+                for lb in lbs["LoadBalancers"]:
                     target_health = self.elbv2_client.describe_target_health(
-                        TargetGroupArn=lb['TargetGroups'][0]['TargetGroupArn']
+                        TargetGroupArn=lb["TargetGroups"][0]["TargetGroupArn"]
                     )
-                    healthy_targets = sum(1 for th in target_health['TargetHealthDescriptions'] if th['TargetHealth']['State'] == 'healthy')
+                    healthy_targets = sum(
+                        1
+                        for th in target_health["TargetHealthDescriptions"]
+                        if th["TargetHealth"]["State"] == "healthy"
+                    )
                     if healthy_targets > 0:
                         healthy_lbs += 1
 
-                results.append(HealthCheckResult(
-                    service_name="load-balancers",
-                    region=self.config['primary_region'],
-                    status="healthy" if healthy_lbs == len(lbs['LoadBalancers']) else "degraded",
-                    response_time=0,
-                    metadata={"type": "load_balancer", "total_lbs": len(lbs['LoadBalancers']), "healthy_lbs": healthy_lbs}
-                ))
+                results.append(
+                    HealthCheckResult(
+                        service_name="load-balancers",
+                        region=self.config["primary_region"],
+                        status=(
+                            "healthy"
+                            if healthy_lbs == len(lbs["LoadBalancers"])
+                            else "degraded"
+                        ),
+                        response_time=0,
+                        metadata={
+                            "type": "load_balancer",
+                            "total_lbs": len(lbs["LoadBalancers"]),
+                            "healthy_lbs": healthy_lbs,
+                        },
+                    )
+                )
 
             except Exception as e:
-                results.append(HealthCheckResult(
-                    service_name="load-balancers",
-                    region=self.config['primary_region'],
-                    status="critical",
-                    response_time=0,
-                    error_message=str(e),
-                    metadata={"type": "load_balancer"}
-                ))
+                results.append(
+                    HealthCheckResult(
+                        service_name="load-balancers",
+                        region=self.config["primary_region"],
+                        status="critical",
+                        response_time=0,
+                        error_message=str(e),
+                        metadata={"type": "load_balancer"},
+                    )
+                )
 
         except Exception as e:
             self.logger.error(f"Error checking infrastructure health: {str(e)}")
@@ -688,26 +770,33 @@ class HMSFailoverManager:
                 ("appointment-scheduling", "us-east-1"),
                 ("pharmacy-services", "us-east-1"),
                 ("laboratory-results", "us-east-1"),
-                ("billing-services", "us-east-1")
+                ("billing-services", "us-east-1"),
             ]
 
             for service_name, region in healthcare_services:
                 # Simulate health check with random status for demo
                 import random
-                if random.random() < 0.95:  # 95% success rate
-                    response_time = random.uniform(50, 500)
+
+                if secrets.random() < 0.95:  # 95% success rate
+                    response_time = secrets.uniform(50, 500)
                     status = "healthy"
                 else:
                     response_time = 0
                     status = "critical"
 
-                results.append(HealthCheckResult(
-                    service_name=service_name,
-                    region=region,
-                    status=status,
-                    response_time=response_time,
-                    metadata={"type": "healthcare_service", "critical": service_name in ["patient-records", "emergency-response"]}
-                ))
+                results.append(
+                    HealthCheckResult(
+                        service_name=service_name,
+                        region=region,
+                        status=status,
+                        response_time=response_time,
+                        metadata={
+                            "type": "healthcare_service",
+                            "critical": service_name
+                            in ["patient-records", "emergency-response"],
+                        },
+                    )
+                )
 
         except Exception as e:
             self.logger.error(f"Error checking healthcare services: {str(e)}")
@@ -722,7 +811,7 @@ class HMSFailoverManager:
                 self._analyze_failover_conditions()
 
                 # Check for automatic failback conditions
-                if self.config['failback']['enabled']:
+                if self.config["failback"]["enabled"]:
                     self._check_failback_conditions()
 
                 time.sleep(60)  # Check every minute
@@ -751,15 +840,20 @@ class HMSFailoverManager:
 
         # Check failover policies
         for service_key, failures in service_failures.items():
-            service_name, region = service_key.rsplit('-', 1)
+            service_name, region = service_key.rsplit("-", 1)
 
             # Check consecutive failures
-            if len(failures) >= self.config['failover_threshold']:
+            if len(failures) >= self.config["failover_threshold"]:
                 self._evaluate_failover_trigger(service_name, region, failures)
 
-    def _evaluate_failover_trigger(self, service_name: str, region: str, failures: List[HealthCheckResult]):
+    def _evaluate_failover_trigger(
+        self, service_name: str, region: str, failures: List[HealthCheckResult]
+    ):
         """Evaluate if failover should be triggered"""
-        if region == self.active_region and self.current_state not in [FailoverState.FAILOVER_IN_PROGRESS, FailoverState.EMERGENCY]:
+        if region == self.active_region and self.current_state not in [
+            FailoverState.FAILOVER_IN_PROGRESS,
+            FailoverState.EMERGENCY,
+        ]:
             # Determine target region
             target_region = self._select_target_region(region)
 
@@ -775,14 +869,18 @@ class HMSFailoverManager:
                     severity=severity,
                     timestamp=datetime.now(),
                     health_checks=failures,
-                    impact_assessment=self._assess_failover_impact(service_name, region, target_region)
+                    impact_assessment=self._assess_failover_impact(
+                        service_name, region, target_region
+                    ),
                 )
 
                 self._execute_failover(failover_decision)
 
     def _select_target_region(self, failed_region: str) -> Optional[str]:
         """Select target region for failover"""
-        available_regions = [r for r in self.config['standby_regions'] if r != failed_region]
+        available_regions = [
+            r for r in self.config["standby_regions"] if r != failed_region
+        ]
 
         if available_regions:
             # Select the first available region (could be enhanced with latency/performance metrics)
@@ -790,15 +888,19 @@ class HMSFailoverManager:
 
         return None
 
-    def _assess_failover_impact(self, service_name: str, failed_region: str, target_region: str) -> Dict[str, Any]:
+    def _assess_failover_impact(
+        self, service_name: str, failed_region: str, target_region: str
+    ) -> Dict[str, Any]:
         """Assess the impact of failover"""
         impact = {
             "service_impact": "high",
             "data_consistency_risk": "low",
             "performance_impact": "medium",
             "recovery_time_estimate": "5-10 minutes",
-            "patient_care_impact": "medium" if service_name != "emergency-response" else "high",
-            "compliance_impact": ["HIPAA"] if "patient" in service_name.lower() else []
+            "patient_care_impact": (
+                "medium" if service_name != "emergency-response" else "high"
+            ),
+            "compliance_impact": ["HIPAA"] if "patient" in service_name.lower() else [],
         }
 
         return impact
@@ -828,11 +930,13 @@ class HMSFailoverManager:
             self.active_region = decision.target_region
 
             # Record failover event
-            self.failover_history.append({
-                "decision": asdict(decision),
-                "timestamp": datetime.now().isoformat(),
-                "success": True
-            })
+            self.failover_history.append(
+                {
+                    "decision": asdict(decision),
+                    "timestamp": datetime.now().isoformat(),
+                    "success": True,
+                }
+            )
 
             self.logger.critical("FAILOVER COMPLETED SUCCESSFULLY")
 
@@ -853,7 +957,7 @@ class HMSFailoverManager:
             if "rds" in decision.trigger_service.lower():
                 self.rds_client.promote_read_replica(
                     DBInstanceIdentifier=f"hms-db-{decision.target_region}",
-                    BackupRetentionPeriod=7
+                    BackupRetentionPeriod=7,
                 )
 
             # Update connection strings
@@ -911,20 +1015,24 @@ class HMSFailoverManager:
             self.route53_client.change_resource_record_sets(
                 HostedZoneId=zone_id,
                 ChangeBatch={
-                    'Changes': [
+                    "Changes": [
                         {
-                            'Action': 'UPSERT',
-                            'ResourceRecordSet': {
-                                'Name': 'api.hms-enterprise.com',
-                                'Type': 'A',
-                                'TTL': self.config['dns_ttl'],
-                                'ResourceRecords': [
-                                    {'Value': self._get_region_ip(decision.target_region)}
-                                ]
-                            }
+                            "Action": "UPSERT",
+                            "ResourceRecordSet": {
+                                "Name": "api.hms-enterprise.com",
+                                "Type": "A",
+                                "TTL": self.config["dns_ttl"],
+                                "ResourceRecords": [
+                                    {
+                                        "Value": self._get_region_ip(
+                                            decision.target_region
+                                        )
+                                    }
+                                ],
+                            },
                         }
                     ]
-                }
+                },
             )
 
             self.logger.info("DNS update completed")
@@ -937,14 +1045,18 @@ class HMSFailoverManager:
         """Check if failback to primary region is possible"""
         if self.current_state == FailoverState.FAILOVER_COMPLETE:
             # Check if primary region is healthy
-            primary_health = self._check_region_health(self.config['primary_region'])
+            primary_health = self._check_region_health(self.config["primary_region"])
 
-            if primary_health['status'] == 'healthy':
+            if primary_health["status"] == "healthy":
                 # Check cooldown period
-                last_failover = self.failover_history[-1] if self.failover_history else None
+                last_failover = (
+                    self.failover_history[-1] if self.failover_history else None
+                )
                 if last_failover:
-                    failover_time = datetime.fromisoformat(last_failover['timestamp'])
-                    cooldown_expired = (datetime.now() - failover_time).seconds > self.config['failback']['cooldown_period']
+                    failover_time = datetime.fromisoformat(last_failover["timestamp"])
+                    cooldown_expired = (
+                        datetime.now() - failover_time
+                    ).seconds > self.config["failback"]["cooldown_period"]
 
                     if cooldown_expired:
                         self._initiate_failback()
@@ -972,7 +1084,7 @@ class HMSFailoverManager:
             "to_region": decision.target_region,
             "reason": decision.reason,
             "impact": decision.impact_assessment,
-            "timestamp": decision.timestamp.isoformat()
+            "timestamp": decision.timestamp.isoformat(),
         }
 
         self.logger.critical(f"FAILOVER_ALERT: {json.dumps(alert_data, indent=2)}")
@@ -984,15 +1096,18 @@ class HMSFailoverManager:
         """Send notification to configured channels"""
         try:
             # Send to Slack
-            if self.config['notifications']['slack_webhook']:
+            if self.config["notifications"]["slack_webhook"]:
                 self._send_slack_notification(alert_data)
 
             # Send to PagerDuty for critical events
-            if alert_data['severity'] == 'critical' and self.config['notifications']['pagerduty_service']:
+            if (
+                alert_data["severity"] == "critical"
+                and self.config["notifications"]["pagerduty_service"]
+            ):
                 self._send_pagerduty_notification(alert_data)
 
             # Send email
-            for recipient in self.config['notifications']['email_recipients']:
+            for recipient in self.config["notifications"]["email_recipients"]:
                 self._send_email_notification(recipient, alert_data)
 
         except Exception as e:
@@ -1000,33 +1115,56 @@ class HMSFailoverManager:
 
     def _send_slack_notification(self, alert_data: Dict[str, Any]):
         """Send Slack notification"""
-        webhook_url = self.config['notifications']['slack_webhook']
+        webhook_url = self.config["notifications"]["slack_webhook"]
 
-        severity_emoji = {
-            "critical": "🚨",
-            "high": "⚠️",
-            "medium": "⚡",
-            "low": "ℹ️"
-        }
+        severity_emoji = {"critical": "🚨", "high": "⚠️", "medium": "⚡", "low": "ℹ️"}
 
         payload = {
             "text": f"{severity_emoji.get(alert_data['severity'], '🔄')} HMS FAILOVER EVENT",
             "attachments": [
                 {
-                    "color": "danger" if alert_data['severity'] == 'critical' else "warning",
+                    "color": (
+                        "danger" if alert_data["severity"] == "critical" else "warning"
+                    ),
                     "title": "Failover Initiated",
                     "fields": [
-                        {"title": "Service", "value": alert_data['trigger_service'], "short": True},
-                        {"title": "From Region", "value": alert_data['from_region'], "short": True},
-                        {"title": "To Region", "value": alert_data['to_region'], "short": True},
-                        {"title": "Severity", "value": alert_data['severity'], "short": True},
-                        {"title": "Reason", "value": alert_data['reason'], "short": False},
-                        {"title": "Patient Care Impact", "value": alert_data['impact'].get('patient_care_impact', 'unknown'), "short": False}
+                        {
+                            "title": "Service",
+                            "value": alert_data["trigger_service"],
+                            "short": True,
+                        },
+                        {
+                            "title": "From Region",
+                            "value": alert_data["from_region"],
+                            "short": True,
+                        },
+                        {
+                            "title": "To Region",
+                            "value": alert_data["to_region"],
+                            "short": True,
+                        },
+                        {
+                            "title": "Severity",
+                            "value": alert_data["severity"],
+                            "short": True,
+                        },
+                        {
+                            "title": "Reason",
+                            "value": alert_data["reason"],
+                            "short": False,
+                        },
+                        {
+                            "title": "Patient Care Impact",
+                            "value": alert_data["impact"].get(
+                                "patient_care_impact", "unknown"
+                            ),
+                            "short": False,
+                        },
                     ],
                     "footer": "HMS Failover Manager",
-                    "ts": int(datetime.now().timestamp())
+                    "ts": int(datetime.now().timestamp()),
                 }
-            ]
+            ],
         }
 
         requests.post(webhook_url, json=payload, timeout=10)
@@ -1040,12 +1178,18 @@ class HMSFailoverManager:
             "dr_region": self.dr_region,
             "failover_history_count": len(self.failover_history),
             "health_check_history_count": len(self.health_check_history),
-            "last_health_check": self.health_check_history[-1].timestamp.isoformat() if self.health_check_history else None,
+            "last_health_check": (
+                self.health_check_history[-1].timestamp.isoformat()
+                if self.health_check_history
+                else None
+            ),
             "configuration": {
-                "automatic_failover_enabled": self.failover_policies['automatic_failover']['enabled'],
-                "failback_enabled": self.config['failback']['enabled'],
-                "health_check_interval": self.config['health_check_interval']
-            }
+                "automatic_failover_enabled": self.failover_policies[
+                    "automatic_failover"
+                ]["enabled"],
+                "failback_enabled": self.config["failback"]["enabled"],
+                "health_check_interval": self.config["health_check_interval"],
+            },
         }
 
     def generate_failover_report(self, hours: int = 24) -> Dict[str, Any]:
@@ -1057,20 +1201,21 @@ class HMSFailoverManager:
             "period": {
                 "start": start_time.isoformat(),
                 "end": end_time.isoformat(),
-                "hours": hours
+                "hours": hours,
             },
             "summary": {
                 "total_failovers": len(self.failover_history),
                 "current_state": self.current_state.value,
                 "active_region": self.active_region,
-                "system_uptime": self._calculate_uptime(start_time, end_time)
+                "system_uptime": self._calculate_uptime(start_time, end_time),
             },
             "failover_events": [
-                event for event in self.failover_history
-                if start_time <= datetime.fromisoformat(event['timestamp']) <= end_time
+                event
+                for event in self.failover_history
+                if start_time <= datetime.fromisoformat(event["timestamp"]) <= end_time
             ],
             "health_summary": self._generate_health_summary(start_time, end_time),
-            "recommendations": self._generate_failover_recommendations()
+            "recommendations": self._generate_failover_recommendations(),
         }
 
         return report
@@ -1078,25 +1223,35 @@ class HMSFailoverManager:
     def _calculate_uptime(self, start_time: datetime, end_time: datetime) -> float:
         """Calculate system uptime percentage"""
         # Simplified uptime calculation
-        total_checks = len([
-            check for check in self.health_check_history
-            if start_time <= check.timestamp <= end_time
-        ])
+        total_checks = len(
+            [
+                check
+                for check in self.health_check_history
+                if start_time <= check.timestamp <= end_time
+            ]
+        )
 
         if total_checks == 0:
             return 100.0
 
-        healthy_checks = len([
-            check for check in self.health_check_history
-            if start_time <= check.timestamp <= end_time and check.status == "healthy"
-        ])
+        healthy_checks = len(
+            [
+                check
+                for check in self.health_check_history
+                if start_time <= check.timestamp <= end_time
+                and check.status == "healthy"
+            ]
+        )
 
         return (healthy_checks / total_checks) * 100
 
-    def _generate_health_summary(self, start_time: datetime, end_time: datetime) -> Dict[str, Any]:
+    def _generate_health_summary(
+        self, start_time: datetime, end_time: datetime
+    ) -> Dict[str, Any]:
         """Generate health summary for the period"""
         period_checks = [
-            check for check in self.health_check_history
+            check
+            for check in self.health_check_history
             if start_time <= check.timestamp <= end_time
         ]
 
@@ -1106,9 +1261,15 @@ class HMSFailoverManager:
         summary = {
             "total_checks": len(period_checks),
             "healthy_checks": len([c for c in period_checks if c.status == "healthy"]),
-            "degraded_checks": len([c for c in period_checks if c.status == "degraded"]),
-            "critical_checks": len([c for c in period_checks if c.status == "critical"]),
-            "average_response_time": statistics.mean([c.response_time for c in period_checks if c.response_time > 0])
+            "degraded_checks": len(
+                [c for c in period_checks if c.status == "degraded"]
+            ),
+            "critical_checks": len(
+                [c for c in period_checks if c.status == "critical"]
+            ),
+            "average_response_time": statistics.mean(
+                [c.response_time for c in period_checks if c.response_time > 0]
+            ),
         }
 
         return summary
@@ -1118,15 +1279,22 @@ class HMSFailoverManager:
         recommendations = []
 
         if len(self.failover_history) > 5:
-            recommendations.append("Consider reviewing failover triggers - frequent failovers detected")
+            recommendations.append(
+                "Consider reviewing failover triggers - frequent failovers detected"
+            )
 
         if self.current_state == FailoverState.FAILOVER_COMPLETE:
-            recommendations.append("Monitor primary region health for potential failback")
+            recommendations.append(
+                "Monitor primary region health for potential failback"
+            )
 
         recommendations.append("Review and test failover procedures regularly")
-        recommendations.append("Ensure all team members are trained on failover procedures")
+        recommendations.append(
+            "Ensure all team members are trained on failover procedures"
+        )
 
         return recommendations
+
 
 def main():
     """Main function to run the failover automation system"""
@@ -1146,6 +1314,7 @@ def main():
         print(f"Error in failover automation: {str(e)}")
         failover_manager.stop_failover_monitoring()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

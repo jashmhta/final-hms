@@ -1,20 +1,39 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text, JSON, Float, Enum
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime
 import enum
+from datetime import datetime
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+
 Base = declarative_base()
+
+
 class BedStatus(enum.Enum):
     AVAILABLE = "available"
     OCCUPIED = "occupied"
     MAINTENANCE = "maintenance"
     RESERVED = "reserved"
+
+
 class BedType(enum.Enum):
     GENERAL = "general"
     ICU = "icu"
     CCU = "ccu"
     PRIVATE = "private"
     SEMI_PRIVATE = "semi_private"
+
+
 class Bed(Base):
     __tablename__ = "beds"
     id = Column(Integer, primary_key=True, index=True)
@@ -28,6 +47,8 @@ class Bed(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     ward = relationship("Ward")
+
+
 class Ward(Base):
     __tablename__ = "wards"
     id = Column(Integer, primary_key=True, index=True)
@@ -38,6 +59,8 @@ class Ward(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class BedAssignment(Base):
     __tablename__ = "bed_assignments"
     id = Column(Integer, primary_key=True, index=True)
@@ -51,6 +74,8 @@ class BedAssignment(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     bed = relationship("Bed")
+
+
 class BedMaintenance(Base):
     __tablename__ = "bed_maintenance"
     id = Column(Integer, primary_key=True, index=True)
@@ -59,7 +84,7 @@ class BedMaintenance(Base):
     description = Column(Text)
     scheduled_date = Column(DateTime)
     completed_date = Column(DateTime, nullable=True)
-    status = Column(String)  
+    status = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     bed = relationship("Bed")

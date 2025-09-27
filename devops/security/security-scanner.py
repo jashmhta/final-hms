@@ -4,38 +4,40 @@ HMS Enterprise-Grade Security Scanner
 Comprehensive security scanning and vulnerability assessment for healthcare systems
 """
 
-import os
-import sys
-import json
-import yaml
-import logging
-import subprocess
-import hashlib
-import requests
-import tempfile
 import asyncio
-import aiohttp
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass, asdict
+import hashlib
+import json
+import logging
+import os
+import subprocess
+import sys
+import tempfile
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-import boto3
-from botocore.exceptions import ClientError
-import docker
-import kubernetes
-from kubernetes import client, config
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import aiohttp
 
 # Security scanning tools
 import bandit
-import semgrep
+import boto3
+import docker
+import kubernetes
+import requests
 import safety
-from trivy import Trivy
+import semgrep
+import yaml
+from botocore.exceptions import ClientError
+from gdpr_compliance import GDPRComplianceChecker
 
 # Healthcare compliance
 from hipaa_compliance import HIPAAComplianceChecker
-from gdpr_compliance import GDPRComplianceChecker
+from kubernetes import client, config
 from pci_dss_compliance import PCIDSSComplianceChecker
+from trivy import Trivy
+
 
 class SecurityLevel(Enum):
     CRITICAL = "critical"
@@ -43,6 +45,7 @@ class SecurityLevel(Enum):
     MEDIUM = "medium"
     LOW = "low"
     INFO = "info"
+
 
 class ScanType(Enum):
     SAST = "static_application_security_testing"
@@ -52,6 +55,7 @@ class ScanType(Enum):
     CONTAINER = "container_scanning"
     COMPLIANCE = "compliance_scanning"
     INFRASTRUCTURE = "infrastructure_scanning"
+
 
 @dataclass
 class Vulnerability:
@@ -67,6 +71,7 @@ class Vulnerability:
     references: List[str]
     metadata: Dict[str, Any]
 
+
 @dataclass
 class SecurityScanResult:
     scan_type: ScanType
@@ -76,6 +81,7 @@ class SecurityScanResult:
     vulnerabilities: List[Vulnerability]
     metadata: Dict[str, Any]
     compliance_status: Dict[str, bool]
+
 
 class HMSSecurityScanner:
     """Enterprise-grade security scanner for HMS healthcare system"""
@@ -92,15 +98,15 @@ class HMSSecurityScanner:
         self.pci_dss_checker = PCIDSSComplianceChecker()
 
         # AWS clients for cloud security
-        self.ec2_client = boto3.client('ec2')
-        self.s3_client = boto3.client('s3')
-        self.iam_client = boto3.client('iam')
-        self.security_hub_client = boto3.client('securityhub')
+        self.ec2_client = boto3.client("ec2")
+        self.s3_client = boto3.client("s3")
+        self.iam_client = boto3.client("iam")
+        self.security_hub_client = boto3.client("securityhub")
 
     def _load_config(self, config_path: str) -> Dict:
         """Load security scanner configuration"""
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 return yaml.safe_load(f)
         except FileNotFoundError:
             self.logger.warning(f"Config file {config_path} not found, using defaults")
@@ -113,55 +119,50 @@ class HMSSecurityScanner:
                 "sast": {
                     "enabled": True,
                     "tools": ["bandit", "semgrep", "codeql"],
-                    "excludes": ["tests/*", "migrations/*"]
+                    "excludes": ["tests/*", "migrations/*"],
                 },
                 "dast": {
                     "enabled": True,
                     "tools": ["owasp_zap", "nuclei"],
-                    "target_url": os.getenv("TARGET_URL", "http://localhost:8000")
+                    "target_url": os.getenv("TARGET_URL", "http://localhost:8000"),
                 },
                 "dependency": {
                     "enabled": True,
                     "tools": ["safety", "snyk", "npm_audit"],
-                    "auto_update": True
+                    "auto_update": True,
                 },
                 "secrets": {
                     "enabled": True,
                     "tools": ["gitleaks", "trufflehog"],
-                    "historical_scan": True
+                    "historical_scan": True,
                 },
                 "container": {
                     "enabled": True,
                     "tools": ["trivy", "clair"],
-                    "images": ["hms-backend", "hms-frontend"]
+                    "images": ["hms-backend", "hms-frontend"],
                 },
                 "compliance": {
                     "enabled": True,
                     "frameworks": ["HIPAA", "GDPR", "PCI_DSS"],
-                    "strict_mode": True
-                }
+                    "strict_mode": True,
+                },
             },
-            "thresholds": {
-                "critical": 0,
-                "high": 0,
-                "medium": 5,
-                "low": 10
-            },
+            "thresholds": {"critical": 0, "high": 0, "medium": 5, "low": 10},
             "reporting": {
                 "format": ["json", "html", "pdf"],
                 "include_remediation": True,
-                "executive_summary": True
-            }
+                "executive_summary": True,
+            },
         }
 
     def _setup_logging(self) -> logging.Logger:
         """Setup comprehensive logging for security scanner"""
-        logger = logging.getLogger('hms_security_scanner')
+        logger = logging.getLogger("hms_security_scanner")
         logger.setLevel(logging.INFO)
 
         # Create formatters
         detailed_formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'
+            "%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s"
         )
 
         # Console handler
@@ -170,7 +171,7 @@ class HMSSecurityScanner:
         console_handler.setFormatter(detailed_formatter)
 
         # File handler for security logs
-        file_handler = logging.FileHandler('/var/log/hms/security-scanner.log')
+        file_handler = logging.FileHandler("/var/log/hms/security-scanner.log")
         file_handler.setLevel(logging.DEBUG)
         file_handler.setFormatter(detailed_formatter)
 
@@ -265,34 +266,45 @@ class HMSSecurityScanner:
             duration=duration,
             vulnerabilities=vulnerabilities,
             metadata={"tools_used": ["bandit", "semgrep", "codeql"]},
-            compliance_status={}
+            compliance_status={},
         )
 
     async def _run_bandit_scan(self) -> List[Vulnerability]:
         """Run Bandit security scan"""
         vulnerabilities = []
         try:
-            result = subprocess.run([
-                'bandit', '-r', 'backend/', '-f', 'json', '-o', '/tmp/bandit-results.json'
-            ], capture_output=True, text=True, timeout=300)
+            result = subprocess.run(
+                [
+                    "bandit",
+                    "-r",
+                    "backend/",
+                    "-f",
+                    "json",
+                    "-o",
+                    "/tmp/bandit-results.json",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
 
             if result.returncode == 0:
-                with open('/tmp/bandit-results.json', 'r') as f:
+                with open("/tmp/bandit-results.json", "r") as f:
                     bandit_data = json.load(f)
 
-                for issue in bandit_data.get('results', []):
+                for issue in bandit_data.get("results", []):
                     vuln = Vulnerability(
                         id=f"BANDIT-{issue['test_id']}",
-                        title=issue['test_name'],
-                        description=issue['issue_text'],
-                        severity=self._map_bandit_severity(issue['issue_severity']),
+                        title=issue["test_name"],
+                        description=issue["issue_text"],
+                        severity=self._map_bandit_severity(issue["issue_severity"]),
                         cvss_score=None,
                         category="SAST",
                         scanner="Bandit",
                         location=f"{issue['filename']}:{issue['line_number']}",
-                        remediation=issue.get('more_info', ''),
-                        references=[issue.get('more_info', '')],
-                        metadata={"code": issue.get('code', '')}
+                        remediation=issue.get("more_info", ""),
+                        references=[issue.get("more_info", "")],
+                        metadata={"code": issue.get("code", "")},
                     )
                     vulnerabilities.append(vuln)
 
@@ -305,27 +317,38 @@ class HMSSecurityScanner:
         """Run Semgrep security scan"""
         vulnerabilities = []
         try:
-            result = subprocess.run([
-                'semgrep', '--config=auto', '--json', '--output=/tmp/semgrep-results.json', 'backend/'
-            ], capture_output=True, text=True, timeout=300)
+            result = subprocess.run(
+                [
+                    "semgrep",
+                    "--config=auto",
+                    "--json",
+                    "--output=/tmp/semgrep-results.json",
+                    "backend/",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
 
             if result.returncode == 0:
-                with open('/tmp/semgrep-results.json', 'r') as f:
+                with open("/tmp/semgrep-results.json", "r") as f:
                     semgrep_data = json.load(f)
 
-                for issue in semgrep_data.get('results', []):
+                for issue in semgrep_data.get("results", []):
                     vuln = Vulnerability(
                         id=f"SEMGREP-{issue['check_id'].replace('.', '-')}",
-                        title=issue['message'],
-                        description=issue['message'],
-                        severity=self._map_semgrep_severity(issue.get('extra', {}).get('severity', 'ERROR')),
+                        title=issue["message"],
+                        description=issue["message"],
+                        severity=self._map_semgrep_severity(
+                            issue.get("extra", {}).get("severity", "ERROR")
+                        ),
                         cvss_score=None,
                         category="SAST",
                         scanner="Semgrep",
                         location=f"{issue['path']}:{issue['start']['line']}",
-                        remediation=issue.get('fix', ''),
-                        references=[issue.get('documentation_url', '')],
-                        metadata={"rule_id": issue['check_id']}
+                        remediation=issue.get("fix", ""),
+                        references=[issue.get("documentation_url", "")],
+                        metadata={"rule_id": issue["check_id"]},
                     )
                     vulnerabilities.append(vuln)
 
@@ -361,7 +384,7 @@ class HMSSecurityScanner:
             duration=duration,
             vulnerabilities=vulnerabilities,
             metadata={"tools_used": ["owasp_zap", "nuclei"]},
-            compliance_status={}
+            compliance_status={},
         )
 
     async def _run_owasp_zap_scan(self) -> List[Vulnerability]:
@@ -371,34 +394,46 @@ class HMSSecurityScanner:
 
         try:
             # Use Docker to run ZAP
-            result = subprocess.run([
-                'docker', 'run', '--rm',
-                '-v', f'{os.getcwd()}:/zap/wrk/:rw',
-                'owasp/zap2docker-stable',
-                'zap-baseline.py',
-                '-t', target_url,
-                '-g', '/zap/wrk/gen.conf',
-                '-r', '/tmp/zap-report.html',
-                '-J', '/tmp/zap-report.json'
-            ], capture_output=True, text=True, timeout=600)
+            result = subprocess.run(
+                [
+                    "docker",
+                    "run",
+                    "--rm",
+                    "-v",
+                    f"{os.getcwd()}:/zap/wrk/:rw",
+                    "owasp/zap2docker-stable",
+                    "zap-baseline.py",
+                    "-t",
+                    target_url,
+                    "-g",
+                    "/zap/wrk/gen.conf",
+                    "-r",
+                    "/tmp/zap-report.html",
+                    "-J",
+                    "/tmp/zap-report.json",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=600,
+            )
 
-            if os.path.exists('/tmp/zap-report.json'):
-                with open('/tmp/zap-report.json', 'r') as f:
+            if os.path.exists("/tmp/zap-report.json"):
+                with open("/tmp/zap-report.json", "r") as f:
                     zap_data = json.load(f)
 
-                for alert in zap_data.get('site', [{}])[0].get('alerts', []):
+                for alert in zap_data.get("site", [{}])[0].get("alerts", []):
                     vuln = Vulnerability(
                         id=f"ZAP-{alert['alert']}",
-                        title=alert['name'],
-                        description=alert['description'],
-                        severity=self._map_zap_risk(alert['risk']),
+                        title=alert["name"],
+                        description=alert["description"],
+                        severity=self._map_zap_risk(alert["risk"]),
                         cvss_score=None,
                         category="DAST",
                         scanner="OWASP ZAP",
                         location=target_url,
-                        remediation=alert.get('solution', ''),
-                        references=alert.get('reference', []),
-                        metadata={"instances": alert.get('instances', [])}
+                        remediation=alert.get("solution", ""),
+                        references=alert.get("reference", []),
+                        metadata={"instances": alert.get("instances", [])},
                     )
                     vulnerabilities.append(vuln)
 
@@ -434,38 +469,41 @@ class HMSSecurityScanner:
             duration=duration,
             vulnerabilities=vulnerabilities,
             metadata={"tools_used": ["safety", "npm_audit"]},
-            compliance_status={}
+            compliance_status={},
         )
 
     async def _run_safety_scan(self) -> List[Vulnerability]:
         """Run Safety dependency check"""
         vulnerabilities = []
         try:
-            result = subprocess.run([
-                'safety', 'check', '--json', '--output=/tmp/safety-results.json'
-            ], capture_output=True, text=True, timeout=180)
+            result = subprocess.run(
+                ["safety", "check", "--json", "--output=/tmp/safety-results.json"],
+                capture_output=True,
+                text=True,
+                timeout=180,
+            )
 
-            if result.returncode == 0 and os.path.exists('/tmp/safety-results.json'):
-                with open('/tmp/safety-results.json', 'r') as f:
+            if result.returncode == 0 and os.path.exists("/tmp/safety-results.json"):
+                with open("/tmp/safety-results.json", "r") as f:
                     safety_data = json.load(f)
 
                 for issue in safety_data:
                     vuln = Vulnerability(
                         id=f"SAFETY-{issue['id']}",
                         title=f"Vulnerability in {issue['package']}",
-                        description=issue['advisory'],
-                        severity=self._map_safety_severity(issue['severity']),
-                        cvss_score=issue.get('cvssv3'),
+                        description=issue["advisory"],
+                        severity=self._map_safety_severity(issue["severity"]),
+                        cvss_score=issue.get("cvssv3"),
                         category="Dependency",
                         scanner="Safety",
                         location=f"Package: {issue['package']}=={issue['installed_version']}",
                         remediation=f"Update to {issue['fixed_version']}",
-                        references=[issue.get('link', '')],
+                        references=[issue.get("link", "")],
                         metadata={
-                            "package": issue['package'],
-                            "installed_version": issue['installed_version'],
-                            "fixed_version": issue['fixed_version']
-                        }
+                            "package": issue["package"],
+                            "installed_version": issue["installed_version"],
+                            "fixed_version": issue["fixed_version"],
+                        },
                     )
                     vulnerabilities.append(vuln)
 
@@ -501,7 +539,7 @@ class HMSSecurityScanner:
             duration=duration,
             vulnerabilities=vulnerabilities,
             metadata={"tools_used": ["gitleaks", "trufflehog"]},
-            compliance_status={}
+            compliance_status={},
         )
 
     async def run_container_scan(self) -> SecurityScanResult:
@@ -527,7 +565,7 @@ class HMSSecurityScanner:
             duration=duration,
             vulnerabilities=vulnerabilities,
             metadata={"tools_used": ["trivy"]},
-            compliance_status={}
+            compliance_status={},
         )
 
     async def run_compliance_scan(self) -> SecurityScanResult:
@@ -565,7 +603,7 @@ class HMSSecurityScanner:
             duration=duration,
             vulnerabilities=vulnerabilities,
             metadata={"frameworks": ["HIPAA", "GDPR", "PCI_DSS"]},
-            compliance_status=compliance_status
+            compliance_status=compliance_status,
         )
 
     async def _run_hipaa_compliance_check(self) -> Dict:
@@ -577,22 +615,29 @@ class HMSSecurityScanner:
             for violation in results.get("violations", []):
                 vuln = Vulnerability(
                     id=f"HIPAA-{violation['rule_id']}",
-                    title=violation['title'],
-                    description=violation['description'],
-                    severity=SecurityLevel.HIGH if violation['critical'] else SecurityLevel.MEDIUM,
+                    title=violation["title"],
+                    description=violation["description"],
+                    severity=(
+                        SecurityLevel.HIGH
+                        if violation["critical"]
+                        else SecurityLevel.MEDIUM
+                    ),
                     cvss_score=None,
                     category="HIPAA Compliance",
                     scanner="HIPAA Checker",
-                    location=violation.get('location', ''),
-                    remediation=violation.get('remediation', ''),
-                    references=violation.get('references', []),
-                    metadata={"rule_id": violation['rule_id'], "critical": violation['critical']}
+                    location=violation.get("location", ""),
+                    remediation=violation.get("remediation", ""),
+                    references=violation.get("references", []),
+                    metadata={
+                        "rule_id": violation["rule_id"],
+                        "critical": violation["critical"],
+                    },
                 )
                 vulnerabilities.append(vuln)
 
             return {
                 "vulnerabilities": vulnerabilities,
-                "compliant": len(violations) == 0
+                "compliant": len(violations) == 0,
             }
 
         except Exception as e:
@@ -611,7 +656,7 @@ class HMSSecurityScanner:
             vulnerabilities.extend(aws_results)
 
             # Kubernetes security scanning
-            if hasattr(self, 'k8s_client'):
+            if hasattr(self, "k8s_client"):
                 k8s_results = await self._run_kubernetes_security_scan()
                 vulnerabilities.extend(k8s_results)
 
@@ -627,7 +672,7 @@ class HMSSecurityScanner:
             duration=duration,
             vulnerabilities=vulnerabilities,
             metadata={"tools_used": ["aws_scanner", "kubernetes_scanner"]},
-            compliance_status={}
+            compliance_status={},
         )
 
     async def _run_aws_security_scan(self) -> List[Vulnerability]:
@@ -637,11 +682,16 @@ class HMSSecurityScanner:
         try:
             # Check for unencrypted S3 buckets
             buckets = self.s3_client.list_buckets()
-            for bucket in buckets['Buckets']:
+            for bucket in buckets["Buckets"]:
                 try:
-                    encryption = self.s3_client.get_bucket_encryption(Bucket=bucket['Name'])
+                    encryption = self.s3_client.get_bucket_encryption(
+                        Bucket=bucket["Name"]
+                    )
                 except ClientError as e:
-                    if e.response['Error']['Code'] == 'ServerSideEncryptionConfigurationNotFoundError':
+                    if (
+                        e.response["Error"]["Code"]
+                        == "ServerSideEncryptionConfigurationNotFoundError"
+                    ):
                         vuln = Vulnerability(
                             id=f"AWS-S3-UNENCRYPTED-{bucket['Name']}",
                             title=f"Unencrypted S3 Bucket: {bucket['Name']}",
@@ -652,18 +702,20 @@ class HMSSecurityScanner:
                             scanner="AWS Scanner",
                             location=f"S3 Bucket: {bucket['Name']}",
                             remediation="Enable default encryption for the S3 bucket",
-                            references=["https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-encryption.html"],
-                            metadata={"bucket_name": bucket['Name']}
+                            references=[
+                                "https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-encryption.html"
+                            ],
+                            metadata={"bucket_name": bucket["Name"]},
                         )
                         vulnerabilities.append(vuln)
 
             # Check for open security groups
             security_groups = self.ec2_client.describe_security_groups()
-            for sg in security_groups['SecurityGroups']:
-                for rule in sg['IpPermissions']:
-                    if rule.get('IpRanges'):
-                        for ip_range in rule['IpRanges']:
-                            if ip_range['CidrIp'] == '0.0.0.0/0':
+            for sg in security_groups["SecurityGroups"]:
+                for rule in sg["IpPermissions"]:
+                    if rule.get("IpRanges"):
+                        for ip_range in rule["IpRanges"]:
+                            if ip_range["CidrIp"] == "0.0.0.0/0":
                                 vuln = Vulnerability(
                                     id=f"AWS-SG-OPEN-{sg['GroupId']}",
                                     title=f"Open Security Group: {sg['GroupName']}",
@@ -674,8 +726,13 @@ class HMSSecurityScanner:
                                     scanner="AWS Scanner",
                                     location=f"Security Group: {sg['GroupId']} ({sg['GroupName']})",
                                     remediation="Restrict inbound access to specific IP addresses",
-                                    references=["https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/security-group-rules.html"],
-                                    metadata={"security_group_id": sg['GroupId'], "port": rule.get('FromPort')}
+                                    references=[
+                                        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/security-group-rules.html"
+                                    ],
+                                    metadata={
+                                        "security_group_id": sg["GroupId"],
+                                        "port": rule.get("FromPort"),
+                                    },
                                 )
                                 vulnerabilities.append(vuln)
 
@@ -711,7 +768,7 @@ class HMSSecurityScanner:
             "critical_threshold_met": critical_violations <= thresholds["critical"],
             "high_threshold_met": high_violations <= thresholds["high"],
             "medium_threshold_met": medium_violations <= thresholds["medium"],
-            "recommendations": []
+            "recommendations": [],
         }
 
         # Generate recommendations
@@ -741,46 +798,56 @@ class HMSSecurityScanner:
                 "timestamp": datetime.now().isoformat(),
                 "total_scans": len(scan_results),
                 "scan_duration_seconds": sum(r.duration for r in scan_results),
-                "scanner_version": "HMS Enterprise Security Scanner v1.0"
+                "scanner_version": "HMS Enterprise Security Scanner v1.0",
             },
             "vulnerability_summary": {
                 "total_vulnerabilities": total_vulnerabilities,
                 "severity_breakdown": severity_counts,
-                "top_vulnerabilities": self._get_top_vulnerabilities(all_vulnerabilities, 10)
+                "top_vulnerabilities": self._get_top_vulnerabilities(
+                    all_vulnerabilities, 10
+                ),
             },
             "security_gate": security_gate_status,
             "compliance_summary": compliance_summary,
-            "scan_results": [self._serialize_scan_result(result) for result in scan_results],
+            "scan_results": [
+                self._serialize_scan_result(result) for result in scan_results
+            ],
             "executive_summary": self._generate_executive_summary(
                 total_vulnerabilities, severity_counts, compliance_summary
-            )
+            ),
         }
 
         return report
 
-    def _get_top_vulnerabilities(self, vulnerabilities: List[Vulnerability], limit: int) -> List[Dict]:
+    def _get_top_vulnerabilities(
+        self, vulnerabilities: List[Vulnerability], limit: int
+    ) -> List[Dict]:
         """Get top vulnerabilities by severity"""
         severity_order = {
             SecurityLevel.CRITICAL: 4,
             SecurityLevel.HIGH: 3,
             SecurityLevel.MEDIUM: 2,
             SecurityLevel.LOW: 1,
-            SecurityLevel.INFO: 0
+            SecurityLevel.INFO: 0,
         }
 
         sorted_vulns = sorted(
             vulnerabilities,
             key=lambda x: severity_order.get(x.severity, 0),
-            reverse=True
+            reverse=True,
         )
 
         return [asdict(vuln) for vuln in sorted_vulns[:limit]]
 
-    def _generate_executive_summary(self, total_vulns: int, severity_counts: Dict, compliance_summary: Dict) -> str:
+    def _generate_executive_summary(
+        self, total_vulns: int, severity_counts: Dict, compliance_summary: Dict
+    ) -> str:
         """Generate executive summary of security posture"""
         summary_lines = []
         summary_lines.append("# 🛡️ HMS Security Scan Executive Summary")
-        summary_lines.append(f"**Scan Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        summary_lines.append(
+            f"**Scan Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
         summary_lines.append("")
 
         # Overall risk assessment
@@ -812,20 +879,30 @@ class HMSSecurityScanner:
         summary_lines.append("## 📋 Compliance Status")
         for framework, status in compliance_summary.items():
             status_icon = "✅" if status else "❌"
-            summary_lines.append(f"- **{framework}:** {status_icon} {'Compliant' if status else 'Non-compliant'}")
+            summary_lines.append(
+                f"- **{framework}:** {status_icon} {'Compliant' if status else 'Non-compliant'}"
+            )
         summary_lines.append("")
 
         # Key findings
         summary_lines.append("## 🔍 Key Findings")
         if critical_count > 0:
-            summary_lines.append(f"- {critical_count} critical vulnerabilities require immediate attention")
+            summary_lines.append(
+                f"- {critical_count} critical vulnerabilities require immediate attention"
+            )
         if high_count > 0:
-            summary_lines.append(f"- {high_count} high-severity issues should be prioritized")
+            summary_lines.append(
+                f"- {high_count} high-severity issues should be prioritized"
+            )
 
         # Recommendations
         summary_lines.append("## 🎯 Recommendations")
-        summary_lines.append("1. **Immediate Actions:** Fix all critical vulnerabilities")
-        summary_lines.append("2. **Short-term:** Address high-severity issues within 30 days")
+        summary_lines.append(
+            "1. **Immediate Actions:** Fix all critical vulnerabilities"
+        )
+        summary_lines.append(
+            "2. **Short-term:** Address high-severity issues within 30 days"
+        )
         summary_lines.append("3. **Medium-term:** Implement regular security scanning")
         summary_lines.append("4. **Long-term:** Establish security champions program")
 
@@ -840,7 +917,7 @@ class HMSSecurityScanner:
             "duration_seconds": result.duration,
             "vulnerability_count": len(result.vulnerabilities),
             "compliance_status": result.compliance_status,
-            "metadata": result.metadata
+            "metadata": result.metadata,
         }
 
     def _map_bandit_severity(self, severity: str) -> SecurityLevel:
@@ -848,7 +925,7 @@ class HMSSecurityScanner:
         mapping = {
             "HIGH": SecurityLevel.HIGH,
             "MEDIUM": SecurityLevel.MEDIUM,
-            "LOW": SecurityLevel.LOW
+            "LOW": SecurityLevel.LOW,
         }
         return mapping.get(severity.upper(), SecurityLevel.INFO)
 
@@ -857,7 +934,7 @@ class HMSSecurityScanner:
         mapping = {
             "ERROR": SecurityLevel.HIGH,
             "WARNING": SecurityLevel.MEDIUM,
-            "INFO": SecurityLevel.INFO
+            "INFO": SecurityLevel.INFO,
         }
         return mapping.get(severity.upper(), SecurityLevel.INFO)
 
@@ -867,7 +944,7 @@ class HMSSecurityScanner:
             "High": SecurityLevel.HIGH,
             "Medium": SecurityLevel.MEDIUM,
             "Low": SecurityLevel.LOW,
-            "Informational": SecurityLevel.INFO
+            "Informational": SecurityLevel.INFO,
         }
         return mapping.get(risk, SecurityLevel.INFO)
 
@@ -877,23 +954,39 @@ class HMSSecurityScanner:
             "CRITICAL": SecurityLevel.CRITICAL,
             "HIGH": SecurityLevel.HIGH,
             "MEDIUM": SecurityLevel.MEDIUM,
-            "LOW": SecurityLevel.LOW
+            "LOW": SecurityLevel.LOW,
         }
         return mapping.get(severity.upper(), SecurityLevel.INFO)
+
 
 async def main():
     """Main function to run security scanner"""
     import argparse
 
-    parser = argparse.ArgumentParser(description='HMS Enterprise Security Scanner')
-    parser.add_argument('--config', '-c', default='devops/security/security-config.yaml',
-                       help='Path to configuration file')
-    parser.add_argument('--output', '-o', default='security-report.json',
-                       help='Output file for security report')
-    parser.add_argument('--scan-type', choices=['comprehensive', 'sast', 'dast', 'compliance'],
-                       default='comprehensive', help='Type of scan to run')
-    parser.add_argument('--generate-report', action='store_true',
-                       help='Generate detailed security report')
+    parser = argparse.ArgumentParser(description="HMS Enterprise Security Scanner")
+    parser.add_argument(
+        "--config",
+        "-c",
+        default="devops/security/security-config.yaml",
+        help="Path to configuration file",
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        default="security-report.json",
+        help="Output file for security report",
+    )
+    parser.add_argument(
+        "--scan-type",
+        choices=["comprehensive", "sast", "dast", "compliance"],
+        default="comprehensive",
+        help="Type of scan to run",
+    )
+    parser.add_argument(
+        "--generate-report",
+        action="store_true",
+        help="Generate detailed security report",
+    )
 
     args = parser.parse_args()
 
@@ -901,30 +994,39 @@ async def main():
     scanner = HMSSecurityScanner(args.config)
 
     # Run scans
-    if args.scan_type == 'comprehensive':
+    if args.scan_type == "comprehensive":
         results = await scanner.run_comprehensive_scan()
-    elif args.scan_type == 'sast':
+    elif args.scan_type == "sast":
         results = [await scanner.run_sast_scan()]
-    elif args.scan_type == 'dast':
+    elif args.scan_type == "dast":
         results = [await scanner.run_dast_scan()]
-    elif args.scan_type == 'compliance':
+    elif args.scan_type == "compliance":
         results = [await scanner.run_compliance_scan()]
 
     # Generate report
     report = scanner.generate_security_report(results)
 
     # Save report
-    with open(args.output, 'w') as f:
+    with open(args.output, "w") as f:
         json.dump(report, f, indent=2, default=str)
 
     print(f"🛡️ Security scan completed. Report saved to {args.output}")
 
     # Print summary
     print(f"\n📊 Scan Summary:")
-    print(f"Total vulnerabilities: {report['vulnerability_summary']['total_vulnerabilities']}")
-    print(f"Critical: {report['vulnerability_summary']['severity_breakdown'].get('critical', 0)}")
-    print(f"High: {report['vulnerability_summary']['severity_breakdown'].get('high', 0)}")
-    print(f"Security Gate: {'✅ PASSED' if report['security_gate']['passed'] else '❌ FAILED'}")
+    print(
+        f"Total vulnerabilities: {report['vulnerability_summary']['total_vulnerabilities']}"
+    )
+    print(
+        f"Critical: {report['vulnerability_summary']['severity_breakdown'].get('critical', 0)}"
+    )
+    print(
+        f"High: {report['vulnerability_summary']['severity_breakdown'].get('high', 0)}"
+    )
+    print(
+        f"Security Gate: {'✅ PASSED' if report['security_gate']['passed'] else '❌ FAILED'}"
+    )
+
 
 if __name__ == "__main__":
     asyncio.run(main())

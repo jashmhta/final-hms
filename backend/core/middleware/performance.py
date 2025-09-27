@@ -45,7 +45,9 @@ class PerformanceMiddleware:
 
         # Log slow requests (>500ms)
         if duration > 0.5:
-            logger.warning(f"Slow request: {request.path} took {duration:.3f}s with {query_count} queries")
+            logger.warning(
+                f"Slow request: {request.path} took {duration:.3f}s with {query_count} queries"
+            )
 
         # Compress response if eligible
         if self.should_compress(request, response):
@@ -134,10 +136,14 @@ class DatabaseOptimizationMiddleware:
 
             # Log query count warnings
             if len(queries_executed) > self.query_threshold:
-                logger.warning(f"High query count on {request.path}: {len(queries_executed)} queries")
+                logger.warning(
+                    f"High query count on {request.path}: {len(queries_executed)} queries"
+                )
 
                 # Log slow queries (>100ms)
-                slow_queries = [q for q in queries_executed if float(q.get("time", 0)) > 0.1]
+                slow_queries = [
+                    q for q in queries_executed if float(q.get("time", 0)) > 0.1
+                ]
 
                 if slow_queries:
                     logger.warning(f"Slow queries detected on {request.path}:")

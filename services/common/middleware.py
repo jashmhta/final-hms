@@ -3,48 +3,61 @@ Common middleware for HMS microservices
 Performance monitoring, authentication, and request handling
 """
 
-import time
+import asyncio
 import json
 import logging
-from typing import Optional, Dict, Any
+import time
+from collections import defaultdict
+from typing import Any, Dict, Optional
+
+from prometheus_client import Counter, Gauge, Histogram
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response, JSONResponse
+from starlette.responses import JSONResponse, Response
 from starlette.status import HTTP_429_TOO_MANY_REQUESTS
-import asyncio
-from collections import defaultdict
-from prometheus_client import Counter, Histogram, Gauge
 
 from .correlation_id import CorrelationIDMiddleware, get_correlation_id
-from .otel_config import get_otel_config, get_meter, get_tracer
+from .otel_config import get_meter, get_otel_config, get_tracer
 
 logger = logging.getLogger(__name__)
 
 # Prometheus metrics
 REQUEST_COUNT = Counter(
-    'http_requests_total',
-    'Total HTTP requests',
-    ['method', 'endpoint', 'status_code', 'service']
+    "http_requests_total",
+    "Total HTTP requests",
+    ["method", "endpoint", "status_code", "service"],
 )
 
 REQUEST_DURATION = Histogram(
-    'http_request_duration_seconds',
-    'HTTP request duration',
-    ['method', 'endpoint', 'service'],
-    buckets=[0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0]
+    "http_request_duration_seconds",
+    "HTTP request duration",
+    ["method", "endpoint", "service"],
+    buckets=[
+        0.005,
+        0.01,
+        0.025,
+        0.05,
+        0.075,
+        0.1,
+        0.25,
+        0.5,
+        0.75,
+        1.0,
+        2.5,
+        5.0,
+        7.5,
+        10.0,
+    ],
 )
 
-ACTIVE_REQUESTS = Gauge(
-    'http_active_requests',
-    'Active HTTP requests',
-    ['service']
-)
+ACTIVE_REQUESTS = Gauge("http_active_requests", "Active HTTP requests", ["service"])
 
 ERROR_COUNT = Counter(
-    'http_errors_total',
-    'Total HTTP errors',
-    ['method', 'endpoint', 'status_code', 'error_type', 'service']
+    "http_errors_total",
+    "Total HTTP errors",
+    ["method", "endpoint", "status_code", "error_type", "service"],
 )
+
 
 class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
     """Middleware for performance monitoring and metrics collection"""
@@ -78,8 +91,8 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
                     "http.scheme": request.url.scheme,
                     "http.host": request.url.hostname,
                     "correlation.id": correlation_id,
-                    "service.name": self.service_name
-                }
+                    "service.name": self.service_name,
+                },
             )
 
         try:
@@ -94,19 +107,21 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
                 method=request.method,
                 endpoint=request.url.path,
                 status_code=response.status_code,
-                service=self.service_name
+                service=self.service_name,
             ).inc()
 
             REQUEST_DURATION.labels(
                 method=request.method,
                 endpoint=request.url.path,
-                service=self.service_name
+                service=self.service_name,
             ).observe(duration)
 
             # Record in OpenTelemetry
             if span:
                 span.set_attribute("http.status_code", response.status_code)
-                span.set_attribute("http.response.size", response.headers.get("content-length", 0))
+                span.set_attribute(
+                    "http.response.size", response.headers.get("content-length", 0)
+                )
                 span.set_attribute("response.duration_ms", duration * 1000)
 
             # Check for slow requests
@@ -116,7 +131,7 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
                     method=request.method,
                     path=request.url.path,
                     duration=duration,
-                    correlation_id=correlation_id
+                    correlation_id=correlation_id,
                 )
 
             return response
@@ -131,7 +146,7 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
                 endpoint=request.url.path,
                 status_code=500,
                 error_type=type(e).__name__,
-                service=self.service_name
+                service=self.service_name,
             ).inc()
 
             # Log error with correlation ID
@@ -141,7 +156,7 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
                 path=request.url.path,
                 error=str(e),
                 correlation_id=correlation_id,
-                duration=duration
+                duration=duration,
             )
 
             # Record in OpenTelemetry
@@ -154,7 +169,7 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
             # Return error response
             return JSONResponse(
                 {"error": "Internal server error", "correlation_id": correlation_id},
-                status_code=500
+                status_code=500,
             )
 
         finally:
@@ -165,6 +180,7 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
             if span:
                 span.end()
 
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Rate limiting middleware with different strategies"""
 
@@ -173,7 +189,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         app,
         rate_limit: int = 100,  # requests per minute
         window_size: int = 60,  # seconds
-        strategies: list = None
+        strategies: list = None,
     ):
         super().__init__(app)
         self.rate_limit = rate_limit
@@ -189,8 +205,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             now = time.time()
             for key, timestamps in self.requests.items():
                 self.requests[key] = [
-                    t for t in timestamps
-                    if now - t < self.window_size
+                    t for t in timestamps if now - t < self.window_size
                 ]
 
     def _get_rate_limit_key(self, request: Request) -> str:
@@ -217,10 +232,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # Check rate limit
         now = time.time()
-        recent_requests = [
-            t for t in self.requests[key]
-            if now - t < self.window_size
-        ]
+        recent_requests = [t for t in self.requests[key] if now - t < self.window_size]
 
         if len(recent_requests) >= self.rate_limit:
             return JSONResponse(
@@ -229,8 +241,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 headers={
                     "X-RateLimit-Limit": str(self.rate_limit),
                     "X-RateLimit-Remaining": "0",
-                    "X-RateLimit-Reset": str(int(now + self.window_size))
-                }
+                    "X-RateLimit-Reset": str(int(now + self.window_size)),
+                },
             )
 
         # Record request
@@ -244,6 +256,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         response.headers["X-RateLimit-Reset"] = str(int(now + self.window_size))
 
         return response
+
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to responses"""
@@ -266,13 +279,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "connect-src 'self' wss: https:;"
             ),
             "Referrer-Policy": "strict-origin-when-cross-origin",
-            "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
+            "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
         }
 
         for header, value in security_headers.items():
             response.headers[header] = value
 
         return response
+
 
 class CacheControlMiddleware(BaseHTTPMiddleware):
     """Add cache control headers"""
@@ -292,9 +306,12 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
             response.headers["Expires"] = "0"
         else:
             # Default cache control
-            response.headers["Cache-Control"] = f"public, max-age={self.default_max_age}"
+            response.headers["Cache-Control"] = (
+                f"public, max-age={self.default_max_age}"
+            )
 
         return response
+
 
 class ResponseSizeMiddleware(BaseHTTPMiddleware):
     """Monitor response sizes"""
@@ -316,10 +333,11 @@ class ResponseSizeMiddleware(BaseHTTPMiddleware):
                     method=request.method,
                     path=request.url.path,
                     size_mb=size_mb,
-                    correlation_id=get_correlation_id()
+                    correlation_id=get_correlation_id(),
                 )
 
         return response
+
 
 class RequestBodyLoggingMiddleware(BaseHTTPMiddleware):
     """Log request bodies for debugging"""
@@ -338,18 +356,19 @@ class RequestBodyLoggingMiddleware(BaseHTTPMiddleware):
         body = await request.body()
         if body:
             try:
-                body_str = body.decode()[:self.max_body_size]
+                body_str = body.decode()[: self.max_body_size]
                 logger.info(
                     "Request received",
                     method=request.method,
                     path=request.url.path,
                     body=body_str,
-                    correlation_id=get_correlation_id()
+                    correlation_id=get_correlation_id(),
                 )
             except Exception:
                 pass
 
         return await call_next(request)
+
 
 # Combined middleware factory
 def create_middleware_stack(
@@ -359,7 +378,7 @@ def create_middleware_stack(
     rate_limit_config: dict = None,
     enable_security_headers: bool = True,
     enable_cache_control: bool = True,
-    enable_body_logging: bool = False
+    enable_body_logging: bool = False,
 ):
     """Create a complete middleware stack"""
     middleware = app
@@ -385,6 +404,7 @@ def create_middleware_stack(
 
     return middleware
 
+
 # Django middleware class
 class DjangoCommonMiddleware:
     """Django version of the common middleware"""
@@ -395,9 +415,10 @@ class DjangoCommonMiddleware:
 
     def __call__(self, request):
         # Add correlation ID
-        correlation_id = getattr(request, 'correlation_id', None)
+        correlation_id = getattr(request, "correlation_id", None)
         if not correlation_id:
             from .correlation_id import generate_correlation_id
+
             correlation_id = generate_correlation_id()
             request.correlation_id = correlation_id
 
@@ -414,16 +435,14 @@ class DjangoCommonMiddleware:
             method=request.method,
             endpoint=request.path,
             status_code=response.status_code,
-            service=self.service_name
+            service=self.service_name,
         ).inc()
 
         REQUEST_DURATION.labels(
-            method=request.method,
-            endpoint=request.path,
-            service=self.service_name
+            method=request.method, endpoint=request.path, service=self.service_name
         ).observe(duration)
 
         # Add correlation ID header
-        response['X-Correlation-ID'] = correlation_id
+        response["X-Correlation-ID"] = correlation_id
 
         return response

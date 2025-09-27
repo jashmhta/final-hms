@@ -5,45 +5,45 @@ High-performance message queue implementation with various backends
 
 import asyncio
 import json
-import time
 import logging
-from typing import Any, Dict, List, Optional, Callable, Awaitable, Union
+import pickle
+import time
+import zlib
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from enum import Enum
-from contextlib import asynccontextmanager
+from functools import wraps
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
+
 import aiohttp
 import aiohttp.web
-import orjson
 import msgpack
-import pickle
-import zlib
-import snappy
-from concurrent.futures import ThreadPoolExecutor
-from functools import wraps
-import redis.asyncio as aioredis
-from redis.exceptions import RedisError
+import orjson
 import prometheus_client as prom
+import redis.asyncio as aioredis
+import snappy
+from redis.exceptions import RedisError
 
 logger = logging.getLogger(__name__)
 
 # Metrics
 MESSAGE_QUEUE_SIZE = prom.Gauge(
-    'message_queue_size',
-    'Current message queue size',
-    ['queue_name', 'service']
+    "message_queue_size", "Current message queue size", ["queue_name", "service"]
 )
 
 MESSAGE_PROCESSED = prom.Counter(
-    'message_processed_total',
-    'Total messages processed',
-    ['queue_name', 'status', 'service']
+    "message_processed_total",
+    "Total messages processed",
+    ["queue_name", "status", "service"],
 )
 
 MESSAGE_LATENCY = prom.Histogram(
-    'message_processing_latency_seconds',
-    'Message processing latency',
-    ['queue_name', 'service']
+    "message_processing_latency_seconds",
+    "Message processing latency",
+    ["queue_name", "service"],
 )
+
 
 class MessagePriority(Enum):
     LOW = 1
@@ -51,9 +51,11 @@ class MessagePriority(Enum):
     HIGH = 3
     CRITICAL = 4
 
+
 @dataclass
 class Message:
     """Message structure"""
+
     id: str
     topic: str
     data: Any
@@ -66,9 +68,11 @@ class Message:
     reply_to: Optional[str] = None
     headers: Dict[str, Any] = field(default_factory=dict)
 
+
 @dataclass
 class QueueConfig:
     """Queue configuration"""
+
     name: str
     max_size: int = 10000
     retention_seconds: int = 86400  # 24 hours
@@ -80,6 +84,7 @@ class QueueConfig:
     serializer: str = "orjson"  # json, orjson, msgpack, pickle
     enable_metrics: bool = True
 
+
 class PriorityQueue:
     """Priority-based message queue implementation"""
 
@@ -89,23 +94,18 @@ class PriorityQueue:
             MessagePriority.CRITICAL: asyncio.Queue(maxsize=config.max_size // 4),
             MessagePriority.HIGH: asyncio.Queue(maxsize=config.max_size // 4),
             MessagePriority.NORMAL: asyncio.Queue(maxsize=config.max_size // 2),
-            MessagePriority.LOW: asyncio.Queue(maxsize=config.max_size // 4)
+            MessagePriority.LOW: asyncio.Queue(maxsize=config.max_size // 4),
         }
-        self.metrics = {
-            'enqueued': 0,
-            'dequeued': 0,
-            'retries': 0,
-            'dead_lettered': 0
-        }
+        self.metrics = {"enqueued": 0, "dequeued": 0, "retries": 0, "dead_lettered": 0}
 
     async def put(self, message: Message):
         """Put message in queue with priority"""
         try:
             await self.queues[message.priority].put(message)
-            self.metrics['enqueued'] += 1
+            self.metrics["enqueued"] += 1
             MESSAGE_QUEUE_SIZE.labels(
                 queue_name=self.config.name,
-                service=message.headers.get('source_service', 'unknown')
+                service=message.headers.get("source_service", "unknown"),
             ).inc()
         except asyncio.QueueFull:
             logger.error(f"Queue {self.config.name} is full")
@@ -116,14 +116,18 @@ class PriorityQueue:
     async def get(self) -> Message:
         """Get highest priority message"""
         # Check queues in priority order
-        for priority in [MessagePriority.CRITICAL, MessagePriority.HIGH,
-                         MessagePriority.NORMAL, MessagePriority.LOW]:
+        for priority in [
+            MessagePriority.CRITICAL,
+            MessagePriority.HIGH,
+            MessagePriority.NORMAL,
+            MessagePriority.LOW,
+        ]:
             try:
                 message = await self.queues[priority].get()
-                self.metrics['dequeued'] += 1
+                self.metrics["dequeued"] += 1
                 MESSAGE_QUEUE_SIZE.labels(
                     queue_name=self.config.name,
-                    service=message.headers.get('source_service', 'unknown')
+                    service=message.headers.get("source_service", "unknown"),
                 ).dec()
                 return message
             except asyncio.QueueEmpty:
@@ -154,10 +158,11 @@ class PriorityQueue:
 
     async def _dead_letter(self, message: Message, reason: str):
         """Send message to dead letter queue"""
-        message.headers['dead_letter_reason'] = reason
-        message.headers['dead_letter_time'] = time.time()
-        self.metrics['dead_lettered'] += 1
+        message.headers["dead_letter_reason"] = reason
+        message.headers["dead_letter_time"] = time.time()
+        self.metrics["dead_lettered"] += 1
         logger.warning(f"Message {message.id} sent to dead letter queue: {reason}")
+
 
 class RedisQueueBackend:
     """Redis-based queue backend for distributed message processing"""
@@ -167,15 +172,15 @@ class RedisQueueBackend:
         self.redis = None
         self.subscribers = {}
         self.serializers = {
-            'json': (json.dumps, json.loads),
-            'orjson': (orjson.dumps, orjson.loads),
-            'msgpack': (msgpack.packb, msgpack.unpackb),
-            'pickle': (pickle.dumps, pickle.loads)
+            "json": (json.dumps, json.loads),
+            "orjson": (orjson.dumps, orjson.loads),
+            "msgpack": (msgpack.packb, msgpack.unpackb),
+            "pickle": (pickle.dumps, pickle.loads),
         }
         self.compressors = {
-            'none': (lambda x: x, lambda x: x),
-            'gzip': (zlib.compress, zlib.decompress),
-            'snappy': (snappy.compress, snappy.decompress)
+            "none": (lambda x: x, lambda x: x),
+            "gzip": (zlib.compress, zlib.decompress),
+            "snappy": (snappy.compress, snappy.decompress),
         }
 
     async def connect(self, url: str):
@@ -199,13 +204,15 @@ class RedisQueueBackend:
         await self.redis.xadd(
             f"stream:{topic}",
             {
-                'message': compressed,
-                'priority': message.priority.value,
-                'timestamp': message.timestamp
-            }
+                "message": compressed,
+                "priority": message.priority.value,
+                "timestamp": message.timestamp,
+            },
         )
 
-    async def subscribe(self, topic: str, handler: Callable[[Message], Awaitable[None]]):
+    async def subscribe(
+        self, topic: str, handler: Callable[[Message], Awaitable[None]]
+    ):
         """Subscribe to topic"""
         if not self.redis:
             raise ConnectionError("Redis not connected")
@@ -213,10 +220,7 @@ class RedisQueueBackend:
         # Create consumer group
         try:
             await self.redis.xgroup_create(
-                f"stream:{topic}",
-                "consumer_group",
-                id="0",
-                mkstream=True
+                f"stream:{topic}", "consumer_group", id="0", mkstream=True
             )
         except aioredis.ResponseError:
             # Group already exists
@@ -231,7 +235,7 @@ class RedisQueueBackend:
                     f"consumer_{time.time()}",
                     {f"stream:{topic}": ">"},
                     count=self.config.batch_size,
-                    block=1000
+                    block=1000,
                 )
 
                 # Process messages
@@ -242,7 +246,7 @@ class RedisQueueBackend:
                     for msg_id, fields in msgs:
                         try:
                             # Deserialize message
-                            compressed = fields['message']
+                            compressed = fields["message"]
                             serialized = decompress(compressed)
                             data = deserialize(serialized)
 
@@ -254,7 +258,9 @@ class RedisQueueBackend:
                             await handler(message)
 
                             # Acknowledge message
-                            await self.redis.xack(f"stream:{topic}", "consumer_group", msg_id)
+                            await self.redis.xack(
+                                f"stream:{topic}", "consumer_group", msg_id
+                            )
 
                         except Exception as e:
                             logger.error(f"Error processing message {msg_id}: {e}")
@@ -264,7 +270,9 @@ class RedisQueueBackend:
                             else:
                                 # Retry
                                 message.retry_count += 1
-                                await self.redis.xack(f"stream:{topic}", "consumer_group", msg_id)
+                                await self.redis.xack(
+                                    f"stream:{topic}", "consumer_group", msg_id
+                                )
                                 await asyncio.sleep(message.delay)
                                 await self.publish(topic, message)
 
@@ -275,9 +283,10 @@ class RedisQueueBackend:
     async def _dead_letter(self, message: Message, error: str):
         """Send to dead letter queue"""
         dlq_topic = f"{self.config.name}_dlq"
-        message.headers['dead_letter_reason'] = error
-        message.headers['dead_letter_time'] = time.time()
+        message.headers["dead_letter_reason"] = error
+        message.headers["dead_letter_time"] = time.time()
         await self.publish(dlq_topic, message)
+
 
 class MessageProcessor:
     """High-performance message processor with optimizations"""
@@ -288,13 +297,11 @@ class MessageProcessor:
         self.workers = []
         self.batch_processor = None
         self.running = False
-        self.metrics = {
-            'processed': 0,
-            'errors': 0,
-            'avg_processing_time': 0
-        }
+        self.metrics = {"processed": 0, "errors": 0, "avg_processing_time": 0}
 
-    def register_handler(self, topic: str, handler: Callable[[Message], Awaitable[None]]):
+    def register_handler(
+        self, topic: str, handler: Callable[[Message], Awaitable[None]]
+    ):
         """Register message handler for topic"""
         self.handlers[topic] = handler
 
@@ -339,7 +346,7 @@ class MessageProcessor:
                 continue
             except Exception as e:
                 logger.error(f"Worker {worker_id} error: {e}")
-                self.metrics['errors'] += 1
+                self.metrics["errors"] += 1
 
     async def _batch_worker(self):
         """Batch message processor"""
@@ -381,22 +388,22 @@ class MessageProcessor:
 
             MESSAGE_PROCESSED.labels(
                 queue_name=self.queue.config.name,
-                status='success',
-                service=message.headers.get('source_service', 'unknown')
+                status="success",
+                service=message.headers.get("source_service", "unknown"),
             ).inc()
             MESSAGE_LATENCY.labels(
                 queue_name=self.queue.config.name,
-                service=message.headers.get('source_service', 'unknown')
+                service=message.headers.get("source_service", "unknown"),
             ).observe(processing_time)
 
         except Exception as e:
             logger.error(f"Error processing message {message.id}: {e}")
-            self.metrics['errors'] += 1
+            self.metrics["errors"] += 1
 
             # Retry logic
             if message.retry_count < message.max_retries:
                 message.retry_count += 1
-                await asyncio.sleep(message.delay or (2 ** message.retry_count))
+                await asyncio.sleep(message.delay or (2**message.retry_count))
                 await self.queue.put(message)
             else:
                 # Dead letter
@@ -412,7 +419,7 @@ class MessageProcessor:
                 return
 
             # Call batch handler if available
-            if hasattr(handler, '__batch_handler__'):
+            if hasattr(handler, "__batch_handler__"):
                 await handler(messages)
             else:
                 # Process messages in parallel
@@ -428,15 +435,16 @@ class MessageProcessor:
 
     def _update_metrics(self, processing_time: float):
         """Update processing metrics"""
-        self.metrics['processed'] += 1
+        self.metrics["processed"] += 1
 
         # Calculate running average
-        if self.metrics['avg_processing_time'] == 0:
-            self.metrics['avg_processing_time'] = processing_time
+        if self.metrics["avg_processing_time"] == 0:
+            self.metrics["avg_processing_time"] = processing_time
         else:
-            self.metrics['avg_processing_time'] = (
-                self.metrics['avg_processing_time'] * 0.9 + processing_time * 0.1
+            self.metrics["avg_processing_time"] = (
+                self.metrics["avg_processing_time"] * 0.9 + processing_time * 0.1
             )
+
 
 class EventSourcing:
     """Event sourcing for reliable message processing"""
@@ -449,11 +457,11 @@ class EventSourcing:
     async def save_event(self, aggregate_id: str, event_type: str, data: Dict):
         """Save event to log"""
         event = {
-            'id': f"{aggregate_id}_{len(self.event_log)}",
-            'aggregate_id': aggregate_id,
-            'type': event_type,
-            'data': data,
-            'timestamp': time.time()
+            "id": f"{aggregate_id}_{len(self.event_log)}",
+            "aggregate_id": aggregate_id,
+            "type": event_type,
+            "data": data,
+            "timestamp": time.time(),
         }
 
         if self.backend == "redis":
@@ -468,14 +476,16 @@ class EventSourcing:
             # Query Redis stream
             pass
         else:
-            return [e for e in self.event_log if e['aggregate_id'] == aggregate_id]
+            return [e for e in self.event_log if e["aggregate_id"] == aggregate_id]
 
     async def create_snapshot(self, aggregate_id: str, state: Dict):
         """Create snapshot of aggregate state"""
         self.snapshots[aggregate_id] = {
-            'state': state,
-            'version': len([e for e in self.event_log if e['aggregate_id'] == aggregate_id]),
-            'timestamp': time.time()
+            "state": state,
+            "version": len(
+                [e for e in self.event_log if e["aggregate_id"] == aggregate_id]
+            ),
+            "timestamp": time.time(),
         }
 
     async def get_state(self, aggregate_id: str) -> Dict:
@@ -483,8 +493,8 @@ class EventSourcing:
         # Check for snapshot
         snapshot = self.snapshots.get(aggregate_id)
         if snapshot:
-            state = snapshot['state']
-            start_version = snapshot['version']
+            state = snapshot["state"]
+            start_version = snapshot["version"]
         else:
             state = {}
             start_version = 0
@@ -501,41 +511,51 @@ class EventSourcing:
         # Event handlers would be defined here
         return state
 
+
 # Exception classes
 class QueueFullError(Exception):
     """Queue is full"""
+
     pass
+
 
 class MessageProcessingError(Exception):
     """Error processing message"""
+
     pass
+
 
 class ConnectionError(Exception):
     """Connection error"""
+
     pass
+
 
 # Decorators
 def message_handler(topic: str):
     """Decorator for message handlers"""
+
     def decorator(func):
         func.__message_handler_topic__ = topic
         return func
+
     return decorator
+
 
 def batch_handler(topic: str):
     """Decorator for batch message handlers"""
+
     def decorator(func):
         func.__message_handler_topic__ = topic
         func.__batch_handler__ = True
         return func
+
     return decorator
+
 
 # Utility functions
 async def publish_message(
-    topic: str,
-    data: Any,
-    priority: MessagePriority = MessagePriority.NORMAL,
-    **kwargs
+    topic: str, data: Any, priority: MessagePriority = MessagePriority.NORMAL, **kwargs
 ) -> str:
     """Publish message to topic"""
     message = Message(
@@ -543,19 +563,19 @@ async def publish_message(
         topic=topic,
         data=data,
         priority=priority,
-        **kwargs
+        **kwargs,
     )
 
     # Publish via message bus or queue
     from .service_communication_optimizer import service_bus
+
     await service_bus.publish(topic, message.__dict__)
 
     return message.id
 
+
 def create_message_queue(
-    name: str,
-    max_size: int = 10000,
-    **kwargs
+    name: str, max_size: int = 10000, **kwargs
 ) -> MessageProcessor:
     """Create and configure message queue"""
     config = QueueConfig(name=name, max_size=max_size, **kwargs)

@@ -4,26 +4,32 @@ Pytest configuration and shared fixtures for HMS testing
 
 import json
 import os
-import pytest
 from datetime import date, datetime, timedelta
 from unittest.mock import MagicMock
+
+import pytest
+from factory.django import DjangoModelFactory
+from rest_framework.test import APIClient
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase, TransactionTestCase
-from django.utils import timezone
 from django.urls import reverse
-from factory.django import DjangoModelFactory
-from rest_framework.test import APIClient
+from django.utils import timezone
 
-from hospitals.models import Hospital, Department
-from patients.models import Patient, EmergencyContact, InsuranceInformation, PatientAlert
-from ehr.models import Encounter, VitalSigns, Allergy, ClinicalNote, PlanOfCare
+from accounting.models import Account, ChartOfAccounts, JournalEntry, Transaction
 from appointments.models import Appointment, AppointmentHistory, AppointmentReminder
 from billing.models import Bill, BillLineItem, DepartmentBudget
-from pharmacy.models import Medication, Prescription, MedicationBatch
-from lab.models import LabTest, LabOrder, LabResult
-from accounting.models import Account, Transaction, JournalEntry, ChartOfAccounts
+from ehr.models import Allergy, ClinicalNote, Encounter, PlanOfCare, VitalSigns
+from hospitals.models import Department, Hospital
+from lab.models import LabOrder, LabResult, LabTest
+from patients.models import (
+    EmergencyContact,
+    InsuranceInformation,
+    Patient,
+    PatientAlert,
+)
+from pharmacy.models import Medication, MedicationBatch, Prescription
 
 User = get_user_model()
 
@@ -46,13 +52,14 @@ def authenticated_client(api_client, test_user):
     from rest_framework_simplejwt.tokens import RefreshToken
 
     token = RefreshToken.for_user(test_user)
-    api_client.credentials(HTTP_AUTHORIZATION=f'Bearer {token.access_token}')
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
     return api_client
 
 
 @pytest.fixture
 def hospital_factory():
     """Hospital factory fixture"""
+
     class HospitalFactory(DjangoModelFactory):
         class Meta:
             model = Hospital
@@ -74,6 +81,7 @@ def hospital_factory():
 @pytest.fixture
 def department_factory(hospital_factory):
     """Department factory fixture"""
+
     class DepartmentFactory(DjangoModelFactory):
         class Meta:
             model = Department
@@ -91,6 +99,7 @@ def department_factory(hospital_factory):
 @pytest.fixture
 def user_factory():
     """User factory fixture"""
+
     class UserFactory(DjangoModelFactory):
         class Meta:
             model = User
@@ -125,13 +134,14 @@ def doctor_user(user_factory, hospital_factory):
         username="doctor",
         email="doctor@hospital.com",
         role="doctor",
-        hospital=hospital_factory()
+        hospital=hospital_factory(),
     )
 
 
 @pytest.fixture
 def patient_factory(hospital_factory, doctor_user):
     """Patient factory fixture"""
+
     class PatientFactory(DjangoModelFactory):
         class Meta:
             model = Patient
@@ -164,6 +174,7 @@ def test_patient(patient_factory):
 @pytest.fixture
 def appointment_factory(hospital_factory, test_patient, doctor_user):
     """Appointment factory fixture"""
+
     class AppointmentFactory(DjangoModelFactory):
         class Meta:
             model = Appointment
@@ -183,6 +194,7 @@ def appointment_factory(hospital_factory, test_patient, doctor_user):
 @pytest.fixture
 def encounter_factory(hospital_factory, test_patient, doctor_user):
     """Encounter factory fixture"""
+
     class EncounterFactory(DjangoModelFactory):
         class Meta:
             model = Encounter
@@ -201,6 +213,7 @@ def encounter_factory(hospital_factory, test_patient, doctor_user):
 @pytest.fixture
 def medication_factory(hospital_factory):
     """Medication factory fixture"""
+
     class MedicationFactory(DjangoModelFactory):
         class Meta:
             model = Medication
@@ -222,6 +235,7 @@ def medication_factory(hospital_factory):
 @pytest.fixture
 def lab_test_factory(hospital_factory):
     """Lab test factory fixture"""
+
     class LabTestFactory(DjangoModelFactory):
         class Meta:
             model = LabTest
@@ -240,6 +254,7 @@ def lab_test_factory(hospital_factory):
 @pytest.fixture
 def bill_factory(hospital_factory, test_patient):
     """Bill factory fixture"""
+
     class BillFactory(DjangoModelFactory):
         class Meta:
             model = Bill
@@ -264,12 +279,12 @@ def sample_test_data():
             "date_of_birth": "1990-01-01",
             "gender": "M",
             "email": "john.doe@example.com",
-            "phone": "+1234567890"
+            "phone": "+1234567890",
         },
         "appointment": {
             "appointment_type": "consultation",
             "duration_minutes": 30,
-            "status": "scheduled"
+            "status": "scheduled",
         },
         "vital_signs": {
             "blood_pressure_systolic": 120,
@@ -277,14 +292,14 @@ def sample_test_data():
             "heart_rate": 72,
             "temperature": 98.6,
             "oxygen_saturation": 98,
-            "respiratory_rate": 16
+            "respiratory_rate": 16,
         },
         "medication": {
             "name": "Test Medication",
             "dosage": "1 tablet",
             "frequency": "twice daily",
-            "duration": "7 days"
-        }
+            "duration": "7 days",
+        },
     }
 
 
@@ -296,7 +311,7 @@ def mock_external_services():
         "sms_service": MagicMock(),
         "payment_gateway": MagicMock(),
         "insurance_service": MagicMock(),
-        "notification_service": MagicMock()
+        "notification_service": MagicMock(),
     }
 
 
@@ -320,7 +335,7 @@ def test_encryption():
         "key": key,
         "cipher_suite": cipher_suite,
         "encrypt": cipher_suite.encrypt,
-        "decrypt": cipher_suite.decrypt
+        "decrypt": cipher_suite.decrypt,
     }
 
 
@@ -331,7 +346,7 @@ def performance_test_data():
         "large_dataset_size": 1000,
         "concurrent_users": 100,
         "response_time_threshold": 2.0,
-        "throughput_threshold": 100
+        "throughput_threshold": 100,
     }
 
 
@@ -342,19 +357,14 @@ def security_test_data():
         "sql_injection_payloads": [
             "1; DROP TABLE users; --",
             "' OR '1'='1",
-            "1 UNION SELECT * FROM users"
+            "1 UNION SELECT * FROM users",
         ],
         "xss_payloads": [
             "<script>alert('xss')</script>",
             "javascript:alert('xss')",
-            "<img src=x onerror=alert('xss')>"
+            "<img src=x onerror=alert('xss')>",
         ],
-        "invalid_tokens": [
-            "invalid_token",
-            "",
-            "null",
-            "undefined"
-        ]
+        "invalid_tokens": ["invalid_token", "", "null", "undefined"],
     }
 
 
@@ -366,20 +376,20 @@ def compliance_test_data():
             "data_encryption",
             "access_control",
             "audit_logging",
-            "data_retention"
+            "data_retention",
         ],
         "gdpr_requirements": [
             "consent_management",
             "data_portability",
-            "right_to_be_forgotten"
+            "right_to_be_forgotten",
         ],
         "patient_data_fields": [
             "first_name",
             "last_name",
             "date_of_birth",
             "medical_record_number",
-            "diagnosis"
-        ]
+            "diagnosis",
+        ],
     }
 
 
@@ -392,10 +402,10 @@ def api_test_data():
             "/api/appointments/",
             "/api/ehr/",
             "/api/billing/",
-            "/api/pharmacy/"
+            "/api/pharmacy/",
         ],
         "methods": ["GET", "POST", "PUT", "DELETE"],
-        "content_types": ["application/json", "application/xml"]
+        "content_types": ["application/json", "application/xml"],
     }
 
 
@@ -408,21 +418,16 @@ def database_test_data():
             "ehr_encounter",
             "appointments_appointment",
             "billing_bill",
-            "pharmacy_medication"
+            "pharmacy_medication",
         ],
         "index_columns": [
             "id",
             "hospital_id",
             "patient_id",
             "created_at",
-            "updated_at"
+            "updated_at",
         ],
-        "constraint_types": [
-            "PRIMARY KEY",
-            "FOREIGN KEY",
-            "UNIQUE",
-            "CHECK"
-        ]
+        "constraint_types": ["PRIMARY KEY", "FOREIGN KEY", "UNIQUE", "CHECK"],
     }
 
 
@@ -434,11 +439,7 @@ def load_test_config():
         "users": 100,
         "spawn_rate": 10,
         "host": "http://localhost:8000",
-        "endpoints": [
-            "/api/health/",
-            "/api/patients/",
-            "/api/appointments/"
-        ]
+        "endpoints": ["/api/health/", "/api/patients/", "/api/appointments/"],
     }
 
 
@@ -452,15 +453,9 @@ def accessibility_test_data():
             "2.1.1",  # Keyboard accessible
             "2.4.1",  # Bypass blocks
             "3.3.2",  # Labels or instructions
-            "4.1.1"   # Compatible
+            "4.1.1",  # Compatible
         ],
-        "axe_rules": [
-            "color-contrast",
-            "image-alt",
-            "label",
-            "link-name",
-            "list"
-        ]
+        "axe_rules": ["color-contrast", "image-alt", "label", "link-name", "list"],
     }
 
 
@@ -468,23 +463,13 @@ def accessibility_test_data():
 def visual_regression_test_data():
     """Visual regression test data"""
     return {
-        "pages": [
-            "/login",
-            "/dashboard",
-            "/patients",
-            "/appointments"
-        ],
-        "components": [
-            "header",
-            "navigation",
-            "patient-card",
-            "appointment-form"
-        ],
+        "pages": ["/login", "/dashboard", "/patients", "/appointments"],
+        "components": ["header", "navigation", "patient-card", "appointment-form"],
         "viewports": [
             {"width": 1920, "height": 1080},  # Desktop
-            {"width": 768, "height": 1024},   # Tablet
-            {"width": 375, "height": 667}    # Mobile
-        ]
+            {"width": 768, "height": 1024},  # Tablet
+            {"width": 375, "height": 667},  # Mobile
+        ],
     }
 
 
@@ -492,17 +477,13 @@ def visual_regression_test_data():
 def mobile_test_data():
     """Mobile test data"""
     return {
-        "devices": [
-            "iPhone 12",
-            "Samsung Galaxy S21",
-            "iPad Pro"
-        ],
+        "devices": ["iPhone 12", "Samsung Galaxy S21", "iPad Pro"],
         "platforms": ["iOS", "Android"],
         "screen_sizes": [
             {"width": 375, "height": 667},
             {"width": 414, "height": 896},
-            {"width": 768, "height": 1024}
-        ]
+            {"width": 768, "height": 1024},
+        ],
     }
 
 
@@ -510,79 +491,48 @@ def mobile_test_data():
 def cross_browser_test_data():
     """Cross-browser test data"""
     return {
-        "browsers": [
-            "chrome",
-            "firefox",
-            "safari",
-            "edge"
-        ],
+        "browsers": ["chrome", "firefox", "safari", "edge"],
         "versions": {
             "chrome": "latest",
             "firefox": "latest",
             "safari": "latest",
-            "edge": "latest"
+            "edge": "latest",
         },
-        "platforms": [
-            "Windows 10",
-            "macOS Big Sur",
-            "Ubuntu 20.04"
-        ]
+        "platforms": ["Windows 10", "macOS Big Sur", "Ubuntu 20.04"],
     }
 
 
 # Test markers for categorization
 def pytest_configure(config):
     """Configure pytest markers"""
-    config.addinivalue_line(
-        "markers", "unit: marks tests as unit tests"
-    )
-    config.addinivalue_line(
-        "markers", "integration: marks tests as integration tests"
-    )
-    config.addinivalue_line(
-        "markers", "e2e: marks tests as end-to-end tests"
-    )
-    config.addinivalue_line(
-        "markers", "performance: marks tests as performance tests"
-    )
-    config.addinivalue_line(
-        "markers", "security: marks tests as security tests"
-    )
+    config.addinivalue_line("markers", "unit: marks tests as unit tests")
+    config.addinivalue_line("markers", "integration: marks tests as integration tests")
+    config.addinivalue_line("markers", "e2e: marks tests as end-to-end tests")
+    config.addinivalue_line("markers", "performance: marks tests as performance tests")
+    config.addinivalue_line("markers", "security: marks tests as security tests")
     config.addinivalue_line(
         "markers", "accessibility: marks tests as accessibility tests"
     )
-    config.addinivalue_line(
-        "markers", "compliance: marks tests as compliance tests"
-    )
-    config.addinivalue_line(
-        "markers", "api: marks tests as API tests"
-    )
-    config.addinivalue_line(
-        "markers", "database: marks tests as database tests"
-    )
-    config.addinivalue_line(
-        "markers", "mobile: marks tests as mobile tests"
-    )
-    config.addinivalue_line(
-        "markers", "contract: marks tests as contract tests"
-    )
-    config.addinivalue_line(
-        "markers", "visual: marks tests as visual regression tests"
-    )
+    config.addinivalue_line("markers", "compliance: marks tests as compliance tests")
+    config.addinivalue_line("markers", "api: marks tests as API tests")
+    config.addinivalue_line("markers", "database: marks tests as database tests")
+    config.addinivalue_line("markers", "mobile: marks tests as mobile tests")
+    config.addinivalue_line("markers", "contract: marks tests as contract tests")
+    config.addinivalue_line("markers", "visual: marks tests as visual regression tests")
 
 
 # Custom pytest hooks
 @pytest.hookimpl(tryfirst=True)
 def pytest_runtest_makereport(item, call):
     """Custom test reporting"""
-    if call.when == 'call':
+    if call.when == "call":
         if call.excinfo is None:
             # Test passed
-            item.user_properties.append(('test_result', 'passed'))
+            item.user_properties.append(("test_result", "passed"))
         else:
             # Test failed
-            item.user_properties.append(('test_result', 'failed'))
-            item.user_properties.append(('failure_reason', str(call.excinfo.value)))
+            item.user_properties.append(("test_result", "failed"))
+            item.user_properties.append(("failure_reason", str(call.excinfo.value)))
 
 
 # Test data cleanup
@@ -593,8 +543,15 @@ def cleanup_test_data():
 
     # Clean up database tables
     models_to_clear = [
-        Patient, Encounter, Appointment, Bill, Medication,
-        LabTest, User, Hospital, Department
+        Patient,
+        Encounter,
+        Appointment,
+        Bill,
+        Medication,
+        LabTest,
+        User,
+        Hospital,
+        Department,
     ]
 
     for model in models_to_clear:
@@ -609,14 +566,14 @@ def cleanup_test_data():
 def test_environment_setup():
     """Set up test environment"""
     # Set test environment variables
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hms.settings_test')
-    os.environ.setdefault('TESTING', 'true')
-    os.environ.setdefault('DEBUG', 'false')
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "hms.settings_test")
+    os.environ.setdefault("TESTING", "true")
+    os.environ.setdefault("DEBUG", "false")
 
     yield
 
     # Clean up
-    for key in ['DJANGO_SETTINGS_MODULE', 'TESTING', 'DEBUG']:
+    for key in ["DJANGO_SETTINGS_MODULE", "TESTING", "DEBUG"]:
         os.environ.pop(key, None)
 
 
@@ -654,7 +611,10 @@ def test_utils():
             """Generate random string"""
             import random
             import string
-            return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+
+            return "".join(
+                random.choices(string.ascii_letters + string.digits, k=length)
+            )
 
         @staticmethod
         def create_test_payload(data_dict):

@@ -1,15 +1,22 @@
+"""
+healthcare_test_automation module
+"""
+
 import asyncio
 import json
-import pytest
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
+import secrets
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from enum import Enum
-import aiohttp
-import pandas as pd
-import numpy as np
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import aiohttp
+import numpy as np
+import pandas as pd
+import pytest
+
 logger = logging.getLogger(__name__)
 class ClinicalWorkflowType(Enum):
     PATIENT_REGISTRATION = "patient_registration"
@@ -602,9 +609,9 @@ class MedicationSafetyEngine:
             "medication": med_test.medication_name,
             "status": "PASSED",
             "safety_checks_passed": len(med_test.safety_checks),
-            "interactions_detected": np.random.randint(0, 3),
-            "allergy_alerts": np.random.randint(0, 2),
-            "dosage_errors_prevented": np.random.randint(0, 2),
+            "interactions_detected": np.secrets.secrets.randbelow(0, 3),
+            "allergy_alerts": np.secrets.secrets.randbelow(0, 2),
+            "dosage_errors_prevented": np.secrets.secrets.randbelow(0, 2),
             "critical_alerts_triggered": 0,
             "safety_score": 98.5
         }
@@ -620,7 +627,7 @@ class ComplianceTestEngine:
             ComplianceDomain.FDA_MEDICAL_DEVICE: 52
         }
         total_requirements = compliance_requirements.get(domain, 0)
-        passed_requirements = int(total_requirements * (0.85 + np.random.random() * 0.15))
+        passed_requirements = int(total_requirements * (0.85 + np.secrets.random() * 0.15))
         return {
             "domain": domain.value,
             "total_requirements": total_requirements,

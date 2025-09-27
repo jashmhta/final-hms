@@ -1,3 +1,7 @@
+"""
+serializers module
+"""
+
 from rest_framework import serializers
 
 from .models import (
@@ -11,8 +15,12 @@ from .models import (
 class PatientSerializer(serializers.ModelSerializer):
     phone_primary = serializers.CharField(required=False)
     email = serializers.EmailField(required=False)
-    insurance_provider = serializers.CharField(source="insurance_information.insurance_company_name", required=False)
-    insurance_number = serializers.CharField(source="insurance_information.policy_number", required=False)
+    insurance_provider = serializers.CharField(
+        source="insurance_information.insurance_company_name", required=False
+    )
+    insurance_number = serializers.CharField(
+        source="insurance_information.policy_number", required=False
+    )
     status = serializers.ChoiceField(choices=PatientStatus.choices, default="ACTIVE")
 
     class Meta:

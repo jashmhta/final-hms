@@ -31,31 +31,38 @@ from prometheus_client import Counter, Gauge, Histogram
 # Healthcare-specific deployment considerations
 class DeploymentEnvironment(Enum):
     """Deployment environments with healthcare compliance requirements."""
+
     DEVELOPMENT = "development"
     STAGING = "staging"
     PRODUCTION = "production"
     HIPAA_AUDIT = "hipaa_audit"
     COMPLIANCE_TEST = "compliance_test"
 
+
 class DeploymentStrategy(Enum):
     """Advanced deployment strategies for zero-downtime updates."""
+
     BLUE_GREEN = "blue_green"
     CANARY = "canary"
     ROLLING = "rolling"
     SHADOW = "shadow"
     DARK_LAUNCH = "dark_launch"
 
+
 class ComplianceLevel(Enum):
     """Healthcare compliance levels."""
+
     HIPAA = "hipaa"
     GDPR = "gdpr"
     HITRUST = "hitrust"
     SOX = "sox"
     PCI_DSS = "pci_dss"
 
+
 @dataclass
 class DeploymentConfig:
     """Configuration for deployment optimization."""
+
     environment: DeploymentEnvironment
     strategy: DeploymentStrategy
     compliance_level: ComplianceLevel
@@ -66,37 +73,39 @@ class DeploymentConfig:
     monitoring_enabled: bool
     backup_enabled: bool
 
+
 class DeploymentMetrics:
     """Metrics collection for deployment operations."""
 
     def __init__(self):
         self.deployment_duration = Histogram(
-            'deployment_duration_seconds',
-            'Time taken for deployment operations',
-            ['environment', 'strategy', 'service']
+            "deployment_duration_seconds",
+            "Time taken for deployment operations",
+            ["environment", "strategy", "service"],
         )
         self.deployment_success = Counter(
-            'deployment_success_total',
-            'Number of successful deployments',
-            ['environment', 'strategy']
+            "deployment_success_total",
+            "Number of successful deployments",
+            ["environment", "strategy"],
         )
         self.deployment_failures = Counter(
-            'deployment_failures_total',
-            'Number of failed deployments',
-            ['environment', 'strategy', 'failure_type']
+            "deployment_failures_total",
+            "Number of failed deployments",
+            ["environment", "strategy", "failure_type"],
         )
         self.rollback_operations = Counter(
-            'rollback_operations_total',
-            'Number of rollback operations',
-            ['environment', 'trigger']
+            "rollback_operations_total",
+            "Number of rollback operations",
+            ["environment", "trigger"],
         )
         self.downtime_duration = Histogram(
-            'downtime_duration_seconds',
-            'System downtime during deployments',
-            ['environment', 'service']
+            "downtime_duration_seconds",
+            "System downtime during deployments",
+            ["environment", "service"],
         )
 
-class CI/CD_Optimizer:
+
+class CICDOptimizer:
     """Advanced CI/CD pipeline optimization for healthcare systems."""
 
     def __init__(self):
@@ -109,11 +118,11 @@ class CI/CD_Optimizer:
             health_check_timeout=30,
             auto_rollback=True,
             monitoring_enabled=True,
-            backup_enabled=True
+            backup_enabled=True,
         )
         self.metrics = DeploymentMetrics()
         self.docker_client = docker.from_env()
-        self.redis_client = redis.Redis(host='localhost', port=6379, db=0)
+        self.redis_client = redis.Redis(host="localhost", port=6379, db=0)
 
         # Initialize Kubernetes client
         try:
@@ -123,7 +132,9 @@ class CI/CD_Optimizer:
         except:
             logging.warning("Kubernetes configuration not found")
 
-    async def optimize_pipeline(self, pipeline_config: Dict[str, Any]) -> Dict[str, Any]:
+    async def optimize_pipeline(
+        self, pipeline_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Optimize CI/CD pipeline for healthcare requirements."""
 
         optimization_results = {
@@ -132,7 +143,7 @@ class CI/CD_Optimizer:
             "compliance_validations": [],
             "performance_optimizations": [],
             "deployment_strategies": [],
-            "risk_mitigations": []
+            "risk_mitigations": [],
         }
 
         # Security optimization
@@ -140,7 +151,9 @@ class CI/CD_Optimizer:
         optimization_results["security_checks"] = security_optimization
 
         # Compliance optimization
-        compliance_optimization = await self._optimize_compliance_checks(pipeline_config)
+        compliance_optimization = await self._optimize_compliance_checks(
+            pipeline_config
+        )
         optimization_results["compliance_validations"] = compliance_optimization
 
         # Performance optimization
@@ -148,7 +161,9 @@ class CI/CD_Optimizer:
         optimization_results["performance_optimizations"] = performance_optimization
 
         # Deployment strategy optimization
-        deployment_optimization = await self._optimize_deployment_strategy(pipeline_config)
+        deployment_optimization = await self._optimize_deployment_strategy(
+            pipeline_config
+        )
         optimization_results["deployment_strategies"] = deployment_optimization
 
         # Risk mitigation
@@ -156,201 +171,271 @@ class CI/CD_Optimizer:
         optimization_results["risk_mitigations"] = risk_mitigation
 
         # Calculate overall efficiency
-        optimization_results["pipeline_efficiency"] = self._calculate_efficiency_score(optimization_results)
+        optimization_results["pipeline_efficiency"] = self._calculate_efficiency_score(
+            optimization_results
+        )
 
         return optimization_results
 
-    async def _optimize_security_checks(self, pipeline_config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def _optimize_security_checks(
+        self, pipeline_config: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         """Optimize security checks for healthcare compliance."""
 
         security_checks = []
 
         # Static code analysis
-        security_checks.append({
-            "name": "SAST Analysis",
-            "tools": ["bandit", "semgrep", "sonarqube"],
-            "coverage": ["backend/", "services/"],
-            "threshold": 0,
-            "fail_build": True
-        })
+        security_checks.append(
+            {
+                "name": "SAST Analysis",
+                "tools": ["bandit", "semgrep", "sonarqube"],
+                "coverage": ["backend/", "services/"],
+                "threshold": 0,
+                "fail_build": True,
+            }
+        )
 
         # Dependency scanning
-        security_checks.append({
-            "name": "Dependency Scanning",
-            "tools": ["safety", "npm audit", "trivy"],
-            "coverage": ["requirements.txt", "package.json"],
-            "threshold": "high",
-            "fail_build": True
-        })
+        security_checks.append(
+            {
+                "name": "Dependency Scanning",
+                "tools": ["safety", "npm audit", "trivy"],
+                "coverage": ["requirements.txt", "package.json"],
+                "threshold": "high",
+                "fail_build": True,
+            }
+        )
 
         # Container security
-        security_checks.append({
-            "name": "Container Security",
-            "tools": ["clair", "grype", "trivy"],
-            "coverage": ["Dockerfile", "docker-compose.yml"],
-            "threshold": "medium",
-            "fail_build": True
-        })
+        security_checks.append(
+            {
+                "name": "Container Security",
+                "tools": ["clair", "grype", "trivy"],
+                "coverage": ["Dockerfile", "docker-compose.yml"],
+                "threshold": "medium",
+                "fail_build": True,
+            }
+        )
 
         # HIPAA compliance checks
-        security_checks.append({
-            "name": "HIPAA Compliance",
-            "tools": ["hipaa-scanner", "compliance-checker"],
-            "coverage": ["authentication/", "patients/", "ehr/"],
-            "threshold": 100,
-            "fail_build": True
-        })
+        security_checks.append(
+            {
+                "name": "HIPAA Compliance",
+                "tools": ["hipaa-scanner", "compliance-checker"],
+                "coverage": ["authentication/", "patients/", "ehr/"],
+                "threshold": 100,
+                "fail_build": True,
+            }
+        )
 
         return security_checks
 
-    async def _optimize_compliance_checks(self, pipeline_config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def _optimize_compliance_checks(
+        self, pipeline_config: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         """Optimize compliance checks for healthcare regulations."""
 
         compliance_checks = []
 
         # Data encryption validation
-        compliance_checks.append({
-            "name": "Data Encryption",
-            "validations": ["PHI encryption", "TLS configuration", "Key management"],
-            "tools": ["openssl", "vault-audit"],
-            "threshold": 100,
-            "auto_remediate": True
-        })
+        compliance_checks.append(
+            {
+                "name": "Data Encryption",
+                "validations": [
+                    "PHI encryption",
+                    "TLS configuration",
+                    "Key management",
+                ],
+                "tools": ["openssl", "vault-audit"],
+                "threshold": 100,
+                "auto_remediate": True,
+            }
+        )
 
         # Access control validation
-        compliance_checks.append({
-            "name": "Access Control",
-            "validations": ["RBAC configuration", "Audit logging", "Session management"],
-            "tools": ["open-policy-agent", "auditd"],
-            "threshold": 100,
-            "auto_remediate": True
-        })
+        compliance_checks.append(
+            {
+                "name": "Access Control",
+                "validations": [
+                    "RBAC configuration",
+                    "Audit logging",
+                    "Session management",
+                ],
+                "tools": ["open-policy-agent", "auditd"],
+                "threshold": 100,
+                "auto_remediate": True,
+            }
+        )
 
         # Audit trail validation
-        compliance_checks.append({
-            "name": "Audit Trail",
-            "validations": ["Log completeness", "Data integrity", "Retention policy"],
-            "tools": ["audit-log-analyzer", "logrotate"],
-            "threshold": 100,
-            "auto_remediate": True
-        })
+        compliance_checks.append(
+            {
+                "name": "Audit Trail",
+                "validations": [
+                    "Log completeness",
+                    "Data integrity",
+                    "Retention policy",
+                ],
+                "tools": ["audit-log-analyzer", "logrotate"],
+                "threshold": 100,
+                "auto_remediate": True,
+            }
+        )
 
         return compliance_checks
 
-    async def _optimize_performance(self, pipeline_config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def _optimize_performance(
+        self, pipeline_config: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         """Optimize pipeline performance and efficiency."""
 
         performance_optimizations = []
 
         # Parallel execution
-        performance_optimizations.append({
-            "name": "Parallel Test Execution",
-            "strategy": "matrix-based",
-            "parallel_jobs": 8,
-            "resource_allocation": "dynamic",
-            "estimated_improvement": "60% faster"
-        })
+        performance_optimizations.append(
+            {
+                "name": "Parallel Test Execution",
+                "strategy": "matrix-based",
+                "parallel_jobs": 8,
+                "resource_allocation": "dynamic",
+                "estimated_improvement": "60% faster",
+            }
+        )
 
         # Caching strategy
-        performance_optimizations.append({
-            "name": "Build Caching",
-            "strategy": "multi-layer",
-            "layers": ["dependencies", "build artifacts", "test results"],
-            "estimated_improvement": "40% faster"
-        })
+        performance_optimizations.append(
+            {
+                "name": "Build Caching",
+                "strategy": "multi-layer",
+                "layers": ["dependencies", "build artifacts", "test results"],
+                "estimated_improvement": "40% faster",
+            }
+        )
 
         # Resource optimization
-        performance_optimizations.append({
-            "name": "Resource Optimization",
-            "strategy": "elastic",
-            "min_resources": {"cpu": 2, "memory": "4GB"},
-            "max_resources": {"cpu": 16, "memory": "32GB"},
-            "estimated_improvement": "30% cost reduction"
-        })
+        performance_optimizations.append(
+            {
+                "name": "Resource Optimization",
+                "strategy": "elastic",
+                "min_resources": {"cpu": 2, "memory": "4GB"},
+                "max_resources": {"cpu": 16, "memory": "32GB"},
+                "estimated_improvement": "30% cost reduction",
+            }
+        )
 
         return performance_optimizations
 
-    async def _optimize_deployment_strategy(self, pipeline_config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def _optimize_deployment_strategy(
+        self, pipeline_config: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         """Optimize deployment strategy for healthcare systems."""
 
         deployment_strategies = []
 
         # Blue-green deployment
-        deployment_strategies.append({
-            "name": "Blue-Green Deployment",
-            "zero_downtime": True,
-            "rollback_time": "< 30 seconds",
-            "health_checks": ["application", "database", "external_services"],
-            "auto_failover": True
-        })
+        deployment_strategies.append(
+            {
+                "name": "Blue-Green Deployment",
+                "zero_downtime": True,
+                "rollback_time": "< 30 seconds",
+                "health_checks": ["application", "database", "external_services"],
+                "auto_failover": True,
+            }
+        )
 
         # Canary deployment
-        deployment_strategies.append({
-            "name": "Canary Deployment",
-            "initial_percentage": 5,
-            "increment_percentage": 10,
-            "health_metrics": ["error_rate", "response_time", "resource_usage"],
-            "auto_promotion": True
-        })
+        deployment_strategies.append(
+            {
+                "name": "Canary Deployment",
+                "initial_percentage": 5,
+                "increment_percentage": 10,
+                "health_metrics": ["error_rate", "response_time", "resource_usage"],
+                "auto_promotion": True,
+            }
+        )
 
         # Database migration strategy
-        deployment_strategies.append({
-            "name": "Database Migration",
-            "strategy": "zero-downtime",
-            "backup_required": True,
-            "validation_checks": ["data_integrity", "performance_impact"],
-            "rollback_capability": True
-        })
+        deployment_strategies.append(
+            {
+                "name": "Database Migration",
+                "strategy": "zero-downtime",
+                "backup_required": True,
+                "validation_checks": ["data_integrity", "performance_impact"],
+                "rollback_capability": True,
+            }
+        )
 
         return deployment_strategies
 
-    async def _optimize_risk_mitigation(self, pipeline_config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def _optimize_risk_mitigation(
+        self, pipeline_config: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         """Optimize risk mitigation strategies."""
 
         risk_mitigations = []
 
         # Automated rollback
-        risk_mitigations.append({
-            "name": "Automated Rollback",
-            "triggers": ["error_rate > 1%", "response_time > 500ms", "health_check_failure"],
-            "rollback_time": "< 30 seconds",
-            "data_consistency": "guaranteed"
-        })
+        risk_mitigations.append(
+            {
+                "name": "Automated Rollback",
+                "triggers": [
+                    "error_rate > 1%",
+                    "response_time > 500ms",
+                    "health_check_failure",
+                ],
+                "rollback_time": "< 30 seconds",
+                "data_consistency": "guaranteed",
+            }
+        )
 
         # Circuit breakers
-        risk_mitigations.append({
-            "name": "Circuit Breakers",
-            "services": ["database", "external_apis", "message_queue"],
-            "thresholds": {"failure_rate": 0.05, "timeout": 5000},
-            "recovery_strategy": "exponential_backoff"
-        })
+        risk_mitigations.append(
+            {
+                "name": "Circuit Breakers",
+                "services": ["database", "external_apis", "message_queue"],
+                "thresholds": {"failure_rate": 0.05, "timeout": 5000},
+                "recovery_strategy": "exponential_backoff",
+            }
+        )
 
         # Backup and recovery
-        risk_mitigations.append({
-            "name": "Backup and Recovery",
-            "backup_frequency": "hourly",
-            "retention_period": "30 days",
-            "recovery_time_objective": "15 minutes",
-            "recovery_point_objective": "5 minutes"
-        })
+        risk_mitigations.append(
+            {
+                "name": "Backup and Recovery",
+                "backup_frequency": "hourly",
+                "retention_period": "30 days",
+                "recovery_time_objective": "15 minutes",
+                "recovery_point_objective": "5 minutes",
+            }
+        )
 
         return risk_mitigations
 
-    def _calculate_efficiency_score(self, optimization_results: Dict[str, Any]) -> float:
+    def _calculate_efficiency_score(
+        self, optimization_results: Dict[str, Any]
+    ) -> float:
         """Calculate overall pipeline efficiency score."""
 
         efficiency_factors = {
             "security_checks": len(optimization_results["security_checks"]) * 10,
-            "compliance_validations": len(optimization_results["compliance_validations"]) * 15,
-            "performance_optimizations": len(optimization_results["performance_optimizations"]) * 12,
-            "deployment_strategies": len(optimization_results["deployment_strategies"]) * 8,
-            "risk_mitigations": len(optimization_results["risk_mitigations"]) * 15
+            "compliance_validations": len(
+                optimization_results["compliance_validations"]
+            )
+            * 15,
+            "performance_optimizations": len(
+                optimization_results["performance_optimizations"]
+            )
+            * 12,
+            "deployment_strategies": len(optimization_results["deployment_strategies"])
+            * 8,
+            "risk_mitigations": len(optimization_results["risk_mitigations"]) * 15,
         }
 
         total_score = sum(efficiency_factors.values())
         max_score = sum([10, 15, 12, 8, 15]) * 3  # Assuming max 3 items per category
 
         return min(100.0, (total_score / max_score) * 100)
+
 
 class DeploymentOrchestrator:
     """Enterprise-grade deployment orchestration for healthcare systems."""
@@ -365,12 +450,14 @@ class DeploymentOrchestrator:
             health_check_timeout=30,
             auto_rollback=True,
             monitoring_enabled=True,
-            backup_enabled=True
+            backup_enabled=True,
         )
         self.metrics = DeploymentMetrics()
-        self.redis_client = redis.Redis(host='localhost', port=6379, db=0)
+        self.redis_client = redis.Redis(host="localhost", port=6379, db=0)
 
-    async def deploy_service(self, service_name: str, version: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    async def deploy_service(
+        self, service_name: str, version: str, config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Deploy a microservice with healthcare compliance."""
 
         deployment_result = {
@@ -379,7 +466,7 @@ class DeploymentOrchestrator:
             "status": "started",
             "timestamp": datetime.now().isoformat(),
             "phases": [],
-            "metrics": {}
+            "metrics": {},
         }
 
         start_time = time.time()
@@ -395,11 +482,15 @@ class DeploymentOrchestrator:
                 deployment_result["phases"].append(backup_result)
 
             # Execute deployment strategy
-            deployment_phase = await self._execute_deployment(service_name, version, config)
+            deployment_phase = await self._execute_deployment(
+                service_name, version, config
+            )
             deployment_result["phases"].append(deployment_phase)
 
             # Post-deployment validation
-            post_deployment = await self._post_deployment_validation(service_name, version)
+            post_deployment = await self._post_deployment_validation(
+                service_name, version
+            )
             deployment_result["phases"].append(post_deployment)
 
             # Calculate metrics
@@ -408,13 +499,17 @@ class DeploymentOrchestrator:
                 "duration_seconds": duration,
                 "downtime_seconds": 0,  # Zero downtime deployment
                 "success_rate": 1.0,
-                "health_score": post_deployment.get("health_score", 0.0)
+                "health_score": post_deployment.get("health_score", 0.0),
             }
 
             # Record metrics
             self.metrics.deployment_duration.observe(
                 duration,
-                labels=[self.config.environment.value, self.config.strategy.value, service_name]
+                labels=[
+                    self.config.environment.value,
+                    self.config.strategy.value,
+                    service_name,
+                ],
             )
             self.metrics.deployment_success.inc(
                 labels=[self.config.environment.value, self.config.strategy.value]
@@ -434,19 +529,21 @@ class DeploymentOrchestrator:
 
             # Record failure metrics
             self.metrics.deployment_failures.inc(
-                labels=[self.config.environment.value, self.config.strategy.value, type(e).__name__]
+                labels=[
+                    self.config.environment.value,
+                    self.config.strategy.value,
+                    type(e).__name__,
+                ]
             )
 
         return deployment_result
 
-    async def _pre_deployment_checks(self, service_name: str, version: str) -> Dict[str, Any]:
+    async def _pre_deployment_checks(
+        self, service_name: str, version: str
+    ) -> Dict[str, Any]:
         """Execute pre-deployment checks."""
 
-        checks = {
-            "phase": "pre_deployment",
-            "status": "running",
-            "checks": []
-        }
+        checks = {"phase": "pre_deployment", "status": "running", "checks": []}
 
         # Health check current service
         current_health = await self._check_service_health(service_name)
@@ -478,7 +575,7 @@ class DeploymentOrchestrator:
             "status": "running",
             "timestamp": datetime.now().isoformat(),
             "backup_location": "",
-            "size_bytes": 0
+            "size_bytes": 0,
         }
 
         try:
@@ -491,8 +588,12 @@ class DeploymentOrchestrator:
             # Create data backup
             data_backup = await self._backup_data(service_name)
 
-            backup["backup_location"] = f"/backups/{service_name}/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            backup["size_bytes"] = db_backup["size"] + config_backup["size"] + data_backup["size"]
+            backup["backup_location"] = (
+                f"/backups/{service_name}/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            )
+            backup["size_bytes"] = (
+                db_backup["size"] + config_backup["size"] + data_backup["size"]
+            )
             backup["status"] = "completed"
 
         except Exception as e:
@@ -501,22 +602,30 @@ class DeploymentOrchestrator:
 
         return backup
 
-    async def _execute_deployment(self, service_name: str, version: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_deployment(
+        self, service_name: str, version: str, config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Execute deployment strategy."""
 
         deployment = {
             "phase": "deployment",
             "strategy": self.config.strategy.value,
             "status": "running",
-            "steps": []
+            "steps": [],
         }
 
         if self.config.strategy == DeploymentStrategy.BLUE_GREEN:
-            result = await self._execute_blue_green_deployment(service_name, version, config)
+            result = await self._execute_blue_green_deployment(
+                service_name, version, config
+            )
         elif self.config.strategy == DeploymentStrategy.CANARY:
-            result = await self._execute_canary_deployment(service_name, version, config)
+            result = await self._execute_canary_deployment(
+                service_name, version, config
+            )
         elif self.config.strategy == DeploymentStrategy.ROLLING:
-            result = await self._execute_rolling_deployment(service_name, version, config)
+            result = await self._execute_rolling_deployment(
+                service_name, version, config
+            )
         else:
             result = await self._execute_basic_deployment(service_name, version, config)
 
@@ -525,14 +634,16 @@ class DeploymentOrchestrator:
 
         return deployment
 
-    async def _post_deployment_validation(self, service_name: str, version: str) -> Dict[str, Any]:
+    async def _post_deployment_validation(
+        self, service_name: str, version: str
+    ) -> Dict[str, Any]:
         """Validate deployment success."""
 
         validation = {
             "phase": "post_deployment",
             "status": "running",
             "health_score": 0.0,
-            "validations": []
+            "validations": [],
         }
 
         # Health check new deployment
@@ -552,7 +663,9 @@ class DeploymentOrchestrator:
         validation["validations"].append(integration_check)
 
         # Calculate health score
-        health_score = sum(v.get("score", 0) for v in validation["validations"]) / len(validation["validations"])
+        health_score = sum(v.get("score", 0) for v in validation["validations"]) / len(
+            validation["validations"]
+        )
         validation["health_score"] = health_score
 
         # Determine overall status
@@ -572,7 +685,7 @@ class DeploymentOrchestrator:
             "phase": "rollback",
             "status": "running",
             "service": service_name,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         try:
@@ -580,10 +693,14 @@ class DeploymentOrchestrator:
             previous_version = await self._get_previous_version(service_name)
 
             # Restore from backup
-            restore_result = await self._restore_from_backup(service_name, previous_version)
+            restore_result = await self._restore_from_backup(
+                service_name, previous_version
+            )
 
             # Validate rollback success
-            validation = await self._validate_rollback_success(service_name, previous_version)
+            validation = await self._validate_rollback_success(
+                service_name, previous_version
+            )
 
             rollback["previous_version"] = previous_version
             rollback["restore_result"] = restore_result
@@ -600,6 +717,7 @@ class DeploymentOrchestrator:
             rollback["error"] = str(e)
 
         return rollback
+
 
 class OperationalExcellenceFramework:
     """Comprehensive operational excellence framework for healthcare systems."""
@@ -620,7 +738,7 @@ class OperationalExcellenceFramework:
             "capacity_planning": {},
             "compliance_monitoring": {},
             "performance_management": {},
-            "overall_score": 0.0
+            "overall_score": 0.0,
         }
 
         # Optimize incident management
@@ -636,19 +754,27 @@ class OperationalExcellenceFramework:
         optimization_results["capacity_planning"] = capacity_optimization
 
         # Optimize compliance monitoring
-        compliance_optimization = await self.compliance_monitor.optimize_compliance_monitoring()
+        compliance_optimization = (
+            await self.compliance_monitor.optimize_compliance_monitoring()
+        )
         optimization_results["compliance_monitoring"] = compliance_optimization
 
         # Optimize performance management
-        performance_optimization = await self.performance_manager.optimize_performance_management()
+        performance_optimization = (
+            await self.performance_manager.optimize_performance_management()
+        )
         optimization_results["performance_management"] = performance_optimization
 
         # Calculate overall excellence score
-        optimization_results["overall_score"] = self._calculate_excellence_score(optimization_results)
+        optimization_results["overall_score"] = self._calculate_excellence_score(
+            optimization_results
+        )
 
         return optimization_results
 
-    def _calculate_excellence_score(self, optimization_results: Dict[str, Any]) -> float:
+    def _calculate_excellence_score(
+        self, optimization_results: Dict[str, Any]
+    ) -> float:
         """Calculate overall operational excellence score."""
 
         scores = []
@@ -660,6 +786,7 @@ class OperationalExcellenceFramework:
                     scores.append(result["efficiency"] * 100)
 
         return sum(scores) / len(scores) if scores else 0.0
+
 
 class IncidentManager:
     """Enterprise-grade incident management for healthcare systems."""
@@ -678,7 +805,7 @@ class IncidentManager:
             "escalation_procedures": [],
             "automation_tools": [],
             "communication_protocols": [],
-            "score": 0.0
+            "score": 0.0,
         }
 
         # Define escalation procedures
@@ -687,20 +814,20 @@ class IncidentManager:
                 "level": 1,
                 "response_time": "5 minutes",
                 "teams": ["on_call_engineers", "system_administrators"],
-                "auto_escalate": True
+                "auto_escalate": True,
             },
             {
                 "level": 2,
                 "response_time": "15 minutes",
                 "teams": ["senior_engineers", "architects"],
-                "auto_escalate": True
+                "auto_escalate": True,
             },
             {
                 "level": 3,
                 "response_time": "30 minutes",
                 "teams": ["executive_leadership", "legal_compliance"],
-                "auto_escalate": True
-            }
+                "auto_escalate": True,
+            },
         ]
 
         # Automation tools
@@ -709,7 +836,7 @@ class IncidentManager:
             "auto_ticket_creation",
             "auto_escalation",
             "auto_resolution_playbooks",
-            "post_incident_automation"
+            "post_incident_automation",
         ]
 
         # Communication protocols
@@ -717,12 +844,13 @@ class IncidentManager:
             "patient_impact_assessment",
             "regulatory_notification",
             "stakeholder_communication",
-            "public_communication"
+            "public_communication",
         ]
 
         optimization["score"] = 95.0  # High score for comprehensive incident management
 
         return optimization
+
 
 class ChangeManager:
     """Enterprise-grade change management for healthcare systems."""
@@ -740,7 +868,7 @@ class ChangeManager:
             "risk_assessment": "comprehensive",
             "change_window": "scheduled",
             "rollback_capability": "guaranteed",
-            "efficiency": 0.0
+            "efficiency": 0.0,
         }
 
         # Implement automated approval workflow
@@ -748,7 +876,7 @@ class ChangeManager:
             "standard_changes": "auto_approve",
             "normal_changes": "peer_review",
             "emergency_changes": "leadership_approval",
-            "major_changes": "cab_approval"
+            "major_changes": "cab_approval",
         }
 
         # Risk assessment framework
@@ -756,12 +884,13 @@ class ChangeManager:
             "impact_analysis": "automated",
             "dependency_mapping": "real_time",
             "rollback_validation": "required",
-            "compliance_check": "mandatory"
+            "compliance_check": "mandatory",
         }
 
         optimization["efficiency"] = 0.92  # 92% efficiency
 
         return optimization
+
 
 class CapacityPlanner:
     """Enterprise-grade capacity planning for healthcare systems."""
@@ -778,7 +907,7 @@ class CapacityPlanner:
             "capacity_model": "predictive",
             "scaling_strategy": "auto_scaling",
             "cost_optimization": "dynamic",
-            "efficiency": 0.0
+            "efficiency": 0.0,
         }
 
         # Predictive capacity model
@@ -786,7 +915,7 @@ class CapacityPlanner:
             "forecasting": "ai_driven",
             "seasonal_adjustment": "enabled",
             "growth_projection": "5_years",
-            "buffer_capacity": "30%"
+            "buffer_capacity": "30%",
         }
 
         # Auto-scaling strategy
@@ -794,7 +923,7 @@ class CapacityPlanner:
             "horizontal_scaling": "enabled",
             "vertical_scaling": "enabled",
             "scaling_thresholds": "dynamic",
-            "cooldown_period": "5_minutes"
+            "cooldown_period": "5_minutes",
         }
 
         # Cost optimization
@@ -802,12 +931,13 @@ class CapacityPlanner:
             "resource_rightsizing": "automated",
             "spot_instances": "strategic",
             "reserved_instances": "optimized",
-            "cost_allocation": "tag_based"
+            "cost_allocation": "tag_based",
         }
 
         optimization["efficiency"] = 0.88  # 88% efficiency
 
         return optimization
+
 
 class ComplianceMonitor:
     """Enterprise-grade compliance monitoring for healthcare systems."""
@@ -824,7 +954,7 @@ class ComplianceMonitor:
             "compliance_framework": "automated",
             "audit_trail": "comprehensive",
             "reporting": "real_time",
-            "efficiency": 0.0
+            "efficiency": 0.0,
         }
 
         # Automated compliance framework
@@ -832,7 +962,7 @@ class ComplianceMonitor:
             "hipaa_compliance": "automated_monitoring",
             "gdpr_compliance": "automated_monitoring",
             "data_protection": "continuous_validation",
-            "access_control": "real_time_auditing"
+            "access_control": "real_time_auditing",
         }
 
         # Comprehensive audit trail
@@ -840,7 +970,7 @@ class ComplianceMonitor:
             "data_collection": "comprehensive",
             "retention_policy": "7_years",
             "integrity_verification": "cryptographic",
-            "access_logging": "complete"
+            "access_logging": "complete",
         }
 
         # Real-time reporting
@@ -848,12 +978,13 @@ class ComplianceMonitor:
             "compliance_dashboards": "real_time",
             "automated_reports": "scheduled",
             "regulatory_filing": "automated",
-            "audit_readiness": "continuous"
+            "audit_readiness": "continuous",
         }
 
         optimization["efficiency"] = 0.96  # 96% efficiency
 
         return optimization
+
 
 class PerformanceManager:
     """Enterprise-grade performance management for healthcare systems."""
@@ -870,7 +1001,7 @@ class PerformanceManager:
             "performance_monitoring": "comprehensive",
             "optimization": "continuous",
             "alerting": "intelligent",
-            "efficiency": 0.0
+            "efficiency": 0.0,
         }
 
         # Comprehensive performance monitoring
@@ -878,7 +1009,7 @@ class PerformanceManager:
             "application_metrics": "real_time",
             "infrastructure_metrics": "real_time",
             "business_metrics": "real_time",
-            "user_experience_metrics": "continuous"
+            "user_experience_metrics": "continuous",
         }
 
         # Continuous optimization
@@ -886,7 +1017,7 @@ class PerformanceManager:
             "auto_tuning": "enabled",
             "resource_optimization": "continuous",
             "query_optimization": "automated",
-            "cache_optimization": "dynamic"
+            "cache_optimization": "dynamic",
         }
 
         # Intelligent alerting
@@ -894,12 +1025,13 @@ class PerformanceManager:
             "anomaly_detection": "ai_driven",
             "predictive_alerting": "enabled",
             "noise_reduction": "intelligent",
-            "escalation_automation": "smart"
+            "escalation_automation": "smart",
         }
 
         optimization["efficiency"] = 0.94  # 94% efficiency
 
         return optimization
+
 
 # Main deployment and operations optimization function
 async def optimize_deployment_and_operations() -> Dict[str, Any]:
@@ -910,7 +1042,7 @@ async def optimize_deployment_and_operations() -> Dict[str, Any]:
         Dict[str, Any]: Comprehensive optimization results
     """
 
-    optimizer = CI/CD_Optimizer()
+    optimizer = CI / CD_Optimizer()
     orchestrator = DeploymentOrchestrator()
     excellence_framework = OperationalExcellenceFramework()
 
@@ -918,7 +1050,9 @@ async def optimize_deployment_and_operations() -> Dict[str, Any]:
     pipeline_optimization = await optimizer.optimize_pipeline({})
 
     # Optimize deployment orchestration
-    deployment_optimization = await orchestrator.deploy_service("example-service", "v1.0.0", {})
+    deployment_optimization = await orchestrator.deploy_service(
+        "example-service", "v1.0.0", {}
+    )
 
     # Optimize operational excellence
     operations_optimization = await excellence_framework.optimize_operations()
@@ -928,22 +1062,24 @@ async def optimize_deployment_and_operations() -> Dict[str, Any]:
         "deployment_optimization": deployment_optimization,
         "operations_optimization": operations_optimization,
         "overall_efficiency": (
-            pipeline_optimization["pipeline_efficiency"] +
-            operations_optimization["overall_score"]
-        ) / 2,
+            pipeline_optimization["pipeline_efficiency"]
+            + operations_optimization["overall_score"]
+        )
+        / 2,
         "healthcare_compliance": {
             "hipaa_compliant": True,
             "gdpr_compliant": True,
             "data_encryption": "enabled",
-            "audit_trail": "comprehensive"
+            "audit_trail": "comprehensive",
         },
         "performance_targets": {
             "deployment_time": "< 5 minutes",
             "downtime": "< 5 seconds",
             "rollback_time": "< 30 seconds",
-            "uptime_target": "99.999%"
-        }
+            "uptime_target": "99.999%",
+        },
     }
+
 
 if __name__ == "__main__":
     # Run the deployment and operations optimization
@@ -951,17 +1087,24 @@ if __name__ == "__main__":
 
     print("=== Deployment and Operations Optimization Results ===")
     print(f"Overall Efficiency: {results['overall_efficiency']:.2f}%")
-    print(f"Pipeline Efficiency: {results['pipeline_optimization']['pipeline_efficiency']:.2f}%")
-    print(f"Operations Excellence: {results['operations_optimization']['overall_score']:.2f}%")
+    print(
+        f"Pipeline Efficiency: {results['pipeline_optimization']['pipeline_efficiency']:.2f}%"
+    )
+    print(
+        f"Operations Excellence: {results['operations_optimization']['overall_score']:.2f}%"
+    )
     print("\nHealthcare Compliance:")
-    for compliance, status in results['healthcare_compliance'].items():
+    for compliance, status in results["healthcare_compliance"].items():
         print(f"  {compliance}: {status}")
     print("\nPerformance Targets:")
-    for target, value in results['performance_targets'].items():
+    for target, value in results["performance_targets"].items():
         print(f"  {target}: {value}")
 
     # Save detailed results to file
-    with open('/home/azureuser/hms-enterprise-grade/deployment_operations_optimization.json', 'w') as f:
+    with open(
+        "/home/azureuser/hms-enterprise-grade/deployment_operations_optimization.json",
+        "w",
+    ) as f:
         json.dump(results, f, indent=2, default=str)
 
     print("\nDetailed results saved to deployment_operations_optimization.json")

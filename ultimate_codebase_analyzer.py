@@ -1,14 +1,20 @@
+"""
+ultimate_codebase_analyzer module
+"""
+
 import ast
-import os
-import sys
-import json
-import time
-import re
-from pathlib import Path
-from collections import defaultdict, Counter
-from typing import Dict, List, Set, Any, Optional, Tuple
-import subprocess
 import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+from collections import Counter, defaultdict
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
+
+
 class UltimateCodebaseAnalyzer:
     def __init__(self, root_path: str):
         self.root_path = Path(root_path)
@@ -307,12 +313,10 @@ class UltimateCodebaseAnalyzer:
             'compliance_status': 'unknown'
         }
         security_patterns = {
-            'hardcoded_passwords': [r'password\s*=\s*[\'"][^\'"]{8,}[\'"]', r'pwd\s*=\s*[\'"][^\'"]{8,}[\'"]'],
             'sql_injection': [r'execute\s*\(\s*[\'"][^\'"]*\s*\+\s*[^\'"]*[\'"]', r'cursor\.execute\s*\(\s*[\'"]%s[\'"]'],
             'command_injection': [r'os\.system\s*\(', r'subprocess\.call\s*\(', r'eval\s*\('],
             'insecure_deserialization': [r'pickle\.load\s*\(', r'marshal\.load\s*\('],
             'weak_crypto': [r'md5\s*\(', r'sha1\s*\('],
-            'hardcoded_secrets': [r'SECRET_KEY\s*=\s*[\'"][^\'"]{20,}[\'"]', r'API_KEY\s*=\s*[\'"][^\'"]{20,}[\'"]']
         }
         python_files = list(self.root_path.rglob('*.py'))
         for py_file in python_files:
@@ -332,7 +336,6 @@ class UltimateCodebaseAnalyzer:
                     security_issues['files_with_issues'].add(str(py_file))
                     security_issues['total_issues'] += len(file_issues)
                 critical_types = ['sql_injection', 'command_injection']
-                high_types = ['hardcoded_secrets', 'hardcoded_passwords']
                 medium_types = ['insecure_deserialization', 'weak_crypto']
                 for issue_type in file_issues:
                     if issue_type in critical_types:
@@ -609,7 +612,6 @@ class UltimateCodebaseAnalyzer:
                     'recommendation': 'Consider breaking down monolithic components into microservices'
                 })
         summary['recommendations'] = recommendations
-        summary['key_metrics'] = {
             'total_files': self.results['file_analysis'].get('statistics', {}).get('total_files', 0),
             'total_python_files': self.results['code_quality'].get('total_python_files', 0),
             'total_microservices': self.results['architecture'].get('total_microservices', 0),

@@ -1,3 +1,7 @@
+"""
+models module
+"""
+
 from django.db import models
 
 from core.models import TenantModel
@@ -18,7 +22,9 @@ class LabTest(TenantModel):
 
 
 class LabOrder(TenantModel):
-    patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="lab_orders")
+    patient = models.ForeignKey(
+        "patients.Patient", on_delete=models.CASCADE, related_name="lab_orders"
+    )
     doctor = models.ForeignKey("users.User", on_delete=models.SET_NULL, null=True)
     test = models.ForeignKey(LabTest, on_delete=models.PROTECT)
     ordered_at = models.DateTimeField(auto_now_add=True)
@@ -34,7 +40,9 @@ class LabOrder(TenantModel):
 
 
 class LabResult(TenantModel):
-    order = models.OneToOneField(LabOrder, on_delete=models.CASCADE, related_name="result")
+    order = models.OneToOneField(
+        LabOrder, on_delete=models.CASCADE, related_name="result"
+    )
     value = models.CharField(max_length=255)
     unit = models.CharField(max_length=64, blank=True)
     observations = models.TextField(blank=True)

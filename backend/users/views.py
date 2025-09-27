@@ -1,3 +1,7 @@
+"""
+views module
+"""
+
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
@@ -37,14 +41,21 @@ class UserViewSet(ViewSet):
         actor = self.request.user
         role = serializer.validated_data.get("role")
         hospital = serializer.validated_data.get("hospital")
-        if not (actor.is_superuser or getattr(actor, "role", None) in ["SUPER_ADMIN", "HOSPITAL_ADMIN"]):
+        if not (
+            actor.is_superuser
+            or getattr(actor, "role", None) in ["SUPER_ADMIN", "HOSPITAL_ADMIN"]
+        ):
             raise PermissionDenied("Not allowed to create users")
         if getattr(actor, "role", None) == "HOSPITAL_ADMIN":
             if role == "SUPER_ADMIN":
                 raise PermissionDenied("Hospital admin cannot create super admin")
             if hospital and hospital.id != actor.hospital_id:
                 raise PermissionDenied("Cannot assign user to another hospital")
-        password = serializer.validated_data.get("password") if hasattr(serializer, "validated_data") else None
+        password = (
+            serializer.validated_data.get("password")
+            if hasattr(serializer, "validated_data")
+            else None
+        )
         obj = serializer.save()
         if password:
             obj.password = make_password(password)

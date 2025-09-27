@@ -59,8 +59,12 @@ class HIPAAComplianceTests(TestCase):
         self.assertIsInstance(Patient._meta.get_field("first_name"), EncryptedCharField)
         self.assertIsInstance(Patient._meta.get_field("last_name"), EncryptedCharField)
         self.assertIsInstance(Patient._meta.get_field("email"), EncryptedEmailField)
-        self.assertIsInstance(Patient._meta.get_field("phone_primary"), EncryptedCharField)
-        self.assertIsInstance(Patient._meta.get_field("address_line1"), EncryptedCharField)
+        self.assertIsInstance(
+            Patient._meta.get_field("phone_primary"), EncryptedCharField
+        )
+        self.assertIsInstance(
+            Patient._meta.get_field("address_line1"), EncryptedCharField
+        )
 
         # Test that data is accessible but encrypted at rest
         self.assertEqual(patient.first_name, "TEST_PATIENT")
@@ -125,7 +129,10 @@ class HIPAAComplianceTests(TestCase):
 
         # Test that sensitive data access is controlled
         limited_user = User.objects.create_user(
-            username="limited", email="limited@example.com", password="limited123", hospital=self.hospital
+            username="limited",
+            email="limited@example.com",
+            password="limited123",
+            hospital=self.hospital,
         )
 
         # Limited user should not be able to access confidential patient data
@@ -411,8 +418,12 @@ class GDPRComplianceTests(TestCase):
 
         # Verify all personal data is deleted
         self.assertFalse(Patient.objects.filter(id=patient_id).exists())
-        self.assertFalse(EmergencyContact.objects.filter(patient_id=patient_id).exists())
-        self.assertFalse(InsuranceInformation.objects.filter(patient_id=patient_id).exists())
+        self.assertFalse(
+            EmergencyContact.objects.filter(patient_id=patient_id).exists()
+        )
+        self.assertFalse(
+            InsuranceInformation.objects.filter(patient_id=patient_id).exists()
+        )
 
     def test_right_to_restrict_processing(self):
         """Test GDPR right to restrict processing"""
@@ -452,7 +463,11 @@ class GDPRComplianceTests(TestCase):
 
         # Add related data for portability
         EmergencyContact.objects.create(
-            patient=patient, first_name="CONTACT", last_name="DATA", relationship="SPOUSE", phone_primary="555-CONTACT"
+            patient=patient,
+            first_name="CONTACT",
+            last_name="DATA",
+            relationship="SPOUSE",
+            phone_primary="555-CONTACT",
         )
 
         # Test data export capability

@@ -1,10 +1,18 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func, desc
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
-import models, schemas
+"""
+crud module
+"""
+
 import uuid
+from datetime import datetime, timedelta
 from decimal import Decimal
+from typing import Any, Dict, List, Optional
+
+import models
+import schemas
+from sqlalchemy import and_, desc, func, or_
+from sqlalchemy.orm import Session
+
+
 def create_emergency_visit(
     db: Session, visit: schemas.EmergencyVisitCreate
 ) -> models.EmergencyVisit:
@@ -23,12 +31,16 @@ def create_emergency_visit(
     db.commit()
     db.refresh(db_visit)
     return db_visit
+
+
 def get_emergency_visit(db: Session, visit_id: int) -> Optional[models.EmergencyVisit]:
     return (
         db.query(models.EmergencyVisit)
         .filter(models.EmergencyVisit.id == visit_id)
         .first()
     )
+
+
 def get_emergency_visits(
     db: Session,
     skip: int = 0,
@@ -47,6 +59,8 @@ def get_emergency_visits(
         .limit(limit)
         .all()
     )
+
+
 def update_triage_assessment(
     db: Session, visit_id: int, triage_update: schemas.TriageUpdate
 ) -> Optional[models.EmergencyVisit]:
@@ -64,6 +78,8 @@ def update_triage_assessment(
     db.commit()
     db.refresh(visit)
     return visit
+
+
 def perform_automatic_triage(db: Session, visit_id: int):
     visit = get_emergency_visit(db, visit_id)
     if not visit:
@@ -143,6 +159,8 @@ def perform_automatic_triage(db: Session, visit_id: int):
     visit.triage_time = datetime.utcnow()
     visit.status = models.VisitStatus.TRIAGED
     db.commit()
+
+
 def create_triage_assessment(
     db: Session, assessment: schemas.TriageAssessmentCreate
 ) -> models.TriageAssessment:
@@ -151,6 +169,8 @@ def create_triage_assessment(
     db.commit()
     db.refresh(db_assessment)
     return db_assessment
+
+
 def get_triage_queue(db: Session) -> List[models.EmergencyVisit]:
     return (
         db.query(models.EmergencyVisit)
@@ -158,6 +178,8 @@ def get_triage_queue(db: Session) -> List[models.EmergencyVisit]:
         .order_by(models.EmergencyVisit.arrival_time)
         .all()
     )
+
+
 def get_priority_queue(db: Session) -> List[models.EmergencyVisit]:
     return (
         db.query(models.EmergencyVisit)
@@ -172,6 +194,8 @@ def get_priority_queue(db: Session) -> List[models.EmergencyVisit]:
         )
         .all()
     )
+
+
 def create_vital_signs(
     db: Session, visit_id: int, vitals: schemas.VitalSignsCreate
 ) -> models.VitalSigns:
@@ -194,6 +218,8 @@ def create_vital_signs(
     db.commit()
     db.refresh(db_vitals)
     return db_vitals
+
+
 def get_vital_signs_by_visit(db: Session, visit_id: int) -> List[models.VitalSigns]:
     return (
         db.query(models.VitalSigns)
@@ -201,6 +227,8 @@ def get_vital_signs_by_visit(db: Session, visit_id: int) -> List[models.VitalSig
         .order_by(desc(models.VitalSigns.measurement_time))
         .all()
     )
+
+
 def create_emergency_alert(
     db: Session, alert: schemas.EmergencyAlertCreate
 ) -> models.EmergencyAlert:
@@ -209,6 +237,8 @@ def create_emergency_alert(
     db.commit()
     db.refresh(db_alert)
     return db_alert
+
+
 def get_active_alerts(db: Session) -> List[models.EmergencyAlert]:
     return (
         db.query(models.EmergencyAlert)
@@ -216,6 +246,8 @@ def get_active_alerts(db: Session) -> List[models.EmergencyAlert]:
         .order_by(desc(models.EmergencyAlert.alert_time))
         .all()
     )
+
+
 def acknowledge_alert(
     db: Session, alert_id: int, acknowledgment: schemas.AlertAcknowledgment
 ) -> Optional[models.EmergencyAlert]:
@@ -233,6 +265,8 @@ def acknowledge_alert(
     db.commit()
     db.refresh(alert)
     return alert
+
+
 def get_emergency_beds(
     db: Session, available_only: bool = False
 ) -> List[models.EmergencyBed]:
@@ -245,6 +279,8 @@ def get_emergency_beds(
             )
         )
     return query.order_by(models.EmergencyBed.bed_number).all()
+
+
 def assign_bed(
     db: Session, bed_id: int, assignment: schemas.BedAssignment
 ) -> Optional[models.EmergencyBed]:
@@ -258,6 +294,8 @@ def assign_bed(
     db.commit()
     db.refresh(bed)
     return bed
+
+
 def get_emergency_staff(
     db: Session, on_duty_only: bool = False
 ) -> List[models.EmergencyStaff]:
@@ -265,6 +303,8 @@ def get_emergency_staff(
     if on_duty_only:
         query = query.filter(models.EmergencyStaff.is_on_duty == True)
     return query.order_by(models.EmergencyStaff.role).all()
+
+
 def get_visits_count_today(db: Session) -> int:
     today = datetime.utcnow().date()
     return (
@@ -272,6 +312,8 @@ def get_visits_count_today(db: Session) -> int:
         .filter(func.date(models.EmergencyVisit.arrival_time) == today)
         .count()
     )
+
+
 def get_waiting_patients_count(db: Session) -> int:
     return (
         db.query(models.EmergencyVisit)
@@ -286,6 +328,8 @@ def get_waiting_patients_count(db: Session) -> int:
         )
         .count()
     )
+
+
 def get_critical_patients_count(db: Session) -> int:
     return (
         db.query(models.EmergencyVisit)
@@ -305,6 +349,8 @@ def get_critical_patients_count(db: Session) -> int:
         )
         .count()
     )
+
+
 def get_average_wait_time(db: Session) -> Optional[int]:
     yesterday = datetime.utcnow() - timedelta(days=1)
     visits = (
@@ -326,6 +372,8 @@ def get_average_wait_time(db: Session) -> Optional[int]:
         ]
     )
     return int(total_wait_time / len(visits))
+
+
 def get_bed_occupancy_rate(db: Session) -> Decimal:
     total_beds = (
         db.query(models.EmergencyBed)
@@ -345,18 +393,24 @@ def get_bed_occupancy_rate(db: Session) -> Decimal:
     if total_beds == 0:
         return Decimal("0")
     return Decimal(str(occupied_beds / total_beds * 100))
+
+
 def get_staff_on_duty_count(db: Session) -> int:
     return (
         db.query(models.EmergencyStaff)
         .filter(models.EmergencyStaff.is_on_duty == True)
         .count()
     )
+
+
 def get_active_alerts_count(db: Session) -> int:
     return (
         db.query(models.EmergencyAlert)
         .filter(models.EmergencyAlert.is_active == True)
         .count()
     )
+
+
 def get_triage_level_distribution(db: Session) -> Dict[str, int]:
     distribution = {
         "LEVEL_1": 0,
@@ -385,6 +439,8 @@ def get_triage_level_distribution(db: Session) -> Dict[str, int]:
         if triage_level:
             distribution[triage_level.value] = count
     return distribution
+
+
 def get_emergency_protocols(
     db: Session, category: Optional[str] = None
 ) -> List[models.EmergencyProtocol]:
@@ -394,6 +450,8 @@ def get_emergency_protocols(
     if category:
         query = query.filter(models.EmergencyProtocol.category == category)
     return query.order_by(models.EmergencyProtocol.name).all()
+
+
 def get_emergency_protocol(
     db: Session, protocol_id: int
 ) -> Optional[models.EmergencyProtocol]:
@@ -402,6 +460,8 @@ def get_emergency_protocol(
         .filter(models.EmergencyProtocol.id == protocol_id)
         .first()
     )
+
+
 def activate_protocol(
     db: Session, protocol_id: int, activation: schemas.ProtocolActivation
 ) -> Optional[models.ProtocolActivation]:
@@ -415,14 +475,24 @@ def activate_protocol(
     db.commit()
     db.refresh(db_activation)
     return db_activation
+
+
 def send_critical_alert(visit_id: int):
     print(f"CRITICAL ALERT: Patient {visit_id} requires immediate attention")
+
+
 def send_triage_change_alert(visit_id: int):
     print(f"TRIAGE ALERT: Patient {visit_id} triage level changed to critical")
+
+
 def broadcast_alert(alert_id: int):
     print(f"BROADCASTING ALERT: {alert_id} to emergency staff")
+
+
 def send_protocol_activation_alert(activation_id: int):
     print(f"PROTOCOL ACTIVATED: {activation_id} - Emergency response initiated")
+
+
 def get_wait_time_analytics(db: Session, days: int = 7) -> Dict[str, Any]:
     start_date = datetime.utcnow() - timedelta(days=days)
     visits = (
@@ -456,6 +526,8 @@ def get_wait_time_analytics(db: Session, days: int = 7) -> Dict[str, Any]:
         "door_to_triage_avg": get_door_to_triage_avg(db, days),
         "door_to_provider_avg": int(sum(wait_times) / n),
     }
+
+
 def get_door_to_triage_avg(db: Session, days: int = 7) -> int:
     start_date = datetime.utcnow() - timedelta(days=days)
     visits = (
@@ -475,6 +547,8 @@ def get_door_to_triage_avg(db: Session, days: int = 7) -> int:
         for visit in visits
     ]
     return int(sum(triage_times) / len(triage_times))
+
+
 def get_patient_flow_analytics(db: Session, hours: int = 24) -> Dict[str, Any]:
     start_time = datetime.utcnow() - timedelta(hours=hours)
     arrivals = (
@@ -507,8 +581,12 @@ def get_patient_flow_analytics(db: Session, hours: int = 24) -> Dict[str, Any]:
         "current_census": get_current_census(db),
         "bed_turnover_rate": get_bed_turnover_rate(db, hours),
     }
+
+
 def get_peak_census(db: Session, hours: int = 24) -> int:
     return get_current_census(db)
+
+
 def get_current_census(db: Session) -> int:
     return (
         db.query(models.EmergencyVisit)
@@ -524,6 +602,8 @@ def get_current_census(db: Session) -> int:
         )
         .count()
     )
+
+
 def get_bed_turnover_rate(db: Session, hours: int = 24) -> Decimal:
     start_time = datetime.utcnow() - timedelta(hours=hours)
     discharges = (
@@ -544,8 +624,12 @@ def get_bed_turnover_rate(db: Session, hours: int = 24) -> Decimal:
     if total_beds == 0:
         return Decimal("0")
     return Decimal(str(discharges / total_beds))
+
+
 def get_door_to_doctor_metric(db: Session) -> Optional[int]:
     return get_average_wait_time(db)
+
+
 def get_lwbs_rate(db: Session) -> Decimal:
     total_visits = (
         db.query(models.EmergencyVisit)
@@ -568,6 +652,8 @@ def get_lwbs_rate(db: Session) -> Decimal:
     if total_visits == 0:
         return Decimal("0")
     return Decimal(str(lwbs_visits / total_visits * 100))
+
+
 def get_patient_satisfaction(db: Session) -> Optional[Decimal]:
     visits = (
         db.query(models.EmergencyVisit)
@@ -584,8 +670,12 @@ def get_patient_satisfaction(db: Session) -> Optional[Decimal]:
         return None
     total_score = sum(visit.satisfaction_score for visit in visits)
     return Decimal(str(total_score / len(visits)))
+
+
 def get_readmission_rate(db: Session) -> Decimal:
     return Decimal("2.5")
+
+
 def get_mortality_rate(db: Session) -> Decimal:
     total_visits = (
         db.query(models.EmergencyVisit)
@@ -608,6 +698,8 @@ def get_mortality_rate(db: Session) -> Decimal:
     if total_visits == 0:
         return Decimal("0")
     return Decimal(str(deceased_visits / total_visits * 100))
+
+
 def get_compliance_scores(db: Session) -> Dict[str, Decimal]:
     return {
         "door_to_doctor_under_30min": Decimal("85.0"),

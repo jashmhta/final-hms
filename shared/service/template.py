@@ -3,15 +3,16 @@ Shared Service Template
 Eliminates redundant service initialization and configuration.
 """
 
-from typing import Optional, Dict, Any, Type
-from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy.orm import Session
-import uvicorn
 import logging
 from datetime import datetime
+from typing import Any, Dict, Optional, Type
 
-from ..api.base import BaseServiceApp, create_success_response, create_error_response
-from ..config.base import get_config, BaseConfig
+import uvicorn
+from fastapi import Depends, FastAPI, HTTPException
+from sqlalchemy.orm import Session
+
+from ..api.base import BaseServiceApp, create_error_response, create_success_response
+from ..config.base import BaseConfig, get_config
 from ..database.base import Base, HMSBaseModel
 from ..database.crud import BaseCRUD
 
@@ -26,7 +27,7 @@ class BaseServiceTemplate:
         version: str = "1.0.0",
         port: int = 8000,
         database_model: Optional[Type[HMSBaseModel]] = None,
-        crud_class: Optional[Type[BaseCRUD]] = None
+        crud_class: Optional[Type[BaseCRUD]] = None,
     ):
         self.service_name = service_name
         self.service_description = service_description
@@ -36,13 +37,15 @@ class BaseServiceTemplate:
         self.crud_class = crud_class
 
         # Load configuration
-        self.config = create_service_config(service_name, service_description, version, port)
+        self.config = create_service_config(
+            service_name, service_description, version, port
+        )
 
         # Create service app
         self.service_app = BaseServiceApp(
             service_name=service_name,
             service_description=service_description,
-            version=version
+            version=version,
         )
 
         # Setup database
@@ -63,13 +66,10 @@ class BaseServiceTemplate:
         from sqlalchemy.orm import sessionmaker
 
         self.engine = create_engine(
-            self.config.get_database_url(),
-            echo=self.config.debug
+            self.config.get_database_url(), echo=self.config.debug
         )
         self.SessionLocal = sessionmaker(
-            autocommit=False,
-            autoflush=False,
-            bind=self.engine
+            autocommit=False, autoflush=False, bind=self.engine
         )
 
         # Create tables
@@ -80,7 +80,11 @@ class BaseServiceTemplate:
         """Setup standardized logging."""
         logging.basicConfig(
             level=getattr(logging, self.config.monitoring.log_level),
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s' if self.config.monitoring.log_format == 'text' else None
+            format=(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+                if self.config.monitoring.log_format == "text"
+                else None
+            ),
         )
         self.logger = logging.getLogger(self.service_name)
 
@@ -107,9 +111,7 @@ class BaseServiceTemplate:
         # CRUD routes
         @app.get(f"/{self.database_model.__tablename__.lower()}", response_model=list)
         async def list_items(
-            skip: int = 0,
-            limit: int = 100,
-            db: Session = Depends(get_db)
+            skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
         ):
             """List items with pagination."""
             crud = self.crud_class(self.database_model)
@@ -126,14 +128,18 @@ class BaseServiceTemplate:
             return create_success_response(item)
 
         @app.post(f"/{self.database_model.__tablename__.lower()}", status_code=201)
-        async def create_item(item_data: CreateSchemaType, db: Session = Depends(get_db)):
+        async def create_item(
+            item_data: CreateSchemaType, db: Session = Depends(get_db)
+        ):
             """Create new item."""
             crud = self.crud_class(self.database_model)
             item = crud.create(db, item_data)
             return create_success_response(item, message="Item created successfully")
 
         @app.put(f"/{self.database_model.__tablename__.lower()}/{{item_id}}")
-        async def update_item(item_id: int, item_data: UpdateSchemaType, db: Session = Depends(get_db)):
+        async def update_item(
+            item_id: int, item_data: UpdateSchemaType, db: Session = Depends(get_db)
+        ):
             """Update existing item."""
             crud = self.crud_class(self.database_model)
             db_item = crud.get(db, item_id)
@@ -157,11 +163,13 @@ class BaseServiceTemplate:
             """Get basic statistics."""
             crud = self.crud_class(self.database_model)
             total_count = crud.count(db)
-            return create_success_response({
-                "total_count": total_count,
-                "service": self.service_name,
-                "timestamp": datetime.utcnow()
-            })
+            return create_success_response(
+                {
+                    "total_count": total_count,
+                    "service": self.service_name,
+                    "timestamp": datetime.utcnow(),
+                }
+            )
 
     def add_custom_route(self, path: str, methods: list, endpoint_func, **kwargs):
         """Add custom route to the service."""
@@ -190,7 +198,7 @@ class BaseServiceTemplate:
             self.get_app(),
             host=host,
             port=port,
-            log_level=self.config.monitoring.log_level.lower()
+            log_level=self.config.monitoring.log_level.lower(),
         )
 
 
@@ -207,28 +215,32 @@ class ServiceBuilder:
         self.custom_routes = []
         self.middleware = []
 
-    def set_version(self, version: str) -> 'ServiceBuilder':
+    def set_version(self, version: str) -> "ServiceBuilder":
         """Set service version."""
         self.version = version
         return self
 
-    def set_port(self, port: int) -> 'ServiceBuilder':
+    def set_port(self, port: int) -> "ServiceBuilder":
         """Set service port."""
         self.port = port
         return self
 
-    def set_database_model(self, model: Type[HMSBaseModel], crud_class: Type[BaseCRUD]) -> 'ServiceBuilder':
+    def set_database_model(
+        self, model: Type[HMSBaseModel], crud_class: Type[BaseCRUD]
+    ) -> "ServiceBuilder":
         """Set database model and CRUD class."""
         self.database_model = model
         self.crud_class = crud_class
         return self
 
-    def add_custom_route(self, path: str, methods: list, endpoint_func, **kwargs) -> 'ServiceBuilder':
+    def add_custom_route(
+        self, path: str, methods: list, endpoint_func, **kwargs
+    ) -> "ServiceBuilder":
         """Add custom route."""
         self.custom_routes.append((path, methods, endpoint_func, kwargs))
         return self
 
-    def add_middleware(self, middleware_class, **kwargs) -> 'ServiceBuilder':
+    def add_middleware(self, middleware_class, **kwargs) -> "ServiceBuilder":
         """Add middleware."""
         self.middleware.append((middleware_class, kwargs))
         return self
@@ -241,7 +253,7 @@ class ServiceBuilder:
             version=self.version,
             port=self.port,
             database_model=self.database_model,
-            crud_class=self.crud_class
+            crud_class=self.crud_class,
         )
 
         # Add custom routes
@@ -260,13 +272,15 @@ def create_basic_service(
     service_name: str,
     service_description: str,
     version: str = "1.0.0",
-    port: int = 8000
+    port: int = 8000,
 ) -> BaseServiceTemplate:
     """Create a basic service without database."""
-    return ServiceBuilder(service_name, service_description)\
-        .set_version(version)\
-        .set_port(port)\
+    return (
+        ServiceBuilder(service_name, service_description)
+        .set_version(version)
+        .set_port(port)
         .build()
+    )
 
 
 def create_crud_service(
@@ -275,14 +289,16 @@ def create_crud_service(
     database_model: Type[HMSBaseModel],
     crud_class: Type[BaseCRUD],
     version: str = "1.0.0",
-    port: int = 8000
+    port: int = 8000,
 ) -> BaseServiceTemplate:
     """Create a service with CRUD operations."""
-    return ServiceBuilder(service_name, service_description)\
-        .set_version(version)\
-        .set_port(port)\
-        .set_database_model(database_model, crud_class)\
+    return (
+        ServiceBuilder(service_name, service_description)
+        .set_version(version)
+        .set_port(port)
+        .set_database_model(database_model, crud_class)
         .build()
+    )
 
 
 def run_service(
@@ -290,7 +306,7 @@ def run_service(
     service_description: str,
     version: str = "1.0.0",
     port: int = 8000,
-    **kwargs
+    **kwargs,
 ):
     """Quick service creation and execution."""
     service = create_basic_service(service_name, service_description, version, port)

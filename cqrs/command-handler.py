@@ -1,40 +1,51 @@
+"""
+command-handler module
+"""
+
 # Command Handler Implementation
 # Enterprise-grade command processing for HMS microservices
 
 import asyncio
 import json
-import uuid
-from datetime import datetime
-from typing import Dict, Any, List, Optional, Type, Callable, Union
-from enum import Enum
-from abc import ABC, abstractmethod
-from pydantic import BaseModel, Field, validator
-from fastapi import HTTPException, status
 import logging
+import uuid
+from abc import ABC, abstractmethod
+from datetime import datetime
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional, Type, Union
 
-from .event_store import Event, EventType, EventStore, get_event_store
+from fastapi import HTTPException, status
+from pydantic import BaseModel, Field, validator
+
+from .event_store import Event, EventStore, EventType, get_event_store
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class CommandStatus(Enum):
     """Command execution status"""
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
 
+
 class CommandPriority(Enum):
     """Command priority levels"""
+
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
     CRITICAL = "critical"
 
+
 class Command(BaseModel):
     """Base command model"""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     type: str
     data: Dict[str, Any]
@@ -46,8 +57,10 @@ class Command(BaseModel):
     status: CommandStatus = CommandStatus.PENDING
     version: int = 1
 
+
 class CommandResult(BaseModel):
     """Command execution result"""
+
     command_id: str
     status: CommandStatus
     result: Optional[Dict[str, Any]] = None
@@ -55,6 +68,7 @@ class CommandResult(BaseModel):
     events: List[Event] = Field(default_factory=list)
     processing_time: float
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+
 
 class CommandHandler(ABC):
     """Abstract base class for command handlers"""
@@ -73,6 +87,7 @@ class CommandHandler(ABC):
     async def validate(self, command: Command) -> bool:
         """Validate the command"""
         pass
+
 
 class PatientCommandHandler(CommandHandler):
     """Handler for patient-related commands"""
@@ -106,22 +121,30 @@ class PatientCommandHandler(CommandHandler):
             if not await self.validate(command):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid command data"
+                    detail="Invalid command data",
                 )
 
             events = []
             result = {}
 
             if command.type == "patient_register":
-                events, result = await self._handle_patient_registration(command, event_store)
+                events, result = await self._handle_patient_registration(
+                    command, event_store
+                )
             elif command.type == "patient_update":
                 events, result = await self._handle_patient_update(command, event_store)
             elif command.type == "patient_delete":
-                events, result = await self._handle_patient_deletion(command, event_store)
+                events, result = await self._handle_patient_deletion(
+                    command, event_store
+                )
             elif command.type == "patient_admit":
-                events, result = await self._handle_patient_admission(command, event_store)
+                events, result = await self._handle_patient_admission(
+                    command, event_store
+                )
             elif command.type == "patient_discharge":
-                events, result = await self._handle_patient_discharge(command, event_store)
+                events, result = await self._handle_patient_discharge(
+                    command, event_store
+                )
 
             processing_time = (datetime.utcnow() - start_time).total_seconds()
 
@@ -130,7 +153,7 @@ class PatientCommandHandler(CommandHandler):
                 status=CommandStatus.COMPLETED,
                 result=result,
                 events=events,
-                processing_time=processing_time
+                processing_time=processing_time,
             )
 
         except Exception as e:
@@ -141,10 +164,12 @@ class PatientCommandHandler(CommandHandler):
                 command_id=command.id,
                 status=CommandStatus.FAILED,
                 error=str(e),
-                processing_time=processing_time
+                processing_time=processing_time,
             )
 
-    async def _handle_patient_registration(self, command: Command, event_store: EventStore) -> tuple[List[Event], Dict[str, Any]]:
+    async def _handle_patient_registration(
+        self, command: Command, event_store: EventStore
+    ) -> tuple[List[Event], Dict[str, Any]]:
         """Handle patient registration"""
         patient_id = str(uuid.uuid4())
 
@@ -168,24 +193,26 @@ class PatientCommandHandler(CommandHandler):
                 "emergency_contact": command.data.get("emergency_contact"),
                 "medical_history": command.data.get("medical_history", []),
                 "allergies": command.data.get("allergies", []),
-                "medications": command.data.get("medications", [])
+                "medications": command.data.get("medications", []),
             },
             metadata={
                 "source": "patient_service",
                 "action": "register",
                 "ip_address": command.metadata.get("ip_address"),
-                "user_agent": command.metadata.get("user_agent")
+                "user_agent": command.metadata.get("user_agent"),
             },
             version=version,
             user_id=command.user_id,
-            correlation_id=command.correlation_id
+            correlation_id=command.correlation_id,
         )
 
         await event_store.save_event(event)
 
         return [event], {"patient_id": patient_id, "status": "registered"}
 
-    async def _handle_patient_update(self, command: Command, event_store: EventStore) -> tuple[List[Event], Dict[str, Any]]:
+    async def _handle_patient_update(
+        self, command: Command, event_store: EventStore
+    ) -> tuple[List[Event], Dict[str, Any]]:
         """Handle patient update"""
         patient_id = command.data["patient_id"]
 
@@ -201,24 +228,26 @@ class PatientCommandHandler(CommandHandler):
             data={
                 "patient_id": patient_id,
                 "updates": command.data.get("updates", {}),
-                "updated_fields": list(command.data.get("updates", {}).keys())
+                "updated_fields": list(command.data.get("updates", {}).keys()),
             },
             metadata={
                 "source": "patient_service",
                 "action": "update",
                 "ip_address": command.metadata.get("ip_address"),
-                "user_agent": command.metadata.get("user_agent")
+                "user_agent": command.metadata.get("user_agent"),
             },
             version=version,
             user_id=command.user_id,
-            correlation_id=command.correlation_id
+            correlation_id=command.correlation_id,
         )
 
         await event_store.save_event(event)
 
         return [event], {"patient_id": patient_id, "status": "updated"}
 
-    async def _handle_patient_deletion(self, command: Command, event_store: EventStore) -> tuple[List[Event], Dict[str, Any]]:
+    async def _handle_patient_deletion(
+        self, command: Command, event_store: EventStore
+    ) -> tuple[List[Event], Dict[str, Any]]:
         """Handle patient deletion"""
         patient_id = command.data["patient_id"]
 
@@ -234,24 +263,26 @@ class PatientCommandHandler(CommandHandler):
             data={
                 "patient_id": patient_id,
                 "reason": command.data.get("reason", "user_request"),
-                "deleted_by": command.user_id
+                "deleted_by": command.user_id,
             },
             metadata={
                 "source": "patient_service",
                 "action": "delete",
                 "ip_address": command.metadata.get("ip_address"),
-                "user_agent": command.metadata.get("user_agent")
+                "user_agent": command.metadata.get("user_agent"),
             },
             version=version,
             user_id=command.user_id,
-            correlation_id=command.correlation_id
+            correlation_id=command.correlation_id,
         )
 
         await event_store.save_event(event)
 
         return [event], {"patient_id": patient_id, "status": "deleted"}
 
-    async def _handle_patient_admission(self, command: Command, event_store: EventStore) -> tuple[List[Event], Dict[str, Any]]:
+    async def _handle_patient_admission(
+        self, command: Command, event_store: EventStore
+    ) -> tuple[List[Event], Dict[str, Any]]:
         """Handle patient admission"""
         patient_id = command.data["patient_id"]
 
@@ -272,24 +303,26 @@ class PatientCommandHandler(CommandHandler):
                 "bed_number": command.data.get("bed_number"),
                 "admitting_physician": command.data.get("admitting_physician"),
                 "admission_reason": command.data.get("admission_reason"),
-                "expected_stay": command.data.get("expected_stay")
+                "expected_stay": command.data.get("expected_stay"),
             },
             metadata={
                 "source": "patient_service",
                 "action": "admit",
                 "ip_address": command.metadata.get("ip_address"),
-                "user_agent": command.metadata.get("user_agent")
+                "user_agent": command.metadata.get("user_agent"),
             },
             version=version,
             user_id=command.user_id,
-            correlation_id=command.correlation_id
+            correlation_id=command.correlation_id,
         )
 
         await event_store.save_event(event)
 
         return [event], {"patient_id": patient_id, "status": "admitted"}
 
-    async def _handle_patient_discharge(self, command: Command, event_store: EventStore) -> tuple[List[Event], Dict[str, Any]]:
+    async def _handle_patient_discharge(
+        self, command: Command, event_store: EventStore
+    ) -> tuple[List[Event], Dict[str, Any]]:
         """Handle patient discharge"""
         patient_id = command.data["patient_id"]
 
@@ -308,22 +341,23 @@ class PatientCommandHandler(CommandHandler):
                 "discharge_reason": command.data.get("discharge_reason"),
                 "discharge_notes": command.data.get("discharge_notes"),
                 "follow_up_required": command.data.get("follow_up_required", False),
-                "follow_up_date": command.data.get("follow_up_date")
+                "follow_up_date": command.data.get("follow_up_date"),
             },
             metadata={
                 "source": "patient_service",
                 "action": "discharge",
                 "ip_address": command.metadata.get("ip_address"),
-                "user_agent": command.metadata.get("user_agent")
+                "user_agent": command.metadata.get("user_agent"),
             },
             version=version,
             user_id=command.user_id,
-            correlation_id=command.correlation_id
+            correlation_id=command.correlation_id,
         )
 
         await event_store.save_event(event)
 
         return [event], {"patient_id": patient_id, "status": "discharged"}
+
 
 class AppointmentCommandHandler(CommandHandler):
     """Handler for appointment-related commands"""
@@ -337,7 +371,12 @@ class AppointmentCommandHandler(CommandHandler):
         required_fields = []
 
         if command.type == "appointment_create":
-            required_fields = ["patient_id", "provider_id", "appointment_time", "duration"]
+            required_fields = [
+                "patient_id",
+                "provider_id",
+                "appointment_time",
+                "duration",
+            ]
         elif command.type == "appointment_update":
             required_fields = ["appointment_id"]
         elif command.type == "appointment_cancel":
@@ -355,20 +394,28 @@ class AppointmentCommandHandler(CommandHandler):
             if not await self.validate(command):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid command data"
+                    detail="Invalid command data",
                 )
 
             events = []
             result = {}
 
             if command.type == "appointment_create":
-                events, result = await self._handle_appointment_creation(command, event_store)
+                events, result = await self._handle_appointment_creation(
+                    command, event_store
+                )
             elif command.type == "appointment_update":
-                events, result = await self._handle_appointment_update(command, event_store)
+                events, result = await self._handle_appointment_update(
+                    command, event_store
+                )
             elif command.type == "appointment_cancel":
-                events, result = await self._handle_appointment_cancellation(command, event_store)
+                events, result = await self._handle_appointment_cancellation(
+                    command, event_store
+                )
             elif command.type == "appointment_complete":
-                events, result = await self._handle_appointment_completion(command, event_store)
+                events, result = await self._handle_appointment_completion(
+                    command, event_store
+                )
 
             processing_time = (datetime.utcnow() - start_time).total_seconds()
 
@@ -377,7 +424,7 @@ class AppointmentCommandHandler(CommandHandler):
                 status=CommandStatus.COMPLETED,
                 result=result,
                 events=events,
-                processing_time=processing_time
+                processing_time=processing_time,
             )
 
         except Exception as e:
@@ -388,10 +435,12 @@ class AppointmentCommandHandler(CommandHandler):
                 command_id=command.id,
                 status=CommandStatus.FAILED,
                 error=str(e),
-                processing_time=processing_time
+                processing_time=processing_time,
             )
 
-    async def _handle_appointment_creation(self, command: Command, event_store: EventStore) -> tuple[List[Event], Dict[str, Any]]:
+    async def _handle_appointment_creation(
+        self, command: Command, event_store: EventStore
+    ) -> tuple[List[Event], Dict[str, Any]]:
         """Handle appointment creation"""
         appointment_id = str(uuid.uuid4())
 
@@ -414,24 +463,26 @@ class AppointmentCommandHandler(CommandHandler):
                 "status": "scheduled",
                 "location": command.data.get("location"),
                 "notes": command.data.get("notes"),
-                "reminder_sent": False
+                "reminder_sent": False,
             },
             metadata={
                 "source": "appointment_service",
                 "action": "create",
                 "ip_address": command.metadata.get("ip_address"),
-                "user_agent": command.metadata.get("user_agent")
+                "user_agent": command.metadata.get("user_agent"),
             },
             version=version,
             user_id=command.user_id,
-            correlation_id=command.correlation_id
+            correlation_id=command.correlation_id,
         )
 
         await event_store.save_event(event)
 
         return [event], {"appointment_id": appointment_id, "status": "created"}
 
-    async def _handle_appointment_update(self, command: Command, event_store: EventStore) -> tuple[List[Event], Dict[str, Any]]:
+    async def _handle_appointment_update(
+        self, command: Command, event_store: EventStore
+    ) -> tuple[List[Event], Dict[str, Any]]:
         """Handle appointment update"""
         appointment_id = command.data["appointment_id"]
 
@@ -447,24 +498,26 @@ class AppointmentCommandHandler(CommandHandler):
             data={
                 "appointment_id": appointment_id,
                 "updates": command.data.get("updates", {}),
-                "updated_fields": list(command.data.get("updates", {}).keys())
+                "updated_fields": list(command.data.get("updates", {}).keys()),
             },
             metadata={
                 "source": "appointment_service",
                 "action": "update",
                 "ip_address": command.metadata.get("ip_address"),
-                "user_agent": command.metadata.get("user_agent")
+                "user_agent": command.metadata.get("user_agent"),
             },
             version=version,
             user_id=command.user_id,
-            correlation_id=command.correlation_id
+            correlation_id=command.correlation_id,
         )
 
         await event_store.save_event(event)
 
         return [event], {"appointment_id": appointment_id, "status": "updated"}
 
-    async def _handle_appointment_cancellation(self, command: Command, event_store: EventStore) -> tuple[List[Event], Dict[str, Any]]:
+    async def _handle_appointment_cancellation(
+        self, command: Command, event_store: EventStore
+    ) -> tuple[List[Event], Dict[str, Any]]:
         """Handle appointment cancellation"""
         appointment_id = command.data["appointment_id"]
 
@@ -481,24 +534,26 @@ class AppointmentCommandHandler(CommandHandler):
                 "appointment_id": appointment_id,
                 "cancellation_reason": command.data.get("cancellation_reason"),
                 "cancelled_by": command.user_id,
-                "cancellation_time": datetime.utcnow().isoformat()
+                "cancellation_time": datetime.utcnow().isoformat(),
             },
             metadata={
                 "source": "appointment_service",
                 "action": "cancel",
                 "ip_address": command.metadata.get("ip_address"),
-                "user_agent": command.metadata.get("user_agent")
+                "user_agent": command.metadata.get("user_agent"),
             },
             version=version,
             user_id=command.user_id,
-            correlation_id=command.correlation_id
+            correlation_id=command.correlation_id,
         )
 
         await event_store.save_event(event)
 
         return [event], {"appointment_id": appointment_id, "status": "cancelled"}
 
-    async def _handle_appointment_completion(self, command: Command, event_store: EventStore) -> tuple[List[Event], Dict[str, Any]]:
+    async def _handle_appointment_completion(
+        self, command: Command, event_store: EventStore
+    ) -> tuple[List[Event], Dict[str, Any]]:
         """Handle appointment completion"""
         appointment_id = command.data["appointment_id"]
 
@@ -516,22 +571,23 @@ class AppointmentCommandHandler(CommandHandler):
                 "completion_time": datetime.utcnow().isoformat(),
                 "completion_notes": command.data.get("completion_notes"),
                 "follow_up_required": command.data.get("follow_up_required", False),
-                "next_appointment": command.data.get("next_appointment")
+                "next_appointment": command.data.get("next_appointment"),
             },
             metadata={
                 "source": "appointment_service",
                 "action": "complete",
                 "ip_address": command.metadata.get("ip_address"),
-                "user_agent": command.metadata.get("user_agent")
+                "user_agent": command.metadata.get("user_agent"),
             },
             version=version,
             user_id=command.user_id,
-            correlation_id=command.correlation_id
+            correlation_id=command.correlation_id,
         )
 
         await event_store.save_event(event)
 
         return [event], {"appointment_id": appointment_id, "status": "completed"}
+
 
 class CommandDispatcher:
     """Command dispatcher for routing commands to appropriate handlers"""
@@ -556,7 +612,7 @@ class CommandDispatcher:
             command_id=command.id,
             status=CommandStatus.FAILED,
             error=f"No handler found for command type: {command.type}",
-            processing_time=0.0
+            processing_time=0.0,
         )
 
     async def dispatch_async(self, command: Command) -> str:
@@ -584,6 +640,7 @@ class CommandDispatcher:
             except Exception as e:
                 logger.error(f"Error processing command: {e}")
 
+
 # Global command dispatcher instance
 command_dispatcher = CommandDispatcher()
 
@@ -591,9 +648,11 @@ command_dispatcher = CommandDispatcher()
 command_dispatcher.register_handler(PatientCommandHandler())
 command_dispatcher.register_handler(AppointmentCommandHandler())
 
+
 async def dispatch_command(command: Command) -> CommandResult:
     """Dispatch a command using the global dispatcher"""
     return await command_dispatcher.dispatch(command)
+
 
 async def dispatch_command_async(command: Command) -> str:
     """Dispatch a command asynchronously"""

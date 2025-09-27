@@ -1,7 +1,8 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { axe, toHaveNoViolations } from 'jest-axe'
 import { matchers } from '@emotion/jest'
-import healthcareTheme, { healthcareColors } from '../../theme/healthcareTheme'
+import healthcareTheme from '../theme/healthcareTheme'
+import { healthcareColors } from '../theme/healthcareTheme'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import PatientCard from '../components/healthcare/PatientCard'
 
@@ -33,9 +34,8 @@ describe('Frontend Visual Design Tests', () => {
   }
 
   const renderWithTheme = (component) => {
-    const theme = createTheme(healthcareTheme)
     return render(
-      <ThemeProvider theme={theme}>
+      <ThemeProvider theme={healthcareTheme}>
         {component}
       </ThemeProvider>
     )

@@ -1,14 +1,21 @@
+"""
+mock_tpa module
+"""
+
 import json
 import logging
 import os
 import random
+import secrets
 import time
 import uuid
 from datetime import datetime
 from threading import Lock
+
 from cryptography.fernet import Fernet
 from flask import Flask, jsonify, request
 from werkzeug.exceptions import BadRequest
+
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,7 +28,7 @@ mock_db = {
         "approval_threshold": 5000,
         "reimbursement_rate": 0.9,
         "max_procedures": 5,
-        "approval_rate": 0.85,  
+        "approval_rate": 0.85,
     },
 }
 try:
@@ -33,6 +40,8 @@ try:
 except Exception as e:
     logger.error(f"Failed to initialize Fernet: {e}")
     fernet = Fernet(Fernet.generate_key())
+
+
 @app.route("/health", methods=["GET"])
 def health_check():
     return jsonify(
@@ -45,6 +54,8 @@ def health_check():
             "encryption_enabled": True,
         }
     )
+
+
 @app.route("/api/tpa/pre-auth/", methods=["POST"])
 def mock_pre_auth():
     try:
@@ -77,7 +88,7 @@ def mock_pre_auth():
                 ),
                 400,
             )
-        processing_delay = random.uniform(2, 5)
+        processing_delay = secrets.uniform(2, 5)
         time.sleep(processing_delay)
         approval_threshold = mock_db["config"]["approval_threshold"]
         approval_rate = mock_db["config"]["approval_rate"]
@@ -86,10 +97,10 @@ def mock_pre_auth():
         if estimated_amount > approval_threshold:
             status = "rejected"
             approval_reason = f"Estimated amount ${estimated_amount:.2f} exceeds policy limit of ${approval_threshold}"
-        elif random.random() > approval_rate:  
+        elif secrets.random() > approval_rate:
             status = "rejected"
             approval_reason = "Insufficient policy coverage for specified procedure or random business rule"
-        elif random.random() < 0.1:  
+        elif secrets.random() < 0.1:
             status = "rejected"
             approval_reason = (
                 "Additional documentation required - please contact TPA support"
@@ -151,6 +162,8 @@ def mock_pre_auth():
             ),
             500,
         )
+
+
 @app.route("/api/tpa/claim/", methods=["POST"])
 def mock_claim_processing():
     try:
@@ -189,7 +202,7 @@ def mock_claim_processing():
         policy_number = data["policy_number"]
         diagnosis_codes = data.get("diagnosis_codes", [])
         procedure_count = len(procedure_codes)
-        processing_delay = random.uniform(5, 15)
+        processing_delay = secrets.uniform(5, 15)
         time.sleep(processing_delay)
         max_amount = 10000
         max_procedures = mock_db["config"]["max_procedures"]
@@ -212,7 +225,7 @@ def mock_claim_processing():
             status = "rejected"
             rejection_reason = f"Claim rejected: Amount ${claim_amount:.2f} exceeds policy limits or {procedure_count} procedures exceed maximum of {max_procedures}"
             reimbursed_amount = 0
-        if random.random() < 0.05 and status != "rejected":
+        if secrets.random() < 0.05 and status != "rejected":
             status = "rejected"
             rejection_reason = "Additional review required - please contact TPA support for appeal process"
             reimbursed_amount = 0
@@ -282,6 +295,8 @@ def mock_claim_processing():
             ),
             500,
         )
+
+
 @app.route("/api/tpa/status/<transaction_id>", methods=["GET"])
 def get_transaction_status(transaction_id):
     try:
@@ -350,6 +365,8 @@ def get_transaction_status(transaction_id):
             ),
             500,
         )
+
+
 @app.route("/api/tpa/transactions", methods=["GET"])
 def list_transactions():
     try:
@@ -385,6 +402,8 @@ def list_transactions():
             ),
             500,
         )
+
+
 @app.route("/api/tpa/config", methods=["GET"])
 def get_config():
     try:
@@ -405,34 +424,40 @@ def get_config():
             ),
             500,
         )
+
+
 def generate_mock_pre_auth_response(amount=None):
     if amount is None:
-        amount = random.uniform(100, 10000)
-    status = "approved" if amount <= 5000 else random.choice(["approved", "rejected"])
+        amount = secrets.uniform(100, 10000)
+    status = "approved" if amount <= 5000 else secrets.choice(["approved", "rejected"])
     return {
         "tpa_transaction_id": str(uuid.uuid4()),
         "status": status,
         "approval_reason": (
             "Mock approval" if status == "approved" else "Mock rejection"
         ),
-        "processing_time_seconds": random.uniform(2, 5),
+        "processing_time_seconds": secrets.uniform(2, 5),
         "estimated_amount": amount,
     }
+
+
 def generate_mock_claim_response(amount=None, procedure_count=1):
     if amount is None:
-        amount = random.uniform(500, 15000)
+        amount = secrets.uniform(500, 15000)
     if procedure_count is None:
-        procedure_count = random.randint(1, 5)
+        procedure_count = secrets.secrets.randbelow(1, 5)
     status = "approved" if amount <= 10000 else "partially_approved"
-    reimbursed = amount * random.uniform(0.7, 0.95)
+    reimbursed = amount * secrets.uniform(0.7, 0.95)
     return {
         "tpa_transaction_id": str(uuid.uuid4()),
         "status": status,
         "reimbursed_amount": reimbursed,
         "claim_amount": amount,
         "procedure_count": procedure_count,
-        "processing_time_seconds": random.uniform(5, 15),
+        "processing_time_seconds": secrets.uniform(5, 15),
     }
+
+
 if __name__ == "__main__":
     app.config["DEBUG"] = False
     app.config["JSON_SORT_KEYS"] = True

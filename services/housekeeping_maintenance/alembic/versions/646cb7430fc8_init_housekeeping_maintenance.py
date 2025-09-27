@@ -1,10 +1,18 @@
+"""
+646cb7430fc8_init_housekeeping_maintenance module
+"""
+
 from typing import Sequence, Union
+
 import sqlalchemy as sa
 from alembic import op
+
 revision: str = "646cb7430fc8"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
+
+
 def upgrade() -> None:
     op.create_table(
         "asset_upkeep",
@@ -64,6 +72,8 @@ def upgrade() -> None:
     op.create_index(
         "ix_cleaning_tasks_status", "cleaning_tasks", ["status"], unique=False
     )
+
+
 def downgrade() -> None:
     op.drop_index("ix_cleaning_tasks_status", table_name="cleaning_tasks")
     op.drop_index(op.f("ix_cleaning_tasks_id"), table_name="cleaning_tasks")

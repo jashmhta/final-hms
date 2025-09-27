@@ -1,26 +1,33 @@
+"""
+event-store module
+"""
+
 # Event Store Implementation
 # Enterprise-grade event sourcing for HMS microservices
 
 import asyncio
 import json
-import uuid
-from datetime import datetime
-from typing import List, Dict, Any, Optional, Union
-from enum import Enum
-from abc import ABC, abstractmethod
-import asyncpg
-from redis.asyncio import Redis
-import aioredis
-from pydantic import BaseModel, Field
-from fastapi import WebSocket, WebSocketDisconnect
 import logging
+import uuid
+from abc import ABC, abstractmethod
+from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional, Union
+
+import aioredis
+import asyncpg
+from fastapi import WebSocket, WebSocketDisconnect
+from pydantic import BaseModel, Field
+from redis.asyncio import Redis
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class EventType(Enum):
     """Event types for HMS domain events"""
+
     # Patient events
     PATIENT_REGISTERED = "patient_registered"
     PATIENT_UPDATED = "patient_updated"
@@ -58,8 +65,10 @@ class EventType(Enum):
     SERVICE_UPDATED = "service_updated"
     CONFIGURATION_CHANGED = "configuration_changed"
 
+
 class Event(BaseModel):
     """Base event model"""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     type: EventType
     aggregate_id: str
@@ -71,6 +80,7 @@ class Event(BaseModel):
     user_id: Optional[str] = None
     correlation_id: Optional[str] = None
     causation_id: Optional[str] = None
+
 
 class EventStoreInterface(ABC):
     """Abstract base class for event store implementations"""
@@ -91,19 +101,26 @@ class EventStoreInterface(ABC):
         pass
 
     @abstractmethod
-    async def get_events_by_time_range(self, start_time: datetime, end_time: datetime) -> List[Event]:
+    async def get_events_by_time_range(
+        self, start_time: datetime, end_time: datetime
+    ) -> List[Event]:
         """Get events within a time range"""
         pass
 
     @abstractmethod
-    async def create_snapshot(self, aggregate_id: str, version: int, state: Dict[str, Any]) -> None:
+    async def create_snapshot(
+        self, aggregate_id: str, version: int, state: Dict[str, Any]
+    ) -> None:
         """Create a snapshot of an aggregate"""
         pass
 
     @abstractmethod
-    async def get_snapshot(self, aggregate_id: str, version: int) -> Optional[Dict[str, Any]]:
+    async def get_snapshot(
+        self, aggregate_id: str, version: int
+    ) -> Optional[Dict[str, Any]]:
         """Get a snapshot of an aggregate"""
         pass
+
 
 class PostgresEventStore(EventStoreInterface):
     """PostgreSQL implementation of event store"""
@@ -118,7 +135,8 @@ class PostgresEventStore(EventStoreInterface):
 
         # Create tables
         async with self.pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS events (
                     id UUID PRIMARY KEY,
                     type VARCHAR(100) NOT NULL,
@@ -137,9 +155,11 @@ class PostgresEventStore(EventStoreInterface):
                     INDEX (user_id),
                     UNIQUE (aggregate_id, version)
                 );
-            ''')
+            """
+            )
 
-            await conn.execute('''
+            await conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS snapshots (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                     aggregate_id UUID NOT NULL,
@@ -150,118 +170,170 @@ class PostgresEventStore(EventStoreInterface):
                     INDEX (version),
                     UNIQUE (aggregate_id, version)
                 );
-            ''')
+            """
+            )
 
     async def save_event(self, event: Event) -> None:
         """Save an event to the store"""
         async with self.pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 INSERT INTO events (
                     id, type, aggregate_id, aggregate_type, data, metadata,
                     version, timestamp, user_id, correlation_id, causation_id
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-            ''',
-                event.id, event.type.value, event.aggregate_id, event.aggregate_type,
-                json.dumps(event.data), json.dumps(event.metadata), event.version,
-                event.timestamp, event.user_id, event.correlation_id, event.causation_id
+            """,
+                event.id,
+                event.type.value,
+                event.aggregate_id,
+                event.aggregate_type,
+                json.dumps(event.data),
+                json.dumps(event.metadata),
+                event.version,
+                event.timestamp,
+                event.user_id,
+                event.correlation_id,
+                event.causation_id,
             )
 
     async def get_events(self, aggregate_id: str, from_version: int = 0) -> List[Event]:
         """Get all events for an aggregate"""
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch('''
+            rows = await conn.fetch(
+                """
                 SELECT * FROM events
                 WHERE aggregate_id = $1 AND version >= $2
                 ORDER BY version ASC
-            ''', aggregate_id, from_version)
+            """,
+                aggregate_id,
+                from_version,
+            )
 
             return [
                 Event(
-                    id=str(row['id']),
-                    type=EventType(row['type']),
-                    aggregate_id=str(row['aggregate_id']),
-                    aggregate_type=row['aggregate_type'],
-                    data=json.loads(row['data']),
-                    metadata=json.loads(row['metadata']),
-                    version=row['version'],
-                    timestamp=row['timestamp'],
-                    user_id=str(row['user_id']) if row['user_id'] else None,
-                    correlation_id=str(row['correlation_id']) if row['correlation_id'] else None,
-                    causation_id=str(row['causation_id']) if row['causation_id'] else None
-                ) for row in rows
+                    id=str(row["id"]),
+                    type=EventType(row["type"]),
+                    aggregate_id=str(row["aggregate_id"]),
+                    aggregate_type=row["aggregate_type"],
+                    data=json.loads(row["data"]),
+                    metadata=json.loads(row["metadata"]),
+                    version=row["version"],
+                    timestamp=row["timestamp"],
+                    user_id=str(row["user_id"]) if row["user_id"] else None,
+                    correlation_id=(
+                        str(row["correlation_id"]) if row["correlation_id"] else None
+                    ),
+                    causation_id=(
+                        str(row["causation_id"]) if row["causation_id"] else None
+                    ),
+                )
+                for row in rows
             ]
 
     async def get_events_by_type(self, event_type: EventType) -> List[Event]:
         """Get all events of a specific type"""
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch('''
+            rows = await conn.fetch(
+                """
                 SELECT * FROM events
                 WHERE type = $1
                 ORDER BY timestamp DESC
-            ''', event_type.value)
+            """,
+                event_type.value,
+            )
 
             return [
                 Event(
-                    id=str(row['id']),
-                    type=EventType(row['type']),
-                    aggregate_id=str(row['aggregate_id']),
-                    aggregate_type=row['aggregate_type'],
-                    data=json.loads(row['data']),
-                    metadata=json.loads(row['metadata']),
-                    version=row['version'],
-                    timestamp=row['timestamp'],
-                    user_id=str(row['user_id']) if row['user_id'] else None,
-                    correlation_id=str(row['correlation_id']) if row['correlation_id'] else None,
-                    causation_id=str(row['causation_id']) if row['causation_id'] else None
-                ) for row in rows
+                    id=str(row["id"]),
+                    type=EventType(row["type"]),
+                    aggregate_id=str(row["aggregate_id"]),
+                    aggregate_type=row["aggregate_type"],
+                    data=json.loads(row["data"]),
+                    metadata=json.loads(row["metadata"]),
+                    version=row["version"],
+                    timestamp=row["timestamp"],
+                    user_id=str(row["user_id"]) if row["user_id"] else None,
+                    correlation_id=(
+                        str(row["correlation_id"]) if row["correlation_id"] else None
+                    ),
+                    causation_id=(
+                        str(row["causation_id"]) if row["causation_id"] else None
+                    ),
+                )
+                for row in rows
             ]
 
-    async def get_events_by_time_range(self, start_time: datetime, end_time: datetime) -> List[Event]:
+    async def get_events_by_time_range(
+        self, start_time: datetime, end_time: datetime
+    ) -> List[Event]:
         """Get events within a time range"""
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch('''
+            rows = await conn.fetch(
+                """
                 SELECT * FROM events
                 WHERE timestamp BETWEEN $1 AND $2
                 ORDER BY timestamp DESC
-            ''', start_time, end_time)
+            """,
+                start_time,
+                end_time,
+            )
 
             return [
                 Event(
-                    id=str(row['id']),
-                    type=EventType(row['type']),
-                    aggregate_id=str(row['aggregate_id']),
-                    aggregate_type=row['aggregate_type'],
-                    data=json.loads(row['data']),
-                    metadata=json.loads(row['metadata']),
-                    version=row['version'],
-                    timestamp=row['timestamp'],
-                    user_id=str(row['user_id']) if row['user_id'] else None,
-                    correlation_id=str(row['correlation_id']) if row['correlation_id'] else None,
-                    causation_id=str(row['causation_id']) if row['causation_id'] else None
-                ) for row in rows
+                    id=str(row["id"]),
+                    type=EventType(row["type"]),
+                    aggregate_id=str(row["aggregate_id"]),
+                    aggregate_type=row["aggregate_type"],
+                    data=json.loads(row["data"]),
+                    metadata=json.loads(row["metadata"]),
+                    version=row["version"],
+                    timestamp=row["timestamp"],
+                    user_id=str(row["user_id"]) if row["user_id"] else None,
+                    correlation_id=(
+                        str(row["correlation_id"]) if row["correlation_id"] else None
+                    ),
+                    causation_id=(
+                        str(row["causation_id"]) if row["causation_id"] else None
+                    ),
+                )
+                for row in rows
             ]
 
-    async def create_snapshot(self, aggregate_id: str, version: int, state: Dict[str, Any]) -> None:
+    async def create_snapshot(
+        self, aggregate_id: str, version: int, state: Dict[str, Any]
+    ) -> None:
         """Create a snapshot of an aggregate"""
         async with self.pool.acquire() as conn:
-            await conn.execute('''
+            await conn.execute(
+                """
                 INSERT INTO snapshots (aggregate_id, version, state)
                 VALUES ($1, $2, $3)
                 ON CONFLICT (aggregate_id, version)
                 DO UPDATE SET state = $3, timestamp = NOW()
-            ''', aggregate_id, version, json.dumps(state))
+            """,
+                aggregate_id,
+                version,
+                json.dumps(state),
+            )
 
-    async def get_snapshot(self, aggregate_id: str, version: int) -> Optional[Dict[str, Any]]:
+    async def get_snapshot(
+        self, aggregate_id: str, version: int
+    ) -> Optional[Dict[str, Any]]:
         """Get a snapshot of an aggregate"""
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow('''
+            row = await conn.fetchrow(
+                """
                 SELECT state FROM snapshots
                 WHERE aggregate_id = $1 AND version <= $2
                 ORDER BY version DESC
                 LIMIT 1
-            ''', aggregate_id, version)
+            """,
+                aggregate_id,
+                version,
+            )
 
-            return json.loads(row['state']) if row else None
+            return json.loads(row["state"]) if row else None
+
 
 class RedisEventStore(EventStoreInterface):
     """Redis implementation of event store for real-time processing"""
@@ -277,28 +349,18 @@ class RedisEventStore(EventStoreInterface):
     async def save_event(self, event: Event) -> None:
         """Save an event to Redis"""
         event_data = event.dict()
-        event_data['type'] = event.type.value
+        event_data["type"] = event.type.value
 
         # Store in aggregate stream
         await self.redis.xadd(
-            f"aggregate:{event.aggregate_id}",
-            event_data,
-            maxlen=10000
+            f"aggregate:{event.aggregate_id}", event_data, maxlen=10000
         )
 
         # Store in type stream
-        await self.redis.xadd(
-            f"type:{event.type.value}",
-            event_data,
-            maxlen=10000
-        )
+        await self.redis.xadd(f"type:{event.type.value}", event_data, maxlen=10000)
 
         # Store in global stream
-        await self.redis.xadd(
-            "events:global",
-            event_data,
-            maxlen=10000
-        )
+        await self.redis.xadd("events:global", event_data, maxlen=10000)
 
         # Set TTL for older events
         await self.redis.expire(f"aggregate:{event.aggregate_id}", 86400)  # 24 hours
@@ -311,20 +373,22 @@ class RedisEventStore(EventStoreInterface):
             stream = await self.redis.xread({f"aggregate:{aggregate_id}": "$"})
             for stream_key, messages in stream:
                 for message_id, fields in messages:
-                    if int(fields.get('version', 0)) >= from_version:
-                        events.append(Event(
-                            id=fields['id'],
-                            type=EventType(fields['type']),
-                            aggregate_id=fields['aggregate_id'],
-                            aggregate_type=fields['aggregate_type'],
-                            data=json.loads(fields['data']),
-                            metadata=json.loads(fields.get('metadata', '{}')),
-                            version=int(fields['version']),
-                            timestamp=datetime.fromisoformat(fields['timestamp']),
-                            user_id=fields.get('user_id'),
-                            correlation_id=fields.get('correlation_id'),
-                            causation_id=fields.get('causation_id')
-                        ))
+                    if int(fields.get("version", 0)) >= from_version:
+                        events.append(
+                            Event(
+                                id=fields["id"],
+                                type=EventType(fields["type"]),
+                                aggregate_id=fields["aggregate_id"],
+                                aggregate_type=fields["aggregate_type"],
+                                data=json.loads(fields["data"]),
+                                metadata=json.loads(fields.get("metadata", "{}")),
+                                version=int(fields["version"]),
+                                timestamp=datetime.fromisoformat(fields["timestamp"]),
+                                user_id=fields.get("user_id"),
+                                correlation_id=fields.get("correlation_id"),
+                                causation_id=fields.get("causation_id"),
+                            )
+                        )
         except Exception as e:
             logger.error(f"Error getting events for aggregate {aggregate_id}: {e}")
 
@@ -337,63 +401,71 @@ class RedisEventStore(EventStoreInterface):
             stream = await self.redis.xread({f"type:{event_type.value}": "$"})
             for stream_key, messages in stream:
                 for message_id, fields in messages:
-                    events.append(Event(
-                        id=fields['id'],
-                        type=EventType(fields['type']),
-                        aggregate_id=fields['aggregate_id'],
-                        aggregate_type=fields['aggregate_type'],
-                        data=json.loads(fields['data']),
-                        metadata=json.loads(fields.get('metadata', '{}')),
-                        version=int(fields['version']),
-                        timestamp=datetime.fromisoformat(fields['timestamp']),
-                        user_id=fields.get('user_id'),
-                        correlation_id=fields.get('correlation_id'),
-                        causation_id=fields.get('causation_id')
-                    ))
+                    events.append(
+                        Event(
+                            id=fields["id"],
+                            type=EventType(fields["type"]),
+                            aggregate_id=fields["aggregate_id"],
+                            aggregate_type=fields["aggregate_type"],
+                            data=json.loads(fields["data"]),
+                            metadata=json.loads(fields.get("metadata", "{}")),
+                            version=int(fields["version"]),
+                            timestamp=datetime.fromisoformat(fields["timestamp"]),
+                            user_id=fields.get("user_id"),
+                            correlation_id=fields.get("correlation_id"),
+                            causation_id=fields.get("causation_id"),
+                        )
+                    )
         except Exception as e:
             logger.error(f"Error getting events of type {event_type}: {e}")
 
         return sorted(events, key=lambda x: x.timestamp, reverse=True)
 
-    async def get_events_by_time_range(self, start_time: datetime, end_time: datetime) -> List[Event]:
+    async def get_events_by_time_range(
+        self, start_time: datetime, end_time: datetime
+    ) -> List[Event]:
         """Get events within a time range"""
         events = []
         try:
             stream = await self.redis.xrange(
                 "events:global",
                 min=int(start_time.timestamp() * 1000),
-                max=int(end_time.timestamp() * 1000)
+                max=int(end_time.timestamp() * 1000),
             )
             for message_id, fields in stream:
-                timestamp = datetime.fromisoformat(fields['timestamp'])
+                timestamp = datetime.fromisoformat(fields["timestamp"])
                 if start_time <= timestamp <= end_time:
-                    events.append(Event(
-                        id=fields['id'],
-                        type=EventType(fields['type']),
-                        aggregate_id=fields['aggregate_id'],
-                        aggregate_type=fields['aggregate_type'],
-                        data=json.loads(fields['data']),
-                        metadata=json.loads(fields.get('metadata', '{}')),
-                        version=int(fields['version']),
-                        timestamp=timestamp,
-                        user_id=fields.get('user_id'),
-                        correlation_id=fields.get('correlation_id'),
-                        causation_id=fields.get('causation_id')
-                    ))
+                    events.append(
+                        Event(
+                            id=fields["id"],
+                            type=EventType(fields["type"]),
+                            aggregate_id=fields["aggregate_id"],
+                            aggregate_type=fields["aggregate_type"],
+                            data=json.loads(fields["data"]),
+                            metadata=json.loads(fields.get("metadata", "{}")),
+                            version=int(fields["version"]),
+                            timestamp=timestamp,
+                            user_id=fields.get("user_id"),
+                            correlation_id=fields.get("correlation_id"),
+                            causation_id=fields.get("causation_id"),
+                        )
+                    )
         except Exception as e:
             logger.error(f"Error getting events by time range: {e}")
 
         return sorted(events, key=lambda x: x.timestamp, reverse=True)
 
-    async def create_snapshot(self, aggregate_id: str, version: int, state: Dict[str, Any]) -> None:
+    async def create_snapshot(
+        self, aggregate_id: str, version: int, state: Dict[str, Any]
+    ) -> None:
         """Create a snapshot of an aggregate"""
         await self.redis.hset(
-            f"snapshot:{aggregate_id}",
-            str(version),
-            json.dumps(state)
+            f"snapshot:{aggregate_id}", str(version), json.dumps(state)
         )
 
-    async def get_snapshot(self, aggregate_id: str, version: int) -> Optional[Dict[str, Any]]:
+    async def get_snapshot(
+        self, aggregate_id: str, version: int
+    ) -> Optional[Dict[str, Any]]:
         """Get a snapshot of an aggregate"""
         try:
             snapshots = await self.redis.hgetall(f"snapshot:{aggregate_id}")
@@ -404,6 +476,7 @@ class RedisEventStore(EventStoreInterface):
             logger.error(f"Error getting snapshot for aggregate {aggregate_id}: {e}")
 
         return None
+
 
 class EventPublisher:
     """Event publisher for broadcasting events"""
@@ -420,7 +493,7 @@ class EventPublisher:
     async def publish_event(self, event: Event):
         """Publish an event to Redis and WebSocket clients"""
         event_data = event.dict()
-        event_data['type'] = event.type.value
+        event_data["type"] = event.type.value
 
         # Publish to Redis pub/sub
         await self.redis.publish(f"events:{event.type.value}", json.dumps(event_data))
@@ -450,6 +523,7 @@ class EventPublisher:
         """Remove a WebSocket client"""
         if websocket in self.websockets:
             self.websockets.remove(websocket)
+
 
 class EventStore:
     """Main event store combining multiple implementations"""
@@ -485,27 +559,37 @@ class EventStore:
             events = await self.postgres_store.get_events_by_type(event_type)
         return events
 
-    async def get_events_by_time_range(self, start_time: datetime, end_time: datetime) -> List[Event]:
+    async def get_events_by_time_range(
+        self, start_time: datetime, end_time: datetime
+    ) -> List[Event]:
         """Get events by time range from Redis first, fallback to PostgreSQL"""
         events = await self.redis_store.get_events_by_time_range(start_time, end_time)
         if not events:
-            events = await self.postgres_store.get_events_by_time_range(start_time, end_time)
+            events = await self.postgres_store.get_events_by_time_range(
+                start_time, end_time
+            )
         return events
 
-    async def create_snapshot(self, aggregate_id: str, version: int, state: Dict[str, Any]) -> None:
+    async def create_snapshot(
+        self, aggregate_id: str, version: int, state: Dict[str, Any]
+    ) -> None:
         """Create a snapshot in all stores"""
         await self.postgres_store.create_snapshot(aggregate_id, version, state)
         await self.redis_store.create_snapshot(aggregate_id, version, state)
 
-    async def get_snapshot(self, aggregate_id: str, version: int) -> Optional[Dict[str, Any]]:
+    async def get_snapshot(
+        self, aggregate_id: str, version: int
+    ) -> Optional[Dict[str, Any]]:
         """Get snapshot from Redis first, fallback to PostgreSQL"""
         snapshot = await self.redis_store.get_snapshot(aggregate_id, version)
         if not snapshot:
             snapshot = await self.postgres_store.get_snapshot(aggregate_id, version)
         return snapshot
 
+
 # Global event store instance
 event_store: Optional[EventStore] = None
+
 
 async def get_event_store() -> EventStore:
     """Get the global event store instance"""
@@ -513,7 +597,7 @@ async def get_event_store() -> EventStore:
     if event_store is None:
         event_store = EventStore(
             postgres_url="postgresql://user:password@localhost/hms_events",
-            redis_url="redis://localhost:6379"
+            redis_url="redis://localhost:6379",
         )
         await event_store.initialize()
     return event_store

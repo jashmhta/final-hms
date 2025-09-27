@@ -1,21 +1,29 @@
+"""
+comprehensive_performance_test module
+"""
+
 import asyncio
 import json
-import time
-import statistics
-import threading
-import requests
-import psutil
-import sys
 import os
 import random
-from datetime import datetime, timedelta
-from typing import Dict, List, Any
-from dataclasses import dataclass, asdict
+import secrets
 import sqlite3
+import statistics
+import sys
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, List
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import psutil
+import requests
+
+
 @dataclass
 class PerformanceMetrics:
     timestamp: str
@@ -123,44 +131,44 @@ class HMSPerformanceTestSuite:
         import uuid
         payloads = {
             "/api/auth/login/": {
-                "username": f"doctor{random.randint(1, 100)}@hospital.com",
+                "username": f"doctor{secrets.secrets.randbelow(1, 100)}@hospital.com",
                 "password": "securepassword123"
             },
             "/api/patients/": {
-                "first_name": f"Patient{random.randint(1, 1000)}",
-                "last_name": f"Test{random.randint(1, 1000)}",
+                "first_name": f"Patient{secrets.secrets.randbelow(1, 1000)}",
+                "last_name": f"Test{secrets.secrets.randbelow(1, 1000)}",
                 "date_of_birth": "1990-01-01",
-                "gender": random.choice(["M", "F"]),
-                "email": f"patient{random.randint(1, 1000)}@example.com"
+                "gender": secrets.choice(["M", "F"]),
+                "email": f"patient{secrets.secrets.randbelow(1, 1000)}@example.com"
             },
             "/api/appointments/": {
-                "patient_id": random.randint(1, 1000),
-                "doctor_id": random.randint(1, 100),
+                "patient_id": secrets.secrets.randbelow(1, 1000),
+                "doctor_id": secrets.secrets.randbelow(1, 100),
                 "appointment_date": "2024-01-15T10:00:00Z",
-                "appointment_type": random.choice(["CONSULTATION", "FOLLOW_UP", "EMERGENCY"])
+                "appointment_type": secrets.choice(["CONSULTATION", "FOLLOW_UP", "EMERGENCY"])
             },
             "/api/ehr/": {
-                "patient_id": random.randint(1, 1000),
-                "diagnosis": f"Diagnosis {random.randint(1, 50)}",
-                "treatment": f"Treatment {random.randint(1, 30)}",
+                "patient_id": secrets.secrets.randbelow(1, 1000),
+                "diagnosis": f"Diagnosis {secrets.secrets.randbelow(1, 50)}",
+                "treatment": f"Treatment {secrets.secrets.randbelow(1, 30)}",
                 "notes": "Patient condition stable"
             },
             "/api/pharmacy/": {
-                "patient_id": random.randint(1, 1000),
-                "medication": f"Medication {random.randint(1, 100)}",
-                "dosage": f"{random.randint(1, 10)}mg",
-                "frequency": random.choice(["daily", "twice_daily", "three_times_daily"])
+                "patient_id": secrets.secrets.randbelow(1, 1000),
+                "medication": f"Medication {secrets.secrets.randbelow(1, 100)}",
+                "dosage": f"{secrets.secrets.randbelow(1, 10)}mg",
+                "frequency": secrets.choice(["daily", "twice_daily", "three_times_daily"])
             },
             "/api/lab/": {
-                "patient_id": random.randint(1, 1000),
-                "test_type": random.choice(["CBC", "CMP", "LIPID_PANEL", "TSH", "HBA1C"]),
+                "patient_id": secrets.secrets.randbelow(1, 1000),
+                "test_type": secrets.choice(["CBC", "CMP", "LIPID_PANEL", "TSH", "HBA1C"]),
                 "test_date": "2024-01-15",
                 "status": "COMPLETED"
             },
             "/api/billing/": {
-                "patient_id": random.randint(1, 1000),
-                "amount": round(random.uniform(100, 1000), 2),
-                "billing_status": random.choice(["PENDING", "APPROVED", "PAID"])
+                "patient_id": secrets.secrets.randbelow(1, 1000),
+                "amount": round(secrets.uniform(100, 1000), 2),
+                "billing_status": secrets.choice(["PENDING", "APPROVED", "PAID"])
             }
         }
         return payloads.get(endpoint, {"test": "data"})
@@ -178,7 +186,7 @@ class HMSPerformanceTestSuite:
             futures = []
             while time.time() - start_time < duration:
                 for user_id in range(concurrent_users):
-                    endpoint = random.choice(self.config["endpoints"])
+                    endpoint = secrets.choice(self.config["endpoints"])
                     future = executor.submit(self._make_request, endpoint, user_id)
                     futures.append(future)
                     time.sleep(0.1)

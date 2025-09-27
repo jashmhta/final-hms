@@ -10,30 +10,32 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Any, Set
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
 from urllib.parse import urljoin
 
+import cv2
+import numpy as np
 import pytest
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.common.action_chains import ActionChains
 import requests
 from bs4 import BeautifulSoup
 from PIL import Image
-import cv2
-import numpy as np
+from selenium import webdriver
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class WCAGGuideline(Enum):
     """WCAG 2.1 Guidelines and Success Criteria"""
+
     # Perceivable
     PERCEIVABLE_1_1_1 = "1.1.1 Non-text Content"  # Level A
     PERCEIVABLE_1_2_1 = "1.2.1 Audio-only and Video-only"  # Level A
@@ -100,14 +102,18 @@ class WCAGGuideline(Enum):
     ROBUST_4_1_2 = "4.1.2 Name, Role, Value"  # Level A
     ROBUST_4_1_3 = "4.1.3 Status Messages"  # Level AA
 
+
 class WCAGLevel(Enum):
     """WCAG Conformance Levels"""
-    A = "A"      # Essential for some users to access the web
-    AA = "AA"    # Addresses major barriers
+
+    A = "A"  # Essential for some users to access the web
+    AA = "AA"  # Addresses major barriers
     AAA = "AAA"  # Enhanced accessibility for optimal user experience
+
 
 class AccessibilityViolationType(Enum):
     """Types of accessibility violations"""
+
     MISSING_ALT_TEXT = "Missing Alt Text"
     LOW_CONTRAST = "Low Contrast"
     MISSING_LABEL = "Missing Label"
@@ -145,11 +151,15 @@ class AccessibilityViolationType(Enum):
     MISSING_NAME_ROLE_VALUE = "Missing Name, Role, Value"
     MISSING_STATUS_MESSAGES = "Missing Status Messages"
     MISSING_SCREEN_READER_COMPATIBILITY = "Screen Reader Compatibility Issues"
-    MISSING_HEALTHCARE_SPECIFIC_ACCESSIBILITY = "Healthcare-Specific Accessibility Issues"
+    MISSING_HEALTHCARE_SPECIFIC_ACCESSIBILITY = (
+        "Healthcare-Specific Accessibility Issues"
+    )
+
 
 @dataclass
 class AccessibilityTestResult:
     """Accessibility test result"""
+
     guideline: WCAGGuideline
     violation_type: AccessibilityViolationType
     element: str
@@ -163,9 +173,11 @@ class AccessibilityTestResult:
     element_code: Optional[str] = None
     page_url: Optional[str] = None
 
+
 @dataclass
 class AccessibilityAuditResult:
     """Complete accessibility audit result"""
+
     page_url: str
     timestamp: float
     total_violations: int
@@ -180,6 +192,7 @@ class AccessibilityAuditResult:
     recommendations: List[str]
     overall_score: float
 
+
 class AccessibilityTestingFramework:
     """Comprehensive accessibility testing framework"""
 
@@ -191,26 +204,28 @@ class AccessibilityTestingFramework:
 
         # Initialize accessibility testing tools
         self.contrast_thresholds = {
-            'normal_text': {'small': 4.5, 'large': 3.0},
-            'ui_components': {'small': 3.0, 'large': 3.0},
-            'graphics': {'small': 3.0, 'large': 3.0}
+            "normal_text": {"small": 4.5, "large": 3.0},
+            "ui_components": {"small": 3.0, "large": 3.0},
+            "graphics": {"small": 3.0, "large": 3.0},
         }
 
         # Healthcare-specific accessibility requirements
         self.healthcare_requirements = {
-            'high_contrast_mode': True,
-            'screen_reader_compatibility': True,
-            'keyboard_navigation': True,
-            'font_size_adjustment': True,
-            'color_blind_friendly': True,
-            'seizure_safe': True,
-            'responsive_for_disabilities': True,
-            'medical_data_accessibility': True,
-            'emergency_accessibility': True,
-            'medication_information_accessibility': True
+            "high_contrast_mode": True,
+            "screen_reader_compatibility": True,
+            "keyboard_navigation": True,
+            "font_size_adjustment": True,
+            "color_blind_friendly": True,
+            "seizure_safe": True,
+            "responsive_for_disabilities": True,
+            "medical_data_accessibility": True,
+            "emergency_accessibility": True,
+            "medication_information_accessibility": True,
         }
 
-    def run_comprehensive_accessibility_audit(self, page_url: str, driver: Optional[WebDriver] = None) -> AccessibilityAuditResult:
+    def run_comprehensive_accessibility_audit(
+        self, page_url: str, driver: Optional[WebDriver] = None
+    ) -> AccessibilityAuditResult:
         """Run comprehensive accessibility audit"""
         logger.info(f"Starting comprehensive accessibility audit for: {page_url}")
 
@@ -221,9 +236,9 @@ class AccessibilityTestingFramework:
         if driver is None:
             # Create WebDriver for testing
             options = webdriver.ChromeOptions()
-            options.add_argument('--headless')
-            options.add_argument('--no-sandbox')
-            options.add_argument('--disable-dev-shm-usage')
+            options.add_argument("--headless")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
             driver = webdriver.Chrome(options=options)
 
         try:
@@ -236,7 +251,7 @@ class AccessibilityTestingFramework:
 
             # Get page source for analysis
             page_source = driver.page_source
-            soup = BeautifulSoup(page_source, 'html.parser')
+            soup = BeautifulSoup(page_source, "html.parser")
 
             # Run all accessibility tests
             self._test_wcag_perceivable_guidelines(driver, soup, page_url)
@@ -252,13 +267,15 @@ class AccessibilityTestingFramework:
 
             # Generate performance metrics
             self.performance_metrics = {
-                'test_duration': time.time() - start_time,
-                'total_elements_tested': len(soup.find_all(True)),
-                'interactive_elements_tested': len(soup.find_all(['button', 'input', 'select', 'textarea', 'a'])),
-                'forms_tested': len(soup.find_all('form')),
-                'tables_tested': len(soup.find_all('table')),
-                'images_tested': len(soup.find_all('img')),
-                'videos_tested': len(soup.find_all(['video', 'audio']))
+                "test_duration": time.time() - start_time,
+                "total_elements_tested": len(soup.find_all(True)),
+                "interactive_elements_tested": len(
+                    soup.find_all(["button", "input", "select", "textarea", "a"])
+                ),
+                "forms_tested": len(soup.find_all("form")),
+                "tables_tested": len(soup.find_all("table")),
+                "images_tested": len(soup.find_all("img")),
+                "videos_tested": len(soup.find_all(["video", "audio"])),
             }
 
             # Generate recommendations
@@ -286,7 +303,7 @@ class AccessibilityTestingFramework:
                 healthcare_specific_issues=self.healthcare_violations,
                 performance_metrics=self.performance_metrics,
                 recommendations=recommendations,
-                overall_score=overall_score
+                overall_score=overall_score,
             )
 
             logger.info(f"Accessibility audit completed. Score: {overall_score:.1f}%")
@@ -296,7 +313,9 @@ class AccessibilityTestingFramework:
             if driver:
                 driver.quit()
 
-    def _test_wcag_perceivable_guidelines(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_wcag_perceivable_guidelines(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test WCAG Perceivable guidelines"""
         logger.info("Testing WCAG Perceivable guidelines")
 
@@ -312,7 +331,9 @@ class AccessibilityTestingFramework:
         # 1.4.1-1.4.13 Distinguishable
         self._test_distinguishable_content(driver, soup, page_url)
 
-    def _test_wcag_operable_guidelines(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_wcag_operable_guidelines(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test WCAG Operable guidelines"""
         logger.info("Testing WCAG Operable guidelines")
 
@@ -331,7 +352,9 @@ class AccessibilityTestingFramework:
         # 2.5.1-2.5.6 Input Modalities
         self._test_input_modalities(driver, soup, page_url)
 
-    def _test_wcag_understandable_guidelines(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_wcag_understandable_guidelines(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test WCAG Understandable guidelines"""
         logger.info("Testing WCAG Understandable guidelines")
 
@@ -344,14 +367,18 @@ class AccessibilityTestingFramework:
         # 3.3.1-3.3.4 Input Assistance
         self._test_input_assistance(driver, soup, page_url)
 
-    def _test_wcag_robust_guidelines(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_wcag_robust_guidelines(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test WCAG Robust guidelines"""
         logger.info("Testing WCAG Robust guidelines")
 
         # 4.1.1-4.1.3 Compatible
         self._test_compatibility(driver, soup, page_url)
 
-    def _test_healthcare_specific_accessibility(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_healthcare_specific_accessibility(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test healthcare-specific accessibility requirements"""
         logger.info("Testing healthcare-specific accessibility")
 
@@ -381,9 +408,9 @@ class AccessibilityTestingFramework:
 
     def _test_alt_text(self, soup: BeautifulSoup, page_url: str):
         """Test alt text for images"""
-        images = soup.find_all('img')
+        images = soup.find_all("img")
         for img in images:
-            if not img.get('alt'):
+            if not img.get("alt"):
                 violation = AccessibilityTestResult(
                     guideline=WCAGGuideline.PERCEIVABLE_1_1_1,
                     violation_type=AccessibilityViolationType.MISSING_ALT_TEXT,
@@ -394,19 +421,21 @@ class AccessibilityTestingFramework:
                     recommendation="Add descriptive alt text to all images",
                     wcag_level=WCAGLevel.A,
                     impact="High",
-                    page_url=page_url
+                    page_url=page_url,
                 )
                 self.violations.append(violation)
 
-    def _test_contrast_ratio(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_contrast_ratio(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test color contrast ratios"""
         # This would typically use a color contrast library
         # For now, we'll check for common contrast issues
-        text_elements = soup.find_all(['p', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+        text_elements = soup.find_all(["p", "span", "h1", "h2", "h3", "h4", "h5", "h6"])
 
         for element in text_elements:
-            style = element.get('style', '')
-            if 'color' in style and 'background-color' in style:
+            style = element.get("style", "")
+            if "color" in style and "background-color" in style:
                 # Check for obvious low contrast combinations
                 violation = AccessibilityTestResult(
                     guideline=WCAGGuideline.PERCEIVABLE_1_4_3,
@@ -418,13 +447,17 @@ class AccessibilityTestingFramework:
                     recommendation="Ensure text has sufficient contrast with background (4.5:1 for normal text, 3:1 for large text)",
                     wcag_level=WCAGLevel.AA,
                     impact="High",
-                    page_url=page_url
+                    page_url=page_url,
                 )
                 self.violations.append(violation)
 
-    def _test_keyboard_accessibility(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_keyboard_accessibility(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test keyboard navigation and accessibility"""
-        interactive_elements = soup.find_all(['button', 'input', 'select', 'textarea', 'a'])
+        interactive_elements = soup.find_all(
+            ["button", "input", "select", "textarea", "a"]
+        )
 
         # Test focus order
         try:
@@ -445,7 +478,7 @@ class AccessibilityTestingFramework:
                     recommendation="Ensure focus is clearly visible on all interactive elements",
                     wcag_level=WCAGLevel.AA,
                     impact="High",
-                    page_url=page_url
+                    page_url=page_url,
                 )
                 self.violations.append(violation)
 
@@ -454,27 +487,27 @@ class AccessibilityTestingFramework:
 
     def _test_form_labels(self, soup: BeautifulSoup, page_url: str):
         """Test form labels and accessibility"""
-        form_inputs = soup.find_all(['input', 'select', 'textarea'])
+        form_inputs = soup.find_all(["input", "select", "textarea"])
 
         for form_input in form_inputs:
-            input_type = form_input.get('type', 'text')
+            input_type = form_input.get("type", "text")
 
             # Skip hidden inputs and submit buttons
-            if input_type in ['hidden', 'submit']:
+            if input_type in ["hidden", "submit"]:
                 continue
 
             # Check for associated label
-            input_id = form_input.get('id')
+            input_id = form_input.get("id")
             has_label = False
 
             if input_id:
-                labels = soup.find_all('label', {'for': input_id})
+                labels = soup.find_all("label", {"for": input_id})
                 if labels:
                     has_label = True
 
             # Check for aria-label if no label found
             if not has_label:
-                aria_label = form_input.get('aria-label')
+                aria_label = form_input.get("aria-label")
                 if aria_label:
                     has_label = True
 
@@ -489,13 +522,13 @@ class AccessibilityTestingFramework:
                     recommendation="Add proper label association using 'for' attribute or aria-label",
                     wcag_level=WCAGLevel.A,
                     impact="High",
-                    page_url=page_url
+                    page_url=page_url,
                 )
                 self.violations.append(violation)
 
     def _test_heading_structure(self, soup: BeautifulSoup, page_url: str):
         """Test heading hierarchy and structure"""
-        headings = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+        headings = soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6"])
 
         # Check for heading order violations
         previous_level = 0
@@ -512,7 +545,7 @@ class AccessibilityTestingFramework:
                     recommendation="Maintain proper heading hierarchy (h1, h2, h3, etc.)",
                     wcag_level=WCAGLevel.AA,
                     impact="Medium",
-                    page_url=page_url
+                    page_url=page_url,
                 )
                 self.violations.append(violation)
             previous_level = level
@@ -520,7 +553,7 @@ class AccessibilityTestingFramework:
     def _test_landmark_regions(self, soup: BeautifulSoup, page_url: str):
         """Test landmark regions for navigation"""
         # Check for common landmark regions
-        landmarks = ['header', 'nav', 'main', 'footer', 'aside', 'section']
+        landmarks = ["header", "nav", "main", "footer", "aside", "section"]
         found_landmarks = set()
 
         for landmark in landmarks:
@@ -529,7 +562,7 @@ class AccessibilityTestingFramework:
                 found_landmarks.add(landmark)
 
         # Check for main content area
-        if 'main' not in found_landmarks:
+        if "main" not in found_landmarks:
             violation = AccessibilityTestResult(
                 guideline=WCAGGuideline.OPERABLE_2_4_1,
                 violation_type=AccessibilityViolationType.MISSING_LANDMARK,
@@ -540,14 +573,14 @@ class AccessibilityTestingFramework:
                 recommendation="Add <main> landmark for main content area",
                 wcag_level=WCAGLevel.A,
                 impact="High",
-                page_url=page_url
+                page_url=page_url,
             )
             self.violations.append(violation)
 
     def _test_language_attributes(self, soup: BeautifulSoup, page_url: str):
         """Test language attributes"""
-        html_tag = soup.find('html')
-        if not html_tag or not html_tag.get('lang'):
+        html_tag = soup.find("html")
+        if not html_tag or not html_tag.get("lang"):
             violation = AccessibilityTestResult(
                 guideline=WCAGGuideline.UNDERSTANDABLE_3_1_1,
                 violation_type=AccessibilityViolationType.MISSING_LANG_ATTR,
@@ -558,13 +591,13 @@ class AccessibilityTestingFramework:
                 recommendation="Add lang attribute to HTML tag (e.g., lang='en')",
                 wcag_level=WCAGLevel.A,
                 impact="High",
-                page_url=page_url
+                page_url=page_url,
             )
             self.violations.append(violation)
 
     def _test_page_title(self, soup: BeautifulSoup, page_url: str):
         """Test page title"""
-        title = soup.find('title')
+        title = soup.find("title")
         if not title or not title.get_text().strip():
             violation = AccessibilityTestResult(
                 guideline=WCAGGuideline.OPERABLE_2_4_2,
@@ -576,17 +609,17 @@ class AccessibilityTestingFramework:
                 recommendation="Add descriptive title to each page",
                 wcag_level=WCAGLevel.A,
                 impact="High",
-                page_url=page_url
+                page_url=page_url,
             )
             self.violations.append(violation)
 
     def _test_table_accessibility(self, soup: BeautifulSoup, page_url: str):
         """Test table accessibility"""
-        tables = soup.find_all('table')
+        tables = soup.find_all("table")
 
         for table in tables:
             # Check for caption
-            caption = table.find('caption')
+            caption = table.find("caption")
             if not caption:
                 violation = AccessibilityTestResult(
                     guideline=WCAGGuideline.PERCEIVABLE_1_3_1,
@@ -598,12 +631,12 @@ class AccessibilityTestingFramework:
                     recommendation="Add caption to describe table purpose",
                     wcag_level=WCAGLevel.A,
                     impact="Medium",
-                    page_url=page_url
+                    page_url=page_url,
                 )
                 self.violations.append(violation)
 
             # Check for proper headers
-            headers = table.find_all('th')
+            headers = table.find_all("th")
             if not headers:
                 violation = AccessibilityTestResult(
                     guideline=WCAGGuideline.PERCEIVABLE_1_3_1,
@@ -615,15 +648,19 @@ class AccessibilityTestingFramework:
                     recommendation="Use <th> for header cells with scope attribute",
                     wcag_level=WCAGLevel.A,
                     impact="High",
-                    page_url=page_url
+                    page_url=page_url,
                 )
                 self.violations.append(violation)
 
-    def _test_healthcare_specific_accessibility_detailed(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_healthcare_specific_accessibility_detailed(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test healthcare-specific accessibility requirements"""
 
         # Test emergency information accessibility
-        emergency_elements = soup.find_all(class_=lambda x: x and 'emergency' in x.lower())
+        emergency_elements = soup.find_all(
+            class_=lambda x: x and "emergency" in x.lower()
+        )
         for element in emergency_elements:
             # Check if emergency information is accessible
             violation = AccessibilityTestResult(
@@ -636,12 +673,14 @@ class AccessibilityTestingFramework:
                 recommendation="Ensure emergency information is highly visible and accessible",
                 wcag_level=WCAGLevel.AA,
                 impact="Critical",
-                page_url=page_url
+                page_url=page_url,
             )
             self.healthcare_violations.append(violation)
 
         # Test medication information accessibility
-        medication_elements = soup.find_all(class_=lambda x: x and 'medication' in x.lower())
+        medication_elements = soup.find_all(
+            class_=lambda x: x and "medication" in x.lower()
+        )
         for element in medication_elements:
             violation = AccessibilityTestResult(
                 guideline=WCAGGuideline.OPERABLE_2_4_6,
@@ -653,7 +692,7 @@ class AccessibilityTestingFramework:
                 recommendation="Ensure medication information is clearly labeled and accessible",
                 wcag_level=WCAGLevel.AA,
                 impact="High",
-                page_url=page_url
+                page_url=page_url,
             )
             self.healthcare_violations.append(violation)
 
@@ -672,7 +711,7 @@ class AccessibilityTestingFramework:
                 recommendation="Implement high contrast mode for medical data visibility",
                 wcag_level=WCAGLevel.AAA,
                 impact="High",
-                page_url=page_url
+                page_url=page_url,
             )
             self.healthcare_violations.append(violation)
         except Exception as e:
@@ -681,10 +720,10 @@ class AccessibilityTestingFramework:
     def _test_screen_reader_compatibility(self, soup: BeautifulSoup, page_url: str):
         """Test screen reader compatibility"""
         # Check for ARIA labels and roles
-        interactive_elements = soup.find_all(['button', 'input', 'select', 'textarea'])
+        interactive_elements = soup.find_all(["button", "input", "select", "textarea"])
 
         for element in interactive_elements:
-            if not element.get('aria-label') and not element.get('aria-labelledby'):
+            if not element.get("aria-label") and not element.get("aria-labelledby"):
                 violation = AccessibilityTestResult(
                     guideline=WCAGGuideline.ROBUST_4_1_2,
                     violation_type=AccessibilityViolationType.MISSING_SCREEN_READER_COMPATIBILITY,
@@ -695,13 +734,15 @@ class AccessibilityTestingFramework:
                     recommendation="Add ARIA labels or ensure proper label association",
                     wcag_level=WCAGLevel.A,
                     impact="High",
-                    page_url=page_url
+                    page_url=page_url,
                 )
                 self.healthcare_violations.append(violation)
 
     def _test_emergency_accessibility(self, soup: BeautifulSoup, page_url: str):
         """Test emergency information accessibility"""
-        emergency_elements = soup.find_all(class_=lambda x: x and 'emergency' in x.lower())
+        emergency_elements = soup.find_all(
+            class_=lambda x: x and "emergency" in x.lower()
+        )
 
         for element in emergency_elements:
             violation = AccessibilityTestResult(
@@ -714,13 +755,15 @@ class AccessibilityTestingFramework:
                 recommendation="Ensure emergency information is accessible and visible",
                 wcag_level=WCAGLevel.AA,
                 impact="Critical",
-                page_url=page_url
+                page_url=page_url,
             )
             self.healthcare_violations.append(violation)
 
     def _test_medication_accessibility(self, soup: BeautifulSoup, page_url: str):
         """Test medication information accessibility"""
-        medication_elements = soup.find_all(class_=lambda x: x and 'medication' in x.lower())
+        medication_elements = soup.find_all(
+            class_=lambda x: x and "medication" in x.lower()
+        )
 
         for element in medication_elements:
             violation = AccessibilityTestResult(
@@ -733,17 +776,19 @@ class AccessibilityTestingFramework:
                 recommendation="Ensure medication information is clearly labeled and accessible",
                 wcag_level=WCAGLevel.AA,
                 impact="High",
-                page_url=page_url
+                page_url=page_url,
             )
             self.healthcare_violations.append(violation)
 
-    def _test_medical_form_accessibility(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_medical_form_accessibility(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test medical form accessibility"""
-        forms = soup.find_all('form')
+        forms = soup.find_all("form")
 
         for form in forms:
-            form_class = form.get('class', [])
-            if any('medical' in str(cls).lower() for cls in form_class):
+            form_class = form.get("class", [])
+            if any("medical" in str(cls).lower() for cls in form_class):
                 violation = AccessibilityTestResult(
                     guideline=WCAGGuideline.OPERABLE_3_3_2,
                     violation_type=AccessibilityViolationType.MISSING_HEALTHCARE_SPECIFIC_ACCESSIBILITY,
@@ -754,13 +799,17 @@ class AccessibilityTestingFramework:
                     recommendation="Ensure medical forms are fully accessible with proper labels and error handling",
                     wcag_level=WCAGLevel.A,
                     impact="High",
-                    page_url=page_url
+                    page_url=page_url,
                 )
                 self.healthcare_violations.append(violation)
 
-    def _test_appointment_accessibility(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_appointment_accessibility(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test appointment scheduling accessibility"""
-        appointment_elements = soup.find_all(class_=lambda x: x and 'appointment' in x.lower())
+        appointment_elements = soup.find_all(
+            class_=lambda x: x and "appointment" in x.lower()
+        )
 
         for element in appointment_elements:
             violation = AccessibilityTestResult(
@@ -773,13 +822,13 @@ class AccessibilityTestingFramework:
                 recommendation="Ensure appointment scheduling is accessible",
                 wcag_level=WCAGLevel.AA,
                 impact="High",
-                page_url=page_url
+                page_url=page_url,
             )
             self.healthcare_violations.append(violation)
 
     def _test_lab_results_accessibility(self, soup: BeautifulSoup, page_url: str):
         """Test lab results accessibility"""
-        lab_elements = soup.find_all(class_=lambda x: x and 'lab' in x.lower())
+        lab_elements = soup.find_all(class_=lambda x: x and "lab" in x.lower())
 
         for element in lab_elements:
             violation = AccessibilityTestResult(
@@ -792,13 +841,13 @@ class AccessibilityTestingFramework:
                 recommendation="Ensure lab results are presented accessibly",
                 wcag_level=WCAGLevel.AA,
                 impact="High",
-                page_url=page_url
+                page_url=page_url,
             )
             self.healthcare_violations.append(violation)
 
     def _test_billing_accessibility(self, soup: BeautifulSoup, page_url: str):
         """Test billing information accessibility"""
-        billing_elements = soup.find_all(class_=lambda x: x and 'billing' in x.lower())
+        billing_elements = soup.find_all(class_=lambda x: x and "billing" in x.lower())
 
         for element in billing_elements:
             violation = AccessibilityTestResult(
@@ -811,7 +860,7 @@ class AccessibilityTestingFramework:
                 recommendation="Ensure billing information is accessible and understandable",
                 wcag_level=WCAGLevel.AA,
                 impact="High",
-                page_url=page_url
+                page_url=page_url,
             )
             self.healthcare_violations.append(violation)
 
@@ -819,8 +868,8 @@ class AccessibilityTestingFramework:
         """Check if element has visible focus"""
         try:
             # Check for focus styles
-            style = element.get_attribute('style') or ''
-            return 'outline' in style or 'border' in style
+            style = element.get_attribute("style") or ""
+            return "outline" in style or "border" in style
         except:
             return False
 
@@ -830,9 +879,15 @@ class AccessibilityTestingFramework:
 
         # Count violations by WCAG level
         level_violations = {
-            WCAGLevel.A: len([v for v in self.violations if v.wcag_level == WCAGLevel.A]),
-            WCAGLevel.AA: len([v for v in self.violations if v.wcag_level == WCAGLevel.AA]),
-            WCAGLevel.AAA: len([v for v in self.violations if v.wcag_level == WCAGLevel.AAA])
+            WCAGLevel.A: len(
+                [v for v in self.violations if v.wcag_level == WCAGLevel.A]
+            ),
+            WCAGLevel.AA: len(
+                [v for v in self.violations if v.wcag_level == WCAGLevel.AA]
+            ),
+            WCAGLevel.AAA: len(
+                [v for v in self.violations if v.wcag_level == WCAGLevel.AAA]
+            ),
         }
 
         # Calculate compliance percentages
@@ -850,12 +905,7 @@ class AccessibilityTestingFramework:
             return 100.0
 
         # Weight violations by severity
-        severity_weights = {
-            'Critical': 10,
-            'Serious': 5,
-            'Moderate': 2,
-            'Minor': 1
-        }
+        severity_weights = {"Critical": 10, "Serious": 5, "Moderate": 2, "Minor": 1}
 
         total_weight = sum(severity_weights.get(v.severity, 1) for v in self.violations)
         max_weight = len(self.violations) * 10  # Maximum possible weight
@@ -877,35 +927,53 @@ class AccessibilityTestingFramework:
 
         # Generate recommendations based on violation types
         if AccessibilityViolationType.MISSING_ALT_TEXT in violation_types:
-            recommendations.append("Add descriptive alt text to all images and non-text content")
+            recommendations.append(
+                "Add descriptive alt text to all images and non-text content"
+            )
 
         if AccessibilityViolationType.LOW_CONTRAST in violation_types:
-            recommendations.append("Improve color contrast ratios to meet WCAG 2.1 AA standards")
+            recommendations.append(
+                "Improve color contrast ratios to meet WCAG 2.1 AA standards"
+            )
 
         if AccessibilityViolationType.MISSING_FORM_LABEL in violation_types:
-            recommendations.append("Add proper labels to all form inputs using <label> or aria-label")
+            recommendations.append(
+                "Add proper labels to all form inputs using <label> or aria-label"
+            )
 
         if AccessibilityViolationType.MISSING_FOCUS_VISIBLE in violation_types:
-            recommendations.append("Ensure focus is clearly visible on all interactive elements")
+            recommendations.append(
+                "Ensure focus is clearly visible on all interactive elements"
+            )
 
         if AccessibilityViolationType.MISSING_KEYBOARD_NAVIGATION in violation_types:
-            recommendations.append("Improve keyboard navigation and remove keyboard traps")
+            recommendations.append(
+                "Improve keyboard navigation and remove keyboard traps"
+            )
 
         if AccessibilityViolationType.MISSING_LANDMARK in violation_types:
-            recommendations.append("Add proper landmark regions (header, nav, main, footer)")
+            recommendations.append(
+                "Add proper landmark regions (header, nav, main, footer)"
+            )
 
         if self.healthcare_violations:
-            recommendations.append("Address healthcare-specific accessibility requirements")
+            recommendations.append(
+                "Address healthcare-specific accessibility requirements"
+            )
 
         return recommendations
 
-    def _test_adaptable_content(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_adaptable_content(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test adaptable content (WCAG 1.3)"""
         self._test_heading_structure(soup, page_url)
         self._test_landmark_regions(soup, page_url)
         self._test_table_accessibility(soup, page_url)
 
-    def _test_distinguishable_content(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_distinguishable_content(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test distinguishable content (WCAG 1.4)"""
         self._test_contrast_ratio(driver, soup, page_url)
 
@@ -924,15 +992,17 @@ class AccessibilityTestingFramework:
         except Exception as e:
             logger.warning(f"Responsive design test failed: {e}")
 
-    def _test_timing_controls(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_timing_controls(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test timing controls (WCAG 2.2)"""
         # Check for time-based interactions
-        timed_elements = soup.find_all(['video', 'audio', 'script'])
+        timed_elements = soup.find_all(["video", "audio", "script"])
 
         for element in timed_elements:
-            if element.name in ['video', 'audio']:
+            if element.name in ["video", "audio"]:
                 # Check for controls
-                if not element.get('controls'):
+                if not element.get("controls"):
                     violation = AccessibilityTestResult(
                         guideline=WCAGGuideline.OPERABLE_2_2_2,
                         violation_type=AccessibilityViolationType.MISSING_AUDIO_DESCRIPTION,
@@ -943,7 +1013,7 @@ class AccessibilityTestingFramework:
                         recommendation="Add controls to time-based media",
                         wcag_level=WCAGLevel.A,
                         impact="Medium",
-                        page_url=page_url
+                        page_url=page_url,
                     )
                     self.violations.append(violation)
 
@@ -953,14 +1023,16 @@ class AccessibilityTestingFramework:
         # This is a simplified test - in practice, you'd analyze animations
         pass
 
-    def _test_navigation_structure(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_navigation_structure(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test navigation structure (WCAG 2.4)"""
         self._test_page_title(soup, page_url)
         self._test_heading_structure(soup, page_url)
         self._test_landmark_regions(soup, page_url)
 
         # Test skip links
-        skip_links = soup.find_all('a', href=lambda x: x and x.startswith('#'))
+        skip_links = soup.find_all("a", href=lambda x: x and x.startswith("#"))
         if not skip_links:
             violation = AccessibilityTestResult(
                 guideline=WCAGGuideline.OPERABLE_2_4_1,
@@ -972,11 +1044,13 @@ class AccessibilityTestingFramework:
                 recommendation="Add skip navigation link for keyboard users",
                 wcag_level=WCAGLevel.A,
                 impact="Medium",
-                page_url=page_url
+                page_url=page_url,
             )
             self.violations.append(violation)
 
-    def _test_input_modalities(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_input_modalities(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test input modalities (WCAG 2.5)"""
         # Test pointer gestures and cancellation
         pass
@@ -985,17 +1059,21 @@ class AccessibilityTestingFramework:
         """Test readable content (WCAG 3.1)"""
         self._test_language_attributes(soup, page_url)
 
-    def _test_predictable_content(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_predictable_content(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test predictable content (WCAG 3.2)"""
         # Test consistent navigation and identification
         pass
 
-    def _test_input_assistance(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_input_assistance(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test input assistance (WCAG 3.3)"""
         self._test_form_labels(soup, page_url)
 
         # Test error handling
-        error_elements = soup.find_all(class_=lambda x: x and 'error' in x.lower())
+        error_elements = soup.find_all(class_=lambda x: x and "error" in x.lower())
         if not error_elements:
             violation = AccessibilityTestResult(
                 guideline=WCAGGuideline.UNDERSTANDABLE_3_3_1,
@@ -1007,23 +1085,25 @@ class AccessibilityTestingFramework:
                 recommendation="Provide clear error messages and suggestions",
                 wcag_level=WCAGLevel.A,
                 impact="High",
-                page_url=page_url
+                page_url=page_url,
             )
             self.violations.append(violation)
 
-    def _test_compatibility(self, driver: WebDriver, soup: BeautifulSoup, page_url: str):
+    def _test_compatibility(
+        self, driver: WebDriver, soup: BeautifulSoup, page_url: str
+    ):
         """Test compatibility (WCAG 4.1)"""
         # Test HTML validity and ARIA attributes
         pass
 
     def _test_time_based_media(self, soup: BeautifulSoup, page_url: str):
         """Test time-based media (WCAG 1.2)"""
-        media_elements = soup.find_all(['video', 'audio'])
+        media_elements = soup.find_all(["video", "audio"])
 
         for element in media_elements:
-            if element.name == 'video':
+            if element.name == "video":
                 # Check for captions
-                if not element.find('track', kind='captions'):
+                if not element.find("track", kind="captions"):
                     violation = AccessibilityTestResult(
                         guideline=WCAGGuideline.PERCEIVABLE_1_2_2,
                         violation_type=AccessibilityViolationType.MISSING_CAPTION,
@@ -1034,11 +1114,13 @@ class AccessibilityTestingFramework:
                         recommendation="Add captions to all video content",
                         wcag_level=WCAGLevel.A,
                         impact="High",
-                        page_url=page_url
+                        page_url=page_url,
                     )
                     self.violations.append(violation)
 
-    def generate_accessibility_report(self, audit_result: AccessibilityAuditResult) -> str:
+    def generate_accessibility_report(
+        self, audit_result: AccessibilityAuditResult
+    ) -> str:
         """Generate comprehensive accessibility report"""
         report = f"""
 # Accessibility Audit Report
@@ -1076,10 +1158,12 @@ class AccessibilityTestingFramework:
                 by_severity[violation.severity] = []
             by_severity[violation.severity].append(violation)
 
-        for severity in ['Critical', 'Serious', 'Moderate', 'Minor']:
+        for severity in ["Critical", "Serious", "Moderate", "Minor"]:
             if severity in by_severity:
                 report += f"\n### {severity} Violations\n"
-                for violation in by_severity[severity][:5]:  # Limit to top 5 per severity
+                for violation in by_severity[severity][
+                    :5
+                ]:  # Limit to top 5 per severity
                     report += f"- **{violation.violation_type.value}**: {violation.description}\n"
                     report += f"  - Element: {violation.element}\n"
                     report += f"  - WCAG: {violation.guideline.value} ({violation.wcag_level.value})\n"
@@ -1087,80 +1171,102 @@ class AccessibilityTestingFramework:
 
         return report
 
+
 # Pytest fixtures and helpers
 @pytest.fixture
 def accessibility_framework():
     """Accessibility testing framework fixture"""
     return AccessibilityTestingFramework()
 
+
 @pytest.fixture
 def chrome_driver():
     """Chrome WebDriver fixture for accessibility testing"""
     options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-gpu')
-    options.add_argument('--window-size=1920,1080')
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=1920,1080")
 
     driver = webdriver.Chrome(options=options)
     driver.set_page_load_timeout(30)
     yield driver
     driver.quit()
+
 
 @pytest.fixture
 def mobile_driver():
     """Mobile WebDriver fixture for accessibility testing"""
     options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-gpu')
-    options.add_argument('--window-size=375,667')  # iPhone 8
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=375,667")  # iPhone 8
 
     driver = webdriver.Chrome(options=options)
     driver.set_page_load_timeout(30)
     yield driver
     driver.quit()
 
+
 # Test classes
 class AccessibilityTestMixin:
     """Mixin class for accessibility testing"""
 
-    def assert_accessibility_compliance(self, audit_result: AccessibilityAuditResult, min_score: float = 80.0):
+    def assert_accessibility_compliance(
+        self, audit_result: AccessibilityAuditResult, min_score: float = 80.0
+    ):
         """Assert that accessibility score meets minimum requirement"""
-        assert audit_result.overall_score >= min_score, \
-            f"Accessibility score {audit_result.overall_score:.1f}% is below minimum {min_score}%"
+        assert (
+            audit_result.overall_score >= min_score
+        ), f"Accessibility score {audit_result.overall_score:.1f}% is below minimum {min_score}%"
 
     def assert_no_critical_violations(self, audit_result: AccessibilityAuditResult):
         """Assert that there are no critical accessibility violations"""
-        assert audit_result.critical_violations == 0, \
-            f"Found {audit_result.critical_violations} critical accessibility violations"
+        assert (
+            audit_result.critical_violations == 0
+        ), f"Found {audit_result.critical_violations} critical accessibility violations"
 
-    def assert_wcag_aa_compliance(self, audit_result: AccessibilityAuditResult, min_compliance: float = 90.0):
+    def assert_wcag_aa_compliance(
+        self, audit_result: AccessibilityAuditResult, min_compliance: float = 90.0
+    ):
         """Assert WCAG AA compliance meets minimum requirement"""
         aa_compliance = audit_result.wcag_compliance.get(WCAGLevel.AA, 0)
-        assert aa_compliance >= min_compliance, \
-            f"WCAG AA compliance {aa_compliance:.1f}% is below minimum {min_compliance}%"
+        assert (
+            aa_compliance >= min_compliance
+        ), f"WCAG AA compliance {aa_compliance:.1f}% is below minimum {min_compliance}%"
+
 
 class HealthcareAccessibilityTestMixin(AccessibilityTestMixin):
     """Healthcare-specific accessibility testing mixin"""
 
-    def assert_healthcare_accessibility_compliance(self, audit_result: AccessibilityAuditResult):
+    def assert_healthcare_accessibility_compliance(
+        self, audit_result: AccessibilityAuditResult
+    ):
         """Assert healthcare-specific accessibility compliance"""
-        assert len(audit_result.healthcare_specific_issues) <= 5, \
-            f"Found {len(audit_result.healthcare_specific_issues)} healthcare accessibility issues"
+        assert (
+            len(audit_result.healthcare_specific_issues) <= 5
+        ), f"Found {len(audit_result.healthcare_specific_issues)} healthcare accessibility issues"
 
-    def assert_emergency_information_accessibility(self, audit_result: AccessibilityAuditResult):
+    def assert_emergency_information_accessibility(
+        self, audit_result: AccessibilityAuditResult
+    ):
         """Assert emergency information is accessible"""
         emergency_violations = [
-            v for v in audit_result.healthcare_specific_issues
-            if 'emergency' in v.element.lower()
+            v
+            for v in audit_result.healthcare_specific_issues
+            if "emergency" in v.element.lower()
         ]
-        assert len(emergency_violations) == 0, \
-            f"Found {len(emergency_violations)} emergency information accessibility issues"
+        assert (
+            len(emergency_violations) == 0
+        ), f"Found {len(emergency_violations)} emergency information accessibility issues"
 
-def run_accessibility_audit(url: str, driver: Optional[WebDriver] = None) -> AccessibilityAuditResult:
+
+def run_accessibility_audit(
+    url: str, driver: Optional[WebDriver] = None
+) -> AccessibilityAuditResult:
     """Run accessibility audit on given URL"""
     framework = AccessibilityTestingFramework()
     return framework.run_comprehensive_accessibility_audit(url, driver)

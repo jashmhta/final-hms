@@ -7,7 +7,10 @@
     "tslint-immutable"
   ],
   "rules": {
-    "interface-name": [true, "never-prefix"],
+    "interface-name": [
+      true,
+      "never-prefix"
+    ],
     "no-implicit-dependencies": false,
     "no-submodule-imports": false,
     "no-var-requires": false,
@@ -35,7 +38,10 @@
       }
     ],
     "object-literal-sort-keys": false,
-    "member-access": [true, "no-public"],
+    "member-access": [
+      true,
+      "no-public"
+    ],
     "member-ordering": [
       true,
       {
@@ -53,9 +59,15 @@
       "allow-leading-underscore",
       "allow-pascal-case"
     ],
-    "max-line-length": [true, 88],
+    "max-line-length": [
+      true,
+      88
+    ],
     "prefer-const": true,
-    "no-console": [true, "log"],
+    "no-console": [
+      true,
+      "log"
+    ],
     "no-unused-variable": true,
     "no-empty": false,
     "no-shadowed-variable": true,
@@ -63,15 +75,27 @@
     "no-bitwise": false,
     "no-unused-expression": true,
     "prefer-for-of": true,
-    "array-type": [true, "array"],
-    "arrow-parens": [true, "ban-single-arg-parens"],
+    "array-type": [
+      true,
+      "array"
+    ],
+    "arrow-parens": [
+      true,
+      "ban-single-arg-parens"
+    ],
     "deprecation": true,
     "import-spacing": true,
     "newline-before-return": true,
     "no-boolean-literal-compare": true,
-    "no-consecutive-blank-lines": [true, 1],
+    "no-consecutive-blank-lines": [
+      true,
+      1
+    ],
     "no-trailing-whitespace": true,
-    "object-literal-key-quotes": [true, "as-needed"],
+    "object-literal-key-quotes": [
+      true,
+      "as-needed"
+    ],
     "one-line": [
       true,
       "check-open-brace",
@@ -80,8 +104,14 @@
       "check-whitespace"
     ],
     "one-variable-per-declaration": true,
-    "quotemark": [true, "single"],
-    "semicolon": [true, "always"],
+    "quotemark": [
+      true,
+      "single"
+    ],
+    "semicolon": [
+      true,
+      "always"
+    ],
     "trailing-comma": [
       true,
       {
@@ -122,9 +152,18 @@
     ],
     "jsx-wrap-multiline": true,
     "jsx-alignment": true,
-    "jsx-boolean-value": [true, "never"],
-    "jsx-curly-spacing": [true, "never"],
-    "jsx-equals-spacing": [true, "never"],
+    "jsx-boolean-value": [
+      true,
+      "never"
+    ],
+    "jsx-curly-spacing": [
+      true,
+      "never"
+    ],
+    "jsx-equals-spacing": [
+      true,
+      "never"
+    ],
     "jsx-key": true,
     "jsx-no-bind": true,
     "jsx-no-lambda": true,
@@ -143,9 +182,18 @@
     "no-new-func": true,
     "no-dangerous-decorators": true,
     "no-unsafe-any": true,
-    "cyclomatic-complexity": [true, 10],
-    "max-classes-per-file": [true, 1],
-    "max-file-line-count": [true, 500],
+    "cyclomatic-complexity": [
+      true,
+      10
+    ],
+    "max-classes-per-file": [
+      true,
+      1
+    ],
+    "max-file-line-count": [
+      true,
+      500
+    ],
     "no-angle-bracket-type-assertion": true,
     "no-empty-interface": true,
     "no-floating-promises": true,
@@ -163,15 +211,16 @@
     "no-unnecessary-type-assertion": true,
     "no-unsafe-finally": true,
     "prefer-conditional-expression": true,
-    "prefer-const": true,
-    "prefer-for-of": true,
     "prefer-function-over-method": true,
     "prefer-object-spread": true,
     "prefer-readonly": true,
     "prefer-switch": true,
     "strict-boolean-expressions": true,
     "switch-default": true,
-    "triple-equals": [true, "allow-null-check"],
+    "triple-equals": [
+      true,
+      "allow-null-check"
+    ],
     "typeof-compare": true,
     "use-default-type-parameter": true,
     "jsx-a11y/accessible-emoji": true,
@@ -209,34 +258,54 @@
       true,
       {
         "functions": {
-          "visibilities": ["exported"]
+          "visibilities": [
+            "exported"
+          ]
         },
         "classes": {
-          "visibilities": ["exported"]
+          "visibilities": [
+            "exported"
+          ]
         },
         "enums": {
-          "visibilities": ["exported"]
+          "visibilities": [
+            "exported"
+          ]
         },
         "interfaces": {
-          "visibilities": ["exported"]
+          "visibilities": [
+            "exported"
+          ]
         },
         "types": {
-          "visibilities": ["exported"]
+          "visibilities": [
+            "exported"
+          ]
         },
         "variables": {
-          "kinds": ["const", "let"],
-          "visibilities": ["exported"]
+          "kinds": [
+            "const",
+            "let"
+          ],
+          "visibilities": [
+            "exported"
+          ]
         }
       }
     ],
-    "file-name-casing": [true, "camel-case"],
-    "linebreak-style": [true, "LF"],
+    "file-name-casing": [
+      true,
+      "camel-case"
+    ],
+    "linebreak-style": [
+      true,
+      "LF"
+    ],
     "match-default-export-name": true,
     "no-circular-imports": true,
     "no-mergeable-namespace": true,
     "no-require-imports": true,
-    "no-unused-imports": true,
-    "prefer-object-spread": true
+    "no-unused-imports": true
   },
   "rulesDirectory": [
     "node_modules/tslint-immutable/rules",

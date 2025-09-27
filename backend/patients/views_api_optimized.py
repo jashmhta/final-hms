@@ -42,16 +42,30 @@ class PatientFilter(drf_filters.FilterSet):
 
     min_age = drf_filters.NumberFilter(method="filter_by_age")
     max_age = drf_filters.NumberFilter(method="filter_by_age")
-    admission_date_after = drf_filters.DateFilter(field_name="admission_date", lookup_expr="gte")
-    admission_date_before = drf_filters.DateFilter(field_name="admission_date", lookup_expr="lte")
-    discharge_date_after = drf_filters.DateFilter(field_name="discharge_date", lookup_expr="gte")
-    discharge_date_before = drf_filters.DateFilter(field_name="discharge_date", lookup_expr="lte")
-    last_visit_after = drf_filters.DateFilter(field_name="last_visit_date", lookup_expr="gte")
-    last_visit_before = drf_filters.DateFilter(field_name="last_visit_date", lookup_expr="lte")
+    admission_date_after = drf_filters.DateFilter(
+        field_name="admission_date", lookup_expr="gte"
+    )
+    admission_date_before = drf_filters.DateFilter(
+        field_name="admission_date", lookup_expr="lte"
+    )
+    discharge_date_after = drf_filters.DateFilter(
+        field_name="discharge_date", lookup_expr="gte"
+    )
+    discharge_date_before = drf_filters.DateFilter(
+        field_name="discharge_date", lookup_expr="lte"
+    )
+    last_visit_after = drf_filters.DateFilter(
+        field_name="last_visit_date", lookup_expr="gte"
+    )
+    last_visit_before = drf_filters.DateFilter(
+        field_name="last_visit_date", lookup_expr="lte"
+    )
     has_insurance = drf_filters.BooleanFilter(method="filter_has_insurance")
     vip_status = drf_filters.BooleanFilter(field_name="vip_status")
     confidential = drf_filters.BooleanFilter(field_name="confidential")
-    patient_portal_enrolled = drf_filters.BooleanFilter(field_name="patient_portal_enrolled")
+    patient_portal_enrolled = drf_filters.BooleanFilter(
+        field_name="patient_portal_enrolled"
+    )
 
     class Meta:
         model = Patient
@@ -181,7 +195,9 @@ class OptimizedPatientViewSet(OptimizedModelViewSet, BulkOperationMixin):
 
         # Add performance metrics
         if hasattr(request, "query_time"):
-            response.data["performance"]["query_efficiency"] = calculate_query_efficiency(self.get_queryset())
+            response.data["performance"]["query_efficiency"] = (
+                calculate_query_efficiency(self.get_queryset())
+            )
 
         return response
 
@@ -220,7 +236,9 @@ class OptimizedPatientViewSet(OptimizedModelViewSet, BulkOperationMixin):
         """Optimized patient search with full-text capabilities"""
         query = request.GET.get("q", "").strip()
         if not query or len(query) < 2:
-            return Response({"error": "Search query must be at least 2 characters"}, status=400)
+            return Response(
+                {"error": "Search query must be at least 2 characters"}, status=400
+            )
 
         # Use optimized search
         queryset = self.filter_queryset(self.get_queryset())
@@ -275,7 +293,9 @@ class OptimizedPatientViewSet(OptimizedModelViewSet, BulkOperationMixin):
             "vip_count": queryset.filter(vip_status=True).count(),
             "portal_enrolled": queryset.filter(patient_portal_enrolled=True).count(),
             "confidential_count": queryset.filter(confidential=True).count(),
-            "new_patients_last_30d": queryset.filter(created_at__gte=timezone.now() - timedelta(days=30)).count(),
+            "new_patients_last_30d": queryset.filter(
+                created_at__gte=timezone.now() - timedelta(days=30)
+            ).count(),
             "age_distribution": self._get_age_distribution(queryset),
             "gender_distribution": self._get_gender_distribution(queryset),
             "status_distribution": self._get_status_distribution(queryset),
@@ -289,18 +309,28 @@ class OptimizedPatientViewSet(OptimizedModelViewSet, BulkOperationMixin):
 
     def _get_age_distribution(self, queryset):
         """Calculate age distribution"""
-        age_ranges = [("0-17", 0, 17), ("18-34", 18, 34), ("35-49", 35, 49), ("50-64", 50, 64), ("65+", 65, 150)]
+        age_ranges = [
+            ("0-17", 0, 17),
+            ("18-34", 18, 34),
+            ("35-49", 35, 49),
+            ("50-64", 50, 64),
+            ("65+", 65, 150),
+        ]
 
         distribution = {}
         today = timezone.now().date()
 
         for label, min_age, max_age in age_ranges:
             if max_age == 150:
-                count = queryset.filter(date_of_birth__lte=today - timedelta(days=min_age * 365.25)).count()
+                count = queryset.filter(
+                    date_of_birth__lte=today - timedelta(days=min_age * 365.25)
+                ).count()
             else:
                 min_date = today - timedelta(days=max_age * 365.25)
                 max_date = today - timedelta(days=min_age * 365.25)
-                count = queryset.filter(date_of_birth__gte=min_date, date_of_birth__lte=max_date).count()
+                count = queryset.filter(
+                    date_of_birth__gte=min_date, date_of_birth__lte=max_date
+                ).count()
 
             distribution[label] = count
 
@@ -308,11 +338,19 @@ class OptimizedPatientViewSet(OptimizedModelViewSet, BulkOperationMixin):
 
     def _get_gender_distribution(self, queryset):
         """Calculate gender distribution"""
-        return dict(queryset.values("gender").annotate(count=Count("gender")).values_list("gender", "count"))
+        return dict(
+            queryset.values("gender")
+            .annotate(count=Count("gender"))
+            .values_list("gender", "count")
+        )
 
     def _get_status_distribution(self, queryset):
         """Calculate status distribution"""
-        return dict(queryset.values("status").annotate(count=Count("status")).values_list("status", "count"))
+        return dict(
+            queryset.values("status")
+            .annotate(count=Count("status"))
+            .values_list("status", "count")
+        )
 
     @action(detail=False, methods=["post"])
     @cache_api_response(timeout=30)  # Cache for 30 seconds
@@ -359,7 +397,9 @@ class OptimizedPatientViewSet(OptimizedModelViewSet, BulkOperationMixin):
 
         for group in name_dob_groups:
             patients = Patient.objects.filter(
-                first_name=group["first_name"], last_name=group["last_name"], date_of_birth=group["date_of_birth"]
+                first_name=group["first_name"],
+                last_name=group["last_name"],
+                date_of_birth=group["date_of_birth"],
             ).select_related("hospital")
 
             duplicates.append(
@@ -388,7 +428,9 @@ class OptimizedPatientViewSet(OptimizedModelViewSet, BulkOperationMixin):
 
     def _get_patient_statistics(self):
         """Get quick patient statistics for list view"""
-        hospital_id = self.request.user.hospital_id if not self.request.user.is_staff else None
+        hospital_id = (
+            self.request.user.hospital_id if not self.request.user.is_staff else None
+        )
 
         # Use cached statistics
         cache_key = f'quick_patient_stats_{hospital_id or "all"}'
@@ -402,7 +444,9 @@ class OptimizedPatientViewSet(OptimizedModelViewSet, BulkOperationMixin):
             stats = {
                 "total": queryset.count(),
                 "active": queryset.filter(status="ACTIVE").count(),
-                "new_today": queryset.filter(created_at__date=timezone.now().date()).count(),
+                "new_today": queryset.filter(
+                    created_at__date=timezone.now().date()
+                ).count(),
             }
             cache.set(cache_key, stats, timeout=60)  # 1 minute
 
@@ -415,7 +459,9 @@ class OptimizedPatientViewSet(OptimizedModelViewSet, BulkOperationMixin):
         since = timezone.now() - timedelta(hours=hours)
 
         queryset = (
-            self.get_queryset().filter(updated_at__gte=since).select_related("hospital", "primary_care_physician")
+            self.get_queryset()
+            .filter(updated_at__gte=since)
+            .select_related("hospital", "primary_care_physician")
         )
 
         page = self.paginate_queryset(queryset)
@@ -440,7 +486,11 @@ class OptimizedPatientViewSet(OptimizedModelViewSet, BulkOperationMixin):
         patient = serializer.save()
 
         # Invalidate caches
-        cache_patterns = [f"patient_detail_{patient.id}_*", "patient_stats_*", "quick_patient_stats_*"]
+        cache_patterns = [
+            f"patient_detail_{patient.id}_*",
+            "patient_stats_*",
+            "quick_patient_stats_*",
+        ]
         for pattern in cache_patterns:
             keys = cache.keys(pattern)
             if keys:

@@ -1,3 +1,7 @@
+"""
+core module
+"""
+
 import os
 from typing import Any
 
@@ -10,8 +14,31 @@ from django.utils.encoding import force_str
 def _get_fernet():
     key = os.environ.get("FERNET_KEY")
     if not key:
-        key = "aQl1cJsC2OJ3n4PY9KruMCOqJpPfeNlL8A9aqXyipN4="
+        # Try to load from .env file if not in environment
+        try:
+            import sys
+            from pathlib import Path
+
+            base_dir = Path(__file__).resolve().parent.parent.parent.parent
+            env_file = base_dir / ".env"
+            if env_file.exists():
+                with open(env_file, "r") as f:
+                    for line in f:
+                        if line.startswith("FERNET_KEY="):
+                            key = line.split("=", 1)[1].strip()
+                            os.environ["FERNET_KEY"] = key
+                            break
+        except Exception:
+            pass
+
+    if not key:
+        # Fallback for development - generate a temporary key
+        import base64
+        import secrets
+
+        key = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode()
         os.environ["FERNET_KEY"] = key
+
     if isinstance(key, str):
         key = key.encode()
     return Fernet(key)

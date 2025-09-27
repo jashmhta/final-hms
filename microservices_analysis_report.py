@@ -1,9 +1,15 @@
+"""
+microservices_analysis_report module
+"""
+
 import json
 import os
 import re
-from typing import Dict, List, Any
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
+from typing import Any, Dict, List
+
+
 @dataclass
 class ServiceAnalysis:
     name: str

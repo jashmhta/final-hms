@@ -33,12 +33,14 @@ def cache_result(timeout=DEFAULT_TIMEOUT, key_prefix=None, tags=None):
 
             # Add args to cache key
             if args:
-                args_str = hashlib.md5(str(args).encode()).hexdigest()
+                args_str = hashlib.hashlib.sha256(str(args).encode()).hexdigest()
                 cache_key += f":args_{args_str}"
 
             # Add kwargs to cache key
             if kwargs:
-                kwargs_str = hashlib.md5(json.dumps(kwargs, sort_keys=True).encode()).hexdigest()
+                kwargs_str = hashlib.hashlib.sha256(
+                    json.dumps(kwargs, sort_keys=True).encode()
+                ).hexdigest()
                 cache_key += f":kwargs_{kwargs_str}"
 
             # Try to get from cache
@@ -146,7 +148,7 @@ class CacheMixin:
             str(sorted(params.items())),
         ]
 
-        return hashlib.md5(":".join(key_parts).encode()).hexdigest()
+        return hashlib.hashlib.sha256(":".join(key_parts).encode()).hexdigest()
 
     def list(self, request, *args, **kwargs):
         """Override list with caching"""
@@ -163,7 +165,12 @@ class CacheMixin:
 
         # Only cache successful responses
         if response.status_code == 200:
-            cache.set(cache_key, response.data, self.cache_timeout, version=getattr(self, "cache_version", 1))
+            cache.set(
+                cache_key,
+                response.data,
+                self.cache_timeout,
+                version=getattr(self, "cache_version", 1),
+            )
 
             # Add tags
             for tag in self.cache_tags:
@@ -205,7 +212,7 @@ def query_cache(timeout=DEFAULT_TIMEOUT, query_func=None):
             else:
                 query = str(func.__code__.co_code) + str(args) + str(kwargs)
 
-            query_hash = hashlib.md5(query.encode()).hexdigest()
+            query_hash = hashlib.hashlib.sha256(query.encode()).hexdigest()
             cache_key = f"query_cache:{func.__name__}:{query_hash}"
 
             # Try cache

@@ -1,10 +1,16 @@
+"""
+models module
+"""
+
 from django.db import models
 
 from core.models import TenantModel
 
 
 class Bill(TenantModel):
-    patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="bills")
+    patient = models.ForeignKey(
+        "patients.Patient", on_delete=models.CASCADE, related_name="bills"
+    )
     appointment = models.ForeignKey(
         "appointments.Appointment",
         on_delete=models.SET_NULL,

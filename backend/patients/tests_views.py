@@ -1,3 +1,7 @@
+"""
+tests_views module
+"""
+
 import json
 from datetime import date, datetime
 from decimal import Decimal
@@ -32,7 +36,10 @@ class PatientViewTests(TestCase):
         self.hospital = Mock()
         self.hospital.id = 1
         self.user = User.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass123", hospital=self.hospital
+            username="testuser",
+            email="test@example.com",
+            password="testpass123",
+            hospital=self.hospital,
         )
         self.client.login(username="testuser", password="testpass123")
 
@@ -40,7 +47,11 @@ class PatientViewTests(TestCase):
         """Test GET request to patient list view"""
         # Create test patients
         Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
         Patient.objects.create(
             hospital=self.hospital,
@@ -107,7 +118,9 @@ class PatientViewTests(TestCase):
         )
 
         # Test filter by status
-        response = self.client.get(reverse("patients:patient-list"), {"status": "ACTIVE"})
+        response = self.client.get(
+            reverse("patients:patient-list"), {"status": "ACTIVE"}
+        )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "John Doe")
         self.assertNotContains(response, "Jane Smith")
@@ -133,8 +146,12 @@ class PatientViewTests(TestCase):
             "zip_code": "12345",
         }
 
-        response = self.client.post(reverse("patients:patient-create"), data=patient_data)
-        self.assertEqual(response.status_code, 302)  # Redirect after successful creation
+        response = self.client.post(
+            reverse("patients:patient-create"), data=patient_data
+        )
+        self.assertEqual(
+            response.status_code, 302
+        )  # Redirect after successful creation
 
         # Verify patient was created
         patient = Patient.objects.get(first_name="John", last_name="Doe")
@@ -150,40 +167,60 @@ class PatientViewTests(TestCase):
             "gender": "MALE",
         }
 
-        response = self.client.post(reverse("patients:patient-create"), data=invalid_data)
+        response = self.client.post(
+            reverse("patients:patient-create"), data=invalid_data
+        )
         self.assertEqual(response.status_code, 200)  # Form re-rendered with errors
         self.assertTemplateUsed(response, "patients/patient_form.html")
 
     def test_patient_detail_view(self):
         """Test patient detail view"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
-        response = self.client.get(reverse("patients:patient-detail", kwargs={"pk": patient.pk}))
+        response = self.client.get(
+            reverse("patients:patient-detail", kwargs={"pk": patient.pk})
+        )
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "patients/patient_detail.html")
         self.assertContains(response, "John Doe")
 
     def test_patient_detail_view_404(self):
         """Test patient detail view with non-existent patient"""
-        response = self.client.get(reverse("patients:patient-detail", kwargs={"pk": 99999}))
+        response = self.client.get(
+            reverse("patients:patient-detail", kwargs={"pk": 99999})
+        )
         self.assertEqual(response.status_code, 404)
 
     def test_patient_update_view_get(self):
         """Test GET request to patient update view"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
-        response = self.client.get(reverse("patients:patient-update", kwargs={"pk": patient.pk}))
+        response = self.client.get(
+            reverse("patients:patient-update", kwargs={"pk": patient.pk})
+        )
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "patients/patient_form.html")
 
     def test_patient_update_view_post_valid(self):
         """Test POST request to update patient with valid data"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         update_data = {
@@ -194,7 +231,10 @@ class PatientViewTests(TestCase):
             "phone_primary": "555-987-6543",
         }
 
-        response = self.client.post(reverse("patients:patient-update", kwargs={"pk": patient.pk}), data=update_data)
+        response = self.client.post(
+            reverse("patients:patient-update", kwargs={"pk": patient.pk}),
+            data=update_data,
+        )
         self.assertEqual(response.status_code, 302)  # Redirect after successful update
 
         # Verify patient was updated
@@ -206,21 +246,35 @@ class PatientViewTests(TestCase):
     def test_patient_delete_view_get(self):
         """Test GET request to patient delete view"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
-        response = self.client.get(reverse("patients:patient-delete", kwargs={"pk": patient.pk}))
+        response = self.client.get(
+            reverse("patients:patient-delete", kwargs={"pk": patient.pk})
+        )
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "patients/patient_confirm_delete.html")
 
     def test_patient_delete_view_post(self):
         """Test POST request to delete patient"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
-        response = self.client.post(reverse("patients:patient-delete", kwargs={"pk": patient.pk}))
-        self.assertEqual(response.status_code, 302)  # Redirect after successful deletion
+        response = self.client.post(
+            reverse("patients:patient-delete", kwargs={"pk": patient.pk})
+        )
+        self.assertEqual(
+            response.status_code, 302
+        )  # Redirect after successful deletion
 
         # Verify patient was deleted
         self.assertFalse(Patient.objects.filter(pk=patient.pk).exists())
@@ -228,17 +282,29 @@ class PatientViewTests(TestCase):
     def test_emergency_contact_create_view(self):
         """Test emergency contact creation view"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
-        response = self.client.get(reverse("patients:emergency-contact-create", kwargs={"patient_pk": patient.pk}))
+        response = self.client.get(
+            reverse(
+                "patients:emergency-contact-create", kwargs={"patient_pk": patient.pk}
+            )
+        )
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "patients/emergency_contact_form.html")
 
     def test_emergency_contact_create_post(self):
         """Test POST request to create emergency contact"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         contact_data = {
@@ -250,7 +316,10 @@ class PatientViewTests(TestCase):
         }
 
         response = self.client.post(
-            reverse("patients:emergency-contact-create", kwargs={"patient_pk": patient.pk}), data=contact_data
+            reverse(
+                "patients:emergency-contact-create", kwargs={"patient_pk": patient.pk}
+            ),
+            data=contact_data,
         )
         self.assertEqual(response.status_code, 302)
 
@@ -262,17 +331,27 @@ class PatientViewTests(TestCase):
     def test_insurance_create_view(self):
         """Test insurance information creation view"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
-        response = self.client.get(reverse("patients:insurance-create", kwargs={"patient_pk": patient.pk}))
+        response = self.client.get(
+            reverse("patients:insurance-create", kwargs={"patient_pk": patient.pk})
+        )
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "patients/insurance_form.html")
 
     def test_insurance_create_post(self):
         """Test POST request to create insurance information"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         insurance_data = {
@@ -284,7 +363,8 @@ class PatientViewTests(TestCase):
         }
 
         response = self.client.post(
-            reverse("patients:insurance-create", kwargs={"patient_pk": patient.pk}), data=insurance_data
+            reverse("patients:insurance-create", kwargs={"patient_pk": patient.pk}),
+            data=insurance_data,
         )
         self.assertEqual(response.status_code, 302)
 
@@ -296,17 +376,27 @@ class PatientViewTests(TestCase):
     def test_patient_alert_create_view(self):
         """Test patient alert creation view"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
-        response = self.client.get(reverse("patients:alert-create", kwargs={"patient_pk": patient.pk}))
+        response = self.client.get(
+            reverse("patients:alert-create", kwargs={"patient_pk": patient.pk})
+        )
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "patients/alert_form.html")
 
     def test_patient_alert_create_post(self):
         """Test POST request to create patient alert"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         alert_data = {
@@ -317,7 +407,8 @@ class PatientViewTests(TestCase):
         }
 
         response = self.client.post(
-            reverse("patients:alert-create", kwargs={"patient_pk": patient.pk}), data=alert_data
+            reverse("patients:alert-create", kwargs={"patient_pk": patient.pk}),
+            data=alert_data,
         )
         self.assertEqual(response.status_code, 302)
 
@@ -330,7 +421,11 @@ class PatientViewTests(TestCase):
         """Test patient data export view"""
         # Create test patients
         Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
         Patient.objects.create(
             hospital=self.hospital,
@@ -343,7 +438,9 @@ class PatientViewTests(TestCase):
         response = self.client.get(reverse("patients:patient-export"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "text/csv")
-        self.assertEqual(response["Content-Disposition"], 'attachment; filename="patients.csv"')
+        self.assertEqual(
+            response["Content-Disposition"], 'attachment; filename="patients.csv"'
+        )
 
     def test_patient_search_view(self):
         """Test patient search view"""
@@ -384,7 +481,10 @@ class PatientAPITests(APITestCase):
         self.hospital = Mock()
         self.hospital.id = 1
         self.user = User.objects.create_user(
-            username="apiuser", email="api@example.com", password="apipass123", hospital=self.hospital
+            username="apiuser",
+            email="api@example.com",
+            password="apipass123",
+            hospital=self.hospital,
         )
         self.token = Token.objects.create(user=self.user)
         self.client.credentials(HTTP_AUTHORIZATION="Token " + self.token.key)
@@ -392,7 +492,11 @@ class PatientAPITests(APITestCase):
     def test_patient_list_api_get(self):
         """Test GET request to patient list API"""
         Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         response = self.client.get("/api/patients/")
@@ -420,7 +524,11 @@ class PatientAPITests(APITestCase):
     def test_patient_detail_api_get(self):
         """Test GET request to patient detail API"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         response = self.client.get(f"/api/patients/{patient.pk}/")
@@ -430,12 +538,23 @@ class PatientAPITests(APITestCase):
     def test_patient_detail_api_put(self):
         """Test PUT request to update patient via API"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
-        update_data = {"first_name": "Jane", "last_name": "Smith", "date_of_birth": "1985-05-15", "gender": "FEMALE"}
+        update_data = {
+            "first_name": "Jane",
+            "last_name": "Smith",
+            "date_of_birth": "1985-05-15",
+            "gender": "FEMALE",
+        }
 
-        response = self.client.put(f"/api/patients/{patient.pk}/", update_data, format="json")
+        response = self.client.put(
+            f"/api/patients/{patient.pk}/", update_data, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         patient.refresh_from_db()
@@ -445,7 +564,11 @@ class PatientAPITests(APITestCase):
     def test_patient_detail_api_delete(self):
         """Test DELETE request to patient via API"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         response = self.client.delete(f"/api/patients/{patient.pk}/")
@@ -498,7 +621,11 @@ class PatientAPITests(APITestCase):
     def test_emergency_contact_api_endpoints(self):
         """Test emergency contact API endpoints"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         # Create emergency contact
@@ -509,7 +636,11 @@ class PatientAPITests(APITestCase):
             "phone_primary": "555-123-4567",
         }
 
-        response = self.client.post(f"/api/patients/{patient.pk}/emergency-contacts/", contact_data, format="json")
+        response = self.client.post(
+            f"/api/patients/{patient.pk}/emergency-contacts/",
+            contact_data,
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Get emergency contacts
@@ -521,7 +652,11 @@ class PatientAPITests(APITestCase):
     def test_insurance_api_endpoints(self):
         """Test insurance API endpoints"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         # Create insurance
@@ -533,7 +668,9 @@ class PatientAPITests(APITestCase):
             "insurance_company_name": "BCBS",
         }
 
-        response = self.client.post(f"/api/patients/{patient.pk}/insurance/", insurance_data, format="json")
+        response = self.client.post(
+            f"/api/patients/{patient.pk}/insurance/", insurance_data, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Get insurance plans
@@ -545,7 +682,11 @@ class PatientAPITests(APITestCase):
     def test_alert_api_endpoints(self):
         """Test patient alert API endpoints"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         # Create alert
@@ -556,7 +697,9 @@ class PatientAPITests(APITestCase):
             "description": "Patient has severe allergic reaction to penicillin",
         }
 
-        response = self.client.post(f"/api/patients/{patient.pk}/alerts/", alert_data, format="json")
+        response = self.client.post(
+            f"/api/patients/{patient.pk}/alerts/", alert_data, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Get alerts
@@ -575,7 +718,9 @@ class PatientAPITests(APITestCase):
     def test_api_permission_denied(self):
         """Test API permission handling"""
         # Create user without proper permissions
-        limited_user = User.objects.create_user(username="limited", email="limited@example.com", password="limited123")
+        limited_user = User.objects.create_user(
+            username="limited", email="limited@example.com", password="limited123"
+        )
         limited_token = Token.objects.create(user=limited_user)
         self.client.credentials(HTTP_AUTHORIZATION="Token " + limited_token.key)
 
@@ -619,7 +764,11 @@ class PatientAPITests(APITestCase):
     def test_api_caching(self, mock_cache):
         """Test API caching functionality"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         # Test cache usage

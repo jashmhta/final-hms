@@ -1,7 +1,13 @@
+"""
+security_hardening module
+"""
+
 import os
 import re
 import subprocess
 from pathlib import Path
+
+
 class SecurityHardener:
     def __init__(self):
         self.project_root = Path(__file__).parent

@@ -1,14 +1,31 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text, JSON, Float, Enum
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime
 import enum
+from datetime import datetime
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+
 Base = declarative_base()
+
+
 class EquipmentStatus(enum.Enum):
     OPERATIONAL = "operational"
     MAINTENANCE = "maintenance"
     OUT_OF_ORDER = "out_of_order"
     RETIRED = "retired"
+
+
 class EquipmentCategory(enum.Enum):
     DIAGNOSTIC = "diagnostic"
     THERAPEUTIC = "therapeutic"
@@ -16,11 +33,15 @@ class EquipmentCategory(enum.Enum):
     SURGICAL = "surgical"
     LABORATORY = "laboratory"
     IMAGING = "imaging"
+
+
 class MaintenanceType(enum.Enum):
     PREVENTIVE = "preventive"
     CORRECTIVE = "corrective"
     EMERGENCY = "emergency"
     CALIBRATION = "calibration"
+
+
 class BiomedicalEquipment(Base):
     __tablename__ = "biomedical_equipment"
     id = Column(Integer, primary_key=True, index=True)
@@ -39,6 +60,8 @@ class BiomedicalEquipment(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class EquipmentMaintenance(Base):
     __tablename__ = "equipment_maintenance"
     id = Column(Integer, primary_key=True, index=True)
@@ -47,16 +70,18 @@ class EquipmentMaintenance(Base):
     maintenance_type = Column(Enum(MaintenanceType))
     scheduled_date = Column(DateTime)
     completed_date = Column(DateTime, nullable=True)
-    performed_by = Column(String)  
+    performed_by = Column(String)
     description = Column(Text)
     findings = Column(Text, nullable=True)
     actions_taken = Column(Text, nullable=True)
     cost = Column(Float, nullable=True)
-    status = Column(String)  
+    status = Column(String)
     next_maintenance_date = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     equipment = relationship("BiomedicalEquipment")
+
+
 class EquipmentCalibration(Base):
     __tablename__ = "equipment_calibration"
     id = Column(Integer, primary_key=True, index=True)
@@ -65,13 +90,15 @@ class EquipmentCalibration(Base):
     calibration_date = Column(DateTime)
     calibrated_by = Column(String)
     calibration_standard = Column(String)
-    results = Column(JSON)  
-    status = Column(String)  
+    results = Column(JSON)
+    status = Column(String)
     next_calibration_date = Column(DateTime)
     certificate_number = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     equipment = relationship("BiomedicalEquipment")
+
+
 class EquipmentIncident(Base):
     __tablename__ = "equipment_incidents"
     id = Column(Integer, primary_key=True, index=True)
@@ -80,13 +107,15 @@ class EquipmentIncident(Base):
     incident_date = Column(DateTime)
     reported_by = Column(String)
     description = Column(Text)
-    severity = Column(String)  
+    severity = Column(String)
     impact = Column(Text, nullable=True)
     resolution = Column(Text, nullable=True)
-    status = Column(String)  
+    status = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     equipment = relationship("BiomedicalEquipment")
+
+
 class EquipmentTraining(Base):
     __tablename__ = "equipment_training"
     id = Column(Integer, primary_key=True, index=True)
@@ -95,13 +124,15 @@ class EquipmentTraining(Base):
     staff_member = Column(String)
     training_date = Column(DateTime)
     trainer = Column(String)
-    training_type = Column(String)  
-    status = Column(String)  
+    training_type = Column(String)
+    status = Column(String)
     certificate_number = Column(String, nullable=True)
     expiry_date = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     equipment = relationship("BiomedicalEquipment")
+
+
 class Vendor(Base):
     __tablename__ = "vendors"
     id = Column(Integer, primary_key=True, index=True)
@@ -111,7 +142,7 @@ class Vendor(Base):
     email = Column(String)
     phone = Column(String)
     address = Column(Text)
-    service_type = Column(String)  
+    service_type = Column(String)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

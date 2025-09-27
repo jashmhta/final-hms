@@ -29,7 +29,9 @@ class PatientListSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
     age = serializers.IntegerField(read_only=True)
     is_minor = serializers.BooleanField(read_only=True)
-    primary_care_physician_name = serializers.CharField(source="primary_care_physician.get_full_name", read_only=True)
+    primary_care_physician_name = serializers.CharField(
+        source="primary_care_physician.get_full_name", read_only=True
+    )
 
     class Meta:
         model = Patient
@@ -68,8 +70,12 @@ class PatientDetailSerializer(serializers.ModelSerializer):
     referring_physician_name = serializers.CharField(
         source="referring_physician.get_full_name", read_only=True, allow_null=True
     )
-    created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True, allow_null=True)
-    updated_by_name = serializers.CharField(source="last_updated_by.get_full_name", read_only=True, allow_null=True)
+    created_by_name = serializers.CharField(
+        source="created_by.get_full_name", read_only=True, allow_null=True
+    )
+    updated_by_name = serializers.CharField(
+        source="last_updated_by.get_full_name", read_only=True, allow_null=True
+    )
     hospital_name = serializers.CharField(source="hospital.name", read_only=True)
     emergency_contacts = serializers.SerializerMethodField()
     insurance_plans = serializers.SerializerMethodField()
@@ -91,14 +97,18 @@ class PatientDetailSerializer(serializers.ModelSerializer):
         """Get emergency contacts efficiently"""
         # This will be prefetched in the view
         if hasattr(obj, "_prefetched_emergency_contacts"):
-            return EmergencyContactSerializer(obj._prefetched_emergency_contacts, many=True).data
+            return EmergencyContactSerializer(
+                obj._prefetched_emergency_contacts, many=True
+            ).data
         return []
 
     def get_insurance_plans(self, obj):
         """Get insurance plans efficiently"""
         # This will be prefetched in the view
         if hasattr(obj, "_prefetched_insurance_plans"):
-            return InsuranceInformationSerializer(obj._prefetched_insurance_plans, many=True).data
+            return InsuranceInformationSerializer(
+                obj._prefetched_insurance_plans, many=True
+            ).data
         return []
 
     def to_representation(self, instance):
@@ -125,7 +135,15 @@ class PatientCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Patient
-        exclude = ["id", "uuid", "medical_record_number", "created_at", "updated_at", "created_by", "last_updated_by"]
+        exclude = [
+            "id",
+            "uuid",
+            "medical_record_number",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "last_updated_by",
+        ]
         extra_kwargs = {
             "status": {"default": PatientStatus.ACTIVE},
             "country": {"default": "US"},
@@ -159,7 +177,15 @@ class PatientUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Patient
-        exclude = ["id", "uuid", "medical_record_number", "created_at", "updated_at", "created_by", "last_updated_by"]
+        exclude = [
+            "id",
+            "uuid",
+            "medical_record_number",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "last_updated_by",
+        ]
 
     def update(self, instance, validated_data):
         """Optimized update with selective field updates"""
@@ -207,7 +233,9 @@ class InsuranceInformationSerializer(serializers.ModelSerializer):
 
         if effective_date and termination_date:
             if termination_date < effective_date:
-                raise serializers.ValidationError("Termination date must be after effective date")
+                raise serializers.ValidationError(
+                    "Termination date must be after effective date"
+                )
 
         return data
 
@@ -220,7 +248,9 @@ class InsuranceInformationSerializer(serializers.ModelSerializer):
         effective_date = instance.effective_date
         termination_date = instance.termination_date
 
-        data["is_active"] = effective_date <= today and (termination_date is None or termination_date >= today)
+        data["is_active"] = effective_date <= today and (
+            termination_date is None or termination_date >= today
+        )
 
         return data
 

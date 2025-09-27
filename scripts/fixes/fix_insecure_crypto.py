@@ -1,7 +1,13 @@
+"""
+fix_insecure_crypto module
+"""
+
 import os
 import re
 import shutil
 from pathlib import Path
+
+
 def fix_crypto_algorithms(filepath):
     try:
         with open(filepath, "r") as f:

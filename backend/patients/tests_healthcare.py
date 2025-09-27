@@ -1,3 +1,7 @@
+"""
+tests_healthcare module
+"""
+
 import json
 from datetime import date, datetime, timedelta
 from decimal import Decimal

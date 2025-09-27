@@ -1,10 +1,18 @@
+"""
+test_api_endpoints module
+"""
+
 import pytest
-from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from django.urls import reverse
+
 from ..app.models import BloodInventory, Crossmatch, Donor, TransfusionRecord
 from ..app.serializers import BloodInventorySerializer, DonorSerializer
+
+
 @pytest.mark.django_db
 class TestBloodBankAPIEndpoints(APITestCase):
     def setUp(self):
@@ -51,16 +59,19 @@ class TestBloodBankAPIEndpoints(APITestCase):
             status="AVAILABLE",
             quantity=1,
         )
+
     def get_admin_auth_headers(self):
         refresh = RefreshToken.for_user(self.admin_user)
         return {
             "HTTP_AUTHORIZATION": f"Bearer {refresh.access_token}",
         }
+
     def get_doctor_auth_headers(self):
         refresh = RefreshToken.for_user(self.doctor_user)
         return {
             "HTTP_AUTHORIZATION": f"Bearer {refresh.access_token}",
         }
+
     def test_donor_list_authenticated(self):
         response = self.client.get("/api/blood-bank/donors/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -68,7 +79,8 @@ class TestBloodBankAPIEndpoints(APITestCase):
             "/api/blood-bank/donors/", **self.get_admin_auth_headers()
         )
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) >= 1  
+        assert len(response.data) >= 1
+
     def test_donor_create_admin(self):
         donor_data = {
             "name": "New Test Donor",
@@ -87,6 +99,7 @@ class TestBloodBankAPIEndpoints(APITestCase):
         assert response.data["blood_type"] == "A+"
         created_donor = Donor.objects.get(name="New Test Donor")
         assert created_donor.pk is not None
+
     def test_donor_create_doctor(self):
         donor_data = {
             "name": "Doctor Created Donor",
@@ -102,6 +115,7 @@ class TestBloodBankAPIEndpoints(APITestCase):
         )
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["name"] == "Doctor Created Donor"
+
     def test_donor_create_patient_forbidden(self):
         donor_data = {
             "name": "Patient Attempt",
@@ -116,6 +130,7 @@ class TestBloodBankAPIEndpoints(APITestCase):
         headers = {"HTTP_AUTHORIZATION": f"Bearer {refresh.access_token}"}
         response = self.client.post("/api/blood-bank/donors/", donor_data, **headers)
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
     def test_inventory_list_with_cache(self):
         response = self.client.get(
             "/api/blood-bank/inventory/", **self.get_admin_auth_headers()
@@ -127,12 +142,13 @@ class TestBloodBankAPIEndpoints(APITestCase):
         )
         assert response2.status_code == status.HTTP_200_OK
         assert response.data == response2.data
+
     def test_inventory_expiring_soon(self):
         expiring_inventory = BloodInventory.objects.create(
             donor=self.donor,
             blood_type="O+",
             unit_id="EXP-001",
-            expiry_date=date.today() + timedelta(days=5),  
+            expiry_date=date.today() + timedelta(days=5),
             status="AVAILABLE",
             quantity=1,
         )
@@ -142,6 +158,7 @@ class TestBloodBankAPIEndpoints(APITestCase):
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
         assert any(unit["unit_id"] == "EXP-001" for unit in response.data)
+
     def test_inventory_reserve_action(self):
         response = self.client.post(
             f"/api/blood-bank/inventory/{self.inventory.pk}/reserve/",
@@ -152,6 +169,7 @@ class TestBloodBankAPIEndpoints(APITestCase):
         assert response.data["status"] == "RESERVED"
         updated_inventory = BloodInventory.objects.get(pk=self.inventory.pk)
         assert updated_inventory.status == "RESERVED"
+
     def test_transfusion_creation(self):
         transfusion_data = {
             "patient": self.patient.pk,
@@ -169,6 +187,7 @@ class TestBloodBankAPIEndpoints(APITestCase):
         assert response.data["blood_unit"] == self.inventory.pk
         updated_inventory = BloodInventory.objects.get(pk=self.inventory.pk)
         assert updated_inventory.status == "TRANSFUSED"
+
     def test_crossmatch_creation(self):
         crossmatch_data = {
             "patient": self.patient.pk,
@@ -184,6 +203,7 @@ class TestBloodBankAPIEndpoints(APITestCase):
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["compatibility_result"] == "COMPATIBLE"
         assert response.data["patient"] == self.patient.pk
+
     def test_crossmatch_compatible_units(self):
         Crossmatch.objects.create(
             patient=self.patient,
@@ -201,6 +221,7 @@ class TestBloodBankAPIEndpoints(APITestCase):
             crossmatch["blood_unit"] == self.inventory.pk
             for crossmatch in response.data
         )
+
     def test_invalid_blood_type_validation(self):
         donor_data = {
             "name": "Invalid Blood Type",
@@ -208,7 +229,7 @@ class TestBloodBankAPIEndpoints(APITestCase):
             "ssn": "000-00-0000",
             "address": "Invalid Address",
             "contact": "0000000000",
-            "blood_type": "INVALID",  
+            "blood_type": "INVALID",
             "is_active": True,
         }
         response = self.client.post(
@@ -216,12 +237,13 @@ class TestBloodBankAPIEndpoints(APITestCase):
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "blood_type" in response.data
+
     def test_invalid_expiry_date_validation(self):
         inventory_data = {
             "donor": self.donor.pk,
             "blood_type": "O+",
             "unit_id": "INVALID-EXPIRY",
-            "expiry_date": "2023-01-01",  
+            "expiry_date": "2023-01-01",
             "status": "AVAILABLE",
             "quantity": 1,
         }

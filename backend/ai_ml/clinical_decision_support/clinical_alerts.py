@@ -1,3 +1,7 @@
+"""
+clinical_alerts module
+"""
+
 import json
 import logging
 from dataclasses import dataclass
@@ -169,7 +173,10 @@ class VitalSignsMonitor:
                     )
                 )
         if vital_signs.blood_pressure_systolic:
-            if vital_signs.blood_pressure_systolic <= self.thresholds.BLOOD_PRESSURE_SYSTOLIC_CRITICAL_LOW:
+            if (
+                vital_signs.blood_pressure_systolic
+                <= self.thresholds.BLOOD_PRESSURE_SYSTOLIC_CRITICAL_LOW
+            ):
                 alerts.append(
                     self._create_alert(
                         vital_signs.patient_id,
@@ -184,7 +191,10 @@ class VitalSignsMonitor:
                         vital_signs,
                     )
                 )
-            elif vital_signs.blood_pressure_systolic >= self.thresholds.BLOOD_PRESSURE_SYSTOLIC_CRITICAL_HIGH:
+            elif (
+                vital_signs.blood_pressure_systolic
+                >= self.thresholds.BLOOD_PRESSURE_SYSTOLIC_CRITICAL_HIGH
+            ):
                 alerts.append(
                     self._create_alert(
                         vital_signs.patient_id,
@@ -200,7 +210,10 @@ class VitalSignsMonitor:
                     )
                 )
         if vital_signs.respiratory_rate:
-            if vital_signs.respiratory_rate <= self.thresholds.RESPIRATORY_RATE_CRITICAL_LOW:
+            if (
+                vital_signs.respiratory_rate
+                <= self.thresholds.RESPIRATORY_RATE_CRITICAL_LOW
+            ):
                 alerts.append(
                     self._create_alert(
                         vital_signs.patient_id,
@@ -215,7 +228,10 @@ class VitalSignsMonitor:
                         vital_signs,
                     )
                 )
-            elif vital_signs.respiratory_rate >= self.thresholds.RESPIRATORY_RATE_CRITICAL_HIGH:
+            elif (
+                vital_signs.respiratory_rate
+                >= self.thresholds.RESPIRATORY_RATE_CRITICAL_HIGH
+            ):
                 alerts.append(
                     self._create_alert(
                         vital_signs.patient_id,
@@ -231,7 +247,10 @@ class VitalSignsMonitor:
                     )
                 )
         if vital_signs.oxygen_saturation:
-            if vital_signs.oxygen_saturation <= self.thresholds.OXYGEN_SATURATION_CRITICAL_LOW:
+            if (
+                vital_signs.oxygen_saturation
+                <= self.thresholds.OXYGEN_SATURATION_CRITICAL_LOW
+            ):
                 alerts.append(
                     self._create_alert(
                         vital_signs.patient_id,
@@ -340,7 +359,11 @@ class LaboratoryMonitor:
                     lab_result,
                     "low",
                     low,
-                    (AlertPriority.HIGH if lab_result.result_value < low * 0.7 else AlertPriority.MEDIUM),
+                    (
+                        AlertPriority.HIGH
+                        if lab_result.result_value < low * 0.7
+                        else AlertPriority.MEDIUM
+                    ),
                 )
             )
         elif lab_result.result_value > high:
@@ -349,7 +372,11 @@ class LaboratoryMonitor:
                     lab_result,
                     "high",
                     high,
-                    (AlertPriority.HIGH if lab_result.result_value > high * 1.3 else AlertPriority.MEDIUM),
+                    (
+                        AlertPriority.HIGH
+                        if lab_result.result_value > high * 1.3
+                        else AlertPriority.MEDIUM
+                    ),
                 )
             )
         if lab_result.critical:
@@ -390,16 +417,24 @@ class LaboratoryMonitor:
             status=AlertStatus.ACTIVE,
         )
 
-    def _check_trends(self, current_result: LaboratoryResult, history: List[LaboratoryResult]) -> List[ClinicalAlert]:
+    def _check_trends(
+        self, current_result: LaboratoryResult, history: List[LaboratoryResult]
+    ) -> List[ClinicalAlert]:
         alerts = []
-        relevant_history = [r for r in history if r.test_name == current_result.test_name]
+        relevant_history = [
+            r for r in history if r.test_name == current_result.test_name
+        ]
         if len(relevant_history) >= 2:
-            values = [r.result_value for r in relevant_history[-3:]] + [current_result.result_value]
+            values = [r.result_value for r in relevant_history[-3:]] + [
+                current_result.result_value
+            ]
             if len(values) >= 3:
                 trend = self._calculate_trend(values)
                 if abs(trend) > 0.5:
                     direction = "increasing" if trend > 0 else "decreasing"
-                    priority = AlertPriority.HIGH if abs(trend) > 1.0 else AlertPriority.MEDIUM
+                    priority = (
+                        AlertPriority.HIGH if abs(trend) > 1.0 else AlertPriority.MEDIUM
+                    )
                     alert_id = f"{current_result.patient_id}_{current_result.test_name}_trend_{int(timezone.now().timestamp())}"
                     alert = ClinicalAlert(
                         alert_id=alert_id,
@@ -445,10 +480,16 @@ class SepsisMonitor:
         alerts = []
         score = 0
         criteria_met = []
-        if vital_signs.respiratory_rate and vital_signs.respiratory_rate >= self.criteria.RESPIRATORY_RATE_HIGH:
+        if (
+            vital_signs.respiratory_rate
+            and vital_signs.respiratory_rate >= self.criteria.RESPIRATORY_RATE_HIGH
+        ):
             score += 1
             criteria_met.append("respiratory_rate")
-        if vital_signs.heart_rate and vital_signs.heart_rate >= self.criteria.HEART_RATE_HIGH:
+        if (
+            vital_signs.heart_rate
+            and vital_signs.heart_rate >= self.criteria.HEART_RATE_HIGH
+        ):
             score += 1
             criteria_met.append("heart_rate")
         if vital_signs.temperature:
@@ -459,7 +500,9 @@ class SepsisMonitor:
                 score += 1
                 criteria_met.append("temperature")
         if score >= 2:
-            alert_id = f"{vital_signs.patient_id}_sepsis_{int(timezone.now().timestamp())}"
+            alert_id = (
+                f"{vital_signs.patient_id}_sepsis_{int(timezone.now().timestamp())}"
+            )
             priority = AlertPriority.CRITICAL if score == 3 else AlertPriority.HIGH
             alert = ClinicalAlert(
                 alert_id=alert_id,
@@ -494,13 +537,19 @@ class ClinicalAlertSystem:
     ) -> List[ClinicalAlert]:
         all_alerts = []
         if vital_signs:
-            vital_signs_alerts = self.vital_signs_monitor.monitor_vital_signs(vital_signs)
+            vital_signs_alerts = self.vital_signs_monitor.monitor_vital_signs(
+                vital_signs
+            )
             all_alerts.extend(vital_signs_alerts)
-            sepsis_alerts = self.sepsis_monitor.screen_for_sepsis(vital_signs, lab_results)
+            sepsis_alerts = self.sepsis_monitor.screen_for_sepsis(
+                vital_signs, lab_results
+            )
             all_alerts.extend(sepsis_alerts)
         if lab_results:
             for lab_result in lab_results:
-                lab_alerts = self.laboratory_monitor.monitor_laboratory_results(lab_result, lab_history)
+                lab_alerts = self.laboratory_monitor.monitor_laboratory_results(
+                    lab_result, lab_history
+                )
                 all_alerts.extend(lab_alerts)
         for alert in all_alerts:
             self._process_alert(alert)
@@ -600,8 +649,14 @@ class ClinicalAlertSystem:
                         "alert_id": alert.alert_id,
                         "status": alert.status.value,
                         "acknowledged_by": alert.acknowledged_by,
-                        "acknowledged_at": (alert.acknowledged_at.isoformat() if alert.acknowledged_at else None),
-                        "resolved_at": (alert.resolved_at.isoformat() if alert.resolved_at else None),
+                        "acknowledged_at": (
+                            alert.acknowledged_at.isoformat()
+                            if alert.acknowledged_at
+                            else None
+                        ),
+                        "resolved_at": (
+                            alert.resolved_at.isoformat() if alert.resolved_at else None
+                        ),
                         "notes": alert.notes,
                     },
                 },
@@ -632,14 +687,20 @@ def create_clinical_alerts_api():
                     patient_id=patient_id,
                     timestamp=timezone.now(),
                     heart_rate=vital_signs_data.get("heart_rate"),
-                    blood_pressure_systolic=vital_signs_data.get("blood_pressure_systolic"),
-                    blood_pressure_diastolic=vital_signs_data.get("blood_pressure_diastolic"),
+                    blood_pressure_systolic=vital_signs_data.get(
+                        "blood_pressure_systolic"
+                    ),
+                    blood_pressure_diastolic=vital_signs_data.get(
+                        "blood_pressure_diastolic"
+                    ),
                     respiratory_rate=vital_signs_data.get("respiratory_rate"),
                     oxygen_saturation=vital_signs_data.get("oxygen_saturation"),
                     temperature=vital_signs_data.get("temperature"),
                     blood_glucose=vital_signs_data.get("blood_glucose"),
                 )
-                alerts = self.alert_system.process_patient_data(patient_id=patient_id, vital_signs=vital_signs)
+                alerts = self.alert_system.process_patient_data(
+                    patient_id=patient_id, vital_signs=vital_signs
+                )
                 return Response(
                     {
                         "patient_id": patient_id,
@@ -668,7 +729,9 @@ def create_clinical_alerts_api():
                 alert_id = request.data.get("alert_id")
                 acknowledged_by = request.data.get("acknowledged_by")
                 notes = request.data.get("notes")
-                success = self.alert_system.acknowledge_alert(alert_id, acknowledged_by, notes)
+                success = self.alert_system.acknowledge_alert(
+                    alert_id, acknowledged_by, notes
+                )
                 return Response(
                     {
                         "alert_id": alert_id,

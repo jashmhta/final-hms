@@ -215,7 +215,9 @@ class PostgreSQLConfigurator:
             },
             "workload_profile": {
                 "read_write_ratio": round(self.workload_profile.read_write_ratio, 1),
-                "avg_query_time_ms": round(self.workload_profile.average_query_time_ms, 1),
+                "avg_query_time_ms": round(
+                    self.workload_profile.average_query_time_ms, 1
+                ),
                 "concurrent_connections": self.workload_profile.concurrent_connections,
             },
             "configuration": annotated_config,
@@ -233,7 +235,9 @@ class PostgreSQLConfigurator:
 
         # effective_cache_size: 50% of RAM for read-heavy workloads
         cache_percentage = 0.5 if self.workload_profile.read_write_ratio > 1 else 0.3
-        effective_cache_mb = int(self.system_resources.total_memory_gb * 1024 * cache_percentage)
+        effective_cache_mb = int(
+            self.system_resources.total_memory_gb * 1024 * cache_percentage
+        )
         config["effective_cache_size"] = f"{effective_cache_mb}MB"
 
         # work_mem: Based on query complexity and available memory
@@ -244,7 +248,9 @@ class PostgreSQLConfigurator:
         config["work_mem"] = f"{work_mem_mb}MB"
 
         # maintenance_work_mem: For index creation and VACUUM
-        maintenance_mem_mb = min(2048, int(self.system_resources.available_memory_gb * 256))
+        maintenance_mem_mb = min(
+            2048, int(self.system_resources.available_memory_gb * 256)
+        )
         config["maintenance_work_mem"] = f"{maintenance_mem_mb}MB"
 
         return config
@@ -254,7 +260,10 @@ class PostgreSQLConfigurator:
         config = {}
 
         # max_connections: Based on application needs
-        app_connections = max(self.workload_profile.concurrent_connections * 2, self.system_resources.cpu_cores * 10)
+        app_connections = max(
+            self.workload_profile.concurrent_connections * 2,
+            self.system_resources.cpu_cores * 10,
+        )
         config["max_connections"] = str(min(200, app_connections))
 
         # Connection pool settings
@@ -333,8 +342,12 @@ class PostgreSQLConfigurator:
 
         if self.system_resources.cpu_cores > 2:
             config["max_parallel_workers"] = str(self.system_resources.cpu_cores)
-            config["max_parallel_workers_per_gather"] = str(min(4, self.system_resources.cpu_cores // 2))
-            config["max_parallel_maintenance_workers"] = str(min(4, self.system_resources.cpu_cores // 2))
+            config["max_parallel_workers_per_gather"] = str(
+                min(4, self.system_resources.cpu_cores // 2)
+            )
+            config["max_parallel_maintenance_workers"] = str(
+                min(4, self.system_resources.cpu_cores // 2)
+            )
         else:
             config["max_parallel_workers"] = "0"
             config["max_parallel_workers_per_gather"] = "0"
@@ -396,7 +409,9 @@ class PostgreSQLConfigurator:
             "max_parallel_workers_per_gather": f"Limited to half of CPU cores: {self.system_resources.cpu_cores // 2}",
             "max_parallel_maintenance_workers": f"Limited to half of CPU cores: {self.system_resources.cpu_cores // 2}",
         }
-        return justifications.get(param_name, "Optimized based on system resources and workload analysis")
+        return justifications.get(
+            param_name, "Optimized based on system resources and workload analysis"
+        )
 
     def _estimate_performance_improvement(self) -> Dict[str, str]:
         """Estimate performance improvements from configuration changes"""
@@ -404,11 +419,15 @@ class PostgreSQLConfigurator:
 
         # Memory improvements
         if self.system_resources.total_memory_gb > 4:
-            improvements.append("25-40% improvement in query performance from increased memory allocation")
+            improvements.append(
+                "25-40% improvement in query performance from increased memory allocation"
+            )
 
         # Disk improvements
         if self.system_resources.disk_type == "NVMe":
-            improvements.append("15-25% improvement in I/O performance with NVMe-optimized settings")
+            improvements.append(
+                "15-25% improvement in I/O performance with NVMe-optimized settings"
+            )
 
         # Workload-specific improvements
         if self.workload_profile.read_write_ratio > 2:
@@ -417,7 +436,10 @@ class PostgreSQLConfigurator:
         if self.workload_profile.average_query_time_ms > 100:
             improvements.append("15-35% improvement in slow query performance")
 
-        return {"estimated_improvements": improvements, "overall_expected": "15-45% performance improvement expected"}
+        return {
+            "estimated_improvements": improvements,
+            "overall_expected": "15-45% performance improvement expected",
+        }
 
     def _get_implementation_priority(self) -> List[Dict[str, str]]:
         """Get implementation priority for configuration changes"""
@@ -429,7 +451,11 @@ class PostgreSQLConfigurator:
             },
             {
                 "priority": "MEDIUM",
-                "settings": ["random_page_cost", "effective_io_concurrency", "default_statistics_target"],
+                "settings": [
+                    "random_page_cost",
+                    "effective_io_concurrency",
+                    "default_statistics_target",
+                ],
                 "reason": "Query optimization settings improve planning",
             },
             {
@@ -446,7 +472,9 @@ class PostgreSQLConfigurator:
 
         if format_type == "postgresql.conf":
             lines.append("# HMS Enterprise PostgreSQL Configuration")
-            lines.append(f"# Generated on: {config['system_resources'].get('generation_time', 'Unknown')}")
+            lines.append(
+                f"# Generated on: {config['system_resources'].get('generation_time', 'Unknown')}"
+            )
             lines.append("#")
             lines.append(
                 f"# System: {config['system_resources']['cpu_cores']} cores, "
@@ -464,7 +492,12 @@ class PostgreSQLConfigurator:
 
     def validate_config(self, config_path: str) -> Dict[str, Any]:
         """Validate PostgreSQL configuration file"""
-        validation_result = {"valid": True, "warnings": [], "errors": [], "suggestions": []}
+        validation_result = {
+            "valid": True,
+            "warnings": [],
+            "errors": [],
+            "suggestions": [],
+        }
 
         try:
             with open(config_path, "r") as f:
@@ -472,7 +505,9 @@ class PostgreSQLConfigurator:
 
             # Check for common issues
             if "shared_buffers" in config_content:
-                shared_buffers_match = re.search(r"shared_buffers\s*=\s*(\d+)(MB|GB)", config_content)
+                shared_buffers_match = re.search(
+                    r"shared_buffers\s*=\s*(\d+)(MB|GB)", config_content
+                )
                 if shared_buffers_match:
                     value = float(shared_buffers_match.group(1))
                     unit = shared_buffers_match.group(2)
@@ -491,7 +526,9 @@ class PostgreSQLConfigurator:
             deprecated_settings = ["effective_cache", "checkpoint_segments"]
             for setting in deprecated_settings:
                 if setting in config_content:
-                    validation_result["warnings"].append(f"'{setting}' is deprecated in current PostgreSQL version")
+                    validation_result["warnings"].append(
+                        f"'{setting}' is deprecated in current PostgreSQL version"
+                    )
 
         except Exception as e:
             validation_result["valid"] = False
@@ -546,7 +583,9 @@ def apply_config_safely(config_changes: Dict[str, str]) -> Dict[str, Any]:
 
         # Apply changes (would need ALTER SYSTEM in production)
         # This is a simplified version
-        logger.info("Configuration changes validated. Use ALTER SYSTEM or update postgresql.conf")
+        logger.info(
+            "Configuration changes validated. Use ALTER SYSTEM or update postgresql.conf"
+        )
 
     except Exception as e:
         logger.error(f"Error applying config changes: {e}")

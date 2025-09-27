@@ -57,12 +57,26 @@ class EnterprisePerformanceManager:
         self.logger = logging.getLogger("enterprise.performance")
 
         # Performance metrics
-        self.request_count = Counter("hms_requests_total", "Total requests", ["method", "endpoint"])
-        self.response_time = Histogram("hms_response_time_seconds", "Response time in seconds", ["method", "endpoint"])
-        self.error_count = Counter("hms_errors_total", "Total errors", ["method", "endpoint", "error_type"])
-        self.cache_hits = Counter("hms_cache_hits_total", "Total cache hits", ["cache_type"])
-        self.cache_misses = Counter("hms_cache_misses_total", "Total cache misses", ["cache_type"])
-        self.active_connections = Gauge("hms_active_connections", "Active database connections")
+        self.request_count = Counter(
+            "hms_requests_total", "Total requests", ["method", "endpoint"]
+        )
+        self.response_time = Histogram(
+            "hms_response_time_seconds",
+            "Response time in seconds",
+            ["method", "endpoint"],
+        )
+        self.error_count = Counter(
+            "hms_errors_total", "Total errors", ["method", "endpoint", "error_type"]
+        )
+        self.cache_hits = Counter(
+            "hms_cache_hits_total", "Total cache hits", ["cache_type"]
+        )
+        self.cache_misses = Counter(
+            "hms_cache_misses_total", "Total cache misses", ["cache_type"]
+        )
+        self.active_connections = Gauge(
+            "hms_active_connections", "Active database connections"
+        )
         self.memory_usage = Gauge("hms_memory_usage_bytes", "Memory usage in bytes")
         self.cpu_usage = Gauge("hms_cpu_usage_percent", "CPU usage percentage")
 
@@ -85,9 +99,15 @@ class EnterprisePerformanceManager:
         start_http_server(8001)
 
         # Start background monitoring tasks
-        db_thread = threading.Thread(target=self._monitor_database_connections, daemon=True)
-        sys_thread = threading.Thread(target=self._monitor_system_resources, daemon=True)
-        cache_thread = threading.Thread(target=self._monitor_cache_performance, daemon=True)
+        db_thread = threading.Thread(
+            target=self._monitor_database_connections, daemon=True
+        )
+        sys_thread = threading.Thread(
+            target=self._monitor_system_resources, daemon=True
+        )
+        cache_thread = threading.Thread(
+            target=self._monitor_cache_performance, daemon=True
+        )
 
         db_thread.start()
         sys_thread.start()
@@ -98,7 +118,7 @@ class EnterprisePerformanceManager:
     def stop_monitoring(self):
         """Stop performance monitoring"""
         # Shutdown thread pool
-        if hasattr(self, 'thread_pool'):
+        if hasattr(self, "thread_pool"):
             self.thread_pool.shutdown(wait=True, cancel_futures=True)
 
         # Join monitoring threads
@@ -132,7 +152,9 @@ class EnterprisePerformanceManager:
                 if cached_result:
                     self.cache_hits.labels(cache_type="redis").inc()
                     response_time = time.time() - start_time
-                    self.response_time.labels(method=method, endpoint=endpoint).observe(response_time)
+                    self.response_time.labels(method=method, endpoint=endpoint).observe(
+                        response_time
+                    )
                     return cached_result
 
                 self.cache_misses.labels(cache_type="redis").inc()
@@ -145,13 +167,17 @@ class EnterprisePerformanceManager:
 
                 # Update metrics
                 response_time = time.time() - start_time
-                self.response_time.labels(method=method, endpoint=endpoint).observe(response_time)
+                self.response_time.labels(method=method, endpoint=endpoint).observe(
+                    response_time
+                )
                 self.request_count.labels(method=method, endpoint=endpoint).inc()
 
                 return result
 
             except Exception as e:
-                self.error_count.labels(method=method, endpoint=endpoint, error_type=type(e).__name__).inc()
+                self.error_count.labels(
+                    method=method, endpoint=endpoint, error_type=type(e).__name__
+                ).inc()
                 self.logger.error(f"Performance optimization error: {e}")
                 raise
 
@@ -167,7 +193,9 @@ class EnterprisePerformanceManager:
                 if self._is_io_bound_operation(func):
                     future = self.thread_pool.submit(func, *args, **kwargs)
                     try:
-                        return future.result(timeout=30)  # Add timeout to prevent hanging
+                        return future.result(
+                            timeout=30
+                        )  # Add timeout to prevent hanging
                     except Exception as e:
                         future.cancel()  # Cancel hanging futures
                         raise e
@@ -290,8 +318,20 @@ class EnterprisePerformanceManager:
         """Optimize field selection with only() or defer()"""
         field_optimization_map = {
             "patient": ["id", "user__username", "date_of_birth", "gender", "phone"],
-            "appointment": ["id", "patient__user__username", "doctor__user__username", "appointment_date", "status"],
-            "medicalrecord": ["id", "patient__user__username", "doctor__user__username", "record_date", "diagnosis"],
+            "appointment": [
+                "id",
+                "patient__user__username",
+                "doctor__user__username",
+                "appointment_date",
+                "status",
+            ],
+            "medicalrecord": [
+                "id",
+                "patient__user__username",
+                "doctor__user__username",
+                "record_date",
+                "diagnosis",
+            ],
         }
 
         optimized_fields = field_optimization_map.get(model.__name__.lower())
@@ -377,7 +417,9 @@ class EnterprisePerformanceManager:
             try:
                 # Get active connections
                 with connection.cursor() as cursor:
-                    cursor.execute("SELECT count(*) FROM pg_stat_activity WHERE state = 'active'")
+                    cursor.execute(
+                        "SELECT count(*) FROM pg_stat_activity WHERE state = 'active'"
+                    )
                     active_count = cursor.fetchone()[0]
 
                 self.active_connections.set(active_count)
@@ -457,8 +499,13 @@ class EnterprisePerformanceManager:
                 cache_info = self.redis_client.info()
                 cache_hit_ratio = (
                     cache_info.get("keyspace_hits", 0)
-                    / (cache_info.get("keyspace_hits", 0) + cache_info.get("keyspace_misses", 0))
-                    if cache_info.get("keyspace_hits", 0) + cache_info.get("keyspace_misses", 0) > 0
+                    / (
+                        cache_info.get("keyspace_hits", 0)
+                        + cache_info.get("keyspace_misses", 0)
+                    )
+                    if cache_info.get("keyspace_hits", 0)
+                    + cache_info.get("keyspace_misses", 0)
+                    > 0
                     else 0
                 )
 
@@ -471,25 +518,33 @@ class EnterprisePerformanceManager:
                     "database_connections": self.active_connections._value.get(),
                     "memory_usage": self.memory_usage._value.get(),
                     "cpu_usage": self.cpu_usage._value.get(),
-                    "recommendations": self._generate_performance_recommendations(slow_queries, cache_hit_ratio),
+                    "recommendations": self._generate_performance_recommendations(
+                        slow_queries, cache_hit_ratio
+                    ),
                 }
 
         except Exception as e:
             self.logger.error(f"Performance report error: {e}")
             return {"error": str(e)}
 
-    def _generate_performance_recommendations(self, slow_queries: list, cache_hit_ratio: float) -> List[str]:
+    def _generate_performance_recommendations(
+        self, slow_queries: list, cache_hit_ratio: float
+    ) -> List[str]:
         """Generate performance optimization recommendations"""
         recommendations = []
 
         # Slow query recommendations
         for query, mean_time, calls in slow_queries:
             if mean_time > self.long_query_threshold:
-                recommendations.append(f"Optimize slow query: {query[:100]}... (mean time: {mean_time:.3f}s)")
+                recommendations.append(
+                    f"Optimize slow query: {query[:100]}... (mean time: {mean_time:.3f}s)"
+                )
 
         # Cache recommendations
         if cache_hit_ratio < 0.7:
-            recommendations.append("Improve cache hit ratio - consider caching more frequently accessed data")
+            recommendations.append(
+                "Improve cache hit ratio - consider caching more frequently accessed data"
+            )
 
         # Connection recommendations
         if self.active_connections._value.get() > self.max_database_connections * 0.8:
@@ -547,7 +602,9 @@ class AutoScalingManager:
     def start_monitoring(self):
         """Start monitoring in a separate thread"""
         if not self._running:
-            self._monitor_thread = threading.Thread(target=self.monitor_and_scale, daemon=True)
+            self._monitor_thread = threading.Thread(
+                target=self.monitor_and_scale, daemon=True
+            )
             self._monitor_thread.start()
 
     def __del__(self):
@@ -574,7 +631,9 @@ class AutoScalingManager:
         """Get active database connections"""
         try:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT count(*) FROM pg_stat_activity WHERE state = 'active'")
+                cursor.execute(
+                    "SELECT count(*) FROM pg_stat_activity WHERE state = 'active'"
+                )
                 return cursor.fetchone()[0]
         except:
             return 0
@@ -595,7 +654,11 @@ class AutoScalingManager:
         active_connections = metrics["active_connections"]
 
         # Scale up if any metric is above threshold
-        if cpu_usage > self.scale_up_threshold or memory_usage > self.scale_up_threshold or active_connections > 80:
+        if (
+            cpu_usage > self.scale_up_threshold
+            or memory_usage > self.scale_up_threshold
+            or active_connections > 80
+        ):
 
             current_instances = self._get_current_instances()
             if current_instances < self.max_instances:

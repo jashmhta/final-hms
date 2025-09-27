@@ -1,3 +1,7 @@
+"""
+views module
+"""
+
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -99,8 +103,13 @@ class HospitalSubscriptionViewSet(viewsets.ModelViewSet):
             "trial": subscriptions.filter(status="TRIAL").count(),
             "expired": subscriptions.filter(status="EXPIRED").count(),
             "suspended": subscriptions.filter(status="SUSPENDED").count(),
-            "total_revenue": subscriptions.filter(status="ACTIVE").aggregate(total=Sum("monthly_amount"))["total"] or 0,
-            "expiring_soon": subscriptions.filter(end_date__lte=timezone.now() + timedelta(days=7)).count(),
+            "total_revenue": subscriptions.filter(status="ACTIVE").aggregate(
+                total=Sum("monthly_amount")
+            )["total"]
+            or 0,
+            "expiring_soon": subscriptions.filter(
+                end_date__lte=timezone.now() + timedelta(days=7)
+            ).count(),
         }
         return Response(stats)
 
@@ -135,7 +144,9 @@ class HospitalSubscriptionViewSet(viewsets.ModelViewSet):
                 }
             )
         except SubscriptionTier.DoesNotExist:
-            return Response({"error": "Invalid tier ID"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Invalid tier ID"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 class SuperadminDashboardViewSet(viewsets.ViewSet):
@@ -150,9 +161,9 @@ class SuperadminDashboardViewSet(viewsets.ViewSet):
         active_subscriptions = subscriptions.filter(status="ACTIVE").count()
         trial_subscriptions = subscriptions.filter(status="TRIAL").count()
         expired_subscriptions = subscriptions.filter(status="EXPIRED").count()
-        total_revenue_monthly = subscriptions.filter(status="ACTIVE").aggregate(total=Sum("monthly_amount"))[
-            "total"
-        ] or Decimal("0")
+        total_revenue_monthly = subscriptions.filter(status="ACTIVE").aggregate(
+            total=Sum("monthly_amount")
+        )["total"] or Decimal("0")
         active_alerts = SystemAlert.objects.filter(
             is_active=True,
             show_from__lte=timezone.now(),
@@ -195,10 +206,14 @@ class SuperadminDashboardViewSet(viewsets.ViewSet):
         recent_hospitals = Hospital.objects.order_by("-created_at")[:5]
         recent_alerts = SystemAlert.objects.order_by("-created_at")[:5]
         week_ago = timezone.now().date() - timedelta(days=7)
-        usage_metrics = UsageMetrics.objects.filter(date__gte=week_ago).order_by("-date")[:10]
+        usage_metrics = UsageMetrics.objects.filter(date__gte=week_ago).order_by(
+            "-date"
+        )[:10]
         return Response(
             {
-                "recent_hospitals": HospitalSummarySerializer(recent_hospitals, many=True).data,
+                "recent_hospitals": HospitalSummarySerializer(
+                    recent_hospitals, many=True
+                ).data,
                 "recent_alerts": SystemAlertSerializer(recent_alerts, many=True).data,
                 "usage_metrics": UsageMetricsSerializer(usage_metrics, many=True).data,
             }
@@ -221,7 +236,9 @@ class SuperadminDashboardViewSet(viewsets.ViewSet):
             service_name = service.get("name", "")
             quantity = int(service.get("quantity", 1))
             try:
-                catalog_item = ServiceCatalog.objects.filter(name__icontains=service_name).first()
+                catalog_item = ServiceCatalog.objects.filter(
+                    name__icontains=service_name
+                ).first()
                 if catalog_item:
                     cost = catalog_item.price_cents / 100 * quantity
                 else:
@@ -234,7 +251,9 @@ class SuperadminDashboardViewSet(viewsets.ViewSet):
                         "surgery": 25000,
                         "room_charge": 1000,
                     }
-                    cost = Decimal(str(default_prices.get("consultation", 500))) * quantity
+                    cost = (
+                        Decimal(str(default_prices.get("consultation", 500))) * quantity
+                    )
                 total_estimate += cost
                 breakdown.append(
                     {

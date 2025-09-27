@@ -174,7 +174,10 @@ class HIPAACompliance:
 
             if result["status"] == ComplianceStatus.COMPLIANT:
                 compliant_count += 1
-            elif result["status"] == ComplianceStatus.NON_COMPLIANT and control.criticality == "HIGH":
+            elif (
+                result["status"] == ComplianceStatus.NON_COMPLIANT
+                and control.criticality == "HIGH"
+            ):
                 assessment["critical_findings"].append(result)
 
         # Determine overall status
@@ -253,7 +256,11 @@ class HIPAACompliance:
         if dlp_violations:
             findings.append(f"Found {len(dlp_violations)} DLP violations for PHI")
 
-        status = ComplianceStatus.COMPLIANT if not findings else ComplianceStatus.NON_COMPLIANT
+        status = (
+            ComplianceStatus.COMPLIANT
+            if not findings
+            else ComplianceStatus.NON_COMPLIANT
+        )
 
         return {
             "status": status,
@@ -276,7 +283,11 @@ class HIPAACompliance:
         if not rbac_implemented:
             findings.append("RBAC not properly implemented")
 
-        status = ComplianceStatus.COMPLIANT if not findings else ComplianceStatus.NON_COMPLIANT
+        status = (
+            ComplianceStatus.COMPLIANT
+            if not findings
+            else ComplianceStatus.NON_COMPLIANT
+        )
 
         return {
             "status": status,
@@ -292,14 +303,20 @@ class HIPAACompliance:
         # Check audit log retention
         log_retention = self._check_audit_log_retention()
         if log_retention < 365:  # 6 years required by HIPAA
-            findings.append(f"Audit logs retained for only {log_retention} days (minimum 6 years required)")
+            findings.append(
+                f"Audit logs retained for only {log_retention} days (minimum 6 years required)"
+            )
 
         # Check audit log completeness
         log_completeness = self._check_audit_log_completeness()
         if log_completeness < 95:
             findings.append(f"Audit log completeness at {log_completeness}%")
 
-        status = ComplianceStatus.COMPLIANT if not findings else ComplianceStatus.NON_COMPLIANT
+        status = (
+            ComplianceStatus.COMPLIANT
+            if not findings
+            else ComplianceStatus.NON_COMPLIANT
+        )
 
         return {
             "status": status,
@@ -429,7 +446,10 @@ class GDPRCompliance:
 
             if result["status"] == ComplianceStatus.COMPLIANT:
                 compliant_count += 1
-            elif result["status"] == ComplianceStatus.NON_COMPLIANT and control.criticality == "HIGH":
+            elif (
+                result["status"] == ComplianceStatus.NON_COMPLIANT
+                and control.criticality == "HIGH"
+            ):
                 assessment["critical_findings"].append(result)
 
         # Determine overall status
@@ -472,7 +492,9 @@ class GDPRCompliance:
 
         return result
 
-    def process_data_subject_request(self, request_type: str, subject_id: str, details: Dict) -> Dict:
+    def process_data_subject_request(
+        self, request_type: str, subject_id: str, details: Dict
+    ) -> Dict:
         """Process GDPR data subject request"""
         request = {
             "request_id": f"DSR_{datetime.now().strftime('%Y%m%d%H%M%S')}",
@@ -640,7 +662,9 @@ class PCIDSSCompliance:
         compliant_count = 0
         total_controls = len(self.controls)
         critical_controls_passed = 0
-        critical_controls_total = sum(1 for c in self.controls if c.criticality == "CRITICAL")
+        critical_controls_total = sum(
+            1 for c in self.controls if c.criticality == "CRITICAL"
+        )
 
         for control in self.controls:
             result = self._assess_control(control)
@@ -654,7 +678,10 @@ class PCIDSSCompliance:
                 assessment["critical_findings"].append(result)
 
         # Determine PCI level
-        if critical_controls_passed == critical_controls_total and compliant_count >= total_controls * 0.95:
+        if (
+            critical_controls_passed == critical_controls_total
+            and compliant_count >= total_controls * 0.95
+        ):
             assessment["overall_status"] = ComplianceStatus.COMPLIANT
             assessment["pci_level"] = 1
         elif compliant_count >= total_controls * 0.80:
@@ -705,9 +732,15 @@ class PCIDSSCompliance:
         # Check for proper tokenization
         tokenization = self._check_tokenization()
         if tokenization < 100:
-            findings.append(f"Tokenization implemented for {tokenization}% of card data")
+            findings.append(
+                f"Tokenization implemented for {tokenization}% of card data"
+            )
 
-        status = ComplianceStatus.COMPLIANT if not findings else ComplianceStatus.NON_COMPLIANT
+        status = (
+            ComplianceStatus.COMPLIANT
+            if not findings
+            else ComplianceStatus.NON_COMPLIANT
+        )
 
         return {
             "status": status,
@@ -792,7 +825,9 @@ class ComplianceAutomationEngine:
         }
 
         for framework, assessment in results.items():
-            summary["compliance_scores"][framework] = self._calculate_compliance_score(assessment)
+            summary["compliance_scores"][framework] = self._calculate_compliance_score(
+                assessment
+            )
             summary["critical_findings"] += len(assessment.get("critical_findings", []))
 
         # Determine overall compliance
@@ -808,7 +843,11 @@ class ComplianceAutomationEngine:
         if not assessment.get("control_results"):
             return 0.0
 
-        compliant_controls = sum(1 for r in assessment["control_results"] if r["status"] == ComplianceStatus.COMPLIANT)
+        compliant_controls = sum(
+            1
+            for r in assessment["control_results"]
+            if r["status"] == ComplianceStatus.COMPLIANT
+        )
         total_controls = len(assessment["control_results"])
 
         return (compliant_controls / total_controls) * 100

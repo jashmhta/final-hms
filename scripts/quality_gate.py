@@ -1,12 +1,18 @@
+"""
+quality_gate module
+"""
+
 import subprocess
 import sys
+
+
 def quality_gate():
     checks = [
-        ['python', 'manage.py', 'test', '--coverage', '--cov-fail-under=100'],
-        ['flake8', '.'],
-        ['mypy', '.'],
-        ['bandit', '-r', '.'],
-        ['safety', 'check']
+        ["python", "manage.py", "test", "--coverage", "--cov-fail-under=100"],
+        ["flake8", "."],
+        ["mypy", "."],
+        ["bandit", "-r", "."],
+        ["safety", "check"],
     ]
     for check in checks:
         result = subprocess.run(check, capture_output=True, text=True)
@@ -16,5 +22,7 @@ def quality_gate():
             print(result.stderr)
             sys.exit(1)
     print("All quality gates passed")
+
+
 if __name__ == "__main__":
     quality_gate()

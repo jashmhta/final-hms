@@ -68,20 +68,27 @@ class QueryOptimizer:
         return queryset
 
     @staticmethod
-    def bulk_optimized_create(model_class: type[T], data_list: List[Dict[str, Any]], batch_size: int = 1000) -> List[T]:
+    def bulk_optimized_create(
+        model_class: type[T], data_list: List[Dict[str, Any]], batch_size: int = 1000
+    ) -> List[T]:
         """Optimized bulk create with batching"""
         created_objects = []
 
         for i in range(0, len(data_list), batch_size):
             batch = data_list[i : i + batch_size]
-            objects = model_class.objects.bulk_create([model_class(**data) for data in batch], batch_size=batch_size)
+            objects = model_class.objects.bulk_create(
+                [model_class(**data) for data in batch], batch_size=batch_size
+            )
             created_objects.extend(objects)
 
         return created_objects
 
     @staticmethod
     def bulk_optimized_update(
-        model_class: type[T], queryset: models.QuerySet[T], updates: Dict[str, Any], batch_size: int = 1000
+        model_class: type[T],
+        queryset: models.QuerySet[T],
+        updates: Dict[str, Any],
+        batch_size: int = 1000,
     ) -> int:
         """Optimized bulk update with batching"""
         total_updated = 0
@@ -99,7 +106,11 @@ class SmartPaginator:
     """Intelligent pagination with optimization"""
 
     def __init__(
-        self, queryset: models.QuerySet, per_page: int = 20, max_page_size: int = 100, cache_timeout: int = 300
+        self,
+        queryset: models.QuerySet,
+        per_page: int = 20,
+        max_page_size: int = 100,
+        cache_timeout: int = 300,
     ):
         self.queryset = queryset
         self.per_page = min(per_page, max_page_size)
@@ -180,16 +191,24 @@ class QueryProfiler:
             query_time = float(query["time"])
             if query_time > 0.1:  # Slow query threshold
                 self.slow_queries.append(
-                    {"sql": query["sql"], "time": query_time, "stack": query.get("stack_trace", "")}
+                    {
+                        "sql": query["sql"],
+                        "time": query_time,
+                        "stack": query.get("stack_trace", ""),
+                    }
                 )
 
         # Log profiling results
-        logger.info(f"Query Profile: {self.query_count} queries in {self.query_time:.3f}s")
+        logger.info(
+            f"Query Profile: {self.query_count} queries in {self.query_time:.3f}s"
+        )
 
         if self.slow_queries:
             logger.warning(f"Found {len(self.slow_queries)} slow queries")
             for slow_query in self.slow_queries[:5]:  # Log top 5
-                logger.warning(f"Slow query ({slow_query['time']:.3f}s): {slow_query['sql'][:200]}...")
+                logger.warning(
+                    f"Slow query ({slow_query['time']:.3f}s): {slow_query['sql'][:200]}..."
+                )
 
 
 def profile_queries(func):
@@ -226,18 +245,34 @@ class IndexOptimizer:
             # Suggest index for foreign keys
             if field.is_relation and field.concrete:
                 suggestions.append(
-                    {"field": field.name, "type": "btree", "reason": f"Foreign key to {field.related_model.__name__}"}
+                    {
+                        "field": field.name,
+                        "type": "btree",
+                        "reason": f"Foreign key to {field.related_model.__name__}",
+                    }
                 )
 
             # Suggest index for fields with db_index=True
             if field.db_index and not field.unique:
-                suggestions.append({"field": field.name, "type": "btree", "reason": "Explicit index requested"})
+                suggestions.append(
+                    {
+                        "field": field.name,
+                        "type": "btree",
+                        "reason": "Explicit index requested",
+                    }
+                )
 
         # Analyze common query patterns (this would require query logging)
         # For now, suggest composite indexes for common patterns
         if hasattr(model_class, "get_common_query_patterns"):
             for pattern in model_class.get_common_query_patterns():
-                suggestions.append({"fields": pattern["fields"], "type": "composite", "reason": pattern["reason"]})
+                suggestions.append(
+                    {
+                        "fields": pattern["fields"],
+                        "type": "composite",
+                        "reason": pattern["reason"],
+                    }
+                )
 
         return suggestions
 
@@ -265,15 +300,33 @@ class CachingManager(models.Manager):
 # Common query patterns for healthcare data
 HEALTHCARE_QUERY_PATTERNS = {
     "Patient": [
-        {"fields": ["hospital", "status", "last_name"], "reason": "Common patient listing by hospital and status"},
-        {"fields": ["hospital", "date_of_birth"], "reason": "Age-based queries within hospital"},
+        {
+            "fields": ["hospital", "status", "last_name"],
+            "reason": "Common patient listing by hospital and status",
+        },
+        {
+            "fields": ["hospital", "date_of_birth"],
+            "reason": "Age-based queries within hospital",
+        },
     ],
     "Appointment": [
-        {"fields": ["hospital", "appointment_date", "status"], "reason": "Daily appointment schedules by hospital"},
-        {"fields": ["patient", "appointment_date"], "reason": "Patient appointment history"},
+        {
+            "fields": ["hospital", "appointment_date", "status"],
+            "reason": "Daily appointment schedules by hospital",
+        },
+        {
+            "fields": ["patient", "appointment_date"],
+            "reason": "Patient appointment history",
+        },
     ],
     "MedicalRecord": [
-        {"fields": ["patient", "record_date"], "reason": "Chronological patient records"},
-        {"fields": ["hospital", "record_type", "record_date"], "reason": "Hospital record type filtering"},
+        {
+            "fields": ["patient", "record_date"],
+            "reason": "Chronological patient records",
+        },
+        {
+            "fields": ["hospital", "record_type", "record_date"],
+            "reason": "Hospital record type filtering",
+        },
     ],
 }

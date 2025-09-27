@@ -27,7 +27,9 @@ class Migration(migrations.Migration):
                 ("updated_at", models.DateTimeField(auto_now=True)),
                 (
                     "file",
-                    models.FileField(upload_to=ehr.models.encounter_attachment_upload_to),
+                    models.FileField(
+                        upload_to=ehr.models.encounter_attachment_upload_to
+                    ),
                 ),
                 ("description", models.CharField(blank=True, max_length=255)),
                 (

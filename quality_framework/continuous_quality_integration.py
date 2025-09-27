@@ -1,18 +1,24 @@
+"""
+continuous_quality_integration module
+"""
+
 import asyncio
 import json
 import logging
-import subprocess
 import os
+import subprocess
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Tuple
-from dataclasses import dataclass, asdict
 from enum import Enum
-import yaml
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
 import aiohttp
 import docker
-from pathlib import Path
 import git
-from concurrent.futures import ThreadPoolExecutor
+import yaml
+
 logger = logging.getLogger(__name__)
 class PipelineStage(Enum):
     CODE_ANALYSIS = "code_analysis"

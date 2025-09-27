@@ -1,6 +1,13 @@
+"""
+test_encryption module
+"""
+
 import pytest
 from cryptography.fernet import Fernet
+
 from ....app.fields import EncryptedCharField, EncryptedTextField
+
+
 @pytest.mark.django_db
 class TestEncryptionFields:
     def test_encrypted_char_field(self):
@@ -8,9 +15,10 @@ class TestEncryptionFields:
         value = "Test Encrypted Value"
         encrypted = field.get_prep_value(value)
         assert encrypted is not None
-        assert encrypted != value  
+        assert encrypted != value
         decrypted = field.from_db_value(encrypted, None, None)
         assert decrypted == value
+
     def test_encrypted_text_field(self):
         field = EncryptedTextField()
         long_value = "This is a very long encrypted text field value that should be properly encrypted and decrypted for HIPAA compliance testing purposes."
@@ -18,8 +26,9 @@ class TestEncryptionFields:
         assert encrypted is not None
         decrypted = field.from_db_value(encrypted, None, None)
         assert decrypted == long_value
+
     def test_encryption_error_handling(self):
         field = EncryptedCharField()
-        invalid_token = b"gAAAAAB..."  
+        invalid_token = b"gAAAAAB..."
         result = field.from_db_value(invalid_token, None, None)
         assert result == "[ENCRYPTED_DATA_CORRUPTED]"

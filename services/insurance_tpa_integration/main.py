@@ -1,7 +1,12 @@
-from typing import List, Optional
+"""
+main module
+"""
+
 import asyncio
 import logging
 from datetime import datetime, timedelta
+from typing import List, Optional
+
 import crud
 import database
 import models
@@ -9,67 +14,90 @@ import schemas
 import uvicorn
 from database import engine, get_db
 from fastapi import Depends, FastAPI, HTTPException, status
-from sqlalchemy.orm import Session
 from insurance_service import (
-    create_insurance_service,
-    EligibilityRequest,
-    PreAuthRequest,
     ClaimSubmission,
-    InsuranceIntegrationService
+    EligibilityRequest,
+    InsuranceIntegrationService,
+    PreAuthRequest,
+    create_insurance_service,
 )
+from sqlalchemy.orm import Session
+
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="Insurance/TPA Integration Service",
     description="Enterprise-grade insurance claim management and TPA integration system",
     version="1.0.0",
 )
+
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "insurance_tpa_integration"}
+
+
 @app.post("/providers/", response_model=schemas.InsuranceProvider)
 async def create_provider(
     provider: schemas.InsuranceProviderCreate, db: Session = Depends(get_db)
 ):
     return crud.create_insurance_provider(db, provider)
+
+
 @app.get("/providers/", response_model=List[schemas.InsuranceProvider])
 async def get_providers(db: Session = Depends(get_db)):
     return crud.get_all_insurance_providers(db)
+
+
 @app.get("/providers/{provider_id}", response_model=schemas.InsuranceProvider)
 async def get_provider(provider_id: int, db: Session = Depends(get_db)):
     provider = crud.get_insurance_provider(db, provider_id)
     if not provider:
         raise HTTPException(status_code=404, detail="Insurance provider not found")
     return provider
+
+
 @app.post("/policies/", response_model=schemas.InsurancePolicy)
 async def create_policy(
     policy: schemas.InsurancePolicyCreate, db: Session = Depends(get_db)
 ):
     return crud.create_insurance_policy(db, policy)
+
+
 @app.get("/policies/{policy_id}", response_model=schemas.InsurancePolicy)
 async def get_policy(policy_id: int, db: Session = Depends(get_db)):
     policy = crud.get_insurance_policy(db, policy_id)
     if not policy:
         raise HTTPException(status_code=404, detail="Insurance policy not found")
     return policy
+
+
 @app.get(
     "/patients/{patient_id}/policies", response_model=List[schemas.InsurancePolicy]
 )
 async def get_patient_policies(patient_id: int, db: Session = Depends(get_db)):
     return crud.get_patient_policies(db, patient_id)
+
+
 @app.post("/claims/", response_model=schemas.InsuranceClaim)
 async def create_claim(
     claim: schemas.InsuranceClaimCreate, db: Session = Depends(get_db)
 ):
     return crud.create_insurance_claim(db, claim)
+
+
 @app.get("/claims/{claim_id}", response_model=schemas.InsuranceClaim)
 async def get_claim(claim_id: int, db: Session = Depends(get_db)):
     claim = crud.get_insurance_claim(db, claim_id)
     if not claim:
         raise HTTPException(status_code=404, detail="Insurance claim not found")
     return claim
+
+
 @app.get("/patients/{patient_id}/claims", response_model=List[schemas.InsuranceClaim])
 async def get_patient_claims(patient_id: int, db: Session = Depends(get_db)):
     return crud.get_patient_claims(db, patient_id)
+
+
 @app.patch("/claims/{claim_id}/status")
 async def update_claim_status(
     claim_id: int, status_update: dict, db: Session = Depends(get_db)
@@ -82,6 +110,8 @@ async def update_claim_status(
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
     return {"message": f"Claim status updated to {status}", "claim": claim}
+
+
 @app.post("/eligibility/check")
 async def check_eligibility(
     request: schemas.EligibilityRequest, db: Session = Depends(get_db)
@@ -92,6 +122,8 @@ async def check_eligibility(
     if not result:
         raise HTTPException(status_code=404, detail="Eligibility check failed")
     return result
+
+
 @app.post("/claims/{claim_id}/submit")
 async def submit_claim_to_tpa(
     claim_id: int, tpa_provider_id: int, db: Session = Depends(get_db)
@@ -100,16 +132,22 @@ async def submit_claim_to_tpa(
     if not transaction:
         raise HTTPException(status_code=404, detail="Claim or provider not found")
     return {"message": "Claim submitted to TPA", "transaction": transaction}
+
+
 @app.post("/payments/", response_model=schemas.PaymentRecord)
 async def create_payment(
     payment: schemas.PaymentRecordCreate, db: Session = Depends(get_db)
 ):
     return crud.create_payment_record(db, payment)
+
+
 @app.get("/claims/{claim_id}/payments", response_model=List[schemas.PaymentRecord])
 async def get_claim_payments(claim_id: int, db: Session = Depends(get_db)):
     return crud.get_claim_payments(db, claim_id)
 
+
 # Enterprise Insurance Integration Endpoints
+
 
 @app.post("/insurance/eligibility/check")
 async def check_insurance_eligibility(
@@ -122,7 +160,7 @@ async def check_insurance_eligibility(
     diagnosis_codes: List[str] = [],
     procedure_codes: List[str] = [],
     provider_id: int = 1,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Enterprise insurance eligibility verification with real-time provider connectivity
@@ -134,7 +172,7 @@ async def check_insurance_eligibility(
         if not provider or not provider.is_active:
             raise HTTPException(
                 status_code=404,
-                detail=f"Insurance provider {provider_id} not found or inactive"
+                detail=f"Insurance provider {provider_id} not found or inactive",
             )
 
         # Create eligibility request
@@ -146,16 +184,19 @@ async def check_insurance_eligibility(
             service_type=service_type,
             provider_npi=provider_npi,
             diagnosis_codes=diagnosis_codes,
-            procedure_codes=procedure_codes
+            procedure_codes=procedure_codes,
         )
 
         # Check eligibility with real insurance provider
         async with create_insurance_service() as service:
-            eligibility_response = await service.check_eligibility(eligibility_request, provider_id)
+            eligibility_response = await service.check_eligibility(
+                eligibility_request, provider_id
+            )
 
         # Log the transaction
         crud.create_tpa_transaction(
-            db, schemas.TPATransactionCreate(
+            db,
+            schemas.TPATransactionCreate(
                 claim_id=None,  # Eligibility check, not claim
                 tpa_reference=f"ELIG-{datetime.now().strftime('%Y%m%d%H%M%S')}",
                 transaction_type="eligibility_check",
@@ -163,15 +204,15 @@ async def check_insurance_eligibility(
                     "patient_id": patient_id,
                     "policy_number": policy_number,
                     "service_type": service_type,
-                    "provider_id": provider_id
+                    "provider_id": provider_id,
                 },
                 response_data={
                     "is_eligible": eligibility_response.is_eligible,
                     "requires_preauth": eligibility_response.requires_preauth,
-                    "processing_time_ms": eligibility_response.response_time_ms
+                    "processing_time_ms": eligibility_response.response_time_ms,
                 },
-                status_code=200
-            )
+                status_code=200,
+            ),
         )
 
         return {
@@ -188,15 +229,15 @@ async def check_insurance_eligibility(
                 "preauth_threshold": eligibility_response.preauth_threshold,
                 "deductible_remaining": eligibility_response.deductible_remaining,
                 "out_of_pocket_max": eligibility_response.out_of_pocket_max,
-                "limitations": eligibility_response.limitations
+                "limitations": eligibility_response.limitations,
             },
             "provider": {
                 "id": provider_id,
                 "name": provider.name,
-                "edi_payer_id": provider.edi_payer_id
+                "edi_payer_id": provider.edi_payer_id,
             },
             "processing_time_ms": eligibility_response.response_time_ms,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
     except HTTPException:
@@ -205,9 +246,9 @@ async def check_insurance_eligibility(
         logger = logging.getLogger(__name__)
         logger.error(f"Eligibility check failed: {e}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Eligibility verification error: {str(e)}"
+            status_code=500, detail=f"Eligibility verification error: {str(e)}"
         )
+
 
 @app.post("/insurance/preauth/request")
 async def request_preauthorization(
@@ -222,7 +263,7 @@ async def request_preauthorization(
     clinical_notes: str = "",
     urgency_level: str = "ROUTINE",
     provider_id: int = 1,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Enterprise pre-authorization request with real-time insurance provider integration
@@ -234,18 +275,24 @@ async def request_preauthorization(
         if not provider or not provider.is_active:
             raise HTTPException(
                 status_code=404,
-                detail=f"Insurance provider {provider_id} not found or inactive"
+                detail=f"Insurance provider {provider_id} not found or inactive",
             )
 
         # Validate input data
         if estimated_cost <= 0:
-            raise HTTPException(status_code=400, detail="Estimated cost must be positive")
+            raise HTTPException(
+                status_code=400, detail="Estimated cost must be positive"
+            )
 
         if not diagnosis_codes:
-            raise HTTPException(status_code=400, detail="At least one diagnosis code is required")
+            raise HTTPException(
+                status_code=400, detail="At least one diagnosis code is required"
+            )
 
         if not procedure_codes:
-            raise HTTPException(status_code=400, detail="At least one procedure code is required")
+            raise HTTPException(
+                status_code=400, detail="At least one procedure code is required"
+            )
 
         # Create pre-auth request
         preauth_request = PreAuthRequest(
@@ -259,16 +306,19 @@ async def request_preauthorization(
             service_date=service_date,
             clinical_notes=clinical_notes,
             urgency_level=urgency_level,
-            supporting_documents=[]
+            supporting_documents=[],
         )
 
         # Submit to real insurance provider
         async with create_insurance_service() as service:
-            preauth_response = await service.request_preauthorization(preauth_request, provider_id)
+            preauth_response = await service.request_preauthorization(
+                preauth_request, provider_id
+            )
 
         # Create local pre-auth record
         local_preauth = crud.create_insurance_policy(
-            db, schemas.InsurancePolicyCreate(
+            db,
+            schemas.InsurancePolicyCreate(
                 patient_id=int(patient_id),  # Convert to int for local storage
                 provider_id=provider_id,
                 policy_number=policy_number,
@@ -278,17 +328,18 @@ async def request_preauthorization(
                     "approval_amount": preauth_response.approval_amount,
                     "denial_reason": preauth_response.denial_reason,
                     "conditions": preauth_response.conditions,
-                    "expiration_date": preauth_response.expiration_date
+                    "expiration_date": preauth_response.expiration_date,
                 },
                 premium_amount=0.0,  # Not applicable for pre-auth
                 policy_start_date=datetime.now().date(),
-                policy_end_date=datetime.now().date() + timedelta(days=365)
-            )
+                policy_end_date=datetime.now().date() + timedelta(days=365),
+            ),
         )
 
         # Log the transaction
         crud.create_tpa_transaction(
-            db, schemas.TPATransactionCreate(
+            db,
+            schemas.TPATransactionCreate(
                 claim_id=None,  # Pre-auth, not claim
                 tpa_reference=preauth_response.preauth_number,
                 transaction_type="preauthorization_request",
@@ -297,16 +348,16 @@ async def request_preauthorization(
                     "policy_number": policy_number,
                     "estimated_cost": estimated_cost,
                     "provider_id": provider_id,
-                    "procedure_codes": procedure_codes
+                    "procedure_codes": procedure_codes,
                 },
                 response_data={
                     "status": preauth_response.status.value,
                     "approval_amount": preauth_response.approval_amount,
                     "preauth_number": preauth_response.preauth_number,
-                    "processing_time_ms": preauth_response.processing_time_ms
+                    "processing_time_ms": preauth_response.processing_time_ms,
                 },
-                status_code=200
-            )
+                status_code=200,
+            ),
         )
 
         return {
@@ -320,15 +371,15 @@ async def request_preauthorization(
                 "conditions": preauth_response.conditions,
                 "expiration_date": preauth_response.expiration_date,
                 "reviewer_notes": preauth_response.reviewer_notes,
-                "processing_time_ms": preauth_response.processing_time_ms
+                "processing_time_ms": preauth_response.processing_time_ms,
             },
             "provider": {
                 "id": provider_id,
                 "name": provider.name,
-                "edi_payer_id": provider.edi_payer_id
+                "edi_payer_id": provider.edi_payer_id,
             },
             "local_record_id": local_preauth.id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
     except HTTPException:
@@ -337,9 +388,9 @@ async def request_preauthorization(
         logger = logging.getLogger(__name__)
         logger.error(f"Pre-authorization request failed: {e}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Pre-authorization error: {str(e)}"
+            status_code=500, detail=f"Pre-authorization error: {str(e)}"
         )
+
 
 @app.post("/insurance/claims/submit")
 async def submit_insurance_claim(
@@ -358,7 +409,7 @@ async def submit_insurance_claim(
     place_of_service: str,
     clinical_notes: str = "",
     provider_id: int = 1,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Enterprise insurance claim submission with real-time processing
@@ -370,7 +421,7 @@ async def submit_insurance_claim(
         if not provider or not provider.is_active:
             raise HTTPException(
                 status_code=404,
-                detail=f"Insurance provider {provider_id} not found or inactive"
+                detail=f"Insurance provider {provider_id} not found or inactive",
             )
 
         # Generate claim number
@@ -393,7 +444,7 @@ async def submit_insurance_claim(
             service_type=service_type,
             place_of_service=place_of_service,
             clinical_notes=clinical_notes,
-            supporting_documents=[]
+            supporting_documents=[],
         )
 
         # Submit to real insurance provider
@@ -402,7 +453,8 @@ async def submit_insurance_claim(
 
         # Create local claim record
         local_claim = crud.create_insurance_claim(
-            db, schemas.InsuranceClaimCreate(
+            db,
+            schemas.InsuranceClaimCreate(
                 patient_id=int(patient_id),  # Convert to int for local storage
                 policy_id=1,  # Would get from policy lookup
                 claim_number=claim_number,
@@ -413,13 +465,14 @@ async def submit_insurance_claim(
                 procedure_codes=",".join(procedure_codes),
                 service_dates=",".join(service_dates),
                 provider_npi=provider_npi,
-                facility_npi=facility_npi
-            )
+                facility_npi=facility_npi,
+            ),
         )
 
         # Log the transaction
         crud.create_tpa_transaction(
-            db, schemas.TPATransactionCreate(
+            db,
+            schemas.TPATransactionCreate(
                 claim_id=local_claim.id,
                 tpa_reference=claim_response.tpa_reference,
                 transaction_type="claim_submission",
@@ -427,17 +480,17 @@ async def submit_insurance_claim(
                     "claim_number": claim_number,
                     "patient_id": patient_id,
                     "total_amount": total_amount,
-                    "provider_id": provider_id
+                    "provider_id": provider_id,
                 },
                 response_data={
                     "status": claim_response.status.value,
                     "approved_amount": claim_response.approved_amount,
                     "payment_amount": claim_response.payment_amount,
                     "tpa_reference": claim_response.tpa_reference,
-                    "processing_time_ms": claim_response.processing_time_ms
+                    "processing_time_ms": claim_response.processing_time_ms,
                 },
-                status_code=200
-            )
+                status_code=200,
+            ),
         )
 
         return {
@@ -453,15 +506,15 @@ async def submit_insurance_claim(
                 "payment_date": claim_response.payment_date,
                 "explanation_of_benefits": claim_response.explanation_of_benefits,
                 "remittance_advice": claim_response.remittance_advice,
-                "processing_time_ms": claim_response.processing_time_ms
+                "processing_time_ms": claim_response.processing_time_ms,
             },
             "provider": {
                 "id": provider_id,
                 "name": provider.name,
-                "edi_payer_id": provider.edi_payer_id
+                "edi_payer_id": provider.edi_payer_id,
             },
             "local_record_id": local_claim.id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
     except HTTPException:
@@ -469,10 +522,8 @@ async def submit_insurance_claim(
     except Exception as e:
         logger = logging.getLogger(__name__)
         logger.error(f"Claim submission failed: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Claim submission error: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Claim submission error: {str(e)}")
+
 
 @app.get("/insurance/providers/status")
 async def get_insurance_providers_status(db: Session = Depends(get_db)):
@@ -495,7 +546,7 @@ async def get_insurance_providers_status(db: Session = Depends(get_db)):
                         providers_status[db_provider.name] = {
                             "status": "not_configured",
                             "provider_id": db_provider.id,
-                            "error": "Provider not found in integration service"
+                            "error": "Provider not found in integration service",
                         }
                         continue
 
@@ -508,10 +559,12 @@ async def get_insurance_providers_status(db: Session = Depends(get_db)):
                         service_type="CONSULTATION",
                         provider_npi="1234567890",
                         diagnosis_codes=["Z00.00"],
-                        procedure_codes=["99213"]
+                        procedure_codes=["99213"],
                     )
 
-                    eligibility_response = await service.check_eligibility(test_request, provider.id)
+                    eligibility_response = await service.check_eligibility(
+                        test_request, provider.id
+                    )
                     providers_status[db_provider.name] = {
                         "status": "connected",
                         "provider_id": db_provider.id,
@@ -522,7 +575,7 @@ async def get_insurance_providers_status(db: Session = Depends(get_db)):
                         "requires_preauth": provider.requires_preauth,
                         "preauth_threshold": provider.preauth_threshold,
                         "processing_time": provider.processing_time,
-                        "last_check": datetime.utcnow().isoformat()
+                        "last_check": datetime.utcnow().isoformat(),
                     }
 
                 except Exception as provider_error:
@@ -530,11 +583,13 @@ async def get_insurance_providers_status(db: Session = Depends(get_db)):
                         "status": "disconnected",
                         "provider_id": db_provider.id,
                         "error": str(provider_error),
-                        "edi_payer_id": getattr(db_provider, 'edi_payer_id', 'N/A'),
-                        "last_check": datetime.utcnow().isoformat()
+                        "edi_payer_id": getattr(db_provider, "edi_payer_id", "N/A"),
+                        "last_check": datetime.utcnow().isoformat(),
                     }
 
-        connected_count = len([p for p in providers_status.values() if p.get("status") == "connected"])
+        connected_count = len(
+            [p for p in providers_status.values() if p.get("status") == "connected"]
+        )
         total_count = len(providers_status)
 
         return {
@@ -545,17 +600,22 @@ async def get_insurance_providers_status(db: Session = Depends(get_db)):
                 "total_providers": total_count,
                 "connected_providers": connected_count,
                 "disconnected_providers": total_count - connected_count,
-                "connectivity_percentage": round((connected_count / total_count * 100), 1) if total_count > 0 else 0
+                "connectivity_percentage": (
+                    round((connected_count / total_count * 100), 1)
+                    if total_count > 0
+                    else 0
+                ),
             },
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
     except Exception as e:
         logger = logging.getLogger(__name__)
         logger.error(f"Provider status check failed: {e}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Provider status check error: {str(e)}"
+            status_code=500, detail=f"Provider status check error: {str(e)}"
         )
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8004)

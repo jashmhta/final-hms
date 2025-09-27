@@ -1,3 +1,7 @@
+"""
+views module
+"""
+
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -31,7 +35,9 @@ class FeedbackViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         hospital = serializer.validated_data.get("hospital")
-        if user.is_authenticated and not (user.is_superuser or getattr(user, "role", None) == "SUPER_ADMIN"):
+        if user.is_authenticated and not (
+            user.is_superuser or getattr(user, "role", None) == "SUPER_ADMIN"
+        ):
             if hospital and hospital.id != getattr(user, "hospital_id", None):
                 raise PermissionDenied("Cannot submit feedback for another hospital")
         serializer.save()

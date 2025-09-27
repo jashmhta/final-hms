@@ -1,3 +1,7 @@
+"""
+views module
+"""
+
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -15,7 +19,9 @@ class TallyIntegrationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if hasattr(self.request.user, "hospital_id"):
-            return TallyIntegration.objects.filter(hospital_id=self.request.user.hospital_id)
+            return TallyIntegration.objects.filter(
+                hospital_id=self.request.user.hospital_id
+            )
         return TallyIntegration.objects.none()
 
     @action(detail=True, methods=["post"])
@@ -32,7 +38,8 @@ class TallyIntegrationViewSet(viewsets.ModelViewSet):
             return Response(connection_status)
         except Exception as e:
             return Response(
-                {"status": "error", "message": f"Connection failed: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST
+                {"status": "error", "message": f"Connection failed: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
     @action(detail=True, methods=["post"])
@@ -56,7 +63,8 @@ class TallyIntegrationViewSet(viewsets.ModelViewSet):
             integration.sync_error_message = str(e)
             integration.save()
             return Response(
-                {"status": "error", "message": f"Synchronization failed: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST
+                {"status": "error", "message": f"Synchronization failed: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
     @action(detail=False, methods=["get"])
@@ -65,7 +73,10 @@ class TallyIntegrationViewSet(viewsets.ModelViewSet):
             integration = self.get_queryset().first()
             if not integration:
                 return Response(
-                    {"status": "not_configured", "message": "Tally integration not configured for this hospital"}
+                    {
+                        "status": "not_configured",
+                        "message": "Tally integration not configured for this hospital",
+                    }
                 )
             return Response(
                 {
@@ -77,4 +88,7 @@ class TallyIntegrationViewSet(viewsets.ModelViewSet):
                 }
             )
         except Exception as e:
-            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"status": "error", "message": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

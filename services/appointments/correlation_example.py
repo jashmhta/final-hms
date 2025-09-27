@@ -3,43 +3,43 @@ Appointments Service - Complete correlation ID integration example
 Demonstrates end-to-end tracing across HTTP, message queues, and database
 """
 
-import os
-import logging
 import json
+import logging
+import os
 import uuid
-from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
-import asyncpg
-from fastapi import FastAPI, Request, Response, BackgroundTasks, Depends, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr
 import aio_pika
 import aiohttp
+import asyncpg
 import redis.asyncio as redis
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr
 
 # Import common utilities
 from ..common import (
-    get_correlation_id,
-    set_correlation_id,
-    generate_correlation_id,
-    CorrelationIDMiddleware,
-    with_correlation_id,
     CorrelationIDContext,
-    setup_otel,
-    trace_async,
-    get_tracer,
-    get_meter,
-    create_middleware_stack,
-    RabbitMQCorrelationPublisher,
+    CorrelationIDMiddleware,
     RabbitMQCorrelationConsumer,
+    RabbitMQCorrelationPublisher,
     RedisCorrelationPublisher,
     RedisCorrelationSubscriber,
-    database_operation_context,
-    with_database_correlation,
     add_correlation_to_message,
-    message_processing_context
+    create_middleware_stack,
+    database_operation_context,
+    generate_correlation_id,
+    get_correlation_id,
+    get_meter,
+    get_tracer,
+    message_processing_context,
+    set_correlation_id,
+    setup_otel,
+    trace_async,
+    with_correlation_id,
+    with_database_correlation,
 )
 
 # Configure logging
@@ -60,6 +60,7 @@ redis_client = None
 # RabbitMQ publisher
 rabbitmq_publisher = None
 
+
 # Models
 class AppointmentCreate(BaseModel):
     patient_id: int
@@ -71,6 +72,7 @@ class AppointmentCreate(BaseModel):
     notes: Optional[str] = None
     email_reminder: bool = True
     sms_reminder: bool = True
+
 
 class AppointmentResponse(BaseModel):
     id: int
@@ -85,6 +87,7 @@ class AppointmentResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+
 # Database functions
 async def get_db_pool():
     """Get database connection pool"""
@@ -97,9 +100,10 @@ async def get_db_pool():
             password=os.getenv("DB_PASSWORD", "postgres"),
             database=os.getenv("DB_NAME", "hms_appointments"),
             min_size=5,
-            max_size=20
+            max_size=20,
         )
     return db_pool
+
 
 async def get_redis_client():
     """Get Redis client"""
@@ -109,9 +113,10 @@ async def get_redis_client():
             host=os.getenv("REDIS_HOST", "localhost"),
             port=int(os.getenv("REDIS_PORT", "6379")),
             db=0,
-            decode_responses=True
+            decode_responses=True,
         )
     return redis_client
+
 
 async def get_rabbitmq_publisher():
     """Get RabbitMQ publisher"""
@@ -119,10 +124,11 @@ async def get_rabbitmq_publisher():
     if rabbitmq_publisher is None:
         rabbitmq_publisher = RabbitMQCorrelationPublisher(
             host=os.getenv("RABBITMQ_HOST", "localhost"),
-            port=int(os.getenv("RABBITMQ_PORT", "5672"))
+            port=int(os.getenv("RABBITMQ_PORT", "5672")),
         )
         rabbitmq_publisher.connect()
     return rabbitmq_publisher
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -134,7 +140,7 @@ async def lifespan(app: FastAPI):
         environment=ENVIRONMENT,
         metrics_enabled=True,
         traces_enabled=True,
-        logs_enabled=True
+        logs_enabled=True,
     )
 
     # Initialize connections
@@ -149,13 +155,12 @@ async def lifespan(app: FastAPI):
     # Create custom metrics
     if meter:
         app.state.appointment_counter = meter.create_counter(
-            "appointments_total",
-            description="Total appointments processed"
+            "appointments_total", description="Total appointments processed"
         )
         app.state.appointment_duration = meter.create_histogram(
             "appointment_processing_duration_seconds",
             description="Appointment processing duration",
-            buckets=[0.05, 0.1, 0.5, 1.0, 5.0]
+            buckets=[0.05, 0.1, 0.5, 1.0, 5.0],
         )
 
     logger.info(f"{SERVICE_NAME} started with correlation tracking")
@@ -172,12 +177,13 @@ async def lifespan(app: FastAPI):
 
     logger.info(f"{SERVICE_NAME} shut down")
 
+
 # Create FastAPI app
 app = FastAPI(
     title="HMS Appointments Service",
     description="Appointment scheduling microservice with correlation tracking",
     version=SERVICE_VERSION,
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Add middleware
@@ -197,14 +203,15 @@ app = create_middleware_stack(
     rate_limit_config={
         "rate_limit": 500,  # requests per minute
         "window_size": 60,
-        "strategies": ["ip", "user"]
+        "strategies": ["ip", "user"],
     },
     enable_security_headers=True,
-    enable_cache_control=True
+    enable_cache_control=True,
 )
 
 # Add correlation ID middleware
 app.add_middleware(CorrelationIDMiddleware)
+
 
 # API Endpoints
 @app.get("/health")
@@ -216,15 +223,14 @@ async def health_check(request: Request) -> Dict[str, Any]:
         "status": "healthy",
         "service": SERVICE_NAME,
         "version": SERVICE_VERSION,
-        "correlation_id": correlation_id
+        "correlation_id": correlation_id,
     }
+
 
 @app.post("/api/appointments", response_model=AppointmentResponse)
 @trace_async("create_appointment")
 async def create_appointment(
-    appointment: AppointmentCreate,
-    request: Request,
-    background_tasks: BackgroundTasks
+    appointment: AppointmentCreate, request: Request, background_tasks: BackgroundTasks
 ) -> AppointmentResponse:
     """Create new appointment with end-to-end correlation"""
     correlation_id = get_correlation_id()
@@ -244,13 +250,15 @@ async def create_appointment(
                 # Check for conflicts
                 with tracer.start_as_current_span("check_conflicts"):
                     conflict = await check_appointment_conflict(
-                        conn, appointment.doctor_id, appointment.appointment_date, appointment.duration
+                        conn,
+                        appointment.doctor_id,
+                        appointment.appointment_date,
+                        appointment.duration,
                     )
                     if conflict:
                         span.set_attribute("conflict_detected", True)
                         raise HTTPException(
-                            status_code=409,
-                            detail="Time slot not available"
+                            status_code=409, detail="Time slot not available"
                         )
 
                 # Create appointment
@@ -273,20 +281,16 @@ async def create_appointment(
                         appointment.type,
                         appointment.notes,
                         appointment.email_reminder,
-                        appointment.sms_reminder
+                        appointment.sms_reminder,
                     )
 
                     appointment_data = dict(result)
-                    appointment_id = appointment_data['id']
+                    appointment_id = appointment_data["id"]
 
         # Record metrics
-        if hasattr(request.app.state, 'appointment_counter'):
+        if hasattr(request.app.state, "appointment_counter"):
             request.app.state.appointment_counter.add(
-                1,
-                attributes={
-                    "operation": "create",
-                    "type": appointment.type
-                }
+                1, attributes={"operation": "create", "type": appointment.type}
             )
 
         # Cache the appointment
@@ -294,14 +298,12 @@ async def create_appointment(
         await redis.setex(
             f"appointment:{appointment_id}",
             3600,  # 1 hour
-            json.dumps(appointment_data)
+            json.dumps(appointment_data),
         )
 
         # Publish appointment created event
         background_tasks.add_task(
-            publish_appointment_event,
-            "appointment.created",
-            appointment_data
+            publish_appointment_event, "appointment.created", appointment_data
         )
 
         # Schedule reminders if needed
@@ -311,17 +313,15 @@ async def create_appointment(
                 appointment_id,
                 appointment.appointment_date,
                 appointment.email_reminder,
-                appointment.sms_reminder
+                appointment.sms_reminder,
             )
 
         return AppointmentResponse(**appointment_data)
 
+
 @app.get("/api/appointments/{appointment_id}")
 @trace_async("get_appointment")
-async def get_appointment(
-    appointment_id: int,
-    request: Request
-) -> AppointmentResponse:
+async def get_appointment(appointment_id: int, request: Request) -> AppointmentResponse:
     """Get appointment by ID with correlation tracking"""
     correlation_id = get_correlation_id()
     tracer = get_tracer()
@@ -344,13 +344,14 @@ async def get_appointment(
             async with pool.acquire() as conn:
                 with database_operation_context("get_appointment", correlation_id):
                     result = await conn.fetchrow(
-                        "SELECT * FROM appointments WHERE id = $1",
-                        appointment_id
+                        "SELECT * FROM appointments WHERE id = $1", appointment_id
                     )
 
                     if not result:
                         span.set_attribute("appointment.found", False)
-                        raise HTTPException(status_code=404, detail="Appointment not found")
+                        raise HTTPException(
+                            status_code=404, detail="Appointment not found"
+                        )
 
                     appointment_data = dict(result)
                     span.set_attribute("appointment.found", True)
@@ -359,34 +360,29 @@ async def get_appointment(
                     await redis.setex(
                         f"appointment:{appointment_id}",
                         3600,
-                        json.dumps(appointment_data)
+                        json.dumps(appointment_data),
                     )
 
         # Get related data with correlation propagation
         with tracer.start_as_current_span("get_related_data"):
             # Call patients service
             patient_data = await call_patients_service(
-                appointment_data['patient_id'],
-                correlation_id
+                appointment_data["patient_id"], correlation_id
             )
 
             # Call doctors service
             doctor_data = await call_doctors_service(
-                appointment_data['doctor_id'],
-                correlation_id
+                appointment_data["doctor_id"], correlation_id
             )
 
         # Record metrics
-        if hasattr(request.app.state, 'appointment_counter'):
+        if hasattr(request.app.state, "appointment_counter"):
             request.app.state.appointment_counter.add(
-                1,
-                attributes={
-                    "operation": "get",
-                    "cache_hit": cached_data is not None
-                }
+                1, attributes={"operation": "get", "cache_hit": cached_data is not None}
             )
 
         return AppointmentResponse(**appointment_data)
+
 
 @app.get("/api/appointments")
 @trace_async("list_appointments")
@@ -397,7 +393,7 @@ async def list_appointments(
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
     skip: int = 0,
-    limit: int = 100
+    limit: int = 100,
 ) -> Dict[str, Any]:
     """List appointments with filters and correlation tracking"""
     correlation_id = get_correlation_id()
@@ -470,29 +466,23 @@ async def list_appointments(
         span.set_attribute("appointments.total", total)
 
         # Record metrics
-        if hasattr(request.app.state, 'appointment_counter'):
+        if hasattr(request.app.state, "appointment_counter"):
             request.app.state.appointment_counter.add(
-                1,
-                attributes={
-                    "operation": "list",
-                    "results_count": len(appointments)
-                }
+                1, attributes={"operation": "list", "results_count": len(appointments)}
             )
 
         return {
             "appointments": appointments,
             "total": total,
             "skip": skip,
-            "limit": limit
+            "limit": limit,
         }
+
 
 # Helper functions
 @trace_async("check_appointment_conflict")
 async def check_appointment_conflict(
-    conn: asyncpg.Connection,
-    doctor_id: int,
-    appointment_date: datetime,
-    duration: int
+    conn: asyncpg.Connection, doctor_id: int, appointment_date: datetime, duration: int
 ) -> bool:
     """Check for appointment conflicts"""
     end_time = appointment_date + timedelta(minutes=duration)
@@ -512,10 +502,11 @@ async def check_appointment_conflict(
         """,
         doctor_id,
         appointment_date,
-        end_time
+        end_time,
     )
 
     return conflict
+
 
 @with_correlation_id
 async def publish_appointment_event(event_type: str, appointment_data: Dict[str, Any]):
@@ -534,7 +525,7 @@ async def publish_appointment_event(event_type: str, appointment_data: Dict[str,
         event = {
             "event_type": event_type,
             "appointment": appointment_data,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
         # Publish to RabbitMQ
@@ -543,7 +534,7 @@ async def publish_appointment_event(event_type: str, appointment_data: Dict[str,
             routing_key=f"appointment.{event_type}",
             body=event,
             correlation_id=correlation_id,
-            message_type=event_type
+            message_type=event_type,
         )
 
         # Also publish to Redis pub/sub for real-time updates
@@ -551,21 +542,22 @@ async def publish_appointment_event(event_type: str, appointment_data: Dict[str,
         redis_publisher.publish(
             channel=f"appointment_updates:{appointment_data['patient_id']}",
             message=event,
-            correlation_id=correlation_id
+            correlation_id=correlation_id,
         )
 
         logger.info(
             f"Published appointment event: {event_type}",
             correlation_id=correlation_id,
-            appointment_id=appointment_data['id']
+            appointment_id=appointment_data["id"],
         )
+
 
 @with_correlation_id
 async def schedule_reminders(
     appointment_id: int,
     appointment_date: datetime,
     email_reminder: bool,
-    sms_reminder: bool
+    sms_reminder: bool,
 ):
     """Schedule appointment reminders"""
     correlation_id = get_correlation_id()
@@ -582,18 +574,22 @@ async def schedule_reminders(
         reminder_tasks = []
 
         if email_reminder:
-            reminder_tasks.append({
-                "type": "email",
-                "appointment_id": appointment_id,
-                "scheduled_at": reminder_time.isoformat()
-            })
+            reminder_tasks.append(
+                {
+                    "type": "email",
+                    "appointment_id": appointment_id,
+                    "scheduled_at": reminder_time.isoformat(),
+                }
+            )
 
         if sms_reminder:
-            reminder_tasks.append({
-                "type": "sms",
-                "appointment_id": appointment_id,
-                "scheduled_at": reminder_time.isoformat()
-            })
+            reminder_tasks.append(
+                {
+                    "type": "sms",
+                    "appointment_id": appointment_id,
+                    "scheduled_at": reminder_time.isoformat(),
+                }
+            )
 
         # Publish reminder tasks
         publisher = await get_rabbitmq_publisher()
@@ -603,14 +599,15 @@ async def schedule_reminders(
                 routing_key="reminder.schedule",
                 body=task,
                 correlation_id=correlation_id,
-                message_type="reminder_task"
+                message_type="reminder_task",
             )
 
         logger.info(
             f"Scheduled {len(reminder_tasks)} reminders",
             correlation_id=correlation_id,
-            appointment_id=appointment_id
+            appointment_id=appointment_id,
         )
+
 
 @with_correlation_id
 async def call_patients_service(patient_id: int, correlation_id: str) -> Dict[str, Any]:
@@ -625,13 +622,13 @@ async def call_patients_service(patient_id: int, correlation_id: str) -> Dict[st
         async with aiohttp.ClientSession() as session:
             headers = {
                 "x-correlation-id": correlation_id,
-                "content-type": "application/json"
+                "content-type": "application/json",
             }
 
             try:
                 async with session.get(
                     f"http://patients-service:8000/api/patients/{patient_id}",
-                    headers=headers
+                    headers=headers,
                 ) as response:
                     if response.status == 200:
                         patient_data = await response.json()
@@ -646,6 +643,7 @@ async def call_patients_service(patient_id: int, correlation_id: str) -> Dict[st
                 span.set_attribute("service.error", str(e))
                 return {"id": patient_id, "name": "Unknown Patient"}
 
+
 @with_correlation_id
 async def call_doctors_service(doctor_id: int, correlation_id: str) -> Dict[str, Any]:
     """Call doctors service with correlation propagation"""
@@ -659,13 +657,13 @@ async def call_doctors_service(doctor_id: int, correlation_id: str) -> Dict[str,
         async with aiohttp.ClientSession() as session:
             headers = {
                 "x-correlation-id": correlation_id,
-                "content-type": "application/json"
+                "content-type": "application/json",
             }
 
             try:
                 async with session.get(
                     f"http://doctors-service:8000/api/doctors/{doctor_id}",
-                    headers=headers
+                    headers=headers,
                 ) as response:
                     if response.status == 200:
                         doctor_data = await response.json()
@@ -680,6 +678,7 @@ async def call_doctors_service(doctor_id: int, correlation_id: str) -> Dict[str,
                 span.set_attribute("service.error", str(e))
                 return {"id": doctor_id, "name": "Unknown Doctor"}
 
+
 # Message consumer example
 @with_message_correlation
 async def handle_appointment_events(message: Dict[str, Any]):
@@ -690,23 +689,24 @@ async def handle_appointment_events(message: Dict[str, Any]):
     with tracer.start_as_current_span("handle_appointment_event") as span:
         span.set_attribute("correlation.id", correlation_id)
 
-        event_type = message.get('event_type')
-        appointment = message.get('appointment')
+        event_type = message.get("event_type")
+        appointment = message.get("appointment")
 
-        if event_type == 'appointment.created':
+        if event_type == "appointment.created":
             # Send confirmation
             await send_confirmation_email(appointment)
             span.set_attribute("action", "confirmation_sent")
 
-        elif event_type == 'appointment.cancelled':
+        elif event_type == "appointment.cancelled":
             # Handle cancellation
             await handle_cancellation(appointment)
             span.set_attribute("action", "cancellation_handled")
 
-        elif event_type == 'appointment.rescheduled':
+        elif event_type == "appointment.rescheduled":
             # Handle rescheduling
             await handle_rescheduling(appointment)
             span.set_attribute("action", "rescheduling_handled")
+
 
 @with_correlation_id
 async def send_confirmation_email(appointment: Dict[str, Any]):
@@ -716,20 +716,19 @@ async def send_confirmation_email(appointment: Dict[str, Any]):
 
     with tracer.start_as_current_span("send_confirmation_email") as span:
         span.set_attribute("correlation.id", correlation_id)
-        span.set_attribute("appointment.id", appointment['id'])
+        span.set_attribute("appointment.id", appointment["id"])
 
         # Get patient details
         patient_data = await call_patients_service(
-            appointment['patient_id'],
-            correlation_id
+            appointment["patient_id"], correlation_id
         )
 
         # Send email (mock implementation)
         logger.info(
             "Sending confirmation email",
             correlation_id=correlation_id,
-            appointment_id=appointment['id'],
-            patient_email=patient_data.get('email')
+            appointment_id=appointment["id"],
+            patient_email=patient_data.get("email"),
         )
 
         # Record email sent
@@ -737,11 +736,14 @@ async def send_confirmation_email(appointment: Dict[str, Any]):
         await redis.setex(
             f"email_sent:{appointment['id']}",
             86400,  # 24 hours
-            json.dumps({
-                "sent_at": datetime.utcnow().isoformat(),
-                "correlation_id": correlation_id
-            })
+            json.dumps(
+                {
+                    "sent_at": datetime.utcnow().isoformat(),
+                    "correlation_id": correlation_id,
+                }
+            ),
         )
+
 
 # Example consumer setup
 async def setup_message_consumers():
@@ -754,17 +756,16 @@ async def setup_message_consumers():
 
     # Start consuming in background
     import asyncio
+
     asyncio.create_task(consumer.start_consuming("appointments_queue"))
 
     # Redis subscriber
     redis_subscriber = RedisCorrelationSubscriber()
-    redis_subscriber.register_handler(
-        f"appointment_updates:*",
-        handle_realtime_updates
-    )
+    redis_subscriber.register_handler(f"appointment_updates:*", handle_realtime_updates)
 
     # Start listening in background
     asyncio.create_task(redis_subscriber.start_listening(["appointment_updates:*"]))
+
 
 @with_correlation_id
 async def handle_realtime_updates(message: Dict[str, Any]):
@@ -773,17 +774,14 @@ async def handle_realtime_updates(message: Dict[str, Any]):
     logger.info(
         "Received real-time update",
         correlation_id=correlation_id,
-        event_type=message.get('event_type')
+        event_type=message.get("event_type"),
     )
 
     # Push to WebSocket clients if connected
     # This would integrate with your WebSocket implementation
 
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "correlation_example:app",
-        host="0.0.0.0",
-        port=8001,
-        log_level="info"
-    )
+
+    uvicorn.run("correlation_example:app", host="0.0.0.0", port=8001, log_level="info")

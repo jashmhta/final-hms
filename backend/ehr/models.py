@@ -1,3 +1,7 @@
+"""
+models module
+"""
+
 import uuid
 
 from encrypted_model_fields.fields import EncryptedTextField
@@ -48,7 +52,9 @@ class DispositionType(models.TextChoices):
 
 class Encounter(TenantModel):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="encounters")
+    patient = models.ForeignKey(
+        "patients.Patient", on_delete=models.CASCADE, related_name="encounters"
+    )
     primary_physician = models.ForeignKey(
         "users.User",
         on_delete=models.CASCADE,
@@ -62,7 +68,9 @@ class Encounter(TenantModel):
         blank=True,
         related_name="attending_encounters",
     )
-    consulting_physicians = models.ManyToManyField("users.User", blank=True, related_name="consulting_encounters")
+    consulting_physicians = models.ManyToManyField(
+        "users.User", blank=True, related_name="consulting_encounters"
+    )
     appointment = models.OneToOneField(
         "appointments.Appointment",
         on_delete=models.SET_NULL,
@@ -93,7 +101,9 @@ class Encounter(TenantModel):
     treatment = EncryptedTextField(blank=True)
     prescription_text = EncryptedTextField(blank=True)
     is_finalized = models.BooleanField(default=False)
-    disposition = models.CharField(max_length=20, choices=DispositionType.choices, blank=True)
+    disposition = models.CharField(
+        max_length=20, choices=DispositionType.choices, blank=True
+    )
     disposition_notes = EncryptedTextField(blank=True)
     discharge_instructions = EncryptedTextField(blank=True)
     priority_level = models.CharField(
@@ -138,7 +148,9 @@ class Encounter(TenantModel):
             models.Index(fields=["hospital", "scheduled_start", "actual_start"]),
             models.Index(fields=["hospital", "priority_level"]),
             models.Index(fields=["hospital", "is_confidential"]),
-            models.Index(fields=["hospital", "patient", "scheduled_start", "encounter_status"]),
+            models.Index(
+                fields=["hospital", "patient", "scheduled_start", "encounter_status"]
+            ),
             models.Index(
                 fields=[
                     "hospital",
@@ -167,7 +179,9 @@ class Encounter(TenantModel):
 
 
 class VitalSigns(models.Model):
-    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name="vital_signs")
+    encounter = models.ForeignKey(
+        Encounter, on_delete=models.CASCADE, related_name="vital_signs"
+    )
     systolic_bp = models.PositiveIntegerField(
         null=True,
         blank=True,
@@ -265,8 +279,12 @@ class VitalSigns(models.Model):
 
 
 class Assessment(models.Model):
-    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name="assessments")
-    diagnosis_code = models.CharField(max_length=20, blank=True, help_text="ICD-10 code")
+    encounter = models.ForeignKey(
+        Encounter, on_delete=models.CASCADE, related_name="assessments"
+    )
+    diagnosis_code = models.CharField(
+        max_length=20, blank=True, help_text="ICD-10 code"
+    )
     diagnosis_description = models.CharField(max_length=500, default="Unknown")
     diagnosis_type = models.CharField(
         max_length=15,
@@ -330,7 +348,9 @@ class Assessment(models.Model):
 
 
 class PlanOfCare(models.Model):
-    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name="plans")
+    encounter = models.ForeignKey(
+        Encounter, on_delete=models.CASCADE, related_name="plans"
+    )
     plan_type = models.CharField(
         max_length=20,
         choices=[
@@ -388,7 +408,9 @@ class PlanOfCare(models.Model):
 
 
 class ClinicalNote(models.Model):
-    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name="clinical_notes")
+    encounter = models.ForeignKey(
+        Encounter, on_delete=models.CASCADE, related_name="clinical_notes"
+    )
     note_type = models.CharField(
         max_length=20,
         choices=[
@@ -406,12 +428,20 @@ class ClinicalNote(models.Model):
         ],
         default="PROGRESS",
     )
-    subjective = EncryptedTextField(blank=True, help_text="Patient's subjective complaints")
-    objective = EncryptedTextField(blank=True, help_text="Objective findings and observations")
-    assessment = EncryptedTextField(blank=True, help_text="Clinical assessment and diagnosis")
+    subjective = EncryptedTextField(
+        blank=True, help_text="Patient's subjective complaints"
+    )
+    objective = EncryptedTextField(
+        blank=True, help_text="Objective findings and observations"
+    )
+    assessment = EncryptedTextField(
+        blank=True, help_text="Clinical assessment and diagnosis"
+    )
     plan = EncryptedTextField(blank=True, help_text="Treatment plan and next steps")
     content = EncryptedTextField(blank=True, help_text="Free-form note content")
-    author = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="authored_notes")
+    author = models.ForeignKey(
+        "users.User", on_delete=models.CASCADE, related_name="authored_notes"
+    )
     co_signed_by = models.ForeignKey(
         "users.User",
         on_delete=models.SET_NULL,
@@ -423,7 +453,9 @@ class ClinicalNote(models.Model):
     signed_at = models.DateTimeField(null=True, blank=True)
     is_amended = models.BooleanField(default=False)
     amendment_reason = models.TextField(blank=True)
-    original_note = models.ForeignKey("self", on_delete=models.CASCADE, null=True, blank=True)
+    original_note = models.ForeignKey(
+        "self", on_delete=models.CASCADE, null=True, blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -447,7 +479,9 @@ class ClinicalNote(models.Model):
 
 
 class Allergy(models.Model):
-    patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="allergies")
+    patient = models.ForeignKey(
+        "patients.Patient", on_delete=models.CASCADE, related_name="allergies"
+    )
     allergen = models.CharField(max_length=200)
     allergen_type = models.CharField(
         max_length=20,
@@ -481,7 +515,9 @@ class Allergy(models.Model):
         ],
         default="ACTIVE",
     )
-    reported_by = models.ForeignKey("users.User", on_delete=models.SET_NULL, null=True, blank=True)
+    reported_by = models.ForeignKey(
+        "users.User", on_delete=models.SET_NULL, null=True, blank=True
+    )
     verified_by = models.ForeignKey(
         "users.User",
         on_delete=models.SET_NULL,
@@ -515,7 +551,9 @@ def encounter_attachment_upload_to(instance, filename: str) -> str:
 
 
 class EncounterAttachment(TimeStampedModel):
-    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name="attachments")
+    encounter = models.ForeignKey(
+        Encounter, on_delete=models.CASCADE, related_name="attachments"
+    )
     file = models.FileField(upload_to=encounter_attachment_upload_to)
     file_type = models.CharField(
         max_length=20,
@@ -541,7 +579,9 @@ class EncounterAttachment(TimeStampedModel):
 
 
 class ERTriage(TenantModel):
-    encounter = models.OneToOneField(Encounter, on_delete=models.CASCADE, related_name="triage")
+    encounter = models.OneToOneField(
+        Encounter, on_delete=models.CASCADE, related_name="triage"
+    )
     triage_level = models.CharField(
         max_length=10,
         choices=[
@@ -558,7 +598,9 @@ class ERTriage(TenantModel):
     pain_scale = models.PositiveIntegerField(
         null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(10)]
     )
-    initial_vitals = models.ForeignKey(VitalSigns, on_delete=models.SET_NULL, null=True, blank=True)
+    initial_vitals = models.ForeignKey(
+        VitalSigns, on_delete=models.SET_NULL, null=True, blank=True
+    )
     mechanism_of_injury = models.TextField(blank=True)
     associated_symptoms = models.JSONField(default=dict, blank=True)
     past_medical_history_relevant = EncryptedTextField(blank=True)
@@ -589,7 +631,9 @@ class ERTriage(TenantModel):
 
 
 class NotificationModel(models.Model):
-    encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name="notifications")
+    encounter = models.ForeignKey(
+        Encounter, on_delete=models.CASCADE, related_name="notifications"
+    )
     notification_type = models.CharField(
         max_length=50,
         choices=[
@@ -612,7 +656,9 @@ class NotificationModel(models.Model):
         ],
         default="NORMAL",
     )
-    recipient_user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="notifications")
+    recipient_user = models.ForeignKey(
+        "users.User", on_delete=models.CASCADE, related_name="notifications"
+    )
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True, blank=True)
@@ -629,7 +675,9 @@ class NotificationModel(models.Model):
 
 
 class QualityMetric(models.Model):
-    hospital = models.ForeignKey("hospitals.Hospital", on_delete=models.CASCADE, related_name="quality_metrics")
+    hospital = models.ForeignKey(
+        "hospitals.Hospital", on_delete=models.CASCADE, related_name="quality_metrics"
+    )
     metric_type = models.CharField(
         max_length=50,
         choices=[
@@ -642,7 +690,9 @@ class QualityMetric(models.Model):
         ],
     )
     value = models.DecimalField(max_digits=10, decimal_places=2)
-    target_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    target_value = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
     period_start = models.DateField()
     period_end = models.DateField()
     calculated_at = models.DateTimeField(auto_now_add=True)

@@ -1,3 +1,7 @@
+"""
+views module
+"""
+
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework.response import Response
 from rest_framework.views import APIView

@@ -1,3 +1,7 @@
+"""
+tests_security module
+"""
+
 import json
 from datetime import date, datetime
 from unittest.mock import Mock, patch
@@ -37,10 +41,17 @@ class PatientSecurityTests(TestCase):
             is_superuser=True,
         )
         self.staff_user = User.objects.create_user(
-            username="staff", email="staff@example.com", password="staffpass123", hospital=self.hospital, is_staff=True
+            username="staff",
+            email="staff@example.com",
+            password="staffpass123",
+            hospital=self.hospital,
+            is_staff=True,
         )
         self.regular_user = User.objects.create_user(
-            username="regular", email="regular@example.com", password="regularpass123", hospital=self.hospital
+            username="regular",
+            email="regular@example.com",
+            password="regularpass123",
+            hospital=self.hospital,
         )
         self.other_hospital_user = User.objects.create_user(
             username="other_hospital",
@@ -81,7 +92,12 @@ class PatientSecurityTests(TestCase):
 
         response = client.post(
             "/api/patients/",
-            {"first_name": "New", "last_name": "Patient", "date_of_birth": "1990-01-01", "gender": "MALE"},
+            {
+                "first_name": "New",
+                "last_name": "Patient",
+                "date_of_birth": "1990-01-01",
+                "gender": "MALE",
+            },
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -141,7 +157,10 @@ class PatientSecurityTests(TestCase):
         from django.db import connection
 
         with connection.cursor() as cursor:
-            cursor.execute("SELECT first_name, email FROM patients_patient WHERE id = %s", [patient.id])
+            cursor.execute(
+                "SELECT first_name, email FROM patients_patient WHERE id = %s",
+                [patient.id],
+            )
             db_data = cursor.fetchone()
 
             # Encrypted data should not match plain text
@@ -163,7 +182,9 @@ class PatientSecurityTests(TestCase):
 
         response = client.post("/api/patients/", malicious_data, format="json")
         # Should either be rejected (400) or sanitized (201)
-        self.assertIn(response.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_201_CREATED])
+        self.assertIn(
+            response.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_201_CREATED]
+        )
 
         # Test XSS attempt
         xss_data = {
@@ -231,24 +252,40 @@ class PatientSecurityTests(TestCase):
         viewer_group.permissions.add(view_patient_perm)
 
         editor_group = Group.objects.create(name="Patient Editors")
-        editor_group.permissions.add(view_patient_perm, add_patient_perm, change_patient_perm)
+        editor_group.permissions.add(
+            view_patient_perm, add_patient_perm, change_patient_perm
+        )
 
         admin_group = Group.objects.create(name="Patient Admins")
-        admin_group.permissions.add(view_patient_perm, add_patient_perm, change_patient_perm, delete_patient_perm)
+        admin_group.permissions.add(
+            view_patient_perm,
+            add_patient_perm,
+            change_patient_perm,
+            delete_patient_perm,
+        )
 
         # Create users with different group memberships
         viewer_user = User.objects.create_user(
-            username="viewer", email="viewer@example.com", password="viewerpass123", hospital=self.hospital
+            username="viewer",
+            email="viewer@example.com",
+            password="viewerpass123",
+            hospital=self.hospital,
         )
         viewer_user.groups.add(viewer_group)
 
         editor_user = User.objects.create_user(
-            username="editor", email="editor@example.com", password="editorpass123", hospital=self.hospital
+            username="editor",
+            email="editor@example.com",
+            password="editorpass123",
+            hospital=self.hospital,
         )
         editor_user.groups.add(editor_group)
 
         admin_group_user = User.objects.create_user(
-            username="admin_group", email="admingroup@example.com", password="admingrouppass123", hospital=self.hospital
+            username="admin_group",
+            email="admingroup@example.com",
+            password="admingrouppass123",
+            hospital=self.hospital,
         )
         admin_group_user.groups.add(admin_group)
 
@@ -262,7 +299,12 @@ class PatientSecurityTests(TestCase):
 
         response = client.post(
             "/api/patients/",
-            {"first_name": "Test", "last_name": "User", "date_of_birth": "1990-01-01", "gender": "MALE"},
+            {
+                "first_name": "Test",
+                "last_name": "User",
+                "date_of_birth": "1990-01-01",
+                "gender": "MALE",
+            },
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -271,7 +313,12 @@ class PatientSecurityTests(TestCase):
         client.force_authenticate(user=editor_user)
         response = client.post(
             "/api/patients/",
-            {"first_name": "Editor", "last_name": "User", "date_of_birth": "1990-01-01", "gender": "MALE"},
+            {
+                "first_name": "Editor",
+                "last_name": "User",
+                "date_of_birth": "1990-01-01",
+                "gender": "MALE",
+            },
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -287,7 +334,12 @@ class PatientSecurityTests(TestCase):
         # Test that POST requests without CSRF token are rejected
         response = self.client.post(
             reverse("patients:patient-create"),
-            {"first_name": "CSRF", "last_name": "Test", "date_of_birth": "1990-01-01", "gender": "MALE"},
+            {
+                "first_name": "CSRF",
+                "last_name": "Test",
+                "date_of_birth": "1990-01-01",
+                "gender": "MALE",
+            },
         )
 
         # Should be rejected for non-authenticated user
@@ -375,7 +427,12 @@ class PatientSecurityTests(TestCase):
         response = client.get("/api/patients/")
 
         # Check for security headers
-        security_headers = ["X-Content-Type-Options", "X-Frame-Options", "X-XSS-Protection", "Content-Security-Policy"]
+        security_headers = [
+            "X-Content-Type-Options",
+            "X-Frame-Options",
+            "X-XSS-Protection",
+            "Content-Security-Policy",
+        ]
 
         for header in security_headers:
             self.assertIn(header, response, f"Missing security header: {header}")
@@ -427,11 +484,15 @@ class PatientSecurityTests(TestCase):
         unauthorized_client.force_authenticate(user=self.regular_user)
 
         # Should not be able to access emergency contacts
-        response = unauthorized_client.get(f"/api/patients/{self.patient.id}/emergency-contacts/")
+        response = unauthorized_client.get(
+            f"/api/patients/{self.patient.id}/emergency-contacts/"
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         # Should not be able to access insurance
-        response = unauthorized_client.get(f"/api/patients/{self.patient.id}/insurance/")
+        response = unauthorized_client.get(
+            f"/api/patients/{self.patient.id}/insurance/"
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         # Should not be able to access alerts
@@ -468,7 +529,9 @@ class PatientSecurityTests(TestCase):
 
         # Verify all data is deleted
         self.assertFalse(Patient.objects.filter(id=patient_id).exists())
-        self.assertFalse(EmergencyContact.objects.filter(patient_id=patient_id).exists())
+        self.assertFalse(
+            EmergencyContact.objects.filter(patient_id=patient_id).exists()
+        )
 
     def test_api_throttling(self):
         """Test API throttling mechanisms"""
@@ -485,7 +548,9 @@ class PatientSecurityTests(TestCase):
         success_count = responses.count(200)
         throttled_count = responses.count(429)
 
-        print(f"API throttling test: {success_count} successful, {throttled_count} throttled")
+        print(
+            f"API throttling test: {success_count} successful, {throttled_count} throttled"
+        )
 
         # In a real implementation with throttling, we'd expect some 429 responses
         self.assertGreaterEqual(success_count, 1, "At least one request should succeed")
@@ -493,17 +558,28 @@ class PatientSecurityTests(TestCase):
     def test_password_security(self):
         """Test password security requirements"""
         # Test weak password rejection
-        weak_passwords = ["password", "123456", "qwerty", "letmein", "welcome", "admin123"]
+        weak_passwords = [
+            "password",
+            "123456",
+            "qwerty",
+            "letmein",
+            "welcome",
+            "admin123",
+        ]
 
         for password in weak_passwords:
             with self.assertRaises(Exception):
                 User.objects.create_user(
-                    username=f"user_{password}", email=f"user_{password}@example.com", password=password
+                    username=f"user_{password}",
+                    email=f"user_{password}@example.com",
+                    password=password,
                 )
 
         # Test strong password acceptance
         strong_password = "Str0ng!P@ssw0rdWithNumbersAndSymbols"
-        user = User.objects.create_user(username="strong_user", email="strong@example.com", password=strong_password)
+        user = User.objects.create_user(
+            username="strong_user", email="strong@example.com", password=strong_password
+        )
         self.assertIsNotNone(user.id)
 
     def test_session_timeout(self):
@@ -531,7 +607,12 @@ class PatientSecurityTests(TestCase):
         # Create patient without CSRF token (should fail)
         response = self.client.post(
             reverse("patients:patient-create"),
-            {"first_name": "CSRF", "last_name": "Test", "date_of_birth": "1990-01-01", "gender": "MALE"},
+            {
+                "first_name": "CSRF",
+                "last_name": "Test",
+                "date_of_birth": "1990-01-01",
+                "gender": "MALE",
+            },
         )
 
         # Should be rejected due to missing CSRF token

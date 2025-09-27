@@ -3,36 +3,41 @@ OpenTelemetry Configuration for HMS Microservices
 Unified tracing and metrics collection across all services
 """
 
-import os
 import logging
-from typing import Dict, Any, Optional
+import os
 from contextlib import asynccontextmanager
-from opentelemetry import trace, metrics
+from typing import Any, Dict, Optional
+
+from opentelemetry import metrics, trace
+from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.prometheus import PrometheusMetricReader
+from opentelemetry.instrumentation.aiohttp_client import AioHttpClientInstrumentor
+from opentelemetry.instrumentation.django import DjangoInstrumentor
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+from opentelemetry.instrumentation.logging import LoggingInstrumentor
+from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+from opentelemetry.instrumentation.redis import RedisInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.propagate import set_global_textmap
+from opentelemetry.propagators.b3 import B3MultiFormat
+from opentelemetry.propagators.composite import CompositePropagator
+from opentelemetry.propagators.jaeger import JaegerPropagator
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import (
+    ConsoleMetricExporter,
+    PeriodicExportingMetricReader,
+)
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader, ConsoleMetricExporter
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
-from opentelemetry.exporter.prometheus import PrometheusMetricReader
-from opentelemetry.exporter.jaeger.thrift import JaegerExporter
-from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.django import DjangoInstrumentor
-from opentelemetry.instrumentation.redis import RedisInstrumentor
-from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-from opentelemetry.instrumentation.aiohttp_client import AioHttpClientInstrumentor
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry.instrumentation.logging import LoggingInstrumentor
-from opentelemetry.propagators.b3 import B3MultiFormat
-from opentelemetry.propagators.jaeger import JaegerPropagator
-from opentelemetry.propagators.composite import CompositePropagator
-from opentelemetry.propagate import set_global_textmap
 
 logger = logging.getLogger(__name__)
+
 
 class OtelConfig:
     """OpenTelemetry configuration for HMS services"""
@@ -45,7 +50,7 @@ class OtelConfig:
         enabled: bool = True,
         metrics_enabled: bool = True,
         traces_enabled: bool = True,
-        logs_enabled: bool = True
+        logs_enabled: bool = True,
     ):
         self.service_name = service_name
         self.service_version = service_version
@@ -56,8 +61,12 @@ class OtelConfig:
         self.logs_enabled = logs_enabled
 
         # Configuration
-        self.otlp_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector:4317")
-        self.jaeger_endpoint = os.getenv("JAEGER_ENDPOINT", "http://jaeger-collector:14250")
+        self.otlp_endpoint = os.getenv(
+            "OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector:4317"
+        )
+        self.jaeger_endpoint = os.getenv(
+            "JAEGER_ENDPOINT", "http://jaeger-collector:14250"
+        )
         self.prometheus_port = int(os.getenv("PROMETHEUS_PORT", "8090"))
 
         # Initialize resources
@@ -70,14 +79,16 @@ class OtelConfig:
 
     def _create_resource(self) -> Resource:
         """Create OpenTelemetry resource with service information"""
-        return Resource.create({
-            ResourceAttributes.SERVICE_NAME: self.service_name,
-            ResourceAttributes.SERVICE_VERSION: self.service_version,
-            ResourceAttributes.DEPLOYMENT_ENVIRONMENT: self.environment,
-            "service.namespace": "hms",
-            "team": "platform",
-            "application": "hms"
-        })
+        return Resource.create(
+            {
+                ResourceAttributes.SERVICE_NAME: self.service_name,
+                ResourceAttributes.SERVICE_VERSION: self.service_version,
+                ResourceAttributes.DEPLOYMENT_ENVIRONMENT: self.environment,
+                "service.namespace": "hms",
+                "team": "platform",
+                "application": "hms",
+            }
+        )
 
     def setup_tracing(self) -> Optional[TracerProvider]:
         """Setup distributed tracing"""
@@ -94,9 +105,7 @@ class OtelConfig:
 
             # OTLP exporter
             otlp_exporter = OTLPSpanExporter(
-                endpoint=self.otlp_endpoint,
-                insecure=True,
-                timeout=30
+                endpoint=self.otlp_endpoint, insecure=True, timeout=30
             )
             exporters.append(otlp_exporter)
 
@@ -115,7 +124,7 @@ class OtelConfig:
                     max_queue_size=10000,
                     max_export_batch_size=1000,
                     export_timeout_sec=30,
-                    schedule_delay_millis=5000
+                    schedule_delay_millis=5000,
                 )
                 self.tracer_provider.add_span_processor(span_processor)
 
@@ -142,20 +151,18 @@ class OtelConfig:
             # Add Prometheus reader
             prometheus_reader = PrometheusMetricReader(
                 prefix=f"{self.service_name}_",
-                endpoint=f"0.0.0.0:{self.prometheus_port}"
+                endpoint=f"0.0.0.0:{self.prometheus_port}",
             )
 
             # Add OTLP exporter
             otlp_metric_exporter = OTLPMetricExporter(
-                endpoint=self.otlp_endpoint,
-                insecure=True,
-                timeout=30
+                endpoint=self.otlp_endpoint, insecure=True, timeout=30
             )
 
             metric_reader = PeriodicExportingMetricReader(
                 otlp_metric_exporter,
                 export_interval_millis=60000,
-                export_timeout_millis=30000
+                export_timeout_millis=30000,
             )
 
             self.meter_provider.add_metric_reader(prometheus_reader)
@@ -182,7 +189,7 @@ class OtelConfig:
             LoggingInstrumentor().instrument(
                 log_level=logging.INFO,
                 set_logging_format=True,
-                exporter=ConsoleMetricExporter()
+                exporter=ConsoleMetricExporter(),
             )
 
             logger.info("Logging instrumentation configured")
@@ -193,10 +200,12 @@ class OtelConfig:
     def setup_propagators(self):
         """Setup context propagators"""
         # Set composite propagator
-        propagator = CompositePropagator([
-            B3MultiFormat(),
-            JaegerPropagator(),
-        ])
+        propagator = CompositePropagator(
+            [
+                B3MultiFormat(),
+                JaegerPropagator(),
+            ]
+        )
         set_global_textmap(propagator)
 
         logger.info("Context propagators configured")
@@ -205,8 +214,7 @@ class OtelConfig:
         """Instrument Django application"""
         try:
             DjangoInstrumentor().instrument(
-                enabled=self.traces_enabled,
-                tracer_provider=self.tracer_provider
+                enabled=self.traces_enabled, tracer_provider=self.tracer_provider
             )
             logger.info("Django instrumentation configured")
         except Exception as e:
@@ -219,7 +227,7 @@ class OtelConfig:
                 app,
                 tracer_provider=self.tracer_provider,
                 meter_provider=self.meter_provider,
-                excluded_urls="/health,/metrics,/ready,/live"
+                excluded_urls="/health,/metrics,/ready,/live",
             )
             logger.info("FastAPI instrumentation configured")
         except Exception as e:
@@ -281,7 +289,9 @@ class OtelConfig:
         return self.meter_provider.get_meter(meter_name)
 
     @asynccontextmanager
-    async def trace_operation(self, operation_name: str, attributes: Dict[str, Any] = None):
+    async def trace_operation(
+        self, operation_name: str, attributes: Dict[str, Any] = None
+    ):
         """Context manager for tracing async operations"""
         tracer = self.get_tracer()
         if not tracer:
@@ -294,7 +304,9 @@ class OtelConfig:
                     span.set_attribute(key, value)
             yield
 
-    def record_metric(self, name: str, value: float, unit: str = "", attributes: Dict[str, Any] = None):
+    def record_metric(
+        self, name: str, value: float, unit: str = "", attributes: Dict[str, Any] = None
+    ):
         """Record a metric"""
         meter = self.get_meter()
         if not meter:
@@ -302,15 +314,20 @@ class OtelConfig:
 
         try:
             counter = meter.create_counter(
-                name,
-                unit=unit,
-                description=f"HMS metric: {name}"
+                name, unit=unit, description=f"HMS metric: {name}"
             )
             counter.add(value, attributes or {})
         except Exception as e:
             logger.error(f"Failed to record metric {name}: {e}")
 
-    def record_histogram(self, name: str, value: float, unit: str = "", attributes: Dict[str, Any] = None, buckets: list = None):
+    def record_histogram(
+        self,
+        name: str,
+        value: float,
+        unit: str = "",
+        attributes: Dict[str, Any] = None,
+        buckets: list = None,
+    ):
         """Record a histogram metric"""
         meter = self.get_meter()
         if not meter:
@@ -321,14 +338,16 @@ class OtelConfig:
                 name,
                 unit=unit,
                 description=f"HMS histogram: {name}",
-                buckets=buckets or [0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 300.0]
+                buckets=buckets or [0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 300.0],
             )
             histogram.record(value, attributes or {})
         except Exception as e:
             logger.error(f"Failed to record histogram {name}: {e}")
 
+
 # Global configuration instance
 otel_config = None
+
 
 def setup_otel(service_name: str, **kwargs) -> OtelConfig:
     """Setup OpenTelemetry for a service"""
@@ -337,9 +356,11 @@ def setup_otel(service_name: str, **kwargs) -> OtelConfig:
     otel_config.setup()
     return otel_config
 
+
 def get_otel_config() -> Optional[OtelConfig]:
     """Get the global OpenTelemetry configuration"""
     return otel_config
+
 
 def get_tracer(name: str = None):
     """Get tracer from global config"""
@@ -347,15 +368,18 @@ def get_tracer(name: str = None):
         return otel_config.get_tracer(name)
     return None
 
+
 def get_meter(name: str = None):
     """Get meter from global config"""
     if otel_config:
         return otel_config.get_meter(name)
     return None
 
+
 # Decorators for easy tracing
 def trace_async(operation_name: str = None):
     """Decorator for tracing async functions"""
+
     def decorator(func):
         import functools
 
@@ -379,11 +403,15 @@ def trace_async(operation_name: str = None):
                     span.set_attribute("error.message", str(e))
                     span.set_attribute("error.type", type(e).__name__)
                     raise
+
         return wrapper
+
     return decorator
+
 
 def trace_sync(operation_name: str = None):
     """Decorator for tracing sync functions"""
+
     def decorator(func):
         import functools
 
@@ -407,8 +435,11 @@ def trace_sync(operation_name: str = None):
                     span.set_attribute("error.message", str(e))
                     span.set_attribute("error.type", type(e).__name__)
                     raise
+
         return wrapper
+
     return decorator
+
 
 # Middleware for correlation ID propagation
 class CorrelationIDMiddleware:
@@ -427,6 +458,7 @@ class CorrelationIDMiddleware:
 
         if not correlation_id:
             import uuid
+
             correlation_id = str(uuid.uuid4())
 
         # Add to scope for handlers
@@ -437,8 +469,7 @@ class CorrelationIDMiddleware:
         if tracer:
             context = trace.set_span_in_context(trace.get_current_span())
             context = trace.set_span_attributes(
-                {"correlation.id": correlation_id},
-                context
+                {"correlation.id": correlation_id}, context
             )
 
         # Add correlation ID to response headers

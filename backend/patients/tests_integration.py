@@ -1,3 +1,7 @@
+"""
+tests_integration module
+"""
+
 import json
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -31,7 +35,11 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
         self.hospital = Mock()
         self.hospital.id = 1
         self.user = User.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass123", hospital=self.hospital, is_staff=True
+            username="testuser",
+            email="test@example.com",
+            password="testpass123",
+            hospital=self.hospital,
+            is_staff=True,
         )
         self.client.force_login(self.user)
         self.api_client = APIClient()
@@ -63,7 +71,9 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
         # Verify basic patient data
         self.assertEqual(patient.first_name, "John")
         self.assertEqual(patient.last_name, "Doe")
-        self.assertEqual(patient.medical_record_number, response.data["medical_record_number"])
+        self.assertEqual(
+            patient.medical_record_number, response.data["medical_record_number"]
+        )
 
         # Step 2: Add emergency contact
         emergency_contact_data = {
@@ -76,7 +86,9 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
         }
 
         response = self.api_client.post(
-            f"/api/patients/{patient_id}/emergency-contacts/", emergency_contact_data, format="json"
+            f"/api/patients/{patient_id}/emergency-contacts/",
+            emergency_contact_data,
+            format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -91,7 +103,9 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
             "deductible_amount": "1000.00",
         }
 
-        response = self.api_client.post(f"/api/patients/{patient_id}/insurance/", insurance_data, format="json")
+        response = self.api_client.post(
+            f"/api/patients/{patient_id}/insurance/", insurance_data, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Step 4: Add medical alerts
@@ -103,7 +117,9 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
             "requires_acknowledgment": True,
         }
 
-        response = self.api_client.post(f"/api/patients/{patient_id}/alerts/", alert_data, format="json")
+        response = self.api_client.post(
+            f"/api/patients/{patient_id}/alerts/", alert_data, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Step 5: Verify complete patient record
@@ -116,7 +132,9 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
         self.assertEqual(len(patient_data["alerts"]), 1)
 
         # Step 6: Test patient search functionality
-        search_response = self.api_client.get("/api/patients/search/", {"q": "John Doe"})
+        search_response = self.api_client.get(
+            "/api/patients/search/", {"q": "John Doe"}
+        )
         self.assertEqual(search_response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(search_response.data["results"]), 1)
 
@@ -124,7 +142,11 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
         """Test patient information update workflow"""
         # Create initial patient
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         # Update basic information
@@ -135,7 +157,9 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
             "email": "jane.smith@example.com",
         }
 
-        response = self.api_client.put(f"/api/patients/{patient.id}/", update_data, format="json")
+        response = self.api_client.put(
+            f"/api/patients/{patient.id}/", update_data, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         patient.refresh_from_db()
@@ -158,9 +182,15 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
         )
 
         # Change to deceased status with date of death
-        update_data = {"status": "DECEASED", "date_of_death": "2023-01-01", "cause_of_death": "Natural causes"}
+        update_data = {
+            "status": "DECEASED",
+            "date_of_death": "2023-01-01",
+            "cause_of_death": "Natural causes",
+        }
 
-        response = self.api_client.patch(f"/api/patients/{patient.id}/", update_data, format="json")
+        response = self.api_client.patch(
+            f"/api/patients/{patient.id}/", update_data, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         patient.refresh_from_db()
@@ -170,7 +200,11 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
     def test_patient_insurance_lifecycle(self):
         """Test complete insurance information lifecycle"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         # Add primary insurance
@@ -183,16 +217,23 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
             "verification_status": "PENDING",
         }
 
-        response = self.api_client.post(f"/api/patients/{patient.id}/insurance/", primary_insurance, format="json")
+        response = self.api_client.post(
+            f"/api/patients/{patient.id}/insurance/", primary_insurance, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         insurance_id = response.data["id"]
 
         # Update insurance verification
-        update_verification = {"verification_status": "VERIFIED", "verification_date": "2023-01-15"}
+        update_verification = {
+            "verification_status": "VERIFIED",
+            "verification_date": "2023-01-15",
+        }
 
         response = self.api_client.patch(
-            f"/api/patients/{patient.id}/insurance/{insurance_id}/", update_verification, format="json"
+            f"/api/patients/{patient.id}/insurance/{insurance_id}/",
+            update_verification,
+            format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -205,7 +246,9 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
             "insurance_company_name": "Secondary Co",
         }
 
-        response = self.api_client.post(f"/api/patients/{patient.id}/insurance/", secondary_insurance, format="json")
+        response = self.api_client.post(
+            f"/api/patients/{patient.id}/insurance/", secondary_insurance, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Verify insurance ordering (primary first)
@@ -217,7 +260,11 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
     def test_patient_alert_acknowledgment_workflow(self):
         """Test patient alert acknowledgment workflow"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         # Create alert requiring acknowledgment
@@ -229,7 +276,9 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
             "requires_acknowledgment": True,
         }
 
-        response = self.api_client.post(f"/api/patients/{patient.id}/alerts/", alert_data, format="json")
+        response = self.api_client.post(
+            f"/api/patients/{patient.id}/alerts/", alert_data, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         alert_id = response.data["id"]
@@ -238,7 +287,9 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
         acknowledgment_data = {"acknowledged": True}
 
         response = self.api_client.patch(
-            f"/api/patients/{patient.id}/alerts/{alert_id}/", acknowledgment_data, format="json"
+            f"/api/patients/{patient.id}/alerts/{alert_id}/",
+            acknowledgment_data,
+            format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -251,7 +302,11 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
     def test_patient_emergency_contact_management(self):
         """Test emergency contact management workflow"""
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         # Add multiple emergency contacts
@@ -275,12 +330,16 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
 
         for contact_data in contacts_data:
             response = self.api_client.post(
-                f"/api/patients/{patient.id}/emergency-contacts/", contact_data, format="json"
+                f"/api/patients/{patient.id}/emergency-contacts/",
+                contact_data,
+                format="json",
             )
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Verify contacts ordering (primary first)
-        response = self.api_client.get(f"/api/patients/{patient.id}/emergency-contacts/")
+        response = self.api_client.get(
+            f"/api/patients/{patient.id}/emergency-contacts/"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
         self.assertTrue(response.data[0]["is_primary"])
@@ -290,7 +349,9 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
         update_data = {"phone_secondary": "555-555-5555"}
 
         response = self.api_client.patch(
-            f"/api/patients/{patient.id}/emergency-contacts/{primary_contact_id}/", update_data, format="json"
+            f"/api/patients/{patient.id}/emergency-contacts/{primary_contact_id}/",
+            update_data,
+            format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -407,7 +468,9 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
         self.assertEqual(len(response.data["results"]), 1)
 
         # Test combined search and filters
-        response = self.api_client.get("/api/patients/", {"q": "John", "status": "ACTIVE"})
+        response = self.api_client.get(
+            "/api/patients/", {"q": "John", "status": "ACTIVE"}
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data["results"]), 1)
 
@@ -426,7 +489,11 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
 
         # Add related data
         emergency_contact = EmergencyContact.objects.create(
-            patient=patient, first_name="Jane", last_name="Doe", relationship="SPOUSE", phone_primary="555-987-6543"
+            patient=patient,
+            first_name="Jane",
+            last_name="Doe",
+            relationship="SPOUSE",
+            phone_primary="555-987-6543",
         )
 
         insurance = InsuranceInformation.objects.create(
@@ -461,8 +528,12 @@ class PatientWorkflowIntegrationTests(TransactionTestCase):
         patient.delete()
 
         # Verify related data is also deleted
-        self.assertFalse(EmergencyContact.objects.filter(patient_id=patient_id).exists())
-        self.assertFalse(InsuranceInformation.objects.filter(patient_id=patient_id).exists())
+        self.assertFalse(
+            EmergencyContact.objects.filter(patient_id=patient_id).exists()
+        )
+        self.assertFalse(
+            InsuranceInformation.objects.filter(patient_id=patient_id).exists()
+        )
         self.assertFalse(PatientAlert.objects.filter(patient_id=patient_id).exists())
 
     def test_patient_performance_workflow(self):
@@ -516,7 +587,11 @@ class PatientDatabaseIntegrationTests(TransactionTestCase):
 
         # Test unique constraint on UUID
         patient1 = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         with self.assertRaises(Exception):  # Should violate unique constraint
@@ -547,7 +622,9 @@ class PatientDatabaseIntegrationTests(TransactionTestCase):
 
         # Test index usage with explain
         with connection.cursor() as cursor:
-            cursor.execute("EXPLAIN ANALYZE SELECT * FROM patients_patient WHERE last_name = 'Test0'")
+            cursor.execute(
+                "EXPLAIN ANALYZE SELECT * FROM patients_patient WHERE last_name = 'Test0'"
+            )
             explain_plan = cursor.fetchone()[0]
             self.assertIn("Index Scan", explain_plan)
 
@@ -588,11 +665,19 @@ class PatientDatabaseIntegrationTests(TransactionTestCase):
         self.user.id = 1
 
         patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
         EmergencyContact.objects.create(
-            patient=patient, first_name="Jane", last_name="Doe", relationship="SPOUSE", phone_primary="555-123-4567"
+            patient=patient,
+            first_name="Jane",
+            last_name="Doe",
+            relationship="SPOUSE",
+            phone_primary="555-123-4567",
         )
 
         InsuranceInformation.objects.create(
@@ -609,8 +694,12 @@ class PatientDatabaseIntegrationTests(TransactionTestCase):
         patient.delete()
 
         self.assertFalse(Patient.objects.filter(id=patient_id).exists())
-        self.assertFalse(EmergencyContact.objects.filter(patient_id=patient_id).exists())
-        self.assertFalse(InsuranceInformation.objects.filter(patient_id=patient_id).exists())
+        self.assertFalse(
+            EmergencyContact.objects.filter(patient_id=patient_id).exists()
+        )
+        self.assertFalse(
+            InsuranceInformation.objects.filter(patient_id=patient_id).exists()
+        )
 
     def test_database_concurrent_operations(self):
         """Test concurrent database operations"""

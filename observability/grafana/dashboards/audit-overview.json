@@ -1,5 +1,7 @@
 {
-  "annotations": {"list": []},
+  "annotations": {
+    "list": []
+  },
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -8,25 +10,48 @@
     {
       "type": "timeseries",
       "title": "Audit Requests Rate",
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
       "targets": [
-        {"expr": "sum(rate(http_requests_total{job=\"audit\"}[5m]))", "legendFormat": "req/s"}
+        {
+          "expr": "sum(rate(http_requests_total{job=\"audit\"}[5m]))",
+          "legendFormat": "req/s"
+        }
       ]
     },
     {
       "type": "timeseries",
       "title": "Audit Request Errors",
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8},
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
       "targets": [
-        {"expr": "sum(rate(http_requests_total{job=\"audit\", status=~\"5..\"}[5m]))", "legendFormat": "5xx"}
+        {
+          "expr": "sum(rate(http_requests_total{job=\"audit\", status=~\"5..\"}[5m]))",
+          "legendFormat": "5xx"
+        }
       ]
     }
   ],
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["audit"],
-  "templating": {"list": []},
-  "time": {"from": "now-6h", "to": "now"},
+  "tags": [
+    "audit"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
   "timezone": "",
   "title": "Audit Overview",
   "uid": "audit-overview",

@@ -1,3 +1,7 @@
+"""
+manage module
+"""
+
 import os
 import sys
 

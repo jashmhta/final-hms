@@ -1,49 +1,60 @@
+"""
+read_replica_manager module
+"""
+
 import logging
 import os
 import random
+import secrets
 import threading
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Any, Tuple, Callable
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
 from django.conf import settings
-from django.db import connections, DatabaseError, OperationalError
-from django.db.backends.postgresql.base import DatabaseWrapper
 from django.core.cache import cache
+from django.db import DatabaseError, OperationalError, connections
+from django.db.backends.postgresql.base import DatabaseWrapper
 from django.utils import timezone
+
 from core.database_optimization import DatabaseOptimizer
 
 
 class ReadReplicaRole(Enum):
     """Roles for read replicas."""
-    PRIMARY = "primary"           # Primary database (write operations)
-    REPLICA_READ = "replica_read" # Read operations only
+
+    PRIMARY = "primary"  # Primary database (write operations)
+    REPLICA_READ = "replica_read"  # Read operations only
     REPLICA_ANALYTICS = "replica_analytics"  # Analytics queries
     REPLICA_REPORTING = "replica_reporting"  # Reporting queries
 
 
 class ConnectionPoolStrategy(Enum):
     """Connection pooling strategies."""
-    SIMPLE = "simple"           # Basic connection pooling
+
+    SIMPLE = "simple"  # Basic connection pooling
     HEALTH_CHECKED = "health_checked"  # Health-checked connections
-    LOAD_BALANCED = "load_balanced"    # Load balanced across replicas
-    GEO_AWARE = "geo_aware"    # Geographic awareness
+    LOAD_BALANCED = "load_balanced"  # Load balanced across replicas
+    GEO_AWARE = "geo_aware"  # Geographic awareness
 
 
 class QueryType(Enum):
     """Types of queries for routing decisions."""
-    WRITE = "write"             # INSERT, UPDATE, DELETE operations
+
+    WRITE = "write"  # INSERT, UPDATE, DELETE operations
     READ_TRANSACTIONAL = "read_transactional"  # Transactional reads
-    READ_ANALYTICAL = "read_analytical"        # Analytics queries
-    READ_REPORTING = "read_reporting"          # Reporting queries
-    READ_CONSISTENT = "read_consistent"        # Requires latest data
+    READ_ANALYTICAL = "read_analytical"  # Analytics queries
+    READ_REPORTING = "read_reporting"  # Reporting queries
+    READ_CONSISTENT = "read_consistent"  # Requires latest data
 
 
 @dataclass
 class ReplicaInfo:
     """Information about a read replica."""
+
     name: str
     host: str
     port: int
@@ -65,6 +76,7 @@ class ReplicaInfo:
 @dataclass
 class ConnectionPoolStats:
     """Statistics for connection pooling."""
+
     pool_name: str
     total_connections: int
     active_connections: int
@@ -92,7 +104,9 @@ class ReadReplicaManager:
         # Health monitoring
         self.health_check_thread = None
         self.health_check_running = False
-        self.health_check_interval = int(os.getenv("REPLICA_HEALTH_CHECK_INTERVAL", "30"))
+        self.health_check_interval = int(
+            os.getenv("REPLICA_HEALTH_CHECK_INTERVAL", "30")
+        )
 
         # Load balancing
         self.current_replica_index = 0
@@ -110,15 +124,26 @@ class ReadReplicaManager:
         """Load read replica configuration from environment variables."""
         config = {
             "enabled": os.getenv("READ_REPLICAS_ENABLED", "true").lower() == "true",
-            "connection_pool_enabled": os.getenv("CONNECTION_POOL_ENABLED", "true").lower() == "true",
-            "health_check_enabled": os.getenv("REPLICA_HEALTH_CHECK_ENABLED", "true").lower() == "true",
-            "load_balancing_enabled": os.getenv("LOAD_BALANCING_ENABLED", "true").lower() == "true",
+            "connection_pool_enabled": os.getenv(
+                "CONNECTION_POOL_ENABLED", "true"
+            ).lower()
+            == "true",
+            "health_check_enabled": os.getenv(
+                "REPLICA_HEALTH_CHECK_ENABLED", "true"
+            ).lower()
+            == "true",
+            "load_balancing_enabled": os.getenv(
+                "LOAD_BALANCING_ENABLED", "true"
+            ).lower()
+            == "true",
             "max_pool_size": int(os.getenv("DB_MAX_POOL_SIZE", "20")),
             "min_pool_size": int(os.getenv("DB_MIN_POOL_SIZE", "5")),
             "pool_timeout": int(os.getenv("DB_POOL_TIMEOUT", "30")),
             "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "10")),
             "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "3600")),
-            "strategy": ConnectionPoolStrategy(os.getenv("CONNECTION_POOL_STRATEGY", "health_checked"))
+            "strategy": ConnectionPoolStrategy(
+                os.getenv("CONNECTION_POOL_STRATEGY", "health_checked")
+            ),
         }
 
         return config
@@ -139,12 +164,20 @@ class ReadReplicaManager:
                 "name": f"replica_{i}",
                 "host": os.getenv(f"READ_REPLICA_{i}_HOST"),
                 "port": int(os.getenv(f"READ_REPLICA_{i}_PORT", "5432")),
-                "database": os.getenv(f"READ_REPLICA_{i}_DATABASE", os.getenv("POSTGRES_DB", "hms")),
-                "username": os.getenv(f"READ_REPLICA_{i}_USER", os.getenv("POSTGRES_USER", "")),
-                "password": os.getenv(f"READ_REPLICA_{i}_PASSWORD", os.getenv("POSTGRES_PASSWORD", "")),
+                "database": os.getenv(
+                    f"READ_REPLICA_{i}_DATABASE", os.getenv("POSTGRES_DB", "hms")
+                ),
+                "username": os.getenv(
+                    f"READ_REPLICA_{i}_USER", os.getenv("POSTGRES_USER", "")
+                ),
+                "password": os.getenv(
+                    f"READ_REPLICA_{i}_PASSWORD", os.getenv("POSTGRES_PASSWORD", "")
+                ),
                 "role": ReadReplicaRole.REPLICA_READ,
                 "region": os.getenv(f"READ_REPLICA_{i}_REGION", "default"),
-                "max_connections": int(os.getenv(f"READ_REPLICA_{i}_MAX_CONNECTIONS", "100"))
+                "max_connections": int(
+                    os.getenv(f"READ_REPLICA_{i}_MAX_CONNECTIONS", "100")
+                ),
             }
 
             if replica_config["host"]:
@@ -177,7 +210,7 @@ class ReadReplicaManager:
                 database=primary_config["database"],
                 user=primary_config["username"],
                 password=primary_config["password"],
-                connect_timeout=self.config["pool_timeout"]
+                connect_timeout=self.config["pool_timeout"],
             )
 
             # Replica connection pools
@@ -190,7 +223,7 @@ class ReadReplicaManager:
                     database=replica.database,
                     user=replica.username,
                     password=replica.password,
-                    connect_timeout=self.config["pool_timeout"]
+                    connect_timeout=self.config["pool_timeout"],
                 )
 
                 self.replica_pools[replica.name] = pool
@@ -198,18 +231,20 @@ class ReadReplicaManager:
             self.logger.info("Initialized connection pools for primary and replicas")
 
         except ImportError:
-            self.logger.warning("psycopg2 not available, using Django connection management")
+            self.logger.warning(
+                "psycopg2 not available, using Django connection management"
+            )
             self.config["connection_pool_enabled"] = False
 
     def _get_primary_config(self) -> Dict[str, Any]:
         """Get primary database configuration."""
-        primary_config = settings.DATABASES.get('default', {})
+        primary_config = settings.DATABASES.get("default", {})
         return {
-            "host": primary_config.get('HOST', 'localhost'),
-            "port": int(primary_config.get('PORT', 5432)),
-            "database": primary_config.get('NAME', 'hms'),
-            "username": primary_config.get('USER', ''),
-            "password": primary_config.get('PASSWORD', '')
+            "host": primary_config.get("HOST", "localhost"),
+            "port": int(primary_config.get("PORT", 5432)),
+            "database": primary_config.get("NAME", "hms"),
+            "username": primary_config.get("USER", ""),
+            "password": primary_config.get("PASSWORD", ""),
         }
 
     def _start_health_monitoring(self):
@@ -219,8 +254,7 @@ class ReadReplicaManager:
 
         self.health_check_running = True
         self.health_check_thread = threading.Thread(
-            target=self._health_monitor_worker,
-            daemon=True
+            target=self._health_monitor_worker, daemon=True
         )
         self.health_check_thread.start()
         self.logger.info("Started replica health monitoring")
@@ -255,7 +289,11 @@ class ReadReplicaManager:
                             try:
                                 cursor.execute("SELECT pg_last_wal_replay_lag()")
                                 lag_result = cursor.fetchone()
-                                replica.lag_ms = int(lag_result[0].total_seconds() * 1000) if lag_result[0] else 0
+                                replica.lag_ms = (
+                                    int(lag_result[0].total_seconds() * 1000)
+                                    if lag_result[0]
+                                    else 0
+                                )
                             except:
                                 replica.lag_ms = 0
 
@@ -274,7 +312,7 @@ class ReadReplicaManager:
     @contextmanager
     def get_primary_connection(self):
         """Get a connection from the primary database pool."""
-        if self.config["connection_pool_enabled"] and hasattr(self, 'primary_pool'):
+        if self.config["connection_pool_enabled"] and hasattr(self, "primary_pool"):
             try:
                 conn = self.primary_pool.getconn()
                 yield conn
@@ -284,7 +322,7 @@ class ReadReplicaManager:
                 raise DatabaseError("Failed to get primary connection")
         else:
             # Use Django's default connection
-            yield connections['default']
+            yield connections["default"]
 
     @contextmanager
     def get_replica_connection(self, replica_name: str = None):
@@ -318,7 +356,9 @@ class ReadReplicaManager:
                 pool.putconn(conn)
             else:
                 # Create direct connection
-                replica = next((r for r in self.replicas if r.name == replica_name), None)
+                replica = next(
+                    (r for r in self.replicas if r.name == replica_name), None
+                )
                 if replica:
                     conn = self._create_direct_connection(replica)
                     yield conn
@@ -328,7 +368,9 @@ class ReadReplicaManager:
                         yield conn
 
         except Exception as e:
-            self.logger.error(f"Error getting replica connection for {replica_name}: {e}")
+            self.logger.error(
+                f"Error getting replica connection for {replica_name}: {e}"
+            )
             # Fall back to primary
             with self.get_primary_connection() as conn:
                 yield conn
@@ -343,10 +385,12 @@ class ReadReplicaManager:
             database=replica.database,
             user=replica.username,
             password=replica.password,
-            connect_timeout=self.config["pool_timeout"]
+            connect_timeout=self.config["pool_timeout"],
         )
 
-    def route_query(self, query: str, query_type: QueryType = QueryType.READ_TRANSACTIONAL) -> str:
+    def route_query(
+        self, query: str, query_type: QueryType = QueryType.READ_TRANSACTIONAL
+    ) -> str:
         """Route a query to the appropriate database (primary or replica)."""
         if not self.config["enabled"]:
             return "default"
@@ -377,7 +421,8 @@ class ReadReplicaManager:
 
         # Filter healthy replicas with low lag
         healthy_replicas = [
-            r for r in self.replicas
+            r
+            for r in self.replicas
             if r.is_healthy and r.lag_ms < 1000  # Less than 1 second lag
         ]
 
@@ -391,7 +436,8 @@ class ReadReplicaManager:
     def _select_replica_for_analytics(self) -> Optional[ReplicaInfo]:
         """Select replica for analytics queries."""
         analytics_replicas = [
-            r for r in self.replicas
+            r
+            for r in self.replicas
             if r.role == ReadReplicaRole.REPLICA_ANALYTICS and r.is_healthy
         ]
 
@@ -404,7 +450,8 @@ class ReadReplicaManager:
     def _select_replica_for_reporting(self) -> Optional[ReplicaInfo]:
         """Select replica for reporting queries."""
         reporting_replicas = [
-            r for r in self.replicas
+            r
+            for r in self.replicas
             if r.role == ReadReplicaRole.REPLICA_REPORTING and r.is_healthy
         ]
 
@@ -432,9 +479,9 @@ class ReadReplicaManager:
         # Weighted random selection
         total_weight = sum(weights)
         if total_weight == 0:
-            return random.choice(replicas)
+            return secrets.choice(replicas)
 
-        r = random.uniform(0, total_weight)
+        r = secrets.uniform(0, total_weight)
         upto = 0
         for replica, weight in zip(replicas, weights):
             if upto + weight >= r:
@@ -443,7 +490,12 @@ class ReadReplicaManager:
 
         return replicas[-1]
 
-    def execute_query(self, query: str, params=None, query_type: QueryType = QueryType.READ_TRANSACTIONAL):
+    def execute_query(
+        self,
+        query: str,
+        params=None,
+        query_type: QueryType = QueryType.READ_TRANSACTIONAL,
+    ):
         """Execute a query on the appropriate database."""
         db_alias = self.route_query(query, query_type)
 
@@ -461,11 +513,13 @@ class ReadReplicaManager:
             # Try fallback to primary for read operations
             if query_type != QueryType.WRITE and db_alias != "default":
                 try:
-                    with connections['default'].cursor() as cursor:
+                    with connections["default"].cursor() as cursor:
                         cursor.execute(query, params)
                         return cursor.fetchall()
                 except Exception as fallback_error:
-                    self.logger.error(f"Fallback to primary also failed: {fallback_error}")
+                    self.logger.error(
+                        f"Fallback to primary also failed: {fallback_error}"
+                    )
 
             raise DatabaseError(f"Query execution failed: {e}")
 
@@ -477,9 +531,9 @@ class ReadReplicaManager:
                 "enabled": self.config["enabled"],
                 "connection_pool_enabled": self.config["connection_pool_enabled"],
                 "health_check_enabled": self.config["health_check_enabled"],
-                "strategy": self.config["strategy"].value
+                "strategy": self.config["strategy"].value,
             },
-            "replicas": []
+            "replicas": [],
         }
 
         for replica in self.replicas:
@@ -494,7 +548,11 @@ class ReadReplicaManager:
                 "lag_ms": replica.lag_ms,
                 "error_count": replica.error_count,
                 "connection_count": replica.connection_count,
-                "last_health_check": replica.last_health_check.isoformat() if replica.last_health_check else None
+                "last_health_check": (
+                    replica.last_health_check.isoformat()
+                    if replica.last_health_check
+                    else None
+                ),
             }
             stats["replicas"].append(replica_stats)
 
@@ -502,18 +560,19 @@ class ReadReplicaManager:
 
     def get_pool_stats(self) -> Dict[str, Any]:
         """Get connection pool statistics."""
-        stats = {
-            "timestamp": timezone.now().isoformat(),
-            "pools": {}
-        }
+        stats = {"timestamp": timezone.now().isoformat(), "pools": {}}
 
         # Primary pool stats
-        if hasattr(self, 'primary_pool'):
+        if hasattr(self, "primary_pool"):
             try:
                 stats["pools"]["primary"] = {
                     "minconn": self.primary_pool.minconn,
                     "maxconn": self.primary_pool.maxconn,
-                    "used_connections": len(self.primary_pool._pool) if hasattr(self.primary_pool, '_pool') else 0
+                    "used_connections": (
+                        len(self.primary_pool._pool)
+                        if hasattr(self.primary_pool, "_pool")
+                        else 0
+                    ),
                 }
             except:
                 stats["pools"]["primary"] = {"error": "Could not get stats"}
@@ -524,7 +583,9 @@ class ReadReplicaManager:
                 stats["pools"][replica_name] = {
                     "minconn": pool.minconn,
                     "maxconn": pool.maxconn,
-                    "used_connections": len(pool._pool) if hasattr(pool, '_pool') else 0
+                    "used_connections": (
+                        len(pool._pool) if hasattr(pool, "_pool") else 0
+                    ),
                 }
             except:
                 stats["pools"][replica_name] = {"error": "Could not get stats"}
@@ -539,14 +600,14 @@ class ReadReplicaManager:
         results = {
             "optimization_timestamp": timezone.now().isoformat(),
             "actions_taken": [],
-            "recommendations": []
+            "recommendations": [],
         }
 
         # Analyze pool usage and adjust sizes
         for pool_name, pool in self.replica_pools.items():
             try:
                 # Get current usage
-                used_connections = len(pool._pool) if hasattr(pool, '_pool') else 0
+                used_connections = len(pool._pool) if hasattr(pool, "_pool") else 0
                 usage_rate = used_connections / pool.maxconn
 
                 # Recommendations based on usage
@@ -569,7 +630,7 @@ class ReadReplicaManager:
         results = {
             "failover_timestamp": timezone.now().isoformat(),
             "actions_taken": [],
-            "replicas_failed": []
+            "replicas_failed": [],
         }
 
         # Mark all replicas as unhealthy
@@ -583,11 +644,13 @@ class ReadReplicaManager:
         results["actions_taken"].append("All traffic redirected to primary")
 
         # Clear connection pools
-        if hasattr(self, 'replica_pools'):
+        if hasattr(self, "replica_pools"):
             for pool_name, pool in self.replica_pools.items():
                 try:
                     pool.closeall()
-                    results["actions_taken"].append(f"Closed connection pool for {pool_name}")
+                    results["actions_taken"].append(
+                        f"Closed connection pool for {pool_name}"
+                    )
                 except:
                     pass
 
@@ -604,7 +667,7 @@ class ReadReplicaManager:
             "recovery_timestamp": timezone.now().isoformat(),
             "actions_taken": [],
             "replicas_restored": [],
-            "replicas_failed": []
+            "replicas_failed": [],
         }
 
         # Check replica health
@@ -624,14 +687,22 @@ class ReadReplicaManager:
                 results["actions_taken"].append("Reinitialized connection pools")
 
             results["replicas_restored"] = [r.name for r in healthy_replicas]
-            results["replicas_failed"] = [r.name for r in self.replicas if not r.is_healthy]
+            results["replicas_failed"] = [
+                r.name for r in self.replicas if not r.is_healthy
+            ]
 
-            self.logger.info(f"Recovery successful: {len(healthy_replicas)}/{len(self.replicas)} replicas restored")
+            self.logger.info(
+                f"Recovery successful: {len(healthy_replicas)}/{len(self.replicas)} replicas restored"
+            )
         else:
-            results["actions_taken"].append("Insufficient healthy replicas for recovery")
+            results["actions_taken"].append(
+                "Insufficient healthy replicas for recovery"
+            )
             results["replicas_failed"] = [r.name for r in self.replicas]
 
-            self.logger.warning(f"Recovery failed: only {len(healthy_replicas)}/{len(self.replicas)} replicas healthy")
+            self.logger.warning(
+                f"Recovery failed: only {len(healthy_replicas)}/{len(self.replicas)} replicas healthy"
+            )
 
         return results
 
@@ -640,7 +711,7 @@ class ReadReplicaManager:
         self.health_check_running = False
 
         # Close connection pools
-        if hasattr(self, 'primary_pool'):
+        if hasattr(self, "primary_pool"):
             try:
                 self.primary_pool.closeall()
             except:

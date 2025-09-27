@@ -1,3 +1,7 @@
+"""
+tests_models module
+"""
+
 import uuid
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -238,13 +242,29 @@ class TestPatientModel(TestCase):
     def test_patient_status_choices(self):
         """Test all patient status choices are valid"""
         valid_statuses = [status[0] for status in PatientStatus.choices]
-        expected_statuses = ["ACTIVE", "INACTIVE", "DECEASED", "TRANSFERRED", "LOST_TO_FOLLOWUP"]
+        expected_statuses = [
+            "ACTIVE",
+            "INACTIVE",
+            "DECEASED",
+            "TRANSFERRED",
+            "LOST_TO_FOLLOWUP",
+        ]
         self.assertEqual(set(valid_statuses), set(expected_statuses))
 
     def test_blood_type_choices(self):
         """Test all blood type choices are valid"""
         valid_blood_types = [bt[0] for bt in BloodType.choices]
-        expected_blood_types = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "UNKNOWN"]
+        expected_blood_types = [
+            "A+",
+            "A-",
+            "B+",
+            "B-",
+            "AB+",
+            "AB-",
+            "O+",
+            "O-",
+            "UNKNOWN",
+        ]
         self.assertEqual(set(valid_blood_types), set(expected_blood_types))
 
     def test_invalid_date_of_birth(self):
@@ -388,7 +408,11 @@ class TestEmergencyContactModel(TestCase):
         self.hospital = Mock()
         self.hospital.id = 1
         self.patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
     def test_emergency_contact_creation(self):
@@ -506,7 +530,11 @@ class TestInsuranceInformationModel(TestCase):
         self.hospital = Mock()
         self.hospital.id = 1
         self.patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
     def test_insurance_creation(self):
@@ -623,7 +651,11 @@ class TestPatientAlertModel(TestCase):
         self.user = Mock()
         self.user.id = 1
         self.patient = Patient.objects.create(
-            hospital=self.hospital, first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="MALE"
+            hospital=self.hospital,
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="MALE",
         )
 
     def test_alert_creation(self):
@@ -895,6 +927,10 @@ class TestPatientModelRelationships(TestCase):
         self.patient.delete()
 
         # Verify related objects are also deleted
-        self.assertFalse(EmergencyContact.objects.filter(patient_id=patient_id).exists())
-        self.assertFalse(InsuranceInformation.objects.filter(patient_id=patient_id).exists())
+        self.assertFalse(
+            EmergencyContact.objects.filter(patient_id=patient_id).exists()
+        )
+        self.assertFalse(
+            InsuranceInformation.objects.filter(patient_id=patient_id).exists()
+        )
         self.assertFalse(PatientAlert.objects.filter(patient_id=patient_id).exists())

@@ -1,3 +1,7 @@
+"""
+check_users module
+"""
+
 import os
 import secrets
 import string
@@ -13,9 +17,13 @@ from django.db import transaction
 from hospitals.models import Hospital
 
 User = get_user_model()
+
+
 def generate_secure_password(length=12):
-    alphabet = string.ascii_letters + string.digits + "!@
-    return ''.join(secrets.choice(alphabet) for _ in range(length))
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*()"
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
 def main():
     print("=== HMS User Check ===")
     print("\nExisting users:")
@@ -73,7 +81,9 @@ def main():
                     role="HOSPITAL_ADMIN",
                     hospital=hospital,
                 )
-                print(f"Created: {hadmin.username} / {hadmin_password} (Hospital Admin)")
+                print(
+                    f"Created: {hadmin.username} / {hadmin_password} (Hospital Admin)"
+                )
                 doctor_password = generate_secure_password()
                 doctor = User.objects.create_user(
                     username="doctor",
@@ -113,5 +123,7 @@ def main():
         print("Use any staff user above")
         print("\nFrontend Application (http://localhost:5173):")
         print("Use any user above")
+
+
 if __name__ == "__main__":
     main()

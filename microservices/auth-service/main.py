@@ -6,42 +6,61 @@ role-based access control, and multi-factor authentication.
 """
 
 import asyncio
+import base64
+import io
 import logging
+import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any
-import uuid
+from typing import Any, Dict, List, Optional
 
+import asyncpg
+import pyotp
+import qrcode
 import uvicorn
-from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, EmailStr, Field, validator
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Text, ForeignKey, Enum
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session, relationship
-from sqlalchemy.pool import QueuePool
-from passlib.context import CryptContext
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from opentelemetry import trace
 from opentelemetry.exporter.jaeger.thrift import JaegerExporter
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from passlib.context import CryptContext
 from prometheus_fastapi_instrumentator import Instrumentator
-import asyncpg
+from pydantic import BaseModel, EmailStr, Field, validator
 from redis.asyncio import Redis
-import pyotp
-import qrcode
-import io
-import base64
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    create_engine,
+)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session, relationship, sessionmaker
+from sqlalchemy.pool import QueuePool
 
 # Configuration
 from .config import (
-    DATABASE_URL, REDIS_URL, JWT_SECRET_KEY, JWT_REFRESH_SECRET_KEY,
-    SERVICE_NAME, SERVICE_VERSION, JAEGER_AGENT_HOST, JAEGER_AGENT_PORT,
-    ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS,
-    MFA_ISSUER_NAME, MFA_TOKEN_VALIDITY, EMAIL_SERVICE_URL
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    DATABASE_URL,
+    EMAIL_SERVICE_URL,
+    JAEGER_AGENT_HOST,
+    JAEGER_AGENT_PORT,
+    JWT_REFRESH_SECRET_KEY,
+    JWT_SECRET_KEY,
+    MFA_ISSUER_NAME,
+    MFA_TOKEN_VALIDITY,
+    REDIS_URL,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+    SERVICE_NAME,
+    SERVICE_VERSION,
 )
 
 # Initialize OpenTelemetry
@@ -77,10 +96,10 @@ security = HTTPBearer()
 
 # Logging setup
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
 
 # Database Models
 class UserRole(str):
@@ -91,14 +110,16 @@ class UserRole(str):
     STAFF = "staff"
     PATIENT = "patient"
 
+
 class UserStatus(str):
     ACTIVE = "active"
     INACTIVE = "inactive"
     SUSPENDED = "suspended"
     PENDING = "pending"
 
+
 class User(Base):
-    __tablename__ = 'users'
+    __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
     uuid = Column(String, unique=True, index=True, nullable=False)
@@ -121,13 +142,14 @@ class User(Base):
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    created_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     # Relationships
     created_by_user = relationship("User", remote_side=[id])
 
+
 class RolePermission(Base):
-    __tablename__ = 'role_permissions'
+    __tablename__ = "role_permissions"
 
     id = Column(Integer, primary_key=True, index=True)
     role = Column(Enum(UserRole), nullable=False)
@@ -135,23 +157,25 @@ class RolePermission(Base):
     resource = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+
 class RefreshToken(Base):
-    __tablename__ = 'refresh_tokens'
+    __tablename__ = "refresh_tokens"
 
     id = Column(Integer, primary_key=True, index=True)
     token = Column(String, unique=True, index=True, nullable=False)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     is_revoked = Column(Boolean, default=False)
 
     user = relationship("User")
 
+
 class AuditLog(Base):
-    __tablename__ = 'audit_logs'
+    __tablename__ = "audit_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     action = Column(String, nullable=False)
     resource_type = Column(String, nullable=True)
     resource_id = Column(String, nullable=True)
@@ -163,6 +187,7 @@ class AuditLog(Base):
 
     user = relationship("User")
 
+
 # Pydantic Models
 class UserCreate(BaseModel):
     email: EmailStr
@@ -173,10 +198,12 @@ class UserCreate(BaseModel):
     phone: Optional[str] = Field(None, max_length=20)
     role: Optional[UserRole] = UserRole.STAFF
 
+
 class UserLogin(BaseModel):
     username: str
     password: str
     mfa_token: Optional[str] = Field(None, min_length=6, max_length=6)
+
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -185,29 +212,36 @@ class TokenResponse(BaseModel):
     expires_in: int
     user: Dict[str, Any]
 
+
 class MFASetupResponse(BaseModel):
     secret: str
     qr_code: str
     backup_codes: List[str]
 
+
 class MFATokenRequest(BaseModel):
     token: str = Field(..., min_length=6, max_length=6)
+
 
 class PasswordResetRequest(BaseModel):
     email: EmailStr
 
+
 class PasswordResetConfirm(BaseModel):
     token: str
     new_password: str = Field(..., min_length=12)
+
 
 # Utility functions
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash"""
     return pwd_context.verify(plain_password, hashed_password)
 
+
 def get_password_hash(password: str) -> str:
     """Hash a password"""
     return pwd_context.hash(password)
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Create JWT access token"""
@@ -221,6 +255,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm="HS256")
     return encoded_jwt
 
+
 def create_refresh_token(user_id: int) -> str:
     """Create JWT refresh token"""
     expires_delta = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
@@ -230,16 +265,19 @@ def create_refresh_token(user_id: int) -> str:
         "sub": str(user_id),
         "exp": expire,
         "type": "refresh",
-        "jti": str(uuid.uuid4())
+        "jti": str(uuid.uuid4()),
     }
 
     refresh_token = jwt.encode(token_data, JWT_REFRESH_SECRET_KEY, algorithm="HS256")
     return refresh_token
 
+
 async def verify_token(token: str, token_type: str = "access") -> dict:
     """Verify JWT token"""
     try:
-        secret_key = JWT_SECRET_KEY if token_type == "access" else JWT_REFRESH_SECRET_KEY
+        secret_key = (
+            JWT_SECRET_KEY if token_type == "access" else JWT_REFRESH_SECRET_KEY
+        )
         payload = jwt.decode(token, secret_key, algorithms=["HS256"])
 
         if payload.get("type") != token_type:
@@ -251,9 +289,10 @@ async def verify_token(token: str, token_type: str = "access") -> dict:
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(lambda: SessionLocal())
+    db: Session = Depends(lambda: SessionLocal()),
 ) -> User:
     """Get current user from JWT token"""
     try:
@@ -273,6 +312,7 @@ async def get_current_user(
         logger.error(f"Authentication error: {e}")
         raise HTTPException(status_code=401, detail="Could not validate credentials")
 
+
 async def audit_log_action(
     user_id: Optional[int],
     action: str,
@@ -282,7 +322,7 @@ async def audit_log_action(
     details: Optional[str] = None,
     ip_address: Optional[str] = None,
     user_agent: Optional[str] = None,
-    db: Session = Depends(lambda: SessionLocal())
+    db: Session = Depends(lambda: SessionLocal()),
 ):
     """Log audit actions"""
     audit_entry = AuditLog(
@@ -293,10 +333,11 @@ async def audit_log_action(
         ip_address=ip_address,
         user_agent=user_agent,
         status=status,
-        details=details
+        details=details,
     )
     db.add(audit_entry)
     db.commit()
+
 
 async def check_user_permissions(user: User, permission: str, resource: str) -> bool:
     """Check if user has required permissions"""
@@ -310,12 +351,11 @@ async def check_user_permissions(user: User, permission: str, resource: str) -> 
     if not permissions:
         # Cache miss, fetch from database
         db = SessionLocal()
-        role_permissions = db.query(RolePermission).filter(
-            RolePermission.role == user.role
-        ).all()
+        role_permissions = (
+            db.query(RolePermission).filter(RolePermission.role == user.role).all()
+        )
         permissions = [
-            f"{perm.permission}:{perm.resource}"
-            for perm in role_permissions
+            f"{perm.permission}:{perm.resource}" for perm in role_permissions
         ]
         await redis.setex(cache_key, 3600, ",".join(permissions))
         db.close()
@@ -324,6 +364,7 @@ async def check_user_permissions(user: User, permission: str, resource: str) -> 
 
     required_permission = f"{permission}:{resource}"
     return required_permission in permissions
+
 
 # FastAPI app
 @asynccontextmanager
@@ -334,11 +375,12 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info(f"Shutting down {SERVICE_NAME}")
 
+
 app = FastAPI(
     title="Authentication Service",
     description="Enterprise-grade Authentication and Authorization Service",
     version=SERVICE_VERSION,
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -353,6 +395,7 @@ app.add_middleware(
 # Add Prometheus instrumentation
 Instrumentator().instrument(app).expose(app)
 
+
 # API Endpoints
 @app.get("/health")
 async def health_check():
@@ -361,8 +404,9 @@ async def health_check():
         "status": "healthy",
         "service": SERVICE_NAME,
         "version": SERVICE_VERSION,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }
+
 
 @app.get("/ready")
 async def readiness_check():
@@ -375,23 +419,19 @@ async def readiness_check():
         # Check Redis connection
         await redis.ping()
 
-        return {
-            "status": "ready",
-            "database": "connected",
-            "redis": "connected"
-        }
+        return {"status": "ready", "database": "connected", "redis": "connected"}
     except Exception as e:
         logger.error(f"Readiness check failed: {e}")
         return JSONResponse(
-            status_code=503,
-            content={"status": "not_ready", "error": str(e)}
+            status_code=503, content={"status": "not_ready", "error": str(e)}
         )
+
 
 @app.post("/api/auth/register", response_model=TokenResponse)
 async def register_user(
     user_data: UserCreate,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(lambda: SessionLocal())
+    db: Session = Depends(lambda: SessionLocal()),
 ):
     """Register a new user"""
     with tracer.start_as_current_span("register_user") as span:
@@ -415,7 +455,7 @@ async def register_user(
             first_name=user_data.first_name,
             last_name=user_data.last_name,
             phone=user_data.phone,
-            role=user_data.role
+            role=user_data.role,
         )
 
         db.add(user)
@@ -430,7 +470,7 @@ async def register_user(
             "user",
             str(user.id),
             "success",
-            f"New user registered: {user.email}"
+            f"New user registered: {user.email}",
         )
 
         # Generate tokens
@@ -441,7 +481,7 @@ async def register_user(
         refresh_token_entry = RefreshToken(
             token=refresh_token,
             user_id=user.id,
-            expires_at=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+            expires_at=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
         )
         db.add(refresh_token_entry)
         db.commit()
@@ -461,25 +501,31 @@ async def register_user(
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "role": user.role,
-                "mfa_enabled": user.mfa_enabled
-            }
+                "mfa_enabled": user.mfa_enabled,
+            },
         )
+
 
 @app.post("/api/auth/login", response_model=TokenResponse)
 async def login_user(
     login_data: UserLogin,
     background_tasks: BackgroundTasks,
     request: Request,
-    db: Session = Depends(lambda: SessionLocal())
+    db: Session = Depends(lambda: SessionLocal()),
 ):
     """Login user with username and password"""
     with tracer.start_as_current_span("login_user") as span:
         span.set_attribute("username", login_data.username)
 
         # Find user by username or email
-        user = db.query(User).filter(
-            (User.username == login_data.username) | (User.email == login_data.username)
-        ).first()
+        user = (
+            db.query(User)
+            .filter(
+                (User.username == login_data.username)
+                | (User.email == login_data.username)
+            )
+            .first()
+        )
 
         if not user or not verify_password(login_data.password, user.hashed_password):
             # Log failed login attempt
@@ -492,13 +538,15 @@ async def login_user(
                 "failure",
                 f"Failed login attempt for {login_data.username}",
                 request.client.host,
-                request.headers.get("user-agent")
+                request.headers.get("user-agent"),
             )
 
             if user:
                 user.failed_login_attempts += 1
                 if user.failed_login_attempts >= 5:
-                    user.account_locked_until = datetime.utcnow() + timedelta(minutes=30)
+                    user.account_locked_until = datetime.utcnow() + timedelta(
+                        minutes=30
+                    )
                 db.commit()
 
             raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -522,7 +570,7 @@ async def login_user(
                     "failure",
                     f"Failed MFA attempt for {user.username}",
                     request.client.host,
-                    request.headers.get("user-agent")
+                    request.headers.get("user-agent"),
                 )
                 raise HTTPException(status_code=401, detail="Invalid MFA token")
 
@@ -540,7 +588,7 @@ async def login_user(
         refresh_token_entry = RefreshToken(
             token=refresh_token,
             user_id=user.id,
-            expires_at=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+            expires_at=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
         )
         db.add(refresh_token_entry)
         db.commit()
@@ -555,7 +603,7 @@ async def login_user(
             "success",
             f"Successful login for {user.username}",
             request.client.host,
-            request.headers.get("user-agent")
+            request.headers.get("user-agent"),
         )
 
         logger.info(f"User logged in successfully: {user.username}")
@@ -573,15 +621,16 @@ async def login_user(
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "role": user.role,
-                "mfa_enabled": user.mfa_enabled
-            }
+                "mfa_enabled": user.mfa_enabled,
+            },
         )
+
 
 @app.post("/api/auth/refresh", response_model=TokenResponse)
 async def refresh_token(
     refresh_token: str,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(lambda: SessionLocal())
+    db: Session = Depends(lambda: SessionLocal()),
 ):
     """Refresh access token using refresh token"""
     with tracer.start_as_current_span("refresh_token") as span:
@@ -590,19 +639,25 @@ async def refresh_token(
             user_id = int(payload.get("sub"))
 
             # Check if refresh token exists and is not revoked
-            token_entry = db.query(RefreshToken).filter(
-                RefreshToken.token == refresh_token,
-                RefreshToken.user_id == user_id,
-                RefreshToken.is_revoked == False,
-                RefreshToken.expires_at > datetime.utcnow()
-            ).first()
+            token_entry = (
+                db.query(RefreshToken)
+                .filter(
+                    RefreshToken.token == refresh_token,
+                    RefreshToken.user_id == user_id,
+                    RefreshToken.is_revoked == False,
+                    RefreshToken.expires_at > datetime.utcnow(),
+                )
+                .first()
+            )
 
             if not token_entry:
                 raise HTTPException(status_code=401, detail="Invalid refresh token")
 
             user = db.query(User).filter(User.id == user_id).first()
             if not user or not user.is_active:
-                raise HTTPException(status_code=401, detail="User not found or inactive")
+                raise HTTPException(
+                    status_code=401, detail="User not found or inactive"
+                )
 
             # Generate new tokens
             new_access_token = create_access_token(data={"sub": str(user.id)})
@@ -615,7 +670,8 @@ async def refresh_token(
             new_token_entry = RefreshToken(
                 token=new_refresh_token,
                 user_id=user.id,
-                expires_at=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+                expires_at=datetime.utcnow()
+                + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
             )
             db.add(new_token_entry)
             db.commit()
@@ -627,7 +683,7 @@ async def refresh_token(
                 "token_refreshed",
                 "user",
                 str(user.id),
-                "success"
+                "success",
             )
 
             span.set_attribute("user_id", user_id)
@@ -646,8 +702,8 @@ async def refresh_token(
                     "first_name": user.first_name,
                     "last_name": user.last_name,
                     "role": user.role,
-                    "mfa_enabled": user.mfa_enabled
-                }
+                    "mfa_enabled": user.mfa_enabled,
+                },
             )
 
         except HTTPException:
@@ -656,22 +712,27 @@ async def refresh_token(
             logger.error(f"Token refresh error: {e}")
             raise HTTPException(status_code=401, detail="Token refresh failed")
 
+
 @app.post("/api/auth/logout")
 async def logout_user(
     refresh_token: str,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(lambda: SessionLocal())
+    db: Session = Depends(lambda: SessionLocal()),
 ):
     """Logout user by revoking refresh token"""
     with tracer.start_as_current_span("logout_user") as span:
         span.set_attribute("user_id", current_user.id)
 
         # Revoke refresh token
-        token_entry = db.query(RefreshToken).filter(
-            RefreshToken.token == refresh_token,
-            RefreshToken.user_id == current_user.id
-        ).first()
+        token_entry = (
+            db.query(RefreshToken)
+            .filter(
+                RefreshToken.token == refresh_token,
+                RefreshToken.user_id == current_user.id,
+            )
+            .first()
+        )
 
         if token_entry:
             token_entry.is_revoked = True
@@ -684,17 +745,18 @@ async def logout_user(
             "logout",
             "user",
             str(current_user.id),
-            "success"
+            "success",
         )
 
         logger.info(f"User logged out: {current_user.username}")
 
         return {"message": "Logged out successfully"}
 
+
 @app.post("/api/auth/mfa/setup", response_model=MFASetupResponse)
 async def setup_mfa(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(lambda: SessionLocal())
+    db: Session = Depends(lambda: SessionLocal()),
 ):
     """Setup Multi-Factor Authentication"""
     with tracer.start_as_current_span("setup_mfa") as span:
@@ -713,8 +775,7 @@ async def setup_mfa(
         # Generate QR code
         totp = pyotp.TOTP(mfa_secret)
         provisioning_uri = totp.provisioning_uri(
-            current_user.email,
-            issuer_name=MFA_ISSUER_NAME
+            current_user.email, issuer_name=MFA_ISSUER_NAME
         )
 
         qr_img = qrcode.make(provisioning_uri)
@@ -732,16 +793,15 @@ async def setup_mfa(
         logger.info(f"MFA setup initiated for user: {current_user.username}")
 
         return MFASetupResponse(
-            secret=mfa_secret,
-            qr_code=qr_base64,
-            backup_codes=backup_codes
+            secret=mfa_secret, qr_code=qr_base64, backup_codes=backup_codes
         )
+
 
 @app.post("/api/auth/mfa/verify")
 async def verify_mfa(
     mfa_data: MFATokenRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(lambda: SessionLocal())
+    db: Session = Depends(lambda: SessionLocal()),
 ):
     """Verify MFA setup"""
     with tracer.start_as_current_span("verify_mfa") as span:
@@ -776,13 +836,11 @@ async def verify_mfa(
 
         logger.info(f"MFA verified and enabled for user: {current_user.username}")
 
-        return {"message": "MFA enabled successfully", "backup_codes": backup_codes.split(",")}
+        return {
+            "message": "MFA enabled successfully",
+            "backup_codes": backup_codes.split(","),
+        }
+
 
 if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8001,
-        reload=True,
-        log_level="info"
-    )
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True, log_level="info")

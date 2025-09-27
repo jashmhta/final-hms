@@ -1,7 +1,13 @@
+"""
+fix_startup_issues module
+"""
+
 import os
 import subprocess
 import sys
 from pathlib import Path
+
+
 class StartupFixer:
     def __init__(self):
         self.project_root = Path(__file__).parent

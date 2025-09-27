@@ -142,7 +142,12 @@ class AdvancedIndexingManager:
                     pattern = self._extract_query_pattern(row[0], table_name)
                     if pattern:
                         patterns.append(
-                            {"pattern": pattern, "frequency": row[1], "avg_time": row[3], "rows_returned": row[4]}
+                            {
+                                "pattern": pattern,
+                                "frequency": row[1],
+                                "avg_time": row[3],
+                                "rows_returned": row[4],
+                            }
                         )
 
                 return patterns
@@ -162,12 +167,18 @@ class AdvancedIndexingManager:
                 else (
                     query.upper().find("ORDER BY")
                     if "ORDER BY" in query.upper()
-                    else query.upper().find("LIMIT") if "LIMIT" in query.upper() else len(query)
+                    else (
+                        query.upper().find("LIMIT")
+                        if "LIMIT" in query.upper()
+                        else len(query)
+                    )
                 )
             )
 
             where_clause = query[where_start:where_end].strip()
-            return where_clause[:100] + "..." if len(where_clause) > 100 else where_clause
+            return (
+                where_clause[:100] + "..." if len(where_clause) > 100 else where_clause
+            )
         return None
 
     def _generate_index_recommendations(
@@ -277,7 +288,9 @@ class AdvancedIndexingManager:
         """Extract column names from ORDER BY clause"""
         import re
 
-        order_match = re.search(r"ORDER BY\s+(.*?)(?:\s+LIMIT|$)", pattern, re.IGNORECASE)
+        order_match = re.search(
+            r"ORDER BY\s+(.*?)(?:\s+LIMIT|$)", pattern, re.IGNORECASE
+        )
         if order_match:
             return [col.strip().split()[0] for col in order_match.group(1).split(",")]
         return []
@@ -317,7 +330,9 @@ class AdvancedIndexingManager:
                                     }
                                 )
                         except Exception as e:
-                            results["errors"].append({"table": table, "recommendation": rec, "error": str(e)})
+                            results["errors"].append(
+                                {"table": table, "recommendation": rec, "error": str(e)}
+                            )
 
             # Update statistics
             results["stats"] = {
@@ -332,7 +347,9 @@ class AdvancedIndexingManager:
 
         return results
 
-    def _generate_index_sql(self, table_name: str, recommendation: Dict[str, Any]) -> Optional[str]:
+    def _generate_index_sql(
+        self, table_name: str, recommendation: Dict[str, Any]
+    ) -> Optional[str]:
         """Generate CREATE INDEX SQL statement"""
         columns = recommendation["columns"]
 
@@ -356,7 +373,10 @@ class AdvancedIndexingManager:
 
     def implement_partial_indexes(self) -> Dict[str, Any]:
         """Implement partial indexes for frequently filtered subsets"""
-        results = {"partial_indexes": [], "estimated_improvement": "20-50% query speedup for filtered queries"}
+        results = {
+            "partial_indexes": [],
+            "estimated_improvement": "20-50% query speedup for filtered queries",
+        }
 
         try:
             with connection.cursor() as cursor:
@@ -395,7 +415,9 @@ class AdvancedIndexingManager:
         import re
 
         from_match = re.search(r"FROM\s+(\w+)", query, re.IGNORECASE)
-        where_match = re.search(r"WHERE\s+(.*?)(?:\s+GROUP BY|\s+ORDER BY|\s+LIMIT|$)", query, re.IGNORECASE)
+        where_match = re.search(
+            r"WHERE\s+(.*?)(?:\s+GROUP BY|\s+ORDER BY|\s+LIMIT|$)", query, re.IGNORECASE
+        )
 
         if from_match and where_match:
             table = from_match.group(1)
@@ -415,7 +437,15 @@ class AdvancedIndexingManager:
     def _is_selective_condition(self, condition: str) -> bool:
         """Check if condition is selective enough for partial index"""
         # Simple heuristics - in production, use statistics
-        selective_patterns = [r"= True", r"= False", r"IS NULL", r"IS NOT NULL", r"= \d+", r"IN \(", r"LIKE \'\%"]
+        selective_patterns = [
+            r"= True",
+            r"= False",
+            r"IS NULL",
+            r"IS NOT NULL",
+            r"= \d+",
+            r"IN \(",
+            r"LIKE \'\%",
+        ]
 
         return any(pattern in condition for pattern in selective_patterns)
 
@@ -433,7 +463,10 @@ class AdvancedIndexingManager:
 
     def create_covering_indexes(self) -> Dict[str, Any]:
         """Create covering indexes for common query patterns"""
-        results = {"covering_indexes": [], "performance_impact": "Eliminates table lookups for index-only scans"}
+        results = {
+            "covering_indexes": [],
+            "performance_impact": "Eliminates table lookups for index-only scans",
+        }
 
         try:
             with connection.cursor() as cursor:
@@ -473,7 +506,9 @@ class AdvancedIndexingManager:
         import re
 
         from_match = re.search(r"FROM\s+(\w+)", query, re.IGNORECASE)
-        select_match = re.search(r"SELECT\s+(.*?)\s+FROM", query, re.IGNORECASE | re.DOTALL)
+        select_match = re.search(
+            r"SELECT\s+(.*?)\s+FROM", query, re.IGNORECASE | re.DOTALL
+        )
 
         if not from_match or not select_match:
             return None
@@ -499,7 +534,11 @@ class AdvancedIndexingManager:
 
     def optimize_existing_indexes(self) -> Dict[str, Any]:
         """Optimize existing indexes (fillfactor, reorder, etc.)"""
-        results = {"optimized_indexes": [], "reindexed_tables": [], "space_saved": "0 MB"}
+        results = {
+            "optimized_indexes": [],
+            "reindexed_tables": [],
+            "space_saved": "0 MB",
+        }
 
         try:
             with connection.cursor() as cursor:
@@ -529,7 +568,9 @@ class AdvancedIndexingManager:
                                 reindexed_tables.add(table)
                                 results["reindexed_tables"].append(f"{schema}.{table}")
                             except Exception as e:
-                                logger.warning(f"Could not reindex {schema}.{table}: {e}")
+                                logger.warning(
+                                    f"Could not reindex {schema}.{table}: {e}"
+                                )
 
                 # Update fillfactor for write-heavy tables
                 cursor.execute(
@@ -575,7 +616,11 @@ class IndexMonitoring:
 
     def collect_index_metrics(self) -> Dict[str, Any]:
         """Collect comprehensive index performance metrics"""
-        metrics = {"timestamp": datetime.now().isoformat(), "indexes": [], "summary": {}}
+        metrics = {
+            "timestamp": datetime.now().isoformat(),
+            "indexes": [],
+            "summary": {},
+        }
 
         try:
             with connection.cursor() as cursor:
@@ -629,13 +674,19 @@ class IndexMonitoring:
                 metrics["summary"] = {
                     "total_indexes": total_indexes,
                     "unused_indexes": unused_indexes,
-                    "unused_percentage": round((unused_indexes / total_indexes * 100), 2) if total_indexes > 0 else 0,
+                    "unused_percentage": (
+                        round((unused_indexes / total_indexes * 100), 2)
+                        if total_indexes > 0
+                        else 0
+                    ),
                     "total_size_mb": round(total_size_mb, 2),
                 }
 
                 # Store in Redis for trending
                 self.redis_client.setex(
-                    f'index_metrics:{datetime.now().strftime("%Y%m%d_%H")}', 86400, json.dumps(metrics)  # 24 hours
+                    f'index_metrics:{datetime.now().strftime("%Y%m%d_%H")}',
+                    86400,
+                    json.dumps(metrics),  # 24 hours
                 )
 
         except Exception as e:
@@ -659,7 +710,10 @@ class IndexMonitoring:
                 if data:
                     metrics = json.loads(data)
                     trends["data_points"].append(
-                        {"timestamp": timestamp.isoformat(), "summary": metrics.get("summary", {})}
+                        {
+                            "timestamp": timestamp.isoformat(),
+                            "summary": metrics.get("summary", {}),
+                        }
                     )
 
             # Analyze trends

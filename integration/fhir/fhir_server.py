@@ -1,22 +1,40 @@
+"""
+fhir_server module
+"""
+
 import json
 import logging
 import uuid
-from datetime import datetime, date
+from datetime import date, datetime
 from enum import Enum
-from typing import Dict, List, Optional, Any, Union
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, Depends, Query, Path, BackgroundTasks
-from fastapi.responses import JSONResponse
+from typing import Any, Dict, List, Optional, Union
+
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, validator, EmailStr
-from sqlalchemy import Column, String, DateTime, Boolean, Text, Integer, JSON, ForeignKey
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, EmailStr, Field, validator
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
 from .orchestrator import IntegrationOrchestrator, IntegrationStandards
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 Base = declarative_base()
+
+
 class FHIRResourceType(Enum):
     PATIENT = "Patient"
     PRACTITIONER = "Practitioner"
@@ -37,6 +55,8 @@ class FHIRResourceType(Enum):
     CLAIM = "Claim"
     COVERAGE = "Coverage"
     EXPLANATION_OF_BENEFIT = "ExplanationOfBenefit"
+
+
 class FHIRResource(Base):
     __tablename__ = "fhir_resources"
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -47,42 +67,48 @@ class FHIRResource(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = Column(Boolean, default=True)
-    __table_args__ = (
-        {"extend_existing": True}
-    )
+    __table_args__ = {"extend_existing": True}
+
+
 class FHIRPatient(Base):
     __tablename__ = "fhir_patients"
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    fhir_resource_id = Column(String(36), ForeignKey("fhir_resources.id"), nullable=False)
-    identifier = Column(JSON)  
-    name = Column(JSON)  
-    telecom = Column(JSON)  
-    gender = Column(String(20))  
-    birth_date = Column(Date)  
-    deceased_boolean = Column(Boolean)  
-    deceased_datetime = Column(DateTime)  
-    address = Column(JSON)  
-    marital_status = Column(JSON)  
-    multiple_birth_boolean = Column(Boolean)  
-    multiple_birth_integer = Column(Integer)  
-    photo = Column(JSON)  
-    contact = Column(JSON)  
-    communication = Column(JSON)  
-    general_practitioner = Column(JSON)  
-    managing_organization = Column(JSON)  
-    link = Column(JSON)  
-    active = Column(Boolean, default=True)  
+    fhir_resource_id = Column(
+        String(36), ForeignKey("fhir_resources.id"), nullable=False
+    )
+    identifier = Column(JSON)
+    name = Column(JSON)
+    telecom = Column(JSON)
+    gender = Column(String(20))
+    birth_date = Column(Date)
+    deceased_boolean = Column(Boolean)
+    deceased_datetime = Column(DateTime)
+    address = Column(JSON)
+    marital_status = Column(JSON)
+    multiple_birth_boolean = Column(Boolean)
+    multiple_birth_integer = Column(Integer)
+    photo = Column(JSON)
+    contact = Column(JSON)
+    communication = Column(JSON)
+    general_practitioner = Column(JSON)
+    managing_organization = Column(JSON)
+    link = Column(JSON)
+    active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class FHIREncounter(Base):
     __tablename__ = "fhir_encounters"
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    fhir_resource_id = Column(String(36), ForeignKey("fhir_resources.id"), nullable=False)
+    fhir_resource_id = Column(
+        String(36), ForeignKey("fhir_resources.id"), nullable=False
+    )
     identifier = Column(JSON)
     status = Column(String(20), nullable=False)
     status_history = Column(JSON)
     class_codes = Column(JSON)
-    subject = Column(JSON)  
+    subject = Column(JSON)
     episode_of_care = Column(JSON)
     participant = Column(JSON)
     appointment = Column(JSON)
@@ -98,6 +124,8 @@ class FHIREncounter(Base):
     part_of = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class FHIRIdentifier(BaseModel):
     system: Optional[str] = None
     value: Optional[str] = None
@@ -105,6 +133,8 @@ class FHIRIdentifier(BaseModel):
     type: Optional[Dict] = None
     period: Optional[Dict] = None
     assigner: Optional[Dict] = None
+
+
 class FHIRHumanName(BaseModel):
     use: Optional[str] = None
     text: Optional[str] = None
@@ -113,12 +143,16 @@ class FHIRHumanName(BaseModel):
     prefix: Optional[List[str]] = None
     suffix: Optional[List[str]] = None
     period: Optional[Dict] = None
+
+
 class FHIRContactPoint(BaseModel):
     system: Optional[str] = None
     value: Optional[str] = None
     use: Optional[str] = None
     rank: Optional[int] = None
     period: Optional[Dict] = None
+
+
 class FHIRAddress(BaseModel):
     use: Optional[str] = None
     type: Optional[str] = None
@@ -130,6 +164,8 @@ class FHIRAddress(BaseModel):
     postal_code: Optional[str] = None
     country: Optional[str] = None
     period: Optional[Dict] = None
+
+
 class FHIRPatientModel(BaseModel):
     resourceType: str = Field("Patient", const=True)
     id: Optional[str] = None
@@ -158,6 +194,8 @@ class FHIRPatientModel(BaseModel):
     generalPractitioner: Optional[List[Dict]] = None
     managingOrganization: Optional[Dict] = None
     link: Optional[List[Dict]] = None
+
+
 class FHIREncounterModel(BaseModel):
     resourceType: str = Field("Encounter", const=True)
     id: Optional[str] = None
@@ -186,6 +224,8 @@ class FHIREncounterModel(BaseModel):
     location: Optional[List[Dict]] = None
     serviceProvider: Optional[Dict] = None
     partOf: Optional[Dict] = None
+
+
 class FHIRObservationModel(BaseModel):
     resourceType: str = Field("Observation", const=True)
     id: Optional[str] = None
@@ -231,12 +271,19 @@ class FHIRObservationModel(BaseModel):
     hasMember: Optional[List[Dict]] = None
     derivedFrom: Optional[List[Dict]] = None
     component: Optional[List[Dict]] = None
+
+
 class FHIRServer:
     def __init__(self, orchestrator: IntegrationOrchestrator):
         self.orchestrator = orchestrator
-        self.db_url = os.getenv("FHIR_DB_URL", "postgresql+asyncpg://hms:hms@localhost:5432/fhir")
+        self.db_url = os.getenv(
+            "FHIR_DB_URL", "postgresql+asyncpg://hms:hms@localhost:5432/fhir"
+        )
         self.engine = create_async_engine(self.db_url)
-        self.SessionLocal = sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)
+        self.SessionLocal = sessionmaker(
+            self.engine, class_=AsyncSession, expire_on_commit=False
+        )
+
     async def create_patient(self, patient_data: FHIRPatientModel) -> Dict:
         async with self.SessionLocal() as session:
             try:
@@ -247,7 +294,7 @@ class FHIRServer:
                     resource_type=FHIRResourceType.PATIENT.value,
                     resource_id=patient_data.id or resource_id,
                     version_id=version_id,
-                    content=patient_data.dict(exclude_none=True)
+                    content=patient_data.dict(exclude_none=True),
                 )
                 session.add(resource)
                 patient = FHIRPatient(
@@ -260,7 +307,7 @@ class FHIRServer:
                     deceased_boolean=patient_data.deceasedBoolean,
                     deceased_datetime=patient_data.deceasedDateTime,
                     address=patient_data.address,
-                    active=patient_data.active
+                    active=patient_data.active,
                 )
                 session.add(patient)
                 await session.commit()
@@ -269,14 +316,17 @@ class FHIRServer:
                     "id": resource_id,
                     "meta": {
                         "versionId": version_id,
-                        "lastUpdated": datetime.utcnow().isoformat()
+                        "lastUpdated": datetime.utcnow().isoformat(),
                     },
-                    **patient_data.dict(exclude_none=True)
+                    **patient_data.dict(exclude_none=True),
                 }
             except Exception as e:
                 await session.rollback()
                 logger.error(f"Error creating FHIR patient: {e}")
-                raise HTTPException(status_code=500, detail=f"Failed to create patient: {str(e)}")
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to create patient: {str(e)}"
+                )
+
     async def get_patient(self, patient_id: str) -> Dict:
         async with self.SessionLocal() as session:
             try:
@@ -284,7 +334,9 @@ class FHIRServer:
                     session.query(FHIRPatient)
                     .join(FHIRResource)
                     .filter(FHIRResource.resource_id == patient_id)
-                    .filter(FHIRResource.resource_type == FHIRResourceType.PATIENT.value)
+                    .filter(
+                        FHIRResource.resource_type == FHIRResourceType.PATIENT.value
+                    )
                     .filter(FHIRResource.is_active == True)
                 )
                 patient_result = patient.scalar_one_or_none()
@@ -295,32 +347,41 @@ class FHIRServer:
                     "id": patient_id,
                     "meta": {
                         "versionId": patient_result.fhir_resource.version_id,
-                        "lastUpdated": patient_result.updated_at.isoformat()
+                        "lastUpdated": patient_result.updated_at.isoformat(),
                     },
-                    **patient_result.fhir_resource.content
+                    **patient_result.fhir_resource.content,
                 }
             except Exception as e:
                 logger.error(f"Error getting FHIR patient {patient_id}: {e}")
-                raise HTTPException(status_code=500, detail=f"Failed to get patient: {str(e)}")
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to get patient: {str(e)}"
+                )
+
     async def search_patients(self, **kwargs) -> Dict:
         async with self.SessionLocal() as session:
             try:
-                query = session.query(FHIRPatient).join(FHIRResource).filter(
-                    FHIRResource.resource_type == FHIRResourceType.PATIENT.value,
-                    FHIRResource.is_active == True
+                query = (
+                    session.query(FHIRPatient)
+                    .join(FHIRResource)
+                    .filter(
+                        FHIRResource.resource_type == FHIRResourceType.PATIENT.value,
+                        FHIRResource.is_active == True,
+                    )
                 )
-                if 'name' in kwargs:
-                    name_filter = kwargs['name'].lower()
-                    query = query.filter(FHIRPatient.name.ilike(f'%{name_filter}%'))
-                if 'identifier' in kwargs:
-                    identifier_filter = kwargs['identifier']
-                    query = query.filter(FHIRPatient.identifier.ilike(f'%{identifier_filter}%'))
-                if 'birth_date' in kwargs:
-                    query = query.filter(FHIRPatient.birth_date == kwargs['birth_date'])
-                if 'gender' in kwargs:
-                    query = query.filter(FHIRPatient.gender == kwargs['gender'])
-                page = kwargs.get('page', 1)
-                per_page = kwargs.get('_count', 50)
+                if "name" in kwargs:
+                    name_filter = kwargs["name"].lower()
+                    query = query.filter(FHIRPatient.name.ilike(f"%{name_filter}%"))
+                if "identifier" in kwargs:
+                    identifier_filter = kwargs["identifier"]
+                    query = query.filter(
+                        FHIRPatient.identifier.ilike(f"%{identifier_filter}%")
+                    )
+                if "birth_date" in kwargs:
+                    query = query.filter(FHIRPatient.birth_date == kwargs["birth_date"])
+                if "gender" in kwargs:
+                    query = query.filter(FHIRPatient.gender == kwargs["gender"])
+                page = kwargs.get("page", 1)
+                per_page = kwargs.get("_count", 50)
                 offset = (page - 1) * per_page
                 results = await session.execute(query.offset(offset).limit(per_page))
                 patients = results.scalars().all()
@@ -334,7 +395,7 @@ class FHIRServer:
                     "link": [
                         {
                             "relation": "self",
-                            "url": f"/fhir/Patient?{'&'.join(f'{k}={v}' for k, v in kwargs.items())}"
+                            "url": f"/fhir/Patient?{'&'.join(f'{k}={v}' for k, v in kwargs.items())}",
                         }
                     ],
                     "entry": [
@@ -345,17 +406,20 @@ class FHIRServer:
                                 "id": patient.fhir_resource.resource_id,
                                 "meta": {
                                     "versionId": patient.fhir_resource.version_id,
-                                    "lastUpdated": patient.updated_at.isoformat()
+                                    "lastUpdated": patient.updated_at.isoformat(),
                                 },
-                                **patient.fhir_resource.content
-                            }
+                                **patient.fhir_resource.content,
+                            },
                         }
                         for patient in patients
-                    ]
+                    ],
                 }
             except Exception as e:
                 logger.error(f"Error searching FHIR patients: {e}")
-                raise HTTPException(status_code=500, detail=f"Failed to search patients: {str(e)}")
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to search patients: {str(e)}"
+                )
+
     async def create_encounter(self, encounter_data: FHIREncounterModel) -> Dict:
         async with self.SessionLocal() as session:
             try:
@@ -366,7 +430,7 @@ class FHIRServer:
                     resource_type=FHIRResourceType.ENCOUNTER.value,
                     resource_id=encounter_data.id or resource_id,
                     version_id=version_id,
-                    content=encounter_data.dict(exclude_none=True)
+                    content=encounter_data.dict(exclude_none=True),
                 )
                 session.add(resource)
                 encounter = FHIREncounter(
@@ -378,7 +442,7 @@ class FHIRServer:
                     subject=encounter_data.subject,
                     period=encounter_data.period,
                     reason_code=encounter_data.reasonCode,
-                    location=encounter_data.location
+                    location=encounter_data.location,
                 )
                 session.add(encounter)
                 await session.commit()
@@ -387,14 +451,17 @@ class FHIRServer:
                     "id": resource_id,
                     "meta": {
                         "versionId": version_id,
-                        "lastUpdated": datetime.utcnow().isoformat()
+                        "lastUpdated": datetime.utcnow().isoformat(),
                     },
-                    **encounter_data.dict(exclude_none=True)
+                    **encounter_data.dict(exclude_none=True),
                 }
             except Exception as e:
                 await session.rollback()
                 logger.error(f"Error creating FHIR encounter: {e}")
-                raise HTTPException(status_code=500, detail=f"Failed to create encounter: {str(e)}")
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to create encounter: {str(e)}"
+                )
+
     async def get_conformance_statement(self) -> Dict:
         return {
             "resourceType": "CapabilityStatement",
@@ -410,28 +477,19 @@ class FHIRServer:
                 {
                     "name": "HMS Integration Team",
                     "telecom": [
-                        {
-                            "system": "email",
-                            "value": "integration@hms-enterprise.com"
-                        }
-                    ]
+                        {"system": "email", "value": "integration@hms-enterprise.com"}
+                    ],
                 }
             ],
             "description": "FHIR R4 compliant server for Hospital Management System",
             "kind": "instance",
-            "software": {
-                "name": "HMS FHIR Server",
-                "version": "1.0.0"
-            },
+            "software": {"name": "HMS FHIR Server", "version": "1.0.0"},
             "implementation": {
                 "description": "HMS Enterprise FHIR Server",
-                "url": "https://api.hms-enterprise.com/fhir"
+                "url": "https://api.hms-enterprise.com/fhir",
             },
             "fhirVersion": "4.0.1",
-            "format": [
-                "application/fhir+json",
-                "application/fhir+xml"
-            ],
+            "format": ["application/fhir+json", "application/fhir+xml"],
             "rest": [
                 {
                     "mode": "server",
@@ -444,12 +502,12 @@ class FHIRServer:
                                     {
                                         "system": "http://terminology.hl7.org/CodeSystem/restful-security-service",
                                         "code": "OAuth",
-                                        "display": "OAuth"
+                                        "display": "OAuth",
                                     }
                                 ],
-                                "text": "OAuth2 using SMART on FHIR"
+                                "text": "OAuth2 using SMART on FHIR",
                             }
-                        ]
+                        ],
                     },
                     "resource": [
                         {
@@ -461,30 +519,30 @@ class FHIRServer:
                                 {"code": "update"},
                                 {"code": "delete"},
                                 {"code": "create"},
-                                {"code": "search-type"}
+                                {"code": "search-type"},
                             ],
                             "searchParam": [
                                 {
                                     "name": "identifier",
                                     "type": "token",
-                                    "documentation": "Patient identifier"
+                                    "documentation": "Patient identifier",
                                 },
                                 {
                                     "name": "name",
                                     "type": "string",
-                                    "documentation": "Patient name"
+                                    "documentation": "Patient name",
                                 },
                                 {
                                     "name": "birth-date",
                                     "type": "date",
-                                    "documentation": "Patient birth date"
+                                    "documentation": "Patient birth date",
                                 },
                                 {
                                     "name": "gender",
                                     "type": "token",
-                                    "documentation": "Patient gender"
-                                }
-                            ]
+                                    "documentation": "Patient gender",
+                                },
+                            ],
                         },
                         {
                             "type": "Encounter",
@@ -495,8 +553,8 @@ class FHIRServer:
                                 {"code": "update"},
                                 {"code": "delete"},
                                 {"code": "create"},
-                                {"code": "search-type"}
-                            ]
+                                {"code": "search-type"},
+                            ],
                         },
                         {
                             "type": "Observation",
@@ -507,19 +565,21 @@ class FHIRServer:
                                 {"code": "update"},
                                 {"code": "delete"},
                                 {"code": "create"},
-                                {"code": "search-type"}
-                            ]
-                        }
-                    ]
+                                {"code": "search-type"},
+                            ],
+                        },
+                    ],
                 }
-            ]
+            ],
         }
+
+
 fhir_app = FastAPI(
     title="HMS FHIR R4 Server",
     description="FHIR R4 compliant server for Hospital Management System",
     version="1.0.0",
     docs_url="/fhir/docs",
-    redoc_url="/fhir/redoc"
+    redoc_url="/fhir/redoc",
 )
 fhir_app.add_middleware(
     CORSMiddleware,
@@ -529,27 +589,37 @@ fhir_app.add_middleware(
     allow_headers=["*"],
 )
 fhir_server: Optional[FHIRServer] = None
+
+
 async def get_fhir_server() -> FHIRServer:
     global fhir_server
     if fhir_server is None:
         from .orchestrator import orchestrator
+
         fhir_server = FHIRServer(orchestrator)
     return fhir_server
+
+
 @fhir_app.get("/fhir/metadata")
 async def get_conformance_statement(fhir_server: FHIRServer = Depends(get_fhir_server)):
     return await fhir_server.get_conformance_statement()
+
+
 @fhir_app.post("/fhir/Patient", response_model=Dict)
 async def create_patient(
-    patient: FHIRPatientModel,
-    fhir_server: FHIRServer = Depends(get_fhir_server)
+    patient: FHIRPatientModel, fhir_server: FHIRServer = Depends(get_fhir_server)
 ):
     return await fhir_server.create_patient(patient)
+
+
 @fhir_app.get("/fhir/Patient/{patient_id}", response_model=Dict)
 async def get_patient(
     patient_id: str = Path(..., description="Patient ID"),
-    fhir_server: FHIRServer = Depends(get_fhir_server)
+    fhir_server: FHIRServer = Depends(get_fhir_server),
 ):
     return await fhir_server.get_patient(patient_id)
+
+
 @fhir_app.get("/fhir/Patient", response_model=Dict)
 async def search_patients(
     name: Optional[str] = Query(None, description="Patient name"),
@@ -558,29 +628,36 @@ async def search_patients(
     gender: Optional[str] = Query(None, description="Gender"),
     page: int = Query(1, ge=1, description="Page number"),
     _count: int = Query(50, ge=1, le=1000, description="Items per page"),
-    fhir_server: FHIRServer = Depends(get_fhir_server)
+    fhir_server: FHIRServer = Depends(get_fhir_server),
 ):
     search_params = {
-        'name': name,
-        'identifier': identifier,
-        'birth_date': birth_date,
-        'gender': gender,
-        'page': page,
-        '_count': _count
+        "name": name,
+        "identifier": identifier,
+        "birth_date": birth_date,
+        "gender": gender,
+        "page": page,
+        "_count": _count,
     }
-    return await fhir_server.search_patients(**{k: v for k, v in search_params.items() if v is not None})
+    return await fhir_server.search_patients(
+        **{k: v for k, v in search_params.items() if v is not None}
+    )
+
+
 @fhir_app.post("/fhir/Encounter", response_model=Dict)
 async def create_encounter(
-    encounter: FHIREncounterModel,
-    fhir_server: FHIRServer = Depends(get_fhir_server)
+    encounter: FHIREncounterModel, fhir_server: FHIRServer = Depends(get_fhir_server)
 ):
     return await fhir_server.create_encounter(encounter)
+
+
 @fhir_app.get("/fhir/Encounter/{encounter_id}", response_model=Dict)
 async def get_encounter(
     encounter_id: str = Path(..., description="Encounter ID"),
-    fhir_server: FHIRServer = Depends(get_fhir_server)
+    fhir_server: FHIRServer = Depends(get_fhir_server),
 ):
     pass
+
+
 @fhir_app.get("/fhir/Encounter", response_model=Dict)
 async def search_encounters(
     patient: Optional[str] = Query(None, description="Patient reference"),
@@ -588,21 +665,18 @@ async def search_encounters(
     date: Optional[str] = Query(None, description="Encounter date"),
     page: int = Query(1, ge=1, description="Page number"),
     _count: int = Query(50, ge=1, le=1000, description="Items per page"),
-    fhir_server: FHIRServer = Depends(get_fhir_server)
+    fhir_server: FHIRServer = Depends(get_fhir_server),
 ):
     pass
+
+
 @fhir_app.get("/fhir")
 async def fhir_root():
     return {
         "resourceType": "Bundle",
         "id": str(uuid.uuid4()),
         "type": "collection",
-        "link": [
-            {
-                "relation": "self",
-                "url": "/fhir"
-            }
-        ],
+        "link": [{"relation": "self", "url": "/fhir"}],
         "entry": [
             {
                 "fullUrl": "/fhir/metadata",
@@ -610,13 +684,17 @@ async def fhir_root():
                     "resourceType": "OperationOutcome",
                     "text": {
                         "status": "generated",
-                        "div": "<div>FHIR Server is operational</div>"
-                    }
-                }
+                        "div": "<div>FHIR Server is operational</div>",
+                    },
+                },
             }
-        ]
+        ],
     }
+
+
 if __name__ == "__main__":
-    import uvicorn
     import os
+
+    import uvicorn
+
     uvicorn.run(fhir_app, host="0.0.0.0", port=8080)

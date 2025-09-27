@@ -1,3 +1,7 @@
+"""
+utils module
+"""
+
 import io
 from datetime import date, timedelta
 
@@ -53,7 +57,9 @@ class DoubleEntryBookkeeping:
             )
         except ChartOfAccounts.DoesNotExist as e:
             raise ValueError(f"Account not found: {e}")
-        currency = Currency.objects.filter(hospital=hospital, is_base_currency=True).first()
+        currency = Currency.objects.filter(
+            hospital=hospital, is_base_currency=True
+        ).first()
         if not currency:
             raise ValueError("No base currency configured")
         ledger_entry = LedgerEntry.objects.create(
@@ -222,15 +228,25 @@ class DepreciationCalculator:
         accumulated_depreciation = 0
         for year in range(asset.useful_life_years):
             if asset.depreciation_method == "STRAIGHT_LINE":
-                annual_depreciation = (asset.purchase_cost_cents - asset.salvage_value_cents) // asset.useful_life_years
+                annual_depreciation = (
+                    asset.purchase_cost_cents - asset.salvage_value_cents
+                ) // asset.useful_life_years
             elif asset.depreciation_method == "REDUCING_BALANCE":
-                rate = asset.depreciation_rate / 100 if asset.depreciation_rate else (1 / asset.useful_life_years)
+                rate = (
+                    asset.depreciation_rate / 100
+                    if asset.depreciation_rate
+                    else (1 / asset.useful_life_years)
+                )
                 annual_depreciation = int(current_book_value * rate)
             else:
                 rate = 2 / asset.useful_life_years
                 annual_depreciation = int(current_book_value * rate)
-            if accumulated_depreciation + annual_depreciation > (asset.purchase_cost_cents - asset.salvage_value_cents):
-                annual_depreciation = (asset.purchase_cost_cents - asset.salvage_value_cents) - accumulated_depreciation
+            if accumulated_depreciation + annual_depreciation > (
+                asset.purchase_cost_cents - asset.salvage_value_cents
+            ):
+                annual_depreciation = (
+                    asset.purchase_cost_cents - asset.salvage_value_cents
+                ) - accumulated_depreciation
             accumulated_depreciation += annual_depreciation
             current_book_value = asset.purchase_cost_cents - accumulated_depreciation
             schedule.append(
@@ -269,10 +285,14 @@ class DepreciationCalculator:
             ).first()
             if existing_entry:
                 continue
-            monthly_depreciation = DepreciationCalculator.calculate_monthly_depreciation(asset)
+            monthly_depreciation = (
+                DepreciationCalculator.calculate_monthly_depreciation(asset)
+            )
             if monthly_depreciation <= 0:
                 continue
-            new_accumulated = asset.accumulated_depreciation_cents + monthly_depreciation
+            new_accumulated = (
+                asset.accumulated_depreciation_cents + monthly_depreciation
+            )
             new_book_value = asset.purchase_cost_cents - new_accumulated
             DepreciationSchedule.objects.create(
                 hospital=hospital,
@@ -364,15 +384,15 @@ class ReportGenerator:
         total_credits = 0
         for account in accounts:
             debit_sum = (
-                account.debit_entries.filter(transaction_date__lte=as_of_date).aggregate(
-                    total=models.Sum("amount_cents")
-                )["total"]
+                account.debit_entries.filter(
+                    transaction_date__lte=as_of_date
+                ).aggregate(total=models.Sum("amount_cents"))["total"]
                 or 0
             )
             credit_sum = (
-                account.credit_entries.filter(transaction_date__lte=as_of_date).aggregate(
-                    total=models.Sum("amount_cents")
-                )["total"]
+                account.credit_entries.filter(
+                    transaction_date__lte=as_of_date
+                ).aggregate(total=models.Sum("amount_cents"))["total"]
                 or 0
             )
             balance = debit_sum - credit_sum
@@ -403,7 +423,9 @@ class ReportGenerator:
 
     @staticmethod
     def generate_profit_loss(hospital, start_date, end_date):
-        income_accounts = ChartOfAccounts.objects.filter(hospital=hospital, account_type="INCOME", is_active=True)
+        income_accounts = ChartOfAccounts.objects.filter(
+            hospital=hospital, account_type="INCOME", is_active=True
+        )
         total_income = 0
         income_details = []
         for account in income_accounts:
@@ -431,7 +453,9 @@ class ReportGenerator:
                         "amount_cents": net_income,
                     }
                 )
-        expense_accounts = ChartOfAccounts.objects.filter(hospital=hospital, account_type="EXPENSES", is_active=True)
+        expense_accounts = ChartOfAccounts.objects.filter(
+            hospital=hospital, account_type="EXPENSES", is_active=True
+        )
         total_expenses = 0
         expense_details = []
         for account in expense_accounts:
@@ -485,7 +509,9 @@ class ReportGenerator:
             },
             "equity": {"equity_accounts": [], "total_equity_cents": 0},
         }
-        asset_accounts = ChartOfAccounts.objects.filter(hospital=hospital, account_type="ASSETS", is_active=True)
+        asset_accounts = ChartOfAccounts.objects.filter(
+            hospital=hospital, account_type="ASSETS", is_active=True
+        )
         for account in asset_accounts:
             balance = account.balance
             if balance > 0:
@@ -511,11 +537,17 @@ class ReportGenerator:
                     "amount_cents": balance,
                 }
                 if account.account_subtype == "CURRENT_LIABILITIES":
-                    balance_sheet["liabilities"]["current_liabilities"].append(liability_data)
+                    balance_sheet["liabilities"]["current_liabilities"].append(
+                        liability_data
+                    )
                 else:
-                    balance_sheet["liabilities"]["long_term_liabilities"].append(liability_data)
+                    balance_sheet["liabilities"]["long_term_liabilities"].append(
+                        liability_data
+                    )
                 balance_sheet["liabilities"]["total_liabilities_cents"] += balance
-        equity_accounts = ChartOfAccounts.objects.filter(hospital=hospital, account_type="EQUITY", is_active=True)
+        equity_accounts = ChartOfAccounts.objects.filter(
+            hospital=hospital, account_type="EQUITY", is_active=True
+        )
         for account in equity_accounts:
             balance = account.balance
             if balance != 0:
@@ -536,7 +568,9 @@ class ExportEngine:
         workbook = openpyxl.Workbook()
         worksheet = workbook.active
         header_font = Font(bold=True, color="FFFFFF")
-        header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        header_fill = PatternFill(
+            start_color="366092", end_color="366092", fill_type="solid"
+        )
         border = Border(
             left=Side(border_style="thin"),
             right=Side(border_style="thin"),
@@ -583,9 +617,15 @@ class ExportEngine:
             voucher_data = ET.SubElement(voucher, "VOUCHER")
             if export_type == "SALES":
                 ET.SubElement(voucher_data, "VOUCHERTYPENAME").text = "Sales"
-                ET.SubElement(voucher_data, "PARTYLEDGERNAME").text = transaction.get("party_name", "")
-                ET.SubElement(voucher_data, "DATE").text = transaction.get("date", "").strftime("%Y%m%d")
-                ET.SubElement(voucher_data, "AMOUNT").text = str(transaction.get("amount_cents", 0) / 100)
+                ET.SubElement(voucher_data, "PARTYLEDGERNAME").text = transaction.get(
+                    "party_name", ""
+                )
+                ET.SubElement(voucher_data, "DATE").text = transaction.get(
+                    "date", ""
+                ).strftime("%Y%m%d")
+                ET.SubElement(voucher_data, "AMOUNT").text = str(
+                    transaction.get("amount_cents", 0) / 100
+                )
             elif export_type == "PURCHASE":
                 ET.SubElement(voucher_data, "VOUCHERTYPENAME").text = "Purchase"
         return ET.tostring(root, encoding="unicode")
@@ -668,7 +708,9 @@ class AgeingReportGenerator:
 class BankReconciliationHelper:
     @staticmethod
     def auto_match_transactions(bank_account, tolerance_cents=100):
-        unreconciled_bank_txns = BankTransaction.objects.filter(bank_account=bank_account, is_reconciled=False)
+        unreconciled_bank_txns = BankTransaction.objects.filter(
+            bank_account=bank_account, is_reconciled=False
+        )
         matched_count = 0
         for bank_txn in unreconciled_bank_txns:
             if bank_txn.transaction_type == "CREDIT":
@@ -733,7 +775,8 @@ class ComplianceReporter:
                 tds_summary[key] = {
                     "section": entry.section,
                     "deductee": str(entry.vendor or entry.employee),
-                    "pan": getattr(entry.vendor, "pan", "") or getattr(entry.employee, "profile", {}).get("pan", ""),
+                    "pan": getattr(entry.vendor, "pan", "")
+                    or getattr(entry.employee, "profile", {}).get("pan", ""),
                     "gross_amount_cents": 0,
                     "tds_amount_cents": 0,
                 }
@@ -745,5 +788,7 @@ class ComplianceReporter:
             "start_date": start_date,
             "end_date": end_date,
             "tds_entries": list(tds_summary.values()),
-            "total_tds_cents": sum(entry["tds_amount_cents"] for entry in tds_summary.values()),
+            "total_tds_cents": sum(
+                entry["tds_amount_cents"] for entry in tds_summary.values()
+            ),
         }

@@ -1,3 +1,7 @@
+"""
+views module
+"""
+
 from rest_framework import decorators, permissions, viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -39,10 +43,15 @@ class PatientViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("User must belong to a hospital to create patients")
         provided_hospital = serializer.validated_data.get("hospital")
         if provided_hospital and (
-            not (user.is_superuser or user.role == "SUPER_ADMIN") and provided_hospital.id != user.hospital_id
+            not (user.is_superuser or user.role == "SUPER_ADMIN")
+            and provided_hospital.id != user.hospital_id
         ):
             raise PermissionDenied("Cannot create patient for another hospital")
-        serializer.save(hospital_id=(provided_hospital.id if provided_hospital else user.hospital_id))
+        serializer.save(
+            hospital_id=(
+                provided_hospital.id if provided_hospital else user.hospital_id
+            )
+        )
 
     def perform_update(self, serializer):
         instance = self.get_object()
@@ -63,7 +72,9 @@ class PatientViewSet(viewsets.ModelViewSet):
     def search(self, request):
         query = request.GET.get("q", "").strip()
         if len(query) < 2:
-            return Response({"error": "Search query must be at least 2 characters"}, status=400)
+            return Response(
+                {"error": "Search query must be at least 2 characters"}, status=400
+            )
         user = request.user
         hospital_id = user.hospital_id if not user.is_superuser else None
         results = Patient.search_patients(hospital_id, query, limit=100)
@@ -79,21 +90,35 @@ class PatientViewSet(viewsets.ModelViewSet):
 
         user = request.user
         hospital_id = user.hospital_id if not user.is_superuser else None
-        queryset = Patient.objects.filter(hospital_id=hospital_id) if hospital_id else Patient.objects.all()
+        queryset = (
+            Patient.objects.filter(hospital_id=hospital_id)
+            if hospital_id
+            else Patient.objects.all()
+        )
         total_patients = queryset.count()
         active_patients = queryset.filter(status="ACTIVE").count()
-        new_patients_last_30d = queryset.filter(created_at__gte=datetime.now() - timedelta(days=30)).count()
+        new_patients_last_30d = queryset.filter(
+            created_at__gte=datetime.now() - timedelta(days=30)
+        ).count()
         age_groups = {
-            "0-18": queryset.filter(date_of_birth__gte=datetime.now().replace(year=datetime.now().year - 18)).count(),
+            "0-18": queryset.filter(
+                date_of_birth__gte=datetime.now().replace(year=datetime.now().year - 18)
+            ).count(),
             "19-35": queryset.filter(
-                date_of_birth__gte=datetime.now().replace(year=datetime.now().year - 35),
+                date_of_birth__gte=datetime.now().replace(
+                    year=datetime.now().year - 35
+                ),
                 date_of_birth__lt=datetime.now().replace(year=datetime.now().year - 18),
             ).count(),
             "36-50": queryset.filter(
-                date_of_birth__gte=datetime.now().replace(year=datetime.now().year - 50),
+                date_of_birth__gte=datetime.now().replace(
+                    year=datetime.now().year - 50
+                ),
                 date_of_birth__lt=datetime.now().replace(year=datetime.now().year - 36),
             ).count(),
-            "51+": queryset.filter(date_of_birth__lt=datetime.now().replace(year=datetime.now().year - 50)).count(),
+            "51+": queryset.filter(
+                date_of_birth__lt=datetime.now().replace(year=datetime.now().year - 50)
+            ).count(),
         }
         return Response(
             {

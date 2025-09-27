@@ -289,11 +289,15 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="surgerytype",
-            index=models.Index(fields=["hospital", "is_active"], name="appointment_hospita_5f7f35_idx"),
+            index=models.Index(
+                fields=["hospital", "is_active"], name="appointment_hospita_5f7f35_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="otslot",
-            index=models.Index(fields=["ot_room", "start_time"], name="appointment_ot_room_b0021c_idx"),
+            index=models.Index(
+                fields=["ot_room", "start_time"], name="appointment_ot_room_b0021c_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="otslot",
@@ -304,10 +308,14 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="otbooking",
-            index=models.Index(fields=["ot_slot", "status"], name="appointment_ot_slot_d65f7e_idx"),
+            index=models.Index(
+                fields=["ot_slot", "status"], name="appointment_ot_slot_d65f7e_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="otbooking",
-            index=models.Index(fields=["appointment", "status"], name="appointment_appoint_3f4198_idx"),
+            index=models.Index(
+                fields=["appointment", "status"], name="appointment_appoint_3f4198_idx"
+            ),
         ),
     ]

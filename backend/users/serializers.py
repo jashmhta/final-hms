@@ -1,3 +1,7 @@
+"""
+serializers module
+"""
+
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -159,7 +163,9 @@ class UserSerializer(serializers.ModelSerializer):
     supervisor_name = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
     credentials = UserCredentialSerializer(many=True, read_only=True)
-    recent_sessions = UserSessionSerializer(many=True, read_only=True, source="sessions")
+    recent_sessions = UserSessionSerializer(
+        many=True, read_only=True, source="sessions"
+    )
 
     class Meta:
         model = User
@@ -421,7 +427,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 hospital = getattr(user, "hospital", None)
                 hp = getattr(hospital, "subscription", None)
                 if hp is None:
-                    hp = HospitalPlan.objects.select_related("plan").filter(hospital_id=user.hospital_id).first()
+                    hp = (
+                        HospitalPlan.objects.select_related("plan")
+                        .filter(hospital_id=user.hospital_id)
+                        .first()
+                    )
         except Exception:
             hp = None
         for f in flags:

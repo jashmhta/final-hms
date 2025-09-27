@@ -1,3 +1,7 @@
+"""
+compliance module
+"""
+
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
@@ -43,8 +47,16 @@ class ComplianceChecker:
             results["hipaa"] = self._run_hipaa_checks()
         if framework in ["gdpr", "both"]:
             results["gdpr"] = self._run_gdpr_checks()
-        hipaa_score = sum(results["hipaa"].values()) / len(results["hipaa"]) if results["hipaa"] else 0
-        gdpr_score = sum(results["gdpr"].values()) / len(results["gdpr"]) if results["gdpr"] else 0
+        hipaa_score = (
+            sum(results["hipaa"].values()) / len(results["hipaa"])
+            if results["hipaa"]
+            else 0
+        )
+        gdpr_score = (
+            sum(results["gdpr"].values()) / len(results["gdpr"])
+            if results["gdpr"]
+            else 0
+        )
         if framework == "both":
             results["overall_score"] = (hipaa_score + gdpr_score) / 2
         elif framework == "hipaa":
@@ -103,7 +115,9 @@ class ComplianceChecker:
         from authentication.models import SecurityEvent
 
         thirty_days_ago = timezone.now() - timedelta(days=30)
-        recent_events = SecurityEvent.objects.filter(created_at__gte=thirty_days_ago).count()
+        recent_events = SecurityEvent.objects.filter(
+            created_at__gte=thirty_days_ago
+        ).count()
         expected_minimum = 100
         if recent_events >= expected_minimum:
             return 1.0
@@ -145,13 +159,17 @@ class ComplianceChecker:
             if framework in results:
                 for requirement, score in results[framework].items():
                     if score < 0.5:
-                        critical_issues.append(f"{framework.upper()}: {requirement} - {score*100:.1f}%")
+                        critical_issues.append(
+                            f"{framework.upper()}: {requirement} - {score*100:.1f}%"
+                        )
         return critical_issues
 
     def _generate_recommendations(self, results: Dict) -> List[str]:
         recommendations = []
         if results["overall_score"] < 0.7:
-            recommendations.append("Overall compliance score is below 70%. Immediate action required.")
+            recommendations.append(
+                "Overall compliance score is below 70%. Immediate action required."
+            )
         for framework in ["hipaa", "gdpr"]:
             if framework in results:
                 for requirement, score in results[framework].items():
@@ -264,7 +282,10 @@ class RealTimeComplianceMonitor:
             "unusual_data_access",
             "suspicious_login",
         ]
-        if any(pattern in event_data.get("description", "").lower() for pattern in suspicious_patterns):
+        if any(
+            pattern in event_data.get("description", "").lower()
+            for pattern in suspicious_patterns
+        ):
             return {
                 "type": "POTENTIAL_BREACH",
                 "severity": "CRITICAL",
@@ -274,7 +295,9 @@ class RealTimeComplianceMonitor:
         return None
 
     def _monitor_consent_violations(self, event_data: Dict) -> Optional[Dict]:
-        if event_data.get("event_type") == "DATA_ACCESS" and not event_data.get("consent_verified"):
+        if event_data.get("event_type") == "DATA_ACCESS" and not event_data.get(
+            "consent_verified"
+        ):
             return {
                 "type": "CONSENT_VIOLATION",
                 "severity": "MEDIUM",

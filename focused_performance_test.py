@@ -1,16 +1,23 @@
+"""
+focused_performance_test module
+"""
+
 import json
-import time
-import statistics
-import threading
-import requests
-import psutil
 import random
 import sqlite3
-import numpy as np
-from datetime import datetime, timedelta
-from typing import Dict, List, Any
-from dataclasses import dataclass, asdict
+import statistics
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, List
+
+import numpy as np
+import psutil
+import requests
+
+
 @dataclass
 class PerformanceMetrics:
     timestamp: str

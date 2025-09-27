@@ -2,37 +2,39 @@
 Comprehensive tests for correlation ID propagation across all communication protocols
 """
 
-import pytest
-import json
-import uuid
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime
-import time
 import asyncio
-import aiohttp
+import json
+import time
+import uuid
+from datetime import datetime
+from unittest.mock import MagicMock, Mock, patch
+
 import aio_pika
+import aiohttp
+import pytest
 from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase
 
 from services.common import (
-    get_correlation_id,
-    set_correlation_id,
-    generate_correlation_id,
-    CorrelationIDMiddleware,
-    with_correlation_id,
     CorrelationIDContext,
-    RabbitMQCorrelationPublisher,
-    RabbitMQCorrelationConsumer,
-    KafkaCorrelationProducer,
+    CorrelationIDMiddleware,
+    DatabaseCorrelationMixin,
     KafkaCorrelationConsumer,
+    KafkaCorrelationProducer,
+    RabbitMQCorrelationConsumer,
+    RabbitMQCorrelationPublisher,
     RedisCorrelationPublisher,
     RedisCorrelationSubscriber,
-    DatabaseCorrelationMixin,
-    with_database_correlation,
-    database_operation_context,
     add_correlation_to_message,
-    extract_correlation_from_message
+    database_operation_context,
+    extract_correlation_from_message,
+    generate_correlation_id,
+    get_correlation_id,
+    set_correlation_id,
+    with_correlation_id,
+    with_database_correlation,
 )
+
 
 class TestCorrelationIDBasics:
     """Test basic correlation ID functionality"""
@@ -78,38 +80,44 @@ class TestCorrelationIDBasics:
         # Should restore original context
         assert get_correlation_id() == original_id
 
+
 class TestHTTPCorrelationPropagation:
     """Test HTTP correlation ID propagation"""
 
     def test_middleware_without_correlation_id(self):
         """Test middleware generates correlation ID if not provided"""
         from starlette.applications import Starlette
+        from starlette.middleware import Middleware
         from starlette.requests import Request
         from starlette.responses import JSONResponse
-        from starlette.middleware import Middleware
         from starlette.testclient import TestClient
 
         app = Starlette(
             middleware=[Middleware(CorrelationIDMiddleware)],
             routes=[
-                web.get('/', lambda request: JSONResponse({'correlation_id': get_correlation_id()}))
-            ]
+                web.get(
+                    "/",
+                    lambda request: JSONResponse(
+                        {"correlation_id": get_correlation_id()}
+                    ),
+                )
+            ],
         )
 
         client = TestClient(app)
-        response = client.get('/')
+        response = client.get("/")
         assert response.status_code == 200
         data = response.json()
-        assert 'correlation_id' in data
-        assert len(data['correlation_id']) == 36
-        assert response.headers['x-correlation-id'] == data['correlation_id']
+        assert "correlation_id" in data
+        assert len(data["correlation_id"]) == 36
+        assert response.headers["x-correlation-id"] == data["correlation_id"]
 
     def test_middleware_with_correlation_id(self):
         """Test middleware uses provided correlation ID"""
         from starlette.applications import Starlette
+        from starlette.middleware import Middleware
         from starlette.requests import Request
         from starlette.responses import JSONResponse
-        from starlette.middleware import Middleware
         from starlette.testclient import TestClient
 
         test_id = str(uuid.uuid4())
@@ -117,42 +125,47 @@ class TestHTTPCorrelationPropagation:
         app = Starlette(
             middleware=[Middleware(CorrelationIDMiddleware)],
             routes=[
-                web.get('/', lambda request: JSONResponse({'correlation_id': get_correlation_id()}))
-            ]
+                web.get(
+                    "/",
+                    lambda request: JSONResponse(
+                        {"correlation_id": get_correlation_id()}
+                    ),
+                )
+            ],
         )
 
         client = TestClient(app)
-        response = client.get('/', headers={'x-correlation-id': test_id})
+        response = client.get("/", headers={"x-correlation-id": test_id})
         assert response.status_code == 200
         data = response.json()
-        assert data['correlation_id'] == test_id
-        assert response.headers['x-correlation-id'] == test_id
+        assert data["correlation_id"] == test_id
+        assert response.headers["x-correlation-id"] == test_id
 
     @pytest.mark.asyncio
     async def test_async_request_with_correlation(self):
         """Test async request handling with correlation ID"""
         from starlette.applications import Starlette
+        from starlette.middleware import Middleware
         from starlette.requests import Request
         from starlette.responses import JSONResponse
-        from starlette.middleware import Middleware
 
-        app = Starlette(
-            middleware=[Middleware(CorrelationIDMiddleware)]
-        )
+        app = Starlette(middleware=[Middleware(CorrelationIDMiddleware)])
 
-        @app.route('/')
+        @app.route("/")
         async def homepage(request: Request):
             correlation_id = get_correlation_id()
             # Simulate async operation
             await asyncio.sleep(0.01)
-            return JSONResponse({'correlation_id': correlation_id})
+            return JSONResponse({"correlation_id": correlation_id})
 
         from starlette.testclient import TestClient
+
         client = TestClient(app)
-        response = client.get('/')
+        response = client.get("/")
         assert response.status_code == 200
         data = response.json()
-        assert 'correlation_id' in data
+        assert "correlation_id" in data
+
 
 class TestMessageQueueCorrelation:
     """Test message queue correlation ID propagation"""
@@ -160,7 +173,7 @@ class TestMessageQueueCorrelation:
     @pytest.fixture
     def mock_rabbitmq_connection(self):
         """Mock RabbitMQ connection"""
-        with patch('pika.BlockingConnection') as mock:
+        with patch("pika.BlockingConnection") as mock:
             mock_connection = Mock()
             mock_channel = Mock()
             mock_connection.channel.return_value = mock_channel
@@ -171,10 +184,12 @@ class TestMessageQueueCorrelation:
         """Test RabbitMQ publishing with correlation ID"""
         publisher = RabbitMQCorrelationPublisher()
         test_id = str(uuid.uuid4())
-        message = {'data': 'test'}
+        message = {"data": "test"}
 
         publisher.connect()
-        publisher.publish('test_exchange', 'test_routing_key', message, correlation_id=test_id)
+        publisher.publish(
+            "test_exchange", "test_routing_key", message, correlation_id=test_id
+        )
 
         # Verify connection was established
         mock_rabbitmq_connection.channel.assert_called_once()
@@ -185,29 +200,29 @@ class TestMessageQueueCorrelation:
         call_args = mock_channel.basic_publish.call_args
 
         # Check that headers contain correlation ID
-        properties = call_args[1]['properties']
+        properties = call_args[1]["properties"]
         assert properties.correlation_id == test_id
-        assert properties.headers['x-correlation-id'] == test_id
+        assert properties.headers["x-correlation-id"] == test_id
 
     def test_rabbitmq_consumer_extracts_correlation_id(self):
         """Test RabbitMQ consumer extracts correlation ID"""
         consumer = RabbitMQCorrelationConsumer()
         handler = Mock()
-        consumer.register_handler('test_routing_key', handler)
+        consumer.register_handler("test_routing_key", handler)
 
         # Mock message properties
         properties = Mock()
         properties.correlation_id = str(uuid.uuid4())
         properties.message_id = str(uuid.uuid4())
-        properties.headers = {'timestamp': str(time.time())}
+        properties.headers = {"timestamp": str(time.time())}
 
         # Mock channel and method
         channel = Mock()
         method = Mock()
-        method.routing_key = 'test_routing_key'
+        method.routing_key = "test_routing_key"
 
         # Simulate message callback
-        message_data = {'test': 'data'}
+        message_data = {"test": "data"}
         body = json.dumps(message_data)
 
         # Import the callback function (this would need to be extracted from the consumer)
@@ -217,53 +232,55 @@ class TestMessageQueueCorrelation:
 
     def test_kafka_producer_with_correlation_id(self):
         """Test Kafka producer with correlation ID"""
-        with patch('kafka.KafkaProducer') as mock:
+        with patch("kafka.KafkaProducer") as mock:
             mock_producer = Mock()
             mock.return_value = mock_producer
 
-            producer = KafkaCorrelationProducer(['localhost:9092'])
+            producer = KafkaCorrelationProducer(["localhost:9092"])
             test_id = str(uuid.uuid4())
-            message = {'data': 'test'}
+            message = {"data": "test"}
 
             future = Mock()
             mock_producer.send.return_value = future
             future.get.return_value = Mock(partition=0, offset=0)
 
-            producer.send('test_topic', message, correlation_id=test_id)
+            producer.send("test_topic", message, correlation_id=test_id)
 
             # Verify producer was called with correct headers
             mock_producer.send.assert_called_once()
             call_args = mock_producer.send.call_args
 
-            headers = call_args[1]['headers']
-            assert b'x-correlation-id' in headers
-            assert headers[b'x-correlation-id'].decode('utf-8') == test_id
+            headers = call_args[1]["headers"]
+            assert b"x-correlation-id" in headers
+            assert headers[b"x-correlation-id"].decode("utf-8") == test_id
 
     def test_redis_pubsub_with_correlation_id(self):
         """Test Redis pub/sub with correlation ID"""
-        with patch('redis.Redis') as mock:
+        with patch("redis.Redis") as mock:
             mock_redis = Mock()
             mock.return_value = mock_redis
 
             publisher = RedisCorrelationPublisher()
             test_id = str(uuid.uuid4())
-            message = {'data': 'test'}
+            message = {"data": "test"}
 
-            publisher.publish('test_channel', message, correlation_id=test_id)
+            publisher.publish("test_channel", message, correlation_id=test_id)
 
             # Verify message was published with correlation ID
             mock_redis.publish.assert_called_once()
             call_args = mock_redis.publish.call_args
 
             envelope = json.loads(call_args[0][1])
-            assert envelope['correlation_id'] == test_id
-            assert envelope['data'] == message
+            assert envelope["correlation_id"] == test_id
+            assert envelope["data"] == message
+
 
 class TestDatabaseCorrelation:
     """Test database correlation ID tracking"""
 
     def test_database_mixin_with_correlation_id(self):
         """Test DatabaseCorrelationMixin"""
+
         class MockCursor:
             def __init__(self):
                 self.rowcount = 1
@@ -280,9 +297,7 @@ class TestDatabaseCorrelation:
         test_id = str(uuid.uuid4())
 
         result = conn.execute_with_correlation(
-            'SELECT * FROM users WHERE id = %s',
-            {'id': 1},
-            correlation_id=test_id
+            "SELECT * FROM users WHERE id = %s", {"id": 1}, correlation_id=test_id
         )
 
         assert conn._correlation_id == test_id
@@ -292,8 +307,8 @@ class TestDatabaseCorrelation:
         """Test database operation context manager"""
         test_id = str(uuid.uuid4())
 
-        with database_operation_context('test_operation', test_id) as ctx:
-            assert ctx['correlation_id'] == test_id
+        with database_operation_context("test_operation", test_id) as ctx:
+            assert ctx["correlation_id"] == test_id
             assert get_correlation_id() == test_id
 
         # Context should be cleaned up
@@ -301,14 +316,16 @@ class TestDatabaseCorrelation:
 
     def test_database_decorator(self):
         """Test database correlation decorator"""
+
         @with_database_correlation
         def test_query(user_id, correlation_id=None):
             assert correlation_id is not None
-            return {'user_id': user_id, 'correlation_id': correlation_id}
+            return {"user_id": user_id, "correlation_id": correlation_id}
 
         result = test_query(1)
-        assert 'correlation_id' in result
-        assert result['user_id'] == 1
+        assert "correlation_id" in result
+        assert result["user_id"] == 1
+
 
 class TestMessageCorrelationHelpers:
     """Test message correlation helper functions"""
@@ -316,25 +333,26 @@ class TestMessageCorrelationHelpers:
     def test_add_correlation_to_message(self):
         """Test adding correlation ID to message"""
         test_id = str(uuid.uuid4())
-        message = {'data': 'test'}
+        message = {"data": "test"}
 
         message_with_correlation = add_correlation_to_message(message)
-        assert message_with_correlation['correlation_id'] == test_id
+        assert message_with_correlation["correlation_id"] == test_id
 
     def test_extract_correlation_from_message(self):
         """Test extracting correlation ID from message"""
         test_id = str(uuid.uuid4())
-        message = {'correlation_id': test_id, 'data': 'test'}
+        message = {"correlation_id": test_id, "data": "test"}
 
         extracted_id = extract_correlation_from_message(message)
         assert extracted_id == test_id
 
     def test_extract_correlation_from_message_without_id(self):
         """Test extracting correlation ID when not present"""
-        message = {'data': 'test'}
+        message = {"data": "test"}
 
         extracted_id = extract_correlation_from_message(message)
         assert extracted_id is None
+
 
 class TestCorrelationPropagationScenarios:
     """Test end-to-end correlation propagation scenarios"""
@@ -356,12 +374,14 @@ class TestCorrelationPropagationScenarios:
         assert get_correlation_id() == test_id
 
         # Step 2: Service extracts correlation ID and publishes message
-        message = {'action': 'update_user', 'user_id': 123}
+        message = {"action": "update_user", "user_id": 123}
         message_with_correlation = add_correlation_to_message(message)
-        assert message_with_correlation['correlation_id'] == test_id
+        assert message_with_correlation["correlation_id"] == test_id
 
         # Step 3: Consumer extracts correlation ID
-        received_correlation = extract_correlation_from_message(message_with_correlation)
+        received_correlation = extract_correlation_from_message(
+            message_with_correlation
+        )
         assert received_correlation == test_id
 
         # Step 4: Consumer processes with correlation context
@@ -377,7 +397,7 @@ class TestCorrelationPropagationScenarios:
         with CorrelationIDContext(test_id):
             # Service A makes call to Service B
             async with aiohttp.ClientSession() as session:
-                headers = {'x-correlation-id': test_id}
+                headers = {"x-correlation-id": test_id}
                 # Mock the HTTP call
                 pass
 
@@ -392,13 +412,13 @@ class TestCorrelationPropagationScenarios:
         set_correlation_id(test_id)
 
         # Multiple database operations
-        with database_operation_context('read_user', test_id):
+        with database_operation_context("read_user", test_id):
             assert get_correlation_id() == test_id
 
-        with database_operation_context('update_user', test_id):
+        with database_operation_context("update_user", test_id):
             assert get_correlation_id() == test_id
 
-        with database_operation_context('log_activity', test_id):
+        with database_operation_context("log_activity", test_id):
             assert get_correlation_id() == test_id
 
     @pytest.mark.asyncio
@@ -409,23 +429,24 @@ class TestCorrelationPropagationScenarios:
         # 1. HTTP request
         with CorrelationIDContext(test_id):
             # 2. Process request and publish to queue
-            message = add_correlation_to_message({'type': 'order_processed'})
+            message = add_correlation_to_message({"type": "order_processed"})
 
             # 3. Queue consumer processes
             received_id = extract_correlation_from_message(message)
             with CorrelationIDContext(received_id):
                 # 4. Database operations
-                with database_operation_context('save_order', received_id):
+                with database_operation_context("save_order", received_id):
                     # 5. Call another service
-                    headers = {'x-correlation-id': received_id}
+                    headers = {"x-correlation-id": received_id}
                     # Mock service call
                     pass
 
                 # 6. Publish to another queue
-                notification = add_correlation_to_message({'type': 'notification'})
+                notification = add_correlation_to_message({"type": "notification"})
 
         # All operations should have the same correlation ID
         assert test_id == received_id == extract_correlation_from_message(notification)
+
 
 class TestCorrelationIDErrorHandling:
     """Test error handling with correlation IDs"""
@@ -434,7 +455,7 @@ class TestCorrelationIDErrorHandling:
         """Test that errors are logged with correlation ID"""
         test_id = str(uuid.uuid4())
 
-        with patch('services.common.correlation_id.logger') as mock_logger:
+        with patch("services.common.correlation_id.logger") as mock_logger:
             set_correlation_id(test_id)
 
             # Simulate error
@@ -461,12 +482,12 @@ class TestCorrelationIDErrorHandling:
 
         with pytest.raises(Exception):
             conn.execute_with_correlation(
-                'SELECT * FROM non_existent_table',
-                correlation_id=test_id
+                "SELECT * FROM non_existent_table", correlation_id=test_id
             )
 
         # Verify correlation ID was set
         assert conn._correlation_id == test_id
+
 
 class TestPerformanceWithCorrelationIDs:
     """Test performance impact of correlation ID tracking"""
@@ -508,5 +529,6 @@ class TestPerformanceWithCorrelationIDs:
         assert avg_time < 0.00001
         print(f"Average context manager time: {avg_time * 1000:.3f}ms")
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

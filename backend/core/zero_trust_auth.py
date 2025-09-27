@@ -48,7 +48,9 @@ class DeviceTrust:
         cache_key = f"{self.cache_prefix}{user_id}:{device_id}"
         return cache.get(cache_key, False)
 
-    def trust_device(self, device_id: str, user_id: int, duration_days: int = 30) -> None:
+    def trust_device(
+        self, device_id: str, user_id: int, duration_days: int = 30
+    ) -> None:
         """Mark device as trusted"""
         cache_key = f"{self.cache_prefix}{user_id}:{device_id}"
         cache.set(cache_key, True, duration_days * 24 * 3600)
@@ -156,7 +158,7 @@ class MFAProvider:
         """Generate TOTP secret key"""
         return base64.b32encode(get_random_string(20).encode()).decode()
 
-    def generate_backup_codes(self, count: int = 10) -> List[str]:
+    def generate_backup_cocryptography.fernet.Fernet(self, count: int = 10) -> List[str]:
         """Generate backup codes"""
         codes = []
         for _ in range(count):
@@ -233,20 +235,26 @@ class ZeroTrustAuthenticator:
 
         # Generate device ID
         device_id = self.device_trust.generate_device_id(request)
-        result["device_trusted"] = self.device_trust.verify_device_trust(device_id, user.id)
+        result["device_trusted"] = self.device_trust.verify_device_trust(
+            device_id, user.id
+        )
 
         # MFA flow
         if auth_requirements["mfa"] and not result["device_trusted"]:
             # Send MFA challenge
             if user.phone:
-                otp = get_random_string(self.mfa_provider.otp_length, allowed_chars="0123456789")
+                otp = get_random_string(
+                    self.mfa_provider.otp_length, allowed_chars="0123456789"
+                )
                 cache.set(f"mfa_otp:{user.id}", otp, self.mfa_provider.otp_expiry)
                 self.mfa_provider.send_otp_via_sms(user.phone, otp)
                 result["mfa_required"] = True
                 result["message"] = "MFA code sent to your phone"
                 return result
             elif user.email:
-                otp = get_random_string(self.mfa_provider.otp_length, allowed_chars="0123456789")
+                otp = get_random_string(
+                    self.mfa_provider.otp_length, allowed_chars="0123456789"
+                )
                 cache.set(f"mfa_otp:{user.id}", otp, self.mfa_provider.otp_expiry)
                 self.mfa_provider.send_otp_via_email(user.email, otp)
                 result["mfa_required"] = True
@@ -336,7 +344,9 @@ class ZeroTrustAuthorization:
         self.role_permissions = self._load_role_permissions()
         self.attribute_policies = self._load_attribute_policies()
 
-    def check_permission(self, user: User, resource: str, action: str, context: Dict = None) -> bool:
+    def check_permission(
+        self, user: User, resource: str, action: str, context: Dict = None
+    ) -> bool:
         """Check if user has permission for action on resource"""
         context = context or {}
 
@@ -369,17 +379,23 @@ class ZeroTrustAuthorization:
 
         return False
 
-    def _check_attribute_permission(self, user: User, resource: str, action: str, context: Dict) -> bool:
+    def _check_attribute_permission(
+        self, user: User, resource: str, action: str, context: Dict
+    ) -> bool:
         """Check attribute-based permissions"""
         for policy in self.attribute_policies:
             if policy["resource"] == resource and action in policy["actions"]:
                 # Evaluate policy conditions
-                if self._evaluate_policy_conditions(user, policy["conditions"], context):
+                if self._evaluate_policy_conditions(
+                    user, policy["conditions"], context
+                ):
                     return True
 
         return False
 
-    def _evaluate_policy_conditions(self, user: User, conditions: List[Dict], context: Dict) -> bool:
+    def _evaluate_policy_conditions(
+        self, user: User, conditions: List[Dict], context: Dict
+    ) -> bool:
         """Evaluate policy conditions"""
         for condition in conditions:
             if condition["type"] == "user_attribute":
@@ -396,7 +412,10 @@ class ZeroTrustAuthorization:
             elif condition["type"] == "time":
                 # Check time-based conditions
                 current_hour = timezone.now().hour
-                if current_hour < condition["start_hour"] or current_hour > condition["end_hour"]:
+                if (
+                    current_hour < condition["start_hour"]
+                    or current_hour > condition["end_hour"]
+                ):
                     return False
 
         return True
@@ -447,13 +466,19 @@ class ZeroTrustAuthorization:
                 "resource": "patients",
                 "actions": ["read", "update"],
                 "conditions": [
-                    {"type": "user_attribute", "attribute": "department", "value": context.get("patient_department")}
+                    {
+                        "type": "user_attribute",
+                        "attribute": "department",
+                        "value": context.get("patient_department"),
+                    }
                 ],
             },
             {
                 "name": "Patients can only access their own records",
                 "resource": "patients",
                 "actions": ["read_own"],
-                "conditions": [{"type": "context", "attribute": "patient_id", "value": "user.id"}],
+                "conditions": [
+                    {"type": "context", "attribute": "patient_id", "value": "user.id"}
+                ],
             },
         ]

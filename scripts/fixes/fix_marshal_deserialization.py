@@ -1,7 +1,13 @@
+"""
+fix_marshal_deserialization module
+"""
+
 import os
 import re
 import shutil
 from pathlib import Path
+
+
 def fix_marshal_to_pickle(filepath):
     try:
         with open(filepath, "r") as f:
@@ -26,6 +32,8 @@ def fix_marshal_to_pickle(filepath):
             )
     except Exception as e:
         print(f"Error fixing {filepath}: {e}")
+
+
 root_dir = Path("/root/hms-enterprise-grade/backend")
 backend_services = ["appointments", "billing", "patients", "lab", "radiology", "ehr"]
 for service in backend_services:

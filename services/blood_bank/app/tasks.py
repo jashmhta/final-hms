@@ -1,18 +1,27 @@
+"""
+tasks module
+"""
+
 import os
 import smtplib
 from datetime import date, timedelta
 from email.mime.text import MimeText
+
 from auditlog.models import LogEntry as AuditLog
 from celery import shared_task
 from celery.utils.log import get_task_logger
+
 from django.conf import settings
 from django.core.mail import EmailMessage, send_mail
 from django.db.models import Q
 from django.utils import timezone
+
 from .models import BloodInventory, LogEntry, TransfusionRecord
 from .views import BloodInventoryViewSet
 
 logger = get_task_logger(__name__)
+
+
 @shared_task(bind=True, max_retries=3)
 def check_expiry_alerts(self):
     try:
@@ -50,18 +59,20 @@ def check_expiry_alerts(self):
             logger.info(f"Email alert sent to {len(recipients)} recipients")
         except Exception as email_error:
             logger.error(f"Failed to send email alert: {email_error}")
-            self.retry(countdown=60 * 5)  
+            self.retry(countdown=60 * 5)
         try:
             send_sms_expiry_alert(alert_count)
             logger.info("SMS alert sent successfully")
         except Exception as sms_error:
             logger.error(f"Failed to send SMS alert: {sms_error}")
         for unit in expiring_units:
-            unit.save()  
+            unit.save()
         return {"status": "success", "alerts_sent": alert_count, "units": alert_count}
     except Exception as e:
         logger.error(f"Expiry alert task failed: {str(e)}")
-        raise self.retry(countdown=60 * 10, exc=e)  
+        raise self.retry(countdown=60 * 10, exc=e)
+
+
 def send_sms_expiry_alert(unit_count):
     """
     Enterprise-grade SMS service integration for critical blood bank alerts
@@ -89,39 +100,55 @@ def send_sms_expiry_alert(unit_count):
         for contact in emergency_contacts:
             try:
                 result = sms_service.send_sms(
-                    recipient=contact['phone'],
+                    recipient=contact["phone"],
                     message=sms_message,
-                    priority='high',
-                    message_type='emergency',
-                    callback_url=generate_callback_url('blood_bank_expiry')
+                    priority="high",
+                    message_type="emergency",
+                    callback_url=generate_callback_url("blood_bank_expiry"),
                 )
                 delivery_results.append(result)
 
                 # Log for HIPAA compliance
                 log_sms_communication(
-                    recipient=contact['phone'],
+                    recipient=contact["phone"],
                     message=sms_message,
-                    message_id=result.get('message_id'),
-                    status=result.get('status'),
-                    purpose='blood_bank_expiry_alert'
+                    message_id=result.get("message_id"),
+                    status=result.get("status"),
+                    purpose="blood_bank_expiry_alert",
                 )
 
-                logger.info(f"SMS alert sent to {contact['phone'][-4:]}: {result.get('status')}")
+                logger.info(
+                    f"SMS alert sent to {contact['phone'][-4:]}: {result.get('status')}"
+                )
 
             except Exception as contact_error:
-                logger.error(f"Failed to send SMS to {contact['phone'][-4:]}: {contact_error}")
-                delivery_results.append({'phone': contact['phone'], 'status': 'failed', 'error': str(contact_error)})
+                logger.error(
+                    f"Failed to send SMS to {contact['phone'][-4:]}: {contact_error}"
+                )
+                delivery_results.append(
+                    {
+                        "phone": contact["phone"],
+                        "status": "failed",
+                        "error": str(contact_error),
+                    }
+                )
 
         # Verify delivery success
-        successful_deliveries = [r for r in delivery_results if r.get('status') == 'success']
+        successful_deliveries = [
+            r for r in delivery_results if r.get("status") == "success"
+        ]
         if len(successful_deliveries) == 0:
             raise Exception("No SMS deliveries successful")
 
-        logger.info(f"SMS alerts sent successfully to {len(successful_deliveries)}/{len(emergency_contacts)} contacts")
+        logger.info(
+            f"SMS alerts sent successfully to {len(successful_deliveries)}/{len(emergency_contacts)} contacts"
+        )
         return True
 
     except ImportError:
-        logger.error("SMS service not available - please configure enterprise SMS provider")
+        logger.error(
+            "SMS service not available - please configure enterprise SMS provider"
+        )
         return False
     except Exception as e:
         logger.error(f"SMS alert failed: {e}")
@@ -132,6 +159,7 @@ def send_sms_expiry_alert(unit_count):
             logger.error(f"Email fallback also failed: {email_error}")
         raise
 
+
 def get_emergency_contacts():
     """
     Get emergency contacts from enterprise configuration
@@ -141,62 +169,71 @@ def get_emergency_contacts():
     contacts = []
 
     # Get contacts from Django settings
-    if hasattr(settings, 'BLOOD_BANK_EMERGENCY_CONTACTS'):
+    if hasattr(settings, "BLOOD_BANK_EMERGENCY_CONTACTS"):
         contacts.extend(settings.BLOOD_BANK_EMERGENCY_CONTACTS)
 
     # Get contacts from environment variables
-    emergency_phones = os.getenv('BLOOD_BANK_EMERGENCY_PHONES', '')
+    emergency_phones = os.getenv("BLOOD_BANK_EMERGENCY_PHONES", "")
     if emergency_phones:
-        for phone in emergency_phones.split(','):
+        for phone in emergency_phones.split(","):
             phone = phone.strip()
             if phone:
-                contacts.append({'phone': phone, 'name': 'Emergency Contact'})
+                contacts.append({"phone": phone, "name": "Emergency Contact"})
 
     # Get on-call staff from database
     try:
         from .models import StaffContact
+
         on_call_staff = StaffContact.objects.filter(
-            is_on_call=True,
-            receives_blood_bank_alerts=True
-        ).values('phone', 'name', 'role')
+            is_on_call=True, receives_blood_bank_alerts=True
+        ).values("phone", "name", "role")
 
         for staff in on_call_staff:
-            contacts.append({
-                'phone': staff['phone'],
-                'name': f"{staff['name']} ({staff['role']})",
-                'type': 'staff'
-            })
+            contacts.append(
+                {
+                    "phone": staff["phone"],
+                    "name": f"{staff['name']} ({staff['role']})",
+                    "type": "staff",
+                }
+            )
     except Exception as e:
         logger.warning(f"Could not load on-call staff contacts: {e}")
 
     return contacts
+
 
 def generate_callback_url(purpose):
     """
     Generate callback URL for SMS delivery confirmation
     """
     from django.conf import settings
-    base_url = getattr(settings, 'SMS_CALLBACK_BASE_URL', 'https://api.hospital.com/sms-callback')
+
+    base_url = getattr(
+        settings, "SMS_CALLBACK_BASE_URL", "https://api.hospital.com/sms-callback"
+    )
     return f"{base_url}/{purpose}"
+
 
 def log_sms_communication(recipient, message, message_id, status, purpose):
     """
     Log SMS communication for HIPAA compliance audit trail
     """
     try:
-        from .models import SMSLog
         from django.utils import timezone
+
+        from .models import SMSLog
 
         SMSLog.objects.create(
             recipient_last_4=recipient[-4:],  # Store only last 4 digits for privacy
-            message_preview=message[:50] + '...' if len(message) > 50 else message,
+            message_preview=message[:50] + "..." if len(message) > 50 else message,
             message_id=message_id,
             status=status,
             purpose=purpose,
-            timestamp=timezone.now()
+            timestamp=timezone.now(),
         )
     except Exception as e:
         logger.error(f"Failed to log SMS communication: {e}")
+
 
 def send_email_fallback(unit_count, original_error):
     """
@@ -226,14 +263,16 @@ def send_email_fallback(unit_count, original_error):
         Priority: CRITICAL
         """
 
-        recipients = getattr(settings, 'BLOOD_BANK_ADMIN_EMAILS', ['admin@hospital.com'])
+        recipients = getattr(
+            settings, "BLOOD_BANK_ADMIN_EMAILS", ["admin@hospital.com"]
+        )
 
         email = EmailMessage(
             subject=subject,
             body=email_body,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=recipients,
-            headers={'X-Priority': '1', 'X-MSMail-Priority': 'High'}
+            headers={"X-Priority": "1", "X-MSMail-Priority": "High"},
         )
         email.send(fail_silently=False)
 
@@ -241,7 +280,11 @@ def send_email_fallback(unit_count, original_error):
 
     except Exception as email_error:
         logger.critical(f"Email fallback also failed: {email_error}")
-        raise Exception(f"Both SMS and email systems failed - Manual intervention required")
+        raise Exception(
+            f"Both SMS and email systems failed - Manual intervention required"
+        )
+
+
 @shared_task(bind=True, max_retries=2)
 def purge_old_audit_logs(self):
     try:
@@ -282,18 +325,22 @@ def purge_old_audit_logs(self):
         return {"status": "success", "logs_purged": deleted_count}
     except Exception as e:
         logger.error(f"Audit log purge failed: {str(e)}")
-        raise self.retry(countdown=60 * 60, exc=e)  
+        raise self.retry(countdown=60 * 60, exc=e)
+
+
 @shared_task
 def process_transfusion_notification(transfusion_id):
     try:
         transfusion = TransfusionRecord.objects.get(id=transfusion_id)
-        message = f"Transfusion confirmation for patient {transfusion.patient.name}. " \
-                  f"Blood type {transfusion.blood_type} transfused on {transfusion.transfusion_date}."
+        message = (
+            f"Transfusion confirmation for patient {transfusion.patient.name}. "
+            f"Blood type {transfusion.blood_type} transfused on {transfusion.transfusion_date}."
+        )
         send_mail(
             subject="Transfusion Confirmation",
             message=message,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[transfusion.patient.contact],  
+            recipient_list=[transfusion.patient.contact],
             fail_silently=True,
         )
         logger.info(f"Transfusion notification sent for ID {transfusion_id}")

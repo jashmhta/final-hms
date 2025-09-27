@@ -1,9 +1,16 @@
+"""
+initial_migration module
+"""
+
 import sqlalchemy as sa
 from alembic import op
+
 revision = "initial"
 down_revision = None
 branch_labels = None
 depends_on = None
+
+
 def upgrade() -> None:
     op.create_table(
         "ipd_admissions",
@@ -67,6 +74,8 @@ def upgrade() -> None:
     op.create_index(
         op.f("ix_discharge_summaries_id"), "discharge_summaries", ["id"], unique=False
     )
+
+
 def downgrade() -> None:
     op.drop_index(op.f("ix_discharge_summaries_id"), table_name="discharge_summaries")
     op.drop_table("discharge_summaries")

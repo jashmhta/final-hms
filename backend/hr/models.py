@@ -14,9 +14,13 @@ class Shift(TenantModel):
 
 
 class DutyRoster(TenantModel):
-    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="duty_rosters")
+    user = models.ForeignKey(
+        "users.User", on_delete=models.CASCADE, related_name="duty_rosters"
+    )
     date = models.DateField()
-    shift = models.ForeignKey(Shift, on_delete=models.PROTECT, related_name="roster_entries")
+    shift = models.ForeignKey(
+        Shift, on_delete=models.PROTECT, related_name="roster_entries"
+    )
 
     class Meta:
         unique_together = (("hospital", "user", "date"),)
@@ -24,7 +28,9 @@ class DutyRoster(TenantModel):
 
 
 class LeaveRequest(TenantModel):
-    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="leave_requests")
+    user = models.ForeignKey(
+        "users.User", on_delete=models.CASCADE, related_name="leave_requests"
+    )
     start_date = models.DateField()
     end_date = models.DateField()
     reason = models.TextField(blank=True)

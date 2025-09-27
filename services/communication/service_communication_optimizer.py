@@ -4,50 +4,52 @@ High-performance inter-service communication with minimal latency
 """
 
 import asyncio
-import aiohttp
-import aiohttp.web
-import orjson
-import snappy
-import msgpack
+import json
+import logging
 import pickle
 import time
-import logging
-from typing import Any, Dict, List, Optional, Union, Callable, Awaitable
-from dataclasses import dataclass, field
-from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
-from functools import wraps, partial
-import json
+from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
+from functools import partial, wraps
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
+
+import aiohttp
+import aiohttp.web
+import msgpack
+import orjson
+import prometheus_client as prom
 import redis
+import snappy
+from django_redis import get_redis_connection
+
 from django.conf import settings
 from django.core.cache import cache
-from django_redis import get_redis_connection
-import prometheus_client as prom
 
 logger = logging.getLogger(__name__)
 
 # Prometheus metrics
 COMMUNICATION_LATENCY = prom.Histogram(
-    'service_communication_latency_seconds',
-    'Service communication latency',
-    ['source_service', 'target_service', 'method', 'status']
+    "service_communication_latency_seconds",
+    "Service communication latency",
+    ["source_service", "target_service", "method", "status"],
 )
 
 ACTIVE_CONNECTIONS = prom.Gauge(
-    'service_active_connections',
-    'Active connections to services',
-    ['service']
+    "service_active_connections", "Active connections to services", ["service"]
 )
 
 ERROR_RATE = prom.Counter(
-    'service_communication_errors',
-    'Service communication errors',
-    ['source_service', 'target_service', 'error_type']
+    "service_communication_errors",
+    "Service communication errors",
+    ["source_service", "target_service", "error_type"],
 )
+
 
 @dataclass
 class ServiceConfig:
     """Configuration for a microservice"""
+
     name: str
     host: str
     port: int
@@ -64,9 +66,11 @@ class ServiceConfig:
     retry_attempts: int = 3
     retry_backoff: float = 0.1
 
+
 @dataclass
 class CircuitBreaker:
     """Circuit breaker for fault tolerance"""
+
     failure_count: int = 0
     last_failure_time: float = 0
     state: str = "closed"  # closed, open, half-open
@@ -98,6 +102,7 @@ class CircuitBreaker:
         else:  # half-open
             return True
 
+
 class ConnectionPool:
     """Optimized connection pool for microservice communication"""
 
@@ -106,11 +111,11 @@ class ConnectionPool:
         self.pool = {}
         self.semaphore = asyncio.Semaphore(config.max_connections)
         self.metrics = {
-            'total_connections': 0,
-            'active_connections': 0,
-            'failed_connections': 0,
-            'pool_hits': 0,
-            'pool_misses': 0
+            "total_connections": 0,
+            "active_connections": 0,
+            "failed_connections": 0,
+            "pool_hits": 0,
+            "pool_misses": 0,
         }
 
     async def get_connection(self) -> aiohttp.ClientSession:
@@ -127,28 +132,26 @@ class ConnectionPool:
                 ttl_dns_cache=300,
                 use_dns_cache=True,
                 keepalive_timeout=30,
-                enable_cleanup_closed=True
+                enable_cleanup_closed=True,
             )
 
             timeout = aiohttp.ClientTimeout(
-                total=self.config.timeout,
-                connect=10,
-                sock_read=30
+                total=self.config.timeout, connect=10, sock_read=30
             )
 
             session = aiohttp.ClientSession(
                 connector=connector,
                 timeout=timeout,
-                json_serialize=lambda x: orjson.dumps(x).decode()
+                json_serialize=lambda x: orjson.dumps(x).decode(),
             )
 
             self.pool[self.config.name] = session
-            self.metrics['pool_misses'] += 1
-            self.metrics['total_connections'] += 1
+            self.metrics["pool_misses"] += 1
+            self.metrics["total_connections"] += 1
         else:
-            self.metrics['pool_hits'] += 1
+            self.metrics["pool_hits"] += 1
 
-        self.metrics['active_connections'] += 1
+        self.metrics["active_connections"] += 1
         ACTIVE_CONNECTIONS.labels(service=self.config.name).inc()
 
         return session
@@ -156,8 +159,9 @@ class ConnectionPool:
     async def release_connection(self):
         """Release connection back to pool"""
         self.semaphore.release()
-        self.metrics['active_connections'] -= 1
+        self.metrics["active_connections"] -= 1
         ACTIVE_CONNECTIONS.labels(service=self.config.name).dec()
+
 
 class ServiceCommunicator:
     """High-performance service communication with optimization"""
@@ -167,9 +171,9 @@ class ServiceCommunicator:
         self.connection_pool = ConnectionPool(config)
         self.circuit_breaker = CircuitBreaker(
             threshold=config.circuit_breaker_threshold,
-            timeout=config.circuit_breaker_timeout
+            timeout=config.circuit_breaker_timeout,
         )
-        self.cache = get_redis_connection('default') if settings.USE_REDIS else cache
+        self.cache = get_redis_connection("default") if settings.USE_REDIS else cache
         self.compressor = snappy if config.enable_compression else None
         self.serializer = self._get_best_serializer()
 
@@ -177,24 +181,26 @@ class ServiceCommunicator:
         """Get the best available serializer"""
         try:
             import msgpack
+
             return {
-                'serialize': msgpack.packb,
-                'deserialize': msgpack.unpackb,
-                'format': 'msgpack'
+                "serialize": msgpack.packb,
+                "deserialize": msgpack.unpackb,
+                "format": "msgpack",
             }
         except ImportError:
             try:
                 import orjson
+
                 return {
-                    'serialize': orjson.dumps,
-                    'deserialize': orjson.loads,
-                    'format': 'json'
+                    "serialize": orjson.dumps,
+                    "deserialize": orjson.loads,
+                    "format": "json",
                 }
             except ImportError:
                 return {
-                    'serialize': json.dumps,
-                    'deserialize': json.loads,
-                    'format': 'json'
+                    "serialize": json.dumps,
+                    "deserialize": json.loads,
+                    "format": "json",
                 }
 
     async def request(
@@ -205,7 +211,7 @@ class ServiceCommunicator:
         params: Dict = None,
         headers: Dict = None,
         cache_key: str = None,
-        retry_on_failure: bool = True
+        retry_on_failure: bool = True,
     ) -> Dict[str, Any]:
         """Make optimized request to service"""
         start_time = time.time()
@@ -222,16 +228,18 @@ class ServiceCommunicator:
                 return cached_response
 
         # Prepare request
-        url = f"{self.config.protocol}://{self.config.host}:{self.config.port}{endpoint}"
+        url = (
+            f"{self.config.protocol}://{self.config.host}:{self.config.port}{endpoint}"
+        )
 
         # Serialize and compress data
         if data is not None:
             if self.compressor:
-                data = self.compressor.compress(self.serializer['serialize'](data))
+                data = self.compressor.compress(self.serializer["serialize"](data))
                 headers = headers or {}
-                headers['Content-Encoding'] = 'snappy'
+                headers["Content-Encoding"] = "snappy"
             else:
-                data = self.serializer['serialize'](data)
+                data = self.serializer["serialize"](data)
 
         # Make request with retry logic
         last_error = None
@@ -240,29 +248,25 @@ class ServiceCommunicator:
                 session = await self.connection_pool.get_connection()
 
                 async with session.request(
-                    method,
-                    url,
-                    data=data,
-                    params=params,
-                    headers=headers
+                    method, url, data=data, params=params, headers=headers
                 ) as response:
 
                     # Read response
-                    if response.headers.get('Content-Encoding') == 'snappy':
+                    if response.headers.get("Content-Encoding") == "snappy":
                         content = await response.read()
                         if self.compressor:
                             content = self.compressor.decompress(content)
-                        data = self.serializer['deserialize'](content)
+                        data = self.serializer["deserialize"](content)
                     else:
                         data = await response.json()
 
                     # Update metrics
                     latency = time.time() - start_time
                     COMMUNICATION_LATENCY.labels(
-                        source_service='client',
+                        source_service="client",
                         target_service=self.config.name,
                         method=method,
-                        status=response.status
+                        status=response.status,
                     ).observe(latency)
 
                     # Handle response
@@ -274,10 +278,10 @@ class ServiceCommunicator:
                             await self._cache_response(cache_key, data)
 
                         return {
-                            'status': 'success',
-                            'data': data,
-                            'latency': latency,
-                            'cached': False
+                            "status": "success",
+                            "data": data,
+                            "latency": latency,
+                            "cached": False,
                         }
                     else:
                         raise ServiceError(f"Service returned status {response.status}")
@@ -285,7 +289,7 @@ class ServiceCommunicator:
             except Exception as e:
                 last_error = e
                 if attempt < self.config.retry_attempts - 1:
-                    await asyncio.sleep(self.config.retry_backoff * (2 ** attempt))
+                    await asyncio.sleep(self.config.retry_backoff * (2**attempt))
                 continue
             finally:
                 await self.connection_pool.release_connection()
@@ -293,9 +297,9 @@ class ServiceCommunicator:
         # All attempts failed
         self.circuit_breaker.record_failure()
         ERROR_RATE.labels(
-            source_service='client',
+            source_service="client",
             target_service=self.config.name,
-            error_type=type(last_error).__name__
+            error_type=type(last_error).__name__,
         ).inc()
 
         raise last_error or ServiceError("Unknown error occurred")
@@ -306,7 +310,7 @@ class ServiceCommunicator:
             if isinstance(self.cache, redis.Redis):
                 cached = self.cache.get(key)
                 if cached:
-                    return self.serializer['deserialize'](cached)
+                    return self.serializer["deserialize"](cached)
             else:
                 return self.cache.get(key)
         except Exception as e:
@@ -318,9 +322,7 @@ class ServiceCommunicator:
         try:
             if isinstance(self.cache, redis.Redis):
                 self.cache.setex(
-                    key,
-                    self.config.cache_ttl,
-                    self.serializer['serialize'](data)
+                    key, self.config.cache_ttl, self.serializer["serialize"](data)
                 )
             else:
                 self.cache.set(key, data, self.config.cache_ttl)
@@ -344,6 +346,7 @@ class ServiceCommunicator:
         finally:
             await self.connection_pool.release_connection()
 
+
 class ServiceBus:
     """High-performance message bus for async communication"""
 
@@ -353,9 +356,9 @@ class ServiceBus:
         self.message_queue = asyncio.Queue(maxsize=10000)
         self.processors = {}
         self.metrics = {
-            'messages_published': 0,
-            'messages_delivered': 0,
-            'processing_errors': 0
+            "messages_published": 0,
+            "messages_delivered": 0,
+            "processing_errors": 0,
         }
 
     def subscribe(self, topic: str, callback: Callable[[Dict], Awaitable[None]]):
@@ -366,17 +369,15 @@ class ServiceBus:
 
         # Start processor if not running
         if topic not in self.processors:
-            self.processors[topic] = asyncio.create_task(
-                self._process_messages(topic)
-            )
+            self.processors[topic] = asyncio.create_task(self._process_messages(topic))
 
     async def publish(self, topic: str, message: Dict):
         """Publish message to topic"""
-        self.metrics['messages_published'] += 1
+        self.metrics["messages_published"] += 1
 
         # Add timestamp
-        message['_timestamp'] = time.time()
-        message['_topic'] = topic
+        message["_timestamp"] = time.time()
+        message["_topic"] = topic
 
         # Queue message
         await self.message_queue.put((topic, message))
@@ -403,9 +404,9 @@ class ServiceBus:
                         for i, result in enumerate(results):
                             if isinstance(result, Exception):
                                 logger.error(f"Subscriber error: {result}")
-                                self.metrics['processing_errors'] += 1
+                                self.metrics["processing_errors"] += 1
                             else:
-                                self.metrics['messages_delivered'] += 1
+                                self.metrics["messages_delivered"] += 1
 
                 self.message_queue.task_done()
 
@@ -413,14 +414,10 @@ class ServiceBus:
                 break
             except Exception as e:
                 logger.error(f"Message processing error: {e}")
-                self.metrics['processing_errors'] += 1
+                self.metrics["processing_errors"] += 1
 
     async def request_response(
-        self,
-        target_service: str,
-        method: str,
-        data: Dict,
-        timeout: float = 30.0
+        self, target_service: str, method: str, data: Dict, timeout: float = 30.0
     ) -> Dict:
         """Request-response pattern via message bus"""
         # Create unique correlation ID
@@ -431,7 +428,7 @@ class ServiceBus:
 
         # Subscribe for response
         def response_handler(message):
-            if message.get('_correlation_id') == correlation_id:
+            if message.get("_correlation_id") == correlation_id:
                 response_queue.put_nowait(message)
 
         self.subscribe(f"{target_service}_response", response_handler)
@@ -439,19 +436,16 @@ class ServiceBus:
         # Send request
         await self.publish(
             f"{target_service}_request",
-            {
-                '_correlation_id': correlation_id,
-                'method': method,
-                'data': data
-            }
+            {"_correlation_id": correlation_id, "method": method, "data": data},
         )
 
         # Wait for response
         try:
             response = await asyncio.wait_for(response_queue.get(), timeout=timeout)
-            return response.get('data', {})
+            return response.get("data", {})
         except asyncio.TimeoutError:
             raise TimeoutError(f"Request to {target_service} timed out")
+
 
 class ServiceRegistry:
     """Dynamic service registry with health checks"""
@@ -465,9 +459,9 @@ class ServiceRegistry:
         """Register a service"""
         self.services[config.name] = config
         self.health_status[config.name] = {
-            'status': 'healthy',
-            'last_check': time.time(),
-            'response_time': 0
+            "status": "healthy",
+            "last_check": time.time(),
+            "response_time": 0,
         }
         self.load_balancer.add_service(config.name)
 
@@ -476,7 +470,7 @@ class ServiceRegistry:
         # Check health status
         if service_name in self.health_status:
             status = self.health_status[service_name]
-            if status['status'] == 'unhealthy':
+            if status["status"] == "unhealthy":
                 return None
 
         return self.services.get(service_name)
@@ -497,9 +491,9 @@ class ServiceRegistry:
                     if response.status == 200:
                         response_time = time.time() - start_time
                         self.health_status[service_name] = {
-                            'status': 'healthy',
-                            'last_check': time.time(),
-                            'response_time': response_time
+                            "status": "healthy",
+                            "last_check": time.time(),
+                            "response_time": response_time,
                         }
                         return True
         except:
@@ -507,11 +501,12 @@ class ServiceRegistry:
 
         # Service is unhealthy
         self.health_status[service_name] = {
-            'status': 'unhealthy',
-            'last_check': time.time(),
-            'response_time': 0
+            "status": "unhealthy",
+            "last_check": time.time(),
+            "response_time": 0,
         }
         return False
+
 
 class LoadBalancer:
     """Base class for load balancing strategies"""
@@ -534,6 +529,7 @@ class LoadBalancer:
         """Get next service instance"""
         raise NotImplementedError
 
+
 class RoundRobinLoadBalancer(LoadBalancer):
     """Round-robin load balancing"""
 
@@ -544,6 +540,7 @@ class RoundRobinLoadBalancer(LoadBalancer):
         service = self.services[self.index]
         self.index = (self.index + 1) % len(self.services)
         return service
+
 
 class WeightedRoundRobinLoadBalancer(LoadBalancer):
     """Weighted round-robin load balancing"""
@@ -581,10 +578,12 @@ class WeightedRoundRobinLoadBalancer(LoadBalancer):
 
         return best_service
 
+
 # Global instances
 service_registry = ServiceRegistry()
 service_bus = ServiceBus()
 communicators = {}
+
 
 def get_communicator(service_name: str) -> ServiceCommunicator:
     """Get or create service communicator"""
@@ -596,30 +595,35 @@ def get_communicator(service_name: str) -> ServiceCommunicator:
             raise ServiceNotFoundError(f"Service {service_name} not found")
     return communicators[service_name]
 
+
 async def call_service(
-    service_name: str,
-    method: str,
-    endpoint: str,
-    data: Any = None,
-    **kwargs
+    service_name: str, method: str, endpoint: str, data: Any = None, **kwargs
 ) -> Dict:
     """Convenience function for service calls"""
     communicator = get_communicator(service_name)
     return await communicator.request(method, endpoint, data, **kwargs)
 
+
 # Exception classes
 class ServiceError(Exception):
     """Base service communication error"""
+
     pass
+
 
 class ServiceUnavailableError(ServiceError):
     """Service is unavailable"""
+
     pass
+
 
 class ServiceTimeoutError(ServiceError):
     """Service call timed out"""
+
     pass
+
 
 class ServiceNotFoundError(ServiceError):
     """Service not found in registry"""
+
     pass

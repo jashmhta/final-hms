@@ -1,3 +1,7 @@
+"""
+validators module
+"""
+
 import re
 from typing import Any, Dict
 
@@ -37,6 +41,8 @@ def validate_no_injection(value):
             raise ValidationError(
                 "Input contains potentially dangerous content", code="invalid_input"
             )
+
+
 def validate_password_strength(value):
     if len(value) < 12:
         raise ValidationError("Password must be at least 12 characters long")
@@ -46,8 +52,10 @@ def validate_password_strength(value):
         raise ValidationError("Password must contain at least one lowercase letter")
     if not re.search(r"\d", value):
         raise ValidationError("Password must contain at least one digit")
-    if not re.search(r'[!@
+    if not re.search(r'[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?]', value):
         raise ValidationError("Password must contain at least one special character")
+
+
 alphanumeric_validator = RegexValidator(
     regex=r"^[a-zA-Z0-9\s\-_\.]+$",
     message="Only alphanumeric characters, spaces, hyphens, underscores, and dots are allowed",

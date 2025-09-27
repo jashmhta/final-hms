@@ -1,3 +1,7 @@
+"""
+encryption module
+"""
+
 import base64
 import hashlib
 import os
@@ -13,7 +17,9 @@ class DataEncryption:
     def __init__(self):
         key = getattr(settings, "FIELD_ENCRYPTION_KEY", None)
         if not key:
-            key = base64.urlsafe_b64encode(hashlib.sha256(settings.SECRET_KEY.encode()).digest())
+            key = base64.urlsafe_b64encode(
+                hashlib.sha256(settings.SECRET_KEY.encode()).digest()
+            )
         self.fernet = Fernet(key)
 
     def encrypt(self, data: str) -> str:
@@ -66,7 +72,9 @@ class KeyManagement:
     def rotate_key(old_key: str, new_key: str, encrypted_data: str) -> str:
         old_fernet = Fernet(old_key.encode())
         try:
-            decrypted = old_fernet.decrypt(base64.urlsafe_b64decode(encrypted_data.encode()))
+            decrypted = old_fernet.decrypt(
+                base64.urlsafe_b64decode(encrypted_data.encode())
+            )
         except InvalidToken:
             raise ValueError("Failed to decrypt with old key")
         new_fernet = Fernet(new_key.encode())

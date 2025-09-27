@@ -113,7 +113,9 @@ class Migration(migrations.Migration):
                         fields=["encounter", "triage_level"],
                         name="ehr_ertriag_encount_3cb202_idx",
                     ),
-                    models.Index(fields=["triage_time"], name="ehr_ertriag_triage__7aa9fa_idx"),
+                    models.Index(
+                        fields=["triage_time"], name="ehr_ertriag_triage__7aa9fa_idx"
+                    ),
                 ],
             },
         ),

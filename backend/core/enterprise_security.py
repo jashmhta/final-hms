@@ -52,7 +52,9 @@ class ZeroTrustSecurity:
     def __init__(self):
         self.redis_client = Redis.from_url(settings.REDIS_URL)
         self.encryption_key = os.getenv("FERNET_SECRET_KEY")
-        self.fernet = Fernet(self.encryption_key.encode()) if self.encryption_key else None
+        self.fernet = (
+            Fernet(self.encryption_key.encode()) if self.encryption_key else None
+        )
         self.logger = logging.getLogger("enterprise.security")
 
         # Security thresholds
@@ -96,7 +98,11 @@ class ZeroTrustSecurity:
 
         # Check session timeout
         last_activity = request.session.get("last_activity")
-        if last_activity and (timezone.now() - datetime.fromisoformat(last_activity)).seconds > self.session_timeout:
+        if (
+            last_activity
+            and (timezone.now() - datetime.fromisoformat(last_activity)).seconds
+            > self.session_timeout
+        ):
             return False
 
         # Update last activity
@@ -161,7 +167,12 @@ class ZeroTrustSecurity:
 
     def _requires_reauthentication(self, request: HttpRequest) -> bool:
         """Determine if operation requires re-authentication"""
-        sensitive_paths = ["/api/patients/", "/api/billing/", "/api/medical-records/", "/api/admin/"]
+        sensitive_paths = [
+            "/api/patients/",
+            "/api/billing/",
+            "/api/medical-records/",
+            "/api/admin/",
+        ]
 
         return any(request.path.startswith(path) for path in sensitive_paths)
 
@@ -250,7 +261,9 @@ class HIPAACompliance:
     def __init__(self):
         self.logger = logging.getLogger("hipaa.compliance")
         self.encryption_key = os.getenv("FERNET_SECRET_KEY")
-        self.fernet = Fernet(self.encryption_key.encode()) if self.encryption_key else None
+        self.fernet = (
+            Fernet(self.encryption_key.encode()) if self.encryption_key else None
+        )
 
     def encrypt_phi(self, data: Union[str, dict]) -> str:
         """Encrypt PHI data at rest"""
@@ -276,7 +289,9 @@ class HIPAACompliance:
                 return ""
         return ""
 
-    def audit_phi_access(self, user: User, action: str, resource: str, details: dict = None):
+    def audit_phi_access(
+        self, user: User, action: str, resource: str, details: dict = None
+    ):
         """Log PHI access for audit trail"""
         audit_entry = {
             "timestamp": timezone.now().isoformat(),
@@ -525,7 +540,10 @@ class EnterpriseSecurityManager:
         self.logger = logging.getLogger("enterprise.security")
 
     def security_check(
-        self, request: HttpRequest, user: User, security_level: SecurityLevel = SecurityLevel.ENTERPRISE
+        self,
+        request: HttpRequest,
+        user: User,
+        security_level: SecurityLevel = SecurityLevel.ENTERPRISE,
     ) -> bool:
         """
         Perform comprehensive security check
@@ -533,7 +551,9 @@ class EnterpriseSecurityManager:
         try:
             # Zero-trust verification
             if not self.zero_trust.verify_identity(request, user):
-                self.logger.warning(f"Zero-trust verification failed for user {user.id}")
+                self.logger.warning(
+                    f"Zero-trust verification failed for user {user.id}"
+                )
                 return False
 
             # Compliance checks based on security level
@@ -579,23 +599,37 @@ class EnterpriseSecurityManager:
 
     def _get_phi_resource(self, request: HttpRequest) -> str:
         """Extract PHI resource from request"""
-        return request.path.split("/")[-2] if len(request.path.split("/")) > 2 else "unknown"
+        return (
+            request.path.split("/")[-2]
+            if len(request.path.split("/")) > 2
+            else "unknown"
+        )
 
-    def encrypt_sensitive_data(self, data: Union[str, dict], data_type: str = "general") -> str:
+    def encrypt_sensitive_data(
+        self, data: Union[str, dict], data_type: str = "general"
+    ) -> str:
         """Encrypt sensitive data based on type"""
         if data_type == "phi":
             return self.hipaa.encrypt_phi(data)
         else:
-            return self.zero_trust.fernet.encrypt(json.dumps(data).encode()).decode() if self.zero_trust.fernet else ""
+            return (
+                self.zero_trust.fernet.encrypt(json.dumps(data).encode()).decode()
+                if self.zero_trust.fernet
+                else ""
+            )
 
-    def decrypt_sensitive_data(self, encrypted_data: str, data_type: str = "general") -> Union[str, dict]:
+    def decrypt_sensitive_data(
+        self, encrypted_data: str, data_type: str = "general"
+    ) -> Union[str, dict]:
         """Decrypt sensitive data based on type"""
         if data_type == "phi":
             return self.hipaa.decrypt_phi(encrypted_data)
         else:
             if self.zero_trust.fernet:
                 try:
-                    decrypted = self.zero_trust.fernet.decrypt(encrypted_data.encode()).decode()
+                    decrypted = self.zero_trust.fernet.decrypt(
+                        encrypted_data.encode()
+                    ).decode()
                     try:
                         return json.loads(decrypted)
                     except json.JSONDecodeError:

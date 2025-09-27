@@ -58,7 +58,9 @@ class PostgresOptimizer:
                     "fields": condition["fields"],
                     "type": self.determine_index_type(condition["fields"]),
                     "reason": f"Slow query (avg {query['mean_time']:.3f}ms) with condition: {condition['raw']}",
-                    "estimated_gain": self.estimate_performance_gain(query["mean_time"]),
+                    "estimated_gain": self.estimate_performance_gain(
+                        query["mean_time"]
+                    ),
                 }
                 suggestions.append(suggestion)
 
@@ -68,7 +70,9 @@ class PostgresOptimizer:
 
         return suggestions
 
-    def get_slow_queries(self, table_name: str = None, limit: int = 20) -> List[Dict[str, Any]]:
+    def get_slow_queries(
+        self, table_name: str = None, limit: int = 20
+    ) -> List[Dict[str, Any]]:
         """Get slow queries from PostgreSQL statistics"""
         with self.connection.cursor() as cursor:
             query = """
@@ -98,14 +102,26 @@ class PostgresOptimizer:
 
         # Simple pattern matching for common conditions
         if " where " in query_lower:
-            where_part = query_lower.split(" where ")[1].split(" group by ")[0].split(" order by ")[0]
+            where_part = (
+                query_lower.split(" where ")[1]
+                .split(" group by ")[0]
+                .split(" order by ")[0]
+            )
 
             # Look for equality conditions
             import re
 
-            equality_matches = re.findall(r'(\w+)\s*=\s*[\'"]?([^\'"\s]+)[\'"]?', where_part)
+            equality_matches = re.findall(
+                r'(\w+)\s*=\s*[\'"]?([^\'"\s]+)[\'"]?', where_part
+            )
             for match in equality_matches:
-                conditions.append({"fields": [match[0]], "type": "equality", "raw": f"{match[0]} = {match[1]}"})
+                conditions.append(
+                    {
+                        "fields": [match[0]],
+                        "type": "equality",
+                        "raw": f"{match[0]} = {match[1]}",
+                    }
+                )
 
         return conditions
 
@@ -166,7 +182,12 @@ class PostgresOptimizer:
         return suggestions
 
     def create_index(
-        self, table_name: str, fields: List[str], index_type: str = "btree", name: str = None, concurrently: bool = True
+        self,
+        table_name: str,
+        fields: List[str],
+        index_type: str = "btree",
+        name: str = None,
+        concurrently: bool = True,
     ) -> bool:
         """Create an index with specified parameters"""
         if not name:
@@ -254,7 +275,12 @@ class PostgresOptimizer:
             """,
                 [table_name, table_name, table_name, table_name],
             )
-            size_info = dict(zip(["total_size", "table_size", "indexes_size", "total_size_bytes"], cursor.fetchone()))
+            size_info = dict(
+                zip(
+                    ["total_size", "table_size", "indexes_size", "total_size_bytes"],
+                    cursor.fetchone(),
+                )
+            )
 
             # Row count estimate
             cursor.execute(
@@ -301,7 +327,10 @@ class PostgresOptimizer:
                 cursor.execute("SHOW %s", [setting])
                 current_value = cursor.fetchone()[0]
 
-                current_settings[setting] = {"current": current_value, "recommended": recommendation}
+                current_settings[setting] = {
+                    "current": current_value,
+                    "recommended": recommendation,
+                }
 
                 # Add specific recommendations
                 if setting == "shared_buffers" and int(current_value) < 1024:
@@ -314,7 +343,10 @@ class PostgresOptimizer:
                         }
                     )
 
-        return {"current_settings": current_settings, "recommendations": recommendations}
+        return {
+            "current_settings": current_settings,
+            "recommendations": recommendations,
+        }
 
     def create_hypothetical_index(self, table_name: str, fields: List[str]) -> str:
         """Create a hypothetical index for testing without affecting production"""
@@ -350,21 +382,33 @@ class PostgresOptimizer:
     def performance_monitoring(self, operation_name: str):
         """Context manager for monitoring query performance"""
         start_time = time.time()
-        start_queries = self.connection.queries_log[-1]["time"] if self.connection.queries_log else 0
+        start_queries = (
+            self.connection.queries_log[-1]["time"]
+            if self.connection.queries_log
+            else 0
+        )
 
         try:
             yield
         finally:
             end_time = time.time()
-            end_queries = self.connection.queries_log[-1]["time"] if self.connection.queries_log else 0
+            end_queries = (
+                self.connection.queries_log[-1]["time"]
+                if self.connection.queries_log
+                else 0
+            )
 
             duration = end_time - start_time
             query_count = end_queries - start_queries
 
-            logger.info(f"Operation '{operation_name}' took {duration:.3f}s with {query_count} queries")
+            logger.info(
+                f"Operation '{operation_name}' took {duration:.3f}s with {query_count} queries"
+            )
 
             if duration > 1.0:  # Log slow operations
-                logger.warning(f"Slow operation detected: {operation_name} ({duration:.3f}s)")
+                logger.warning(
+                    f"Slow operation detected: {operation_name} ({duration:.3f}s)"
+                )
 
 
 # Global optimizer instance
@@ -394,7 +438,11 @@ def optimize_patient_queries():
 def optimize_appointment_queries():
     """Apply specific optimizations for appointment-related queries"""
     indexes_to_create = [
-        ("appointments_appointment", ["hospital_id", "appointment_date", "status"], "btree"),
+        (
+            "appointments_appointment",
+            ["hospital_id", "appointment_date", "status"],
+            "btree",
+        ),
         ("appointments_appointment", ["patient_id", "appointment_date"], "btree"),
         ("appointments_appointment", ["physician_id", "appointment_date"], "btree"),
         ("appointments_appointment", ["hospital_id", "status"], "btree"),
@@ -433,7 +481,11 @@ def schedule_maintenance():
         while True:
             try:
                 # Run ANALYZE on all tables
-                tables = ["patients_patient", "appointments_appointment", "hospitals_hospital"]
+                tables = [
+                    "patients_patient",
+                    "appointments_appointment",
+                    "hospitals_hospital",
+                ]
                 for table in tables:
                     postgres_optimizer.analyze_table(table)
 

@@ -4,9 +4,10 @@ Eliminates redundant configuration patterns across all services.
 """
 
 import os
-from typing import Optional, Dict, Any, List
-from pydantic import BaseSettings, Field
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseSettings, Field
 
 
 class Environment(str, Enum):

@@ -1,11 +1,17 @@
-import time
-import psutil
-import redis
+"""
+performance_monitor module
+"""
+
+import json
 import logging
+import os
+import time
 from datetime import datetime, timedelta
 from typing import Dict, List
-import json
-import os
+
+import psutil
+import redis
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 class PerformanceMonitor:

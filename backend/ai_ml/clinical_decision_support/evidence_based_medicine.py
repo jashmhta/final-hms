@@ -1,3 +1,7 @@
+"""
+evidence_based_medicine module
+"""
+
 import json
 import logging
 from dataclasses import dataclass
@@ -105,7 +109,11 @@ class EvidenceBasedMedicineEngine:
                 return cached_results
             pubmed_results = self._search_pubmed(query, max_results)
             if evidence_types:
-                pubmed_results = [result for result in pubmed_results if result.evidence_type in evidence_types]
+                pubmed_results = [
+                    result
+                    for result in pubmed_results
+                    if result.evidence_type in evidence_types
+                ]
             cache.set(cache_key, pubmed_results, timeout=3600)
             return pubmed_results
         except Exception as e:
@@ -127,7 +135,9 @@ class EvidenceBasedMedicineEngine:
             )
         ]
 
-    def get_clinical_guidelines(self, condition: str, organization: str = None) -> List[ClinicalGuideline]:
+    def get_clinical_guidelines(
+        self, condition: str, organization: str = None
+    ) -> List[ClinicalGuideline]:
         try:
             cache_key = f"guidelines_{condition}_{organization or 'all'}"
             cached_guidelines = cache.get(cache_key)
@@ -140,7 +150,9 @@ class EvidenceBasedMedicineEngine:
             logger.error(f"Error retrieving clinical guidelines: {str(e)}")
             return []
 
-    def _query_guideline_database(self, condition: str, organization: str = None) -> List[ClinicalGuideline]:
+    def _query_guideline_database(
+        self, condition: str, organization: str = None
+    ) -> List[ClinicalGuideline]:
         return [
             ClinicalGuideline(
                 guideline_id="guideline_001",
@@ -193,13 +205,17 @@ class EvidenceBasedMedicineEngine:
                 quality_assessment=quality_assessment,
                 confidence_interval=confidence_interval,
                 number_of_studies=len(evidence_sources),
-                sample_size=sum(self._extract_sample_size(source) for source in evidence_sources),
+                sample_size=sum(
+                    self._extract_sample_size(source) for source in evidence_sources
+                ),
             )
         except Exception as e:
             logger.error(f"Error synthesizing evidence: {str(e)}")
             return None
 
-    def _assess_evidence_quality(self, evidence_sources: List[EvidenceSource]) -> EvidenceQuality:
+    def _assess_evidence_quality(
+        self, evidence_sources: List[EvidenceSource]
+    ) -> EvidenceQuality:
         if not evidence_sources:
             return EvidenceQuality.VERY_LOW
         quality_scores = []
@@ -236,9 +252,15 @@ class EvidenceBasedMedicineEngine:
         quality_score = quality_scores.get(source.quality, 0.5)
         return (type_score + quality_score) / 2
 
-    def _synthesize_findings(self, evidence_sources: List[EvidenceSource]) -> Dict[str, Any]:
-        positive_findings = len([s for s in evidence_sources if "effective" in s.abstract.lower()])
-        negative_findings = len([s for s in evidence_sources if "ineffective" in s.abstract.lower()])
+    def _synthesize_findings(
+        self, evidence_sources: List[EvidenceSource]
+    ) -> Dict[str, Any]:
+        positive_findings = len(
+            [s for s in evidence_sources if "effective" in s.abstract.lower()]
+        )
+        negative_findings = len(
+            [s for s in evidence_sources if "ineffective" in s.abstract.lower()]
+        )
         mixed_findings = len(evidence_sources) - positive_findings - negative_findings
         return {
             "total_studies": len(evidence_sources),
@@ -252,7 +274,9 @@ class EvidenceBasedMedicineEngine:
             ),
         }
 
-    def _calculate_confidence_interval(self, evidence_sources: List[EvidenceSource]) -> Tuple[float, float]:
+    def _calculate_confidence_interval(
+        self, evidence_sources: List[EvidenceSource]
+    ) -> Tuple[float, float]:
         if not evidence_sources:
             return (0.0, 1.0)
         base_effect = 0.65
@@ -283,7 +307,9 @@ class EvidenceBasedMedicineEngine:
                         "treatment": treatment,
                         "evidence_synthesis": synthesis,
                         "guideline_support": len(guidelines),
-                        "recommendation_strength": self._determine_recommendation_strength(synthesis),
+                        "recommendation_strength": self._determine_recommendation_strength(
+                            synthesis
+                        ),
                         "confidence": synthesis.findings.get("consensus", "mixed"),
                         "key_evidence": [
                             {
@@ -295,7 +321,9 @@ class EvidenceBasedMedicineEngine:
                         ],
                     }
                     recommendations.append(recommendation)
-            recommendations.sort(key=lambda x: x["recommendation_strength"].value, reverse=True)
+            recommendations.sort(
+                key=lambda x: x["recommendation_strength"].value, reverse=True
+            )
             return {
                 "condition": condition,
                 "patient_characteristics": patient_characteristics,
@@ -317,7 +345,9 @@ class EvidenceBasedMedicineEngine:
             description += f" with {', '.join(comorbidities)}"
         return description
 
-    def _determine_recommendation_strength(self, synthesis: EvidenceSynthesis) -> RecommendationStrength:
+    def _determine_recommendation_strength(
+        self, synthesis: EvidenceSynthesis
+    ) -> RecommendationStrength:
         quality_score = self._calculate_quality_score(synthesis.quality_assessment)
         if quality_score >= 0.8 and synthesis.findings.get("consensus") == "positive":
             return RecommendationStrength.STRONG
@@ -331,12 +361,16 @@ class GuidelineEngine:
     def __init__(self):
         self.evidence_engine = EvidenceBasedMedicineEngine()
 
-    def apply_guidelines(self, patient_data: Dict[str, Any], condition: str) -> List[Dict[str, Any]]:
+    def apply_guidelines(
+        self, patient_data: Dict[str, Any], condition: str
+    ) -> List[Dict[str, Any]]:
         try:
             guidelines = self.evidence_engine.get_clinical_guidelines(condition)
             recommendations = []
             for guideline in guidelines:
-                if self._patient_fits_population(patient_data, guideline.target_population):
+                if self._patient_fits_population(
+                    patient_data, guideline.target_population
+                ):
                     for rec in guideline.recommendations:
                         recommendation = {
                             "guideline_id": guideline.guideline_id,
@@ -345,7 +379,9 @@ class GuidelineEngine:
                             "recommendation": rec["recommendation"],
                             "strength": rec["strength"],
                             "evidence_level": rec["evidence_level"],
-                            "applicability": self._assess_applicability(patient_data, rec),
+                            "applicability": self._assess_applicability(
+                                patient_data, rec
+                            ),
                         }
                         recommendations.append(recommendation)
             return recommendations
@@ -353,7 +389,9 @@ class GuidelineEngine:
             logger.error(f"Error applying guidelines: {str(e)}")
             return []
 
-    def _patient_fits_population(self, patient_data: Dict[str, Any], target_population: str) -> bool:
+    def _patient_fits_population(
+        self, patient_data: Dict[str, Any], target_population: str
+    ) -> bool:
         age = patient_data.get("demographics", {}).get("age", 0)
         if "adult" in target_population.lower() and age >= 18:
             return True
@@ -363,12 +401,19 @@ class GuidelineEngine:
             return True
         return False
 
-    def _assess_applicability(self, patient_data: Dict[str, Any], recommendation: Dict[str, Any]) -> str:
+    def _assess_applicability(
+        self, patient_data: Dict[str, Any], recommendation: Dict[str, Any]
+    ) -> str:
         contraindications = patient_data.get("contraindications", [])
         allergies = patient_data.get("allergies", [])
-        if any(contraindication in recommendation["recommendation"].lower() for contraindication in contraindications):
+        if any(
+            contraindication in recommendation["recommendation"].lower()
+            for contraindication in contraindications
+        ):
             return "contraindicated"
-        elif any(allergy in recommendation["recommendation"].lower() for allergy in allergies):
+        elif any(
+            allergy in recommendation["recommendation"].lower() for allergy in allergies
+        ):
             return "use_with_caution"
         else:
             return "applicable"
@@ -396,7 +441,9 @@ def create_evidence_based_medicine_api():
                 evidence_types = request.data.get("evidence_types")
                 if evidence_types:
                     evidence_types = [EvidenceType(t) for t in evidence_types]
-                results = self.ebm_engine.search_medical_literature(query, max_results, evidence_types)
+                results = self.ebm_engine.search_medical_literature(
+                    query, max_results, evidence_types
+                )
                 return Response(
                     {
                         "query": query,
@@ -428,7 +475,9 @@ def create_evidence_based_medicine_api():
             try:
                 condition = request.data.get("condition")
                 organization = request.data.get("organization")
-                guidelines = self.ebm_engine.get_clinical_guidelines(condition, organization)
+                guidelines = self.ebm_engine.get_clinical_guidelines(
+                    condition, organization
+                )
                 return Response(
                     {
                         "condition": condition,
@@ -458,7 +507,9 @@ def create_evidence_based_medicine_api():
         def get_recommendation(self, request):
             try:
                 condition = request.data.get("condition")
-                patient_characteristics = request.data.get("patient_characteristics", {})
+                patient_characteristics = request.data.get(
+                    "patient_characteristics", {}
+                )
                 treatment_options = request.data.get("treatment_options", [])
                 recommendation = self.ebm_engine.get_evidence_based_recommendation(
                     condition, patient_characteristics, treatment_options

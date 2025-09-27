@@ -4,12 +4,13 @@ HMS Enterprise-Grade Configuration Generator
 Automates creation of service configurations to eliminate redundancy.
 """
 
-import os
-import json
-import yaml
 import argparse
+import json
+import os
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
+import yaml
 from jinja2 import Environment, FileSystemLoader, Template
 
 
@@ -24,7 +25,7 @@ class ConfigGenerator:
         self.env = Environment(
             loader=FileSystemLoader(str(self.template_dir)),
             trim_blocks=True,
-            lstrip_blocks=True
+            lstrip_blocks=True,
         )
 
     def generate_docker_compose(
@@ -36,7 +37,7 @@ class ConfigGenerator:
         db_port: int = None,
         redis_port: int = None,
         output_file: str = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """Generate docker-compose.yml from template."""
         template = self.env.get_template("docker/docker-compose.template.yml")
@@ -88,7 +89,7 @@ class ConfigGenerator:
         version: str = "1.0.0",
         namespace: str = "default",
         output_file: str = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """Generate Kubernetes deployment manifests."""
         template = self.env.get_template("k8s/deployment.template.yaml")
@@ -137,10 +138,16 @@ class ConfigGenerator:
             "RUN_AS_USER": kwargs.get("run_as_user", 1000),
             "RUN_AS_GROUP": kwargs.get("run_as_group", 1000),
             "READ_ONLY_ROOT_FILESYSTEM": kwargs.get("read_only_root_filesystem", True),
-            "ALLOW_PRIVILEGE_ESCALATION": kwargs.get("allow_privilege_escalation", False),
+            "ALLOW_PRIVILEGE_ESCALATION": kwargs.get(
+                "allow_privilege_escalation", False
+            ),
             # External service references
-            "DATABASE_SECRET_NAME": kwargs.get("database_secret_name", f"{service_name}-db-secret"),
-            "SECURITY_SECRET_NAME": kwargs.get("security_secret_name", f"{service_name}-security-secret"),
+            "DATABASE_SECRET_NAME": kwargs.get(
+                "database_secret_name", f"{service_name}-db-secret"
+            ),
+            "SECURITY_SECRET_NAME": kwargs.get(
+                "security_secret_name", f"{service_name}-security-secret"
+            ),
             "REDIS_HOST": kwargs.get("redis_host", "redis-service"),
             "REDIS_PORT": kwargs.get("redis_port", 6379),
             "RABBITMQ_HOST": kwargs.get("rabbitmq_host", "rabbitmq-service"),
@@ -179,7 +186,7 @@ class ConfigGenerator:
         service_description: str,
         version: str = "1.0.0",
         output_file: str = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """Generate service configuration dictionary."""
         config = {
@@ -194,7 +201,9 @@ class ConfigGenerator:
             "database": {
                 "host": kwargs.get("db_host", "localhost"),
                 "port": kwargs.get("db_port", 5432),
-                "database": kwargs.get("db_database", f"{service_name.lower().replace('-', '_')}_db"),
+                "database": kwargs.get(
+                    "db_database", f"{service_name.lower().replace('-', '_')}_db"
+                ),
                 "username": kwargs.get("db_username", "hms"),
                 "password": kwargs.get("db_password", "hms"),
             },
@@ -205,10 +214,16 @@ class ConfigGenerator:
                 "db": kwargs.get("redis_db", 0),
             },
             "security": {
-                "secret_key": kwargs.get("secret_key", "your-secret-key-change-in-production"),
+                "secret_key": kwargs.get(
+                    "secret_key", "your-secret-key-change-in-production"
+                ),
                 "algorithm": kwargs.get("algorithm", "HS256"),
-                "access_token_expire_minutes": kwargs.get("access_token_expire_minutes", 30),
-                "hipaa_encryption_key": kwargs.get("hipaa_encryption_key", "your-hipaa-key-change-in-production"),
+                "access_token_expire_minutes": kwargs.get(
+                    "access_token_expire_minutes", 30
+                ),
+                "hipaa_encryption_key": kwargs.get(
+                    "hipaa_encryption_key", "your-hipaa-key-change-in-production"
+                ),
             },
             "monitoring": {
                 "log_level": kwargs.get("log_level", "INFO"),
@@ -231,60 +246,68 @@ class ConfigGenerator:
         return config
 
     def generate_env_file(
-        self,
-        service_config: Dict[str, Any],
-        output_file: str = ".env"
+        self, service_config: Dict[str, Any], output_file: str = ".env"
     ) -> str:
         """Generate .env file from service configuration."""
         env_lines = []
 
         # Service configuration
         service = service_config.get("service", {})
-        env_lines.extend([
-            f"SERVICE_NAME={service.get('name', '')}",
-            f"SERVICE_DESCRIPTION={service.get('description', '')}",
-            f"SERVICE_VERSION={service.get('version', '1.0.0')}",
-            f"SERVICE_PORT={service.get('port', 8000)}",
-            f"SERVICE_HOST={service.get('host', '0.0.0.0')}",
-            f"ENVIRONMENT={service.get('environment', 'development')}",
-        ])
+        env_lines.extend(
+            [
+                f"SERVICE_NAME={service.get('name', '')}",
+                f"SERVICE_DESCRIPTION={service.get('description', '')}",
+                f"SERVICE_VERSION={service.get('version', '1.0.0')}",
+                f"SERVICE_PORT={service.get('port', 8000)}",
+                f"SERVICE_HOST={service.get('host', '0.0.0.0')}",
+                f"ENVIRONMENT={service.get('environment', 'development')}",
+            ]
+        )
 
         # Database configuration
         database = service_config.get("database", {})
-        env_lines.extend([
-            f"DB_HOST={database.get('host', 'localhost')}",
-            f"DB_PORT={database.get('port', 5432)}",
-            f"DB_DATABASE={database.get('database', 'hms')}",
-            f"DB_USERNAME={database.get('username', 'hms')}",
-            f"DB_PASSWORD={database.get('password', 'hms')}",
-        ])
+        env_lines.extend(
+            [
+                f"DB_HOST={database.get('host', 'localhost')}",
+                f"DB_PORT={database.get('port', 5432)}",
+                f"DB_DATABASE={database.get('database', 'hms')}",
+                f"DB_USERNAME={database.get('username', 'hms')}",
+                f"DB_PASSWORD={database.get('password', 'hms')}",
+            ]
+        )
 
         # Redis configuration
         redis = service_config.get("redis", {})
-        env_lines.extend([
-            f"REDIS_HOST={redis.get('host', 'localhost')}",
-            f"REDIS_PORT={redis.get('port', 6379)}",
-            f"REDIS_PASSWORD={redis.get('password', '')}",
-            f"REDIS_DB={redis.get('db', 0)}",
-        ])
+        env_lines.extend(
+            [
+                f"REDIS_HOST={redis.get('host', 'localhost')}",
+                f"REDIS_PORT={redis.get('port', 6379)}",
+                f"REDIS_PASSWORD={redis.get('password', '')}",
+                f"REDIS_DB={redis.get('db', 0)}",
+            ]
+        )
 
         # Security configuration
         security = service_config.get("security", {})
-        env_lines.extend([
-            f"SECRET_KEY={security.get('secret_key', '')}",
-            f"ALGORITHM={security.get('algorithm', 'HS256')}",
-            f"ACCESS_TOKEN_EXPIRE_MINUTES={security.get('access_token_expire_minutes', 30)}",
-            f"HIPAA_ENCRYPTION_KEY={security.get('hipaa_encryption_key', '')}",
-        ])
+        env_lines.extend(
+            [
+                f"SECRET_KEY={security.get('secret_key', '')}",
+                f"ALGORITHM={security.get('algorithm', 'HS256')}",
+                f"ACCESS_TOKEN_EXPIRE_MINUTES={security.get('access_token_expire_minutes', 30)}",
+                f"HIPAA_ENCRYPTION_KEY={security.get('hipaa_encryption_key', '')}",
+            ]
+        )
 
         # Monitoring configuration
         monitoring = service_config.get("monitoring", {})
-        env_lines.extend([
-            f"LOG_LEVEL={monitoring.get('log_level', 'INFO')}",
-            f"PROMETHEUS_ENABLED={monitoring.get('prometheus_enabled', True)}",
-            f"METRICS_ENABLED={monitoring.get('metrics_enabled', True)}",
-            f"TRACING_ENABLED={monitoring.get('tracing_enabled', False)}",
-        ])
+        env_lines.extend(
+            [
+                f"LOG_LEVEL={monitoring.get('log_level', 'INFO')}",
+                f"PROMETHEUS_ENABLED={monitoring.get('prometheus_enabled', True)}",
+                f"METRICS_ENABLED={monitoring.get('metrics_enabled', True)}",
+                f"TRACING_ENABLED={monitoring.get('tracing_enabled', False)}",
+            ]
+        )
 
         # CORS configuration
         cors = service_config.get("cors", {})
@@ -302,7 +325,7 @@ class ConfigGenerator:
         """Save configuration to file."""
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(config)
         print(f"Configuration saved to: {output_path}")
 
@@ -310,7 +333,7 @@ class ConfigGenerator:
         """Save JSON configuration to file."""
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2, default=str)
         print(f"Configuration saved to: {output_path}")
 
@@ -324,8 +347,12 @@ def main():
     parser.add_argument("service_description", help="Description of the service")
     parser.add_argument("--version", default="1.0.0", help="Service version")
     parser.add_argument("--output-dir", default=".", help="Output directory")
-    parser.add_argument("--generate", choices=["docker-compose", "k8s", "config", "env", "all"],
-                       default="all", help="What to generate")
+    parser.add_argument(
+        "--generate",
+        choices=["docker-compose", "k8s", "config", "env", "all"],
+        default="all",
+        help="What to generate",
+    )
 
     args = parser.parse_args()
 
@@ -339,7 +366,7 @@ def main():
             service_name=args.service_name,
             service_description=args.service_description,
             version=args.version,
-            output_file=str(output_dir / "docker-compose.yml")
+            output_file=str(output_dir / "docker-compose.yml"),
         )
 
     if args.generate in ["k8s", "all"]:
@@ -348,7 +375,7 @@ def main():
             service_name=args.service_name,
             service_description=args.service_description,
             version=args.version,
-            output_file=str(output_dir / "k8s-deployment.yaml")
+            output_file=str(output_dir / "k8s-deployment.yaml"),
         )
 
     if args.generate in ["config", "all"]:
@@ -357,14 +384,13 @@ def main():
             service_name=args.service_name,
             service_description=args.service_description,
             version=args.version,
-            output_file=str(output_dir / "service-config.json")
+            output_file=str(output_dir / "service-config.json"),
         )
 
         if args.generate in ["env", "all"]:
             print(f"Generating .env file for {service_name}...")
             generator.generate_env_file(
-                service_config,
-                output_file=str(output_dir / ".env")
+                service_config, output_file=str(output_dir / ".env")
             )
 
     print(f"\nConfiguration generation completed for {service_name}!")

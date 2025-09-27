@@ -88,7 +88,9 @@ class GitOpsManager:
                 subprocess.run(["git", "pull"], cwd=self.repo_path, check=True)
             else:
                 # Clone repository
-                subprocess.run(["git", "clone", self.repo_url, str(self.repo_path)], check=True)
+                subprocess.run(
+                    ["git", "clone", self.repo_url, str(self.repo_path)], check=True
+                )
 
             self.logger.info("Repository synchronized successfully")
 
@@ -288,7 +290,11 @@ class DeploymentManager:
             else:
                 # Rollback canary
                 self._rollback_deployment(canary_name)
-                return {"status": "failed", "strategy": "canary", "error": monitoring_result["error"]}
+                return {
+                    "status": "failed",
+                    "strategy": "canary",
+                    "error": monitoring_result["error"],
+                }
 
         except Exception as e:
             self.logger.error(f"Canary deployment error: {e}")
@@ -317,7 +323,11 @@ class DeploymentManager:
             else:
                 # Rollback new deployment
                 self._rollback_deployment(green_name)
-                return {"status": "failed", "strategy": "blue_green", "error": monitoring_result["error"]}
+                return {
+                    "status": "failed",
+                    "strategy": "blue_green",
+                    "error": monitoring_result["error"],
+                }
 
         except Exception as e:
             self.logger.error(f"Blue-green deployment error: {e}")
@@ -362,7 +372,9 @@ class DeploymentManager:
                 self._deploy_with_percentage(config, percent)
 
                 # Monitor
-                monitoring_result = self._monitor_deployment(f"{config.application_name}-{percent}")
+                monitoring_result = self._monitor_deployment(
+                    f"{config.application_name}-{percent}"
+                )
 
                 if not monitoring_result["success"]:
                     # Rollback
@@ -398,7 +410,9 @@ class DeploymentManager:
             "health_check_path": config.health_check_path,
         }
 
-    def _create_color_config(self, config: DeploymentConfig, color_name: str, color: str) -> dict:
+    def _create_color_config(
+        self, config: DeploymentConfig, color_name: str, color: str
+    ) -> dict:
         """Create blue-green deployment configuration"""
         return {
             "name": color_name,
@@ -430,7 +444,12 @@ class DeploymentManager:
                 "replicas": config["replicas"],
                 "selector": {"matchLabels": {"app": config["application_name"]}},
                 "template": {
-                    "metadata": {"labels": {"app": config["application_name"], "version": "latest"}},
+                    "metadata": {
+                        "labels": {
+                            "app": config["application_name"],
+                            "version": "latest",
+                        }
+                    },
                     "spec": {
                         "containers": [
                             {
@@ -438,15 +457,24 @@ class DeploymentManager:
                                 "image": f"{config['application_name']}:latest",
                                 "ports": [{"containerPort": 8000}],
                                 "resources": {
-                                    "requests": {"cpu": config["cpu_request"], "memory": config["memory_request"]}
+                                    "requests": {
+                                        "cpu": config["cpu_request"],
+                                        "memory": config["memory_request"],
+                                    }
                                 },
                                 "livenessProbe": {
-                                    "httpGet": {"path": config["health_check_path"], "port": 8000},
+                                    "httpGet": {
+                                        "path": config["health_check_path"],
+                                        "port": 8000,
+                                    },
                                     "initialDelaySeconds": 30,
                                     "periodSeconds": 10,
                                 },
                                 "readinessProbe": {
-                                    "httpGet": {"path": config["health_check_path"], "port": 8000},
+                                    "httpGet": {
+                                        "path": config["health_check_path"],
+                                        "port": 8000,
+                                    },
                                     "initialDelaySeconds": 5,
                                     "periodSeconds": 5,
                                 },
@@ -484,7 +512,9 @@ class DeploymentManager:
                 try:
                     # Check deployment status
                     namespace = "default"  # Would be dynamic
-                    deployment = self.k8s_client.read_namespaced_deployment_status(deployment_name, namespace)
+                    deployment = self.k8s_client.read_namespaced_deployment_status(
+                        deployment_name, namespace
+                    )
 
                     # Check if deployment is ready
                     if deployment.status.ready_replicas == deployment.spec.replicas:
@@ -617,7 +647,11 @@ class MonitoringManager:
                     {
                         "title": "Request Rate",
                         "type": "graph",
-                        "targets": [{"expr": f'rate(http_requests_total{{app="{application_name}"}}[5m])'}],
+                        "targets": [
+                            {
+                                "expr": f'rate(http_requests_total{{app="{application_name}"}}[5m])'
+                            }
+                        ],
                     },
                     {
                         "title": "Response Time",
@@ -730,14 +764,16 @@ class BackupManager:
             self.logger.error(f"Backup creation error: {e}")
             raise
 
-    def _create_database_backup(self, backup_name: str, environment: Environment) -> dict:
+    def _create_database_backup(
+        self, backup_name: str, environment: Environment
+    ) -> dict:
         """Create database backup"""
         try:
             # Execute database backup
             backup_command = f"pg_dump -h localhost -U postgres -d hms_{environment.value} > /tmp/{backup_name}.sql"
 
             # This would execute the backup command
-            # subprocess.run(backup_command, shell=True, check=True)
+            # subprocess.run(backup_command, shell=False, check=True)
 
             # Upload to cloud storage
             # self._upload_to_cloud_storage(f"/tmp/{backup_name}.sql", backup_name)
@@ -754,14 +790,16 @@ class BackupManager:
             self.logger.error(f"Database backup error: {e}")
             raise
 
-    def _create_filesystem_backup(self, backup_name: str, environment: Environment) -> dict:
+    def _create_filesystem_backup(
+        self, backup_name: str, environment: Environment
+    ) -> dict:
         """Create filesystem backup"""
         try:
             # Create tar archive of filesystem
             backup_command = f"tar -czf /tmp/{backup_name}.tar.gz /path/to/application"
 
             # This would execute the backup command
-            # subprocess.run(backup_command, shell=True, check=True)
+            # subprocess.run(backup_command, shell=False, check=True)
 
             # Upload to cloud storage
             # self._upload_to_cloud_storage(f"/tmp/{backup_name}.tar.gz", backup_name)
@@ -778,7 +816,9 @@ class BackupManager:
             self.logger.error(f"Filesystem backup error: {e}")
             raise
 
-    def _create_complete_backup(self, backup_name: str, environment: Environment) -> dict:
+    def _create_complete_backup(
+        self, backup_name: str, environment: Environment
+    ) -> dict:
         """Create complete backup (database + filesystem)"""
         try:
             # Create database backup
@@ -818,14 +858,16 @@ class BackupManager:
             self.logger.error(f"Backup restoration error: {e}")
             raise
 
-    def _restore_database_backup(self, backup_name: str, environment: Environment) -> dict:
+    def _restore_database_backup(
+        self, backup_name: str, environment: Environment
+    ) -> dict:
         """Restore database backup"""
         try:
             # Execute database restoration
             restore_command = f"psql -h localhost -U postgres -d hms_{environment.value} < /tmp/{backup_name}"
 
             # This would execute the restore command
-            # subprocess.run(restore_command, shell=True, check=True)
+            # subprocess.run(restore_command, shell=False, check=True)
 
             return {
                 "status": "success",
@@ -839,14 +881,16 @@ class BackupManager:
             self.logger.error(f"Database restoration error: {e}")
             raise
 
-    def _restore_filesystem_backup(self, backup_name: str, environment: Environment) -> dict:
+    def _restore_filesystem_backup(
+        self, backup_name: str, environment: Environment
+    ) -> dict:
         """Restore filesystem backup"""
         try:
             # Extract backup
             restore_command = f"tar -xzf /tmp/{backup_name} -C /path/to/application"
 
             # This would execute the restore command
-            # subprocess.run(restore_command, shell=True, check=True)
+            # subprocess.run(restore_command, shell=False, check=True)
 
             return {
                 "status": "success",
@@ -862,7 +906,9 @@ class BackupManager:
 
 
 # Global DevOps managers
-gitops_manager = GitOpsManager("https://github.com/your-org/hms-infra", "/tmp/hms-infra")
+gitops_manager = GitOpsManager(
+    "https://github.com/your-org/hms-infra", "/tmp/hms-infra"
+)
 deployment_manager = DeploymentManager()
 monitoring_manager = MonitoringManager()
 backup_manager = BackupManager()
