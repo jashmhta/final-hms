@@ -1,35 +1,34 @@
 """
-main module
+ERP Service - Refactored using Shared Libraries
+Eliminates redundant service initialization code.
 """
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
-app = FastAPI(
-    title="Erp Service API",
-    description="API for erp service in HMS Enterprise-Grade System",
-    version="1.0.0",
-)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+from shared.service.template import create_basic_service
 
 
-@app.get("/")
-async def root():
-    return {"message": "Erp Service API", "status": "running"}
+def create_erp_service():
+    """Create ERP service using shared template."""
+    service = create_basic_service(
+        service_name="ERP Service",
+        service_description="API for ERP service in HMS Enterprise-Grade System",
+        version="1.0.0",
+        port=8000,
+    )
 
+    # Add custom routes
+    app = service.get_app()
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "service": "erp"}
+    @app.get("/")
+    async def root():
+        return {"message": "ERP Service API", "status": "running"}
+
+    @app.get("/health")
+    async def health_check():
+        return {"status": "healthy", "service": "erp"}
+
+    return service
 
 
 if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    service = create_erp_service()
+    service.run()

@@ -1,35 +1,34 @@
 """
-main module
+HR Service - Refactored using Shared Libraries
+Eliminates redundant service initialization code.
 """
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
-app = FastAPI(
-    title="Hr Service API",
-    description="API for hr service in HMS Enterprise-Grade System",
-    version="1.0.0",
-)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+from shared.service.template import create_basic_service
 
 
-@app.get("/")
-async def root():
-    return {"message": "Hr Service API", "status": "running"}
+def create_hr_service():
+    """Create HR service using shared template."""
+    service = create_basic_service(
+        service_name="HR Service",
+        service_description="API for HR service in HMS Enterprise-Grade System",
+        version="1.0.0",
+        port=8000,
+    )
 
+    # Add custom routes
+    app = service.get_app()
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "service": "hr"}
+    @app.get("/")
+    async def root():
+        return {"message": "HR Service API", "status": "running"}
+
+    @app.get("/health")
+    async def health_check():
+        return {"status": "healthy", "service": "hr"}
+
+    return service
 
 
 if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    service = create_hr_service()
+    service.run()

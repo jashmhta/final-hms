@@ -1,35 +1,34 @@
 """
-main module
+Radiology Service - Refactored using Shared Libraries
+Eliminates redundant service initialization code.
 """
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
-app = FastAPI(
-    title="Radiology Service API",
-    description="API for radiology service in HMS Enterprise-Grade System",
-    version="1.0.0",
-)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+from shared.service.template import create_basic_service
 
 
-@app.get("/")
-async def root():
-    return {"message": "Radiology Service API", "status": "running"}
+def create_radiology_service():
+    """Create radiology service using shared template."""
+    service = create_basic_service(
+        service_name="Radiology Service",
+        service_description="API for radiology service in HMS Enterprise-Grade System",
+        version="1.0.0",
+        port=8000,
+    )
 
+    # Add custom routes
+    app = service.get_app()
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "service": "radiology"}
+    @app.get("/")
+    async def root():
+        return {"message": "Radiology Service API", "status": "running"}
+
+    @app.get("/health")
+    async def health_check():
+        return {"status": "healthy", "service": "radiology"}
+
+    return service
 
 
 if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    service = create_radiology_service()
+    service.run()
