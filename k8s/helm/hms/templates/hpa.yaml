@@ -11,26 +11,36 @@ spec:
     name: {{ include "hms.fullname" . }}-backend
   minReplicas: {{ .Values.backend.hpa.minReplicas | default 2 }}
   maxReplicas: {{ .Values.backend.hpa.maxReplicas | default 10 }}
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: {{ .Values.backend.hpa.cpuTarget | default 70 }}
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: {{ .Values.backend.hpa.memoryTarget | default 80 }}
-  - type: Pods
-    pods:
-      metric:
-        name: http_requests_per_second
-      target:
-        type: AverageValue
-        averageValue: {{ .Values.backend.hpa.requestsPerSecond | default "100" }}
+   metrics:
+   - type: Resource
+     resource:
+       name: cpu
+       target:
+         type: Utilization
+         averageUtilization: {{ .Values.backend.hpa.cpuTarget | default 65 }}
+   - type: Resource
+     resource:
+       name: memory
+       target:
+         type: Utilization
+         averageUtilization: {{ .Values.backend.hpa.memoryTarget | default 80 }}
+   - type: Pods
+     pods:
+       metric:
+         name: http_requests_per_second
+       target:
+         type: AverageValue
+         averageValue: {{ .Values.backend.hpa.requestsPerSecond | default "2000" }}
+   - type: External
+     external:
+       metric:
+         name: response_time_p95_ms
+         selector:
+           matchLabels:
+             app: hms-backend
+       target:
+         type: AverageValue
+         averageValue: "200"
   behavior:
     scaleDown:
       stabilizationWindowSeconds: 300

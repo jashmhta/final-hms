@@ -1,0 +1,361 @@
+name: 🚀 Chaos Engineering & Fault Injection Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'chaos/**'
+      - 'k8s/**'
+      - '.github/workflows/chaos-engineering.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'chaos/**'
+      - 'k8s/**'
+      - '.github/workflows/chaos-engineering.yml'
+  schedule:
+    # Run chaos testing weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      experiment_types:
+        description: 'Chaos experiment types to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - pod_failure
+        - network_delay
+        - cpu_stress
+        - memory_stress
+        - disk_fill
+      target_apps:
+        description: 'Target applications for chaos experiments'
+        required: false
+        default: 'backend,frontend,postgres,redis'
+        type: string
+      duration:
+        description: 'Duration for each chaos experiment (e.g., 60s, 2m, 1h)'
+        required: false
+        default: '60s'
+        type: string
+      install_litmus:
+        description: 'Install LitmusChaos operator'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  PYTHON_VERSION: '3.11'
+  CHAOS_NAMESPACE: 'chaos'
+  KUBECONFIG: ${{ secrets.KUBECONFIG }}
+
+jobs:
+  chaos-preparation:
+    name: 🎯 Chaos Preparation
+    runs-on: ubuntu-latest
+    outputs:
+      experiment_types: ${{ steps.prep.outputs.experiment_types }}
+      target_apps: ${{ steps.prep.outputs.target_apps }}
+      duration: ${{ steps.prep.outputs.duration }}
+      install_litmus: ${{ steps.prep.outputs.install_litmus }}
+      should_run: ${{ steps.prep.outputs.should_run }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Validate chaos configuration
+      id: prep
+      run: |
+        echo "🎯 Preparing chaos engineering tests..."
+
+        # Determine experiment types
+        if [[ "${{ github.event.inputs.experiment_types }}" == "all" ]] || [[ -z "${{ github.event.inputs.experiment_types }}" ]]; then
+          EXPERIMENT_TYPES='["pod_failure", "network_delay", "cpu_stress", "memory_stress", "disk_fill"]'
+        else
+          EXPERIMENT_TYPES='["${{ github.event.inputs.experiment_types }}"]'
+        fi
+
+        # Determine target apps
+        if [[ -z "${{ github.event.inputs.target_apps }}" ]]; then
+          TARGET_APPS='["backend", "frontend", "postgres", "redis"]'
+        else
+          # Split comma-separated string into JSON array
+          TARGET_APPS=$(echo '${{ github.event.inputs.target_apps }}' | sed 's/,/","/g' | sed 's/^/["/g' | sed 's/$/"]/g')
+        fi
+
+        # Determine duration
+        DURATION="${{ github.event.inputs.duration || '60s' }}"
+
+        # Determine if Litmus should be installed
+        INSTALL_LITMUS="${{ github.event.inputs.install_litmus }}"
+        if [[ "$INSTALL_LITMUS" == "" ]]; then
+          INSTALL_LITMUS="true"
+        fi
+
+        # Check if we should run chaos tests
+        SHOULD_RUN="true"
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          # Only run on PRs if chaos directory was modified
+          if ! git diff --name-only ${{ github.event.pull_request.base.sha }} | grep -q "^chaos/"; then
+            echo "No chaos-related changes detected, skipping chaos tests"
+            SHOULD_RUN="false"
+          fi
+        fi
+
+        echo "experiment_types=$EXPERIMENT_TYPES" >> $GITHUB_OUTPUT
+        echo "target_apps=$TARGET_APPS" >> $GITHUB_OUTPUT
+        echo "duration=$DURATION" >> $GITHUB_OUTPUT
+        echo "install_litmus=$INSTALL_LITMUS" >> $GITHUB_OUTPUT
+        echo "should_run=$SHOULD_RUN" >> $GITHUB_OUTPUT
+
+        echo "✅ Chaos preparation completed"
+        echo "  Experiment Types: $EXPERIMENT_TYPES"
+        echo "  Target Apps: $TARGET_APPS"
+        echo "  Duration: $DURATION"
+        echo "  Install Litmus: $INSTALL_LITMUS"
+        echo "  Should Run: $SHOULD_RUN"
+
+  install-litmus:
+    name: 🛠️ Install LitmusChaos
+    runs-on: ubuntu-latest
+    needs: chaos-preparation
+    if: needs.chaos-preparation.outputs.should_run == 'true' && needs.chaos-preparation.outputs.install_litmus == 'true'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Kubernetes
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+        chmod 600 $HOME/.kube/config
+
+    - name: Install LitmusChaos
+      run: |
+        echo "🛠️ Installing LitmusChaos operator..."
+        bash chaos/scripts/install_litmus.sh
+
+    - name: Verify Litmus installation
+      run: |
+        echo "🔍 Verifying LitmusChaos installation..."
+        kubectl get pods -n litmus
+        kubectl get chaosexperiments -n chaos
+
+  chaos-testing:
+    name: 🧪 Chaos Testing
+    runs-on: ubuntu-latest
+    needs: [chaos-preparation, install-litmus]
+    if: needs.chaos-preparation.outputs.should_run == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        experiment_type: ${{ fromJson(needs.chaos-preparation.outputs.experiment_types) }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install kubernetes pyyaml
+
+    - name: Setup Kubernetes
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+        chmod 600 $HOME/.kube/config
+
+    - name: Wait for cluster readiness
+      run: |
+        echo "⏳ Waiting for cluster to be ready..."
+        kubectl wait --for=condition=available --timeout=300s deployment/backend -n hms || true
+        kubectl wait --for=condition=available --timeout=300s deployment/frontend -n hms || true
+        kubectl get pods -n hms
+
+    - name: Run chaos experiments
+      run: |
+        echo "🧪 Running chaos experiments: ${{ matrix.experiment_type }}"
+
+        # Convert target apps JSON array to comma-separated string
+        TARGET_APPS=$(echo '${{ needs.chaos-preparation.outputs.target_apps }}' | jq -r '. | join(",")')
+
+        python chaos/scripts/run_chaos_experiments.py \
+          --experiment-types ${{ matrix.experiment_type }} \
+          --target-apps $TARGET_APPS \
+          --duration ${{ needs.chaos-preparation.outputs.duration }} \
+          --namespace ${{ env.CHAOS_NAMESPACE }}
+
+    - name: Upload chaos results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: chaos-results-${{ matrix.experiment_type }}
+        path: chaos/results/
+
+  chaos-analysis:
+    name: 📊 Chaos Analysis
+    runs-on: ubuntu-latest
+    needs: chaos-testing
+    if: always()
+    steps:
+    - name: Download all chaos results
+      uses: actions/download-artifact@v3
+      with:
+        path: chaos-results/
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install analysis tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas numpy matplotlib seaborn
+
+    - name: Analyze chaos results
+      run: |
+        echo "📊 Analyzing chaos engineering results..."
+        python chaos/scripts/analyze_chaos_results.py \
+          --results-dir chaos-results/ \
+          --output chaos-analysis-report.md
+
+    - name: Generate chaos dashboard
+      run: |
+        echo "📈 Generating chaos engineering dashboard..."
+        python chaos/scripts/generate_chaos_dashboard.py \
+          --results-dir chaos-results/ \
+          --output chaos-dashboard.html
+
+    - name: Upload analysis reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: chaos-analysis
+        path: |
+          chaos-analysis-report.md
+          chaos-dashboard.html
+
+  chaos-notifications:
+    name: 📢 Chaos Notifications
+    runs-on: ubuntu-latest
+    needs: [chaos-preparation, chaos-analysis]
+    if: always() && (failure() || needs.chaos-analysis.result == 'failure')
+    steps:
+    - name: Download analysis reports
+      uses: actions/download-artifact@v3
+      with:
+        name: chaos-analysis
+
+    - name: Check for chaos failures
+      run: |
+        echo "🔍 Checking for chaos experiment failures..."
+        if [[ -f "chaos-analysis-report.md" ]]; then
+          if grep -q "FAILED\|ERROR" chaos-analysis-report.md; then
+            echo "chaos_failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "chaos_failed=false" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "chaos_failed=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create chaos issue
+      if: steps.check.outputs.chaos_failed == 'true'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const analysisReport = fs.existsSync('chaos-analysis-report.md')
+            ? fs.readFileSync('chaos-analysis-report.md', 'utf8')
+            : 'Analysis report not available';
+
+          const issueTitle = `🚨 Chaos Engineering Failures Detected - ${new Date().toISOString().split('T')[0]}`;
+          const issueBody = `
+          **Chaos Testing Date:** ${new Date().toISOString()}
+          **Repository:** ${{ github.repository }}
+          **Workflow:** ${{ github.workflow }}
+          **Run ID:** ${{ github.run_id }}
+
+          ## Chaos Engineering Results
+
+          Chaos experiments have detected failures or errors in the system resilience testing.
+
+          ### Analysis Report
+          \`\`\`markdown
+          ${analysisReport.substring(0, 5000)}...
+          \`\`\`
+
+          ## Recommended Actions
+
+          1. **Review Failed Experiments**: Check which chaos experiments failed and why
+          2. **Analyze System Behavior**: Understand how the system responded to faults
+          3. **Improve Resilience**: Implement fixes for identified weaknesses
+          4. **Update Chaos Scenarios**: Refine chaos experiments based on findings
+          5. **Re-run Tests**: Validate fixes with additional chaos testing
+
+          ## Files to Review
+          - Chaos analysis report: \`chaos-analysis-report.md\`
+          - Chaos dashboard: \`chaos-dashboard.html\`
+          - Detailed results: Available in workflow artifacts
+
+          ---
+          🤖 Generated with [Claude Code](https://claude.ai/code)
+          `;
+
+          await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: issueTitle,
+            body: issueBody,
+            labels: ['chaos-engineering', 'resilience', 'testing', 'automated']
+          });
+
+  cleanup:
+    name: 🧹 Cleanup
+    runs-on: ubuntu-latest
+    needs: [chaos-preparation, chaos-testing]
+    if: always()
+    steps:
+    - name: Setup Kubernetes
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+        chmod 600 $HOME/.kube/config
+
+    - name: Cleanup chaos resources
+      run: |
+        echo "🧹 Cleaning up chaos engineering resources..."
+        kubectl delete chaosengine --all -n ${{ env.CHAOS_NAMESPACE }} --ignore-not-found=true
+        kubectl delete chaosresult --all -n ${{ env.CHAOS_NAMESPACE }} --ignore-not-found=true
+
+    - name: Archive chaos results
+      if: needs.chaos-preparation.outputs.should_run == 'true'
+      run: |
+        echo "📦 Archiving chaos engineering results..."
+        mkdir -p chaos/archive
+        cp -r chaos/results/* chaos/archive/ 2>/dev/null || true
+        tar -czf chaos-archive-$(date +%Y%m%d-%H%M%S).tar.gz chaos/archive/

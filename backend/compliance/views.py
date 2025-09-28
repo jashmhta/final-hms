@@ -589,7 +589,7 @@ class MultiFactorAuthenticationView(View):
             return JsonResponse({"error": "Authentication required"}, status=401)
 
         user = request.user
-        backup_codes = self.mfa_auth.generate_backup_cocryptography.fernet.Fernet(
+        backup_codes = self.mfa_auth.generate_backup_codes(
             user, 10
         )
 

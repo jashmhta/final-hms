@@ -70,7 +70,7 @@ class InsuranceClaim(Base):
 class TPATransaction(Base):
     __tablename__ = "tpa_transactions"
     id = Column(Integer, primary_key=True, index=True)
-    claim_id = Column(Integer, ForeignKey("insurance_claims.id"))
+    claim_id = Column(Integer, ForeignKey("insurance_claims.id"), nullable=True)
     tpa_reference = Column(String)
     transaction_type = Column(String)
     request_data = Column(JSON)

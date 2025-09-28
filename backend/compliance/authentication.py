@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple
 from urllib.parse import urlparse
 
+import bcrypt
 import pyotp
 import qrcode
 import redis
@@ -110,12 +111,14 @@ class MultiFactorAuthentication:
         Generate backup codes for MFA recovery
         """
         backup_codes = []
+        hashed_codes = []
         for _ in range(count):
             code = "".join(secrets.choices(string.digits + string.ascii_uppercase, k=8))
             backup_codes.append(code)
+            hashed_codes.append(bcrypt.hashpw(code.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'))
 
-        # Store hashed backup codes (in production, use proper hashing)
-        user.mfa_backup_codes = backup_codes
+        # Store hashed backup codes
+        user.mfa_backup_codes = hashed_codes
         user.save()
 
         return backup_codes
@@ -127,11 +130,12 @@ class MultiFactorAuthentication:
         if not user.mfa_backup_codes:
             return False
 
-        if code in user.mfa_backup_codes:
-            # Remove used backup code
-            user.mfa_backup_codes.remove(code)
-            user.save()
-            return True
+        for stored_hash in user.mfa_backup_codes:
+            if bcrypt.checkpw(code.encode('utf-8'), stored_hash.encode('utf-8')):
+                # Remove used backup code hash
+                user.mfa_backup_codes.remove(stored_hash)
+                user.save()
+                return True
 
         return False
 

@@ -82,7 +82,7 @@ class KeyManagement:
         return base64.urlsafe_b64encode(encrypted).decode()
 
     @staticmethod
-    def derive_key(password: str, salt: bytes = None) -> str:
+    def derive_key(password: str, salt=None) -> str:
         if salt is None:
             salt = os.urandom(16)
         kdf = PBKDF2HMAC(
@@ -96,3 +96,13 @@ class KeyManagement:
 
 
 encryption = DataEncryption()
+
+
+def encrypt_data(data: str) -> str:
+    """Global encrypt function"""
+    return encryption.encrypt(data)
+
+
+def decrypt_data(encrypted_data: str) -> str:
+    """Global decrypt function"""
+    return encryption.decrypt(encrypted_data)

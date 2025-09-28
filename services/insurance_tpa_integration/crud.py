@@ -3,6 +3,7 @@ crud module
 """
 
 from datetime import datetime
+from typing import Optional
 
 import models
 import schemas
@@ -90,7 +91,7 @@ def get_patient_claims(db: Session, patient_id: int):
 
 
 def update_claim_status(
-    db: Session, claim_id: int, status: str, approved_amount: float = None
+    db: Session, claim_id: int, status: str, approved_amount: Optional[float] = None
 ):
     claim = (
         db.query(models.InsuranceClaim)
@@ -160,6 +161,10 @@ def check_insurance_eligibility(
     }
 
 
+def get_all_insurance_claims(db: Session):
+    return db.query(models.InsuranceClaim).all()
+
+
 def submit_claim_to_tpa(db: Session, claim_id: int, tpa_provider_id: int):
     claim = get_insurance_claim(db, claim_id)
     provider = get_insurance_provider(db, tpa_provider_id)
@@ -186,3 +191,40 @@ def submit_claim_to_tpa(db: Session, claim_id: int, tpa_provider_id: int):
         db, schemas.TPATransactionCreate(**transaction_data)
     )
     return transaction
+
+
+def get_insurance_claim_by_number(db: Session, claim_number: str):
+    return (
+        db.query(models.InsuranceClaim)
+        .filter(models.InsuranceClaim.claim_number == claim_number)
+        .first()
+    )
+
+
+def get_insurance_payments_by_date_range(
+    db: Session, start_date: str, end_date: str, provider_id: int = None
+):
+    query = db.query(models.PaymentRecord).filter(
+        models.PaymentRecord.payment_date >= start_date,
+        models.PaymentRecord.payment_date <= end_date,
+    )
+    if provider_id:
+        query = query.filter(models.PaymentRecord.provider_id == provider_id)
+    return query.all()
+
+
+def update_payment_reconciliation_status(
+    db: Session, payment_id: int, status: str, discrepancy: float = 0
+):
+    payment = (
+        db.query(models.PaymentRecord)
+        .filter(models.PaymentRecord.id == payment_id)
+        .first()
+    )
+    if payment:
+        payment.reconciliation_status = status
+        payment.discrepancy_amount = discrepancy
+        payment.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(payment)
+    return payment

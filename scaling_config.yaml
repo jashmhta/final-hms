@@ -1,11 +1,26 @@
 
-# Scaling Configuration
+# Scaling Configuration for 100+ Bed Hospital Load
 services:
   web:
-    min_replicas: 2
-    max_replicas: 10
-    cpu_threshold: 70
+    min_replicas: 5
+    max_replicas: 50
+    cpu_threshold: 60
+    memory_threshold: 75
+    target_response_time_ms: 200
   api:
-    min_replicas: 3
-    max_replicas: 20
+    min_replicas: 10
+    max_replicas: 100
+    cpu_threshold: 65
     memory_threshold: 80
+    target_response_time_ms: 150
+  websocket:
+    min_replicas: 3
+    max_replicas: 30
+    cpu_threshold: 70
+    memory_threshold: 85
+    connections_per_pod: 1000
+  database:
+    read_replicas_min: 3
+    read_replicas_max: 15
+    cpu_threshold: 60
+    connections_threshold: 500

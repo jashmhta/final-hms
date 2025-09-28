@@ -29,6 +29,10 @@ import {
   WaterDrop,
   Warning,
   CheckCircle,
+  Restaurant,
+  CleaningServices,
+  Feedback,
+  Biotech,
 } from '@mui/icons-material'
 import { format, addDays, subDays } from 'date-fns'
 
@@ -41,6 +45,10 @@ import MedicalRecordViewer from '../healthcare/MedicalRecordViewer'
 import AccessibilityWrapper from '../accessibility/AccessibilityWrapper'
 import ResponsiveLayout from '../layout/ResponsiveLayout'
 import { AnimationProvider, useAnimations, VitalSignsIndicator, EmergencyAlert, HealthcareFab } from '../animations/HealthcareAnimations'
+import { useGetLeadsQuery, useGetCampaignsQuery, useGetCRMStatisticsQuery } from '../../store/slices/crmSlice'
+import { useGetEquipmentQuery, useGetEquipmentStatisticsQuery } from '../../store/slices/biomedicalSlice'
+import { useGetPatientDietRequirementsQuery, useGetDietaryStatisticsQuery } from '../../store/slices/dietarySlice'
+import { useGetHousekeepingTasksQuery, useGetMaintenanceStatisticsQuery } from '../../store/slices/housekeepingSlice'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -340,42 +348,78 @@ const HealthcareDemo: React.FC = () => {
                   label="Emergency Triage"
                   iconPosition="start"
                 />
-                <Tab
-                  icon={<Description />}
-                  label="Medical Records"
-                  iconPosition="start"
-                />
-              </Tabs>
-            </Box>
+                 <Tab
+                   icon={<Description />}
+                   label="Medical Records"
+                   iconPosition="start"
+                 />
+                 <Tab
+                   icon={<Restaurant />}
+                   label="Dietary Management"
+                   iconPosition="start"
+                 />
+                 <Tab
+                   icon={<CleaningServices />}
+                   label="Housekeeping"
+                   iconPosition="start"
+                 />
+                 <Tab
+                   icon={<Feedback />}
+                   label="CRM/Feedback"
+                   iconPosition="start"
+                 />
+                 <Tab
+                   icon={<Biotech />}
+                   label="Biomedical Equipment"
+                   iconPosition="start"
+                 />
+               </Tabs>
+             </Box>
 
-            {/* Tab Content */}
-            <TabPanel value={activeTab} index={0}>
-              <DashboardOverview />
-            </TabPanel>
+             {/* Tab Content */}
+             <TabPanel value={activeTab} index={0}>
+               <DashboardOverview />
+             </TabPanel>
 
-            <TabPanel value={activeTab} index={1}>
-              <PatientManagementDemo />
-            </TabPanel>
+             <TabPanel value={activeTab} index={1}>
+               <PatientManagementDemo />
+             </TabPanel>
 
-            <TabPanel value={activeTab} index={2}>
-              <AppointmentDemo />
-            </TabPanel>
+             <TabPanel value={activeTab} index={2}>
+               <AppointmentDemo />
+             </TabPanel>
 
-            <TabPanel value={activeTab} index={3}>
-              <VitalSignsDemo />
-            </TabPanel>
+             <TabPanel value={activeTab} index={3}>
+               <VitalSignsDemo />
+             </TabPanel>
 
-            <TabPanel value={activeTab} index={4}>
-              <MedicationDemo />
-            </TabPanel>
+             <TabPanel value={activeTab} index={4}>
+               <MedicationDemo />
+             </TabPanel>
 
-            <TabPanel value={activeTab} index={5}>
-              <EmergencyTriageDemo />
-            </TabPanel>
+             <TabPanel value={activeTab} index={5}>
+               <EmergencyTriageDemo />
+             </TabPanel>
 
-            <TabPanel value={activeTab} index={6}>
-              <MedicalRecordsDemo />
-            </TabPanel>
+             <TabPanel value={activeTab} index={6}>
+               <MedicalRecordsDemo />
+             </TabPanel>
+
+             <TabPanel value={activeTab} index={7}>
+               <DietaryManagementDemo />
+             </TabPanel>
+
+             <TabPanel value={activeTab} index={8}>
+               <HousekeepingDemo />
+             </TabPanel>
+
+             <TabPanel value={activeTab} index={9}>
+               <CRMFeedbackDemo />
+             </TabPanel>
+
+             <TabPanel value={activeTab} index={10}>
+               <BiomedicalEquipmentDemo />
+             </TabPanel>
 
             {/* Demo Notifications */}
             {showEmergencyAlert && (
@@ -755,6 +799,311 @@ const MedicalRecordsDemo: React.FC = () => {
         onRecordShare={(id, recipients) => console.log('Record shared:', id, recipients)}
         onRecordExport={(id, format) => console.log('Record exported:', id, format)}
       />
+    </Box>
+  )
+}
+
+// Dietary Management Demo
+const DietaryManagementDemo: React.FC = () => {
+  const { data: requirements, isLoading: requirementsLoading } = useGetPatientDietRequirementsQuery('1') // Example patient ID
+  const { data: stats, isLoading: statsLoading } = useGetDietaryStatisticsQuery()
+
+  return (
+    <Box>
+      <Typography variant="h4" fontWeight={600} mb={3}>
+        Dietary Management
+      </Typography>
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Patient Diet Requirements
+              </Typography>
+              <Typography variant="body2" color="textSecondary" mb={2}>
+                {requirementsLoading ? 'Loading...' : `Patient has ${requirements?.allergies?.length || 0} allergies`}
+              </Typography>
+              <Button variant="contained" color="primary">
+                View Requirements
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Meal Planning
+              </Typography>
+              <Typography variant="body2" color="textSecondary" mb={2}>
+                {statsLoading ? 'Loading...' : `${stats?.total_meal_plans || 0} meal plans`}
+              </Typography>
+              <Button variant="contained" color="primary">
+                Plan Meals
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Food Inventory
+              </Typography>
+              <Typography variant="body2" color="textSecondary" mb={2}>
+                Track food items, nutritional information, and inventory levels
+              </Typography>
+              <Button variant="contained" color="primary">
+                Manage Inventory
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Menu Management
+              </Typography>
+              <Typography variant="body2" color="textSecondary" mb={2}>
+                Create and maintain dietary menus for different patient needs
+              </Typography>
+              <Button variant="contained" color="primary">
+                Edit Menus
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+    </Box>
+  )
+}
+
+// Housekeeping Demo
+const HousekeepingDemo: React.FC = () => {
+  const { data: tasks, isLoading: tasksLoading } = useGetHousekeepingTasksQuery({ limit: 5 })
+  const { data: stats, isLoading: statsLoading } = useGetMaintenanceStatisticsQuery()
+
+  return (
+    <Box>
+      <Typography variant="h4" fontWeight={600} mb={3}>
+        Housekeeping & Maintenance
+      </Typography>
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Cleaning Tasks
+              </Typography>
+              <Typography variant="body2" color="textSecondary" mb={2}>
+                {tasksLoading ? 'Loading...' : `${tasks?.length || 0} active tasks`}
+              </Typography>
+              <Button variant="contained" color="primary">
+                View Tasks
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Maintenance Requests
+              </Typography>
+              <Typography variant="body2" color="textSecondary" mb={2}>
+                {statsLoading ? 'Loading...' : `${stats?.total_requests || 0} requests`}
+              </Typography>
+              <Button variant="contained" color="primary">
+                New Request
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Equipment Management
+              </Typography>
+              <Typography variant="body2" color="textSecondary" mb={2}>
+                Track maintenance schedules and status of hospital equipment
+              </Typography>
+              <Button variant="contained" color="primary">
+                View Equipment
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Staff Scheduling
+              </Typography>
+              <Typography variant="body2" color="textSecondary" mb={2}>
+                Manage housekeeping staff schedules and assignments
+              </Typography>
+              <Button variant="contained" color="primary">
+                View Schedule
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+    </Box>
+  )
+}
+
+// CRM/Feedback Demo
+const CRMFeedbackDemo: React.FC = () => {
+  const { data: leads, isLoading: leadsLoading } = useGetLeadsQuery({ limit: 5 })
+  const { data: campaigns, isLoading: campaignsLoading } = useGetCampaignsQuery({ limit: 5 })
+  const { data: stats, isLoading: statsLoading } = useGetCRMStatisticsQuery()
+
+  return (
+    <Box>
+      <Typography variant="h4" fontWeight={600} mb={3}>
+        CRM & Feedback Management
+      </Typography>
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Lead Management
+              </Typography>
+              <Typography variant="body2" color="textSecondary" mb={2}>
+                {leadsLoading ? 'Loading...' : `${leads?.length || 0} active leads`}
+              </Typography>
+              <Button variant="contained" color="primary">
+                View Leads
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Marketing Campaigns
+              </Typography>
+              <Typography variant="body2" color="textSecondary" mb={2}>
+                {campaignsLoading ? 'Loading...' : `${campaigns?.length || 0} active campaigns`}
+              </Typography>
+              <Button variant="contained" color="primary">
+                View Campaigns
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Customer Feedback
+              </Typography>
+              <Typography variant="body2" color="textSecondary" mb={2}>
+                {statsLoading ? 'Loading...' : `${stats?.total_customers || 0} customers`}
+              </Typography>
+              <Button variant="contained" color="primary">
+                View Feedback
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Customer Database
+              </Typography>
+              <Typography variant="body2" color="textSecondary" mb={2}>
+                Maintain comprehensive customer and patient relationship data
+              </Typography>
+              <Button variant="contained" color="primary">
+                View Customers
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+    </Box>
+  )
+}
+
+// Biomedical Equipment Demo
+const BiomedicalEquipmentDemo: React.FC = () => {
+  const { data: equipment, isLoading: equipmentLoading } = useGetEquipmentQuery({ limit: 5 })
+  const { data: stats, isLoading: statsLoading } = useGetEquipmentStatisticsQuery()
+
+  return (
+    <Box>
+      <Typography variant="h4" fontWeight={600} mb={3}>
+        Biomedical Equipment Management
+      </Typography>
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Equipment Inventory
+              </Typography>
+              <Typography variant="body2" color="textSecondary" mb={2}>
+                {equipmentLoading ? 'Loading...' : `${equipment?.length || 0} equipment items`}
+              </Typography>
+              <Button variant="contained" color="primary">
+                View Equipment
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Maintenance Schedules
+              </Typography>
+              <Typography variant="body2" color="textSecondary" mb={2}>
+                {statsLoading ? 'Loading...' : `${stats?.total_maintenance || 0} maintenance tasks`}
+              </Typography>
+              <Button variant="contained" color="primary">
+                View Schedules
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Calibration Tracking
+              </Typography>
+              <Typography variant="body2" color="textSecondary" mb={2}>
+                Monitor calibration status and compliance for critical equipment
+              </Typography>
+              <Button variant="contained" color="primary">
+                View Calibrations
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Incident Management
+              </Typography>
+              <Typography variant="body2" color="textSecondary" mb={2}>
+                Report and resolve equipment incidents and safety issues
+              </Typography>
+              <Button variant="contained" color="primary">
+                View Incidents
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
     </Box>
   )
 }

@@ -205,9 +205,79 @@ class EnterpriseMiddleware(MiddlewareMixin):
     def _check_threat_intelligence(self, request: HttpRequest) -> bool:
         """Check against threat intelligence feeds"""
         client_ip = self._get_client_ip(request)
-        threat_key = f"threat_intelligence:{client_ip}"
 
-        return bool(cache.get(threat_key))
+        # Check local cache first
+        threat_key = f"threat_intelligence:{client_ip}"
+        if cache.get(threat_key):
+            return True
+
+        # Check against multiple threat intelligence sources
+        try:
+            # Check AbuseIPDB
+            if self._check_abuseipdb(client_ip):
+                cache.set(threat_key, True, 3600)  # Cache for 1 hour
+                return True
+
+            # Check local malicious IP database
+            if self._check_local_malicious_ips(client_ip):
+                cache.set(threat_key, True, 3600)
+                return True
+
+            # Check for TOR exit nodes
+            if self._check_tor_exit_nodes(client_ip):
+                cache.set(threat_key, True, 3600)
+                return True
+
+        except Exception as e:
+            self.logger.warning(f"Threat intelligence check failed: {e}")
+
+        return False
+
+    def _check_abuseipdb(self, ip: str) -> bool:
+        """Check IP against AbuseIPDB"""
+        try:
+            import requests
+            api_key = getattr(settings, 'ABUSEIPDB_API_KEY', None)
+            if not api_key:
+                return False
+
+            url = f"https://api.abuseipdb.com/api/v2/check"
+            headers = {
+                'Accept': 'application/json',
+                'Key': api_key
+            }
+            params = {
+                'ipAddress': ip,
+                'maxAgeInDays': 90
+            }
+
+            response = requests.get(url, headers=headers, params=params, timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                abuse_score = data.get('data', {}).get('abuseConfidenceScore', 0)
+                return abuse_score > 50  # Consider malicious if score > 50
+
+        except Exception as e:
+            self.logger.warning(f"AbuseIPDB check failed: {e}")
+
+        return False
+
+    def _check_local_malicious_ips(self, ip: str) -> bool:
+        """Check against local malicious IP database"""
+        malicious_ips = cache.get("malicious_ips", set())
+        return ip in malicious_ips
+
+    def _check_tor_exit_nodes(self, ip: str) -> bool:
+        """Check if IP is a TOR exit node"""
+        try:
+            import requests
+            response = requests.get("https://check.torproject.org/exit-addresses", timeout=5)
+            if response.status_code == 200:
+                return ip in response.text
+        except Exception as e:
+            self.logger.warning(f"TOR check failed: {e}")
+
+        return False
 
     def _get_client_ip(self, request: HttpRequest) -> str:
         """Get client IP address"""

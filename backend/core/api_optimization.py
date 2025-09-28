@@ -579,22 +579,84 @@ class RealTimeCommunicationManager:
         self.event_subscribers = {}
 
     def setup_websockets(self):
-        """Setup WebSocket endpoints"""
+        """Setup WebSocket endpoints with Redis pub/sub for horizontal scaling"""
+
+        # Start Redis pub/sub listener for cross-pod messages
+        if self.redis_client:
+            self.redis_pubsub_task = asyncio.create_task(self._redis_pubsub_listener())
 
         @self.app.websocket("/ws/{client_id}")
         async def websocket_endpoint(websocket, client_id: str):
             await self.socket_manager.connect(websocket, client_id)
             self.active_connections[client_id] = websocket
 
+            # Subscribe to Redis channels for cross-pod communication
+            pubsub = None
+            if self.redis_client:
+                pubsub = self.redis_client.pubsub()
+                await pubsub.subscribe(f"ws:{client_id}")
+
             try:
-                while True:
-                    data = await websocket.receive_text()
-                    await self.handle_websocket_message(client_id, data)
+                # Handle incoming messages
+                receive_task = asyncio.create_task(self._handle_websocket_receive(websocket, client_id))
+
+                tasks = [receive_task]
+                if pubsub:
+                    redis_task = asyncio.create_task(self._handle_redis_messages(pubsub, websocket, client_id))
+                    tasks.append(redis_task)
+
+                await asyncio.gather(*tasks)
             except Exception as e:
                 logging.error(f"WebSocket error for {client_id}: {e}")
             finally:
                 self.socket_manager.disconnect(websocket, client_id)
-                del self.active_connections[client_id]
+                if client_id in self.active_connections:
+                    del self.active_connections[client_id]
+                if pubsub:
+                    await pubsub.unsubscribe(f"ws:{client_id}")
+                    pubsub.close()
+
+    async def _handle_websocket_receive(self, websocket, client_id: str):
+        """Handle incoming WebSocket messages"""
+        try:
+            while True:
+                data = await websocket.receive_text()
+                await self.handle_websocket_message(client_id, data)
+        except Exception:
+            pass  # Connection closed
+
+    async def _handle_redis_messages(self, pubsub, websocket, client_id: str):
+        """Handle messages from Redis pub/sub for cross-pod communication"""
+        try:
+            while True:
+                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                if message:
+                    data = json.loads(message['data'])
+                    await websocket.send_text(json.dumps(data))
+        except Exception:
+            pass  # Connection closed
+
+    async def _redis_pubsub_listener(self):
+        """Listen for Redis pub/sub messages for event broadcasting"""
+        try:
+            pubsub = self.redis_client.pubsub()
+            await pubsub.psubscribe("event:*")  # Subscribe to all event channels
+
+            while True:
+                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                if message:
+                    channel = message['channel'].decode('utf-8')
+                    event = channel.split(':', 1)[1]  # Remove 'event:' prefix
+                    data = json.loads(message['data'])
+
+                    # Broadcast to local subscribers
+                    if event in self.event_subscribers:
+                        for client_id in self.event_subscribers[event]:
+                            if client_id in self.active_connections:
+                                websocket = self.active_connections[client_id]
+                                await websocket.send_text(json.dumps(data))
+        except Exception as e:
+            logging.error(f"Redis pub/sub listener error: {e}")
 
     def setup_sse(self):
         """Setup Server-Sent Events endpoint"""

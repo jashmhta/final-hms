@@ -1,0 +1,25 @@
+{
+  "simulation_type": "hospital_load",
+  "departments": {
+    "emergency": {
+      "error": "No connections established"
+    },
+    "icu": {
+      "error": "No connections established"
+    },
+    "wards": {
+      "error": "No connections established"
+    },
+    "outpatient": {
+      "error": "No connections established"
+    }
+  },
+  "aggregate": {
+    "total_departments": 4,
+    "total_clients": 255,
+    "total_messages": 0,
+    "messages_per_second": 0.0,
+    "average_latency_ms": 0,
+    "meets_200ms_target": false
+  }
+}

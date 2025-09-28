@@ -212,6 +212,7 @@ MIDDLEWARE = [
     "core.middleware.SecurityHeadersMiddleware",
     "core.middleware.SecurityAuditMiddleware",
     "core.middleware.RateLimitMiddleware",
+    "core.enterprise_middleware.EnterpriseMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 ROOT_URLCONF = "hms.urls"

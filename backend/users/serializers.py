@@ -7,7 +7,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from django.contrib.auth.password_validation import validate_password
 
-from hospitals.models import HospitalPlan
+# from hospitals.models import HospitalPlan  # App not implemented
 
 from .models import (
     Department,
@@ -422,18 +422,18 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             "enable_accounting",
         ]
         hp = None
-        try:
-            if getattr(user, "hospital_id", None):
-                hospital = getattr(user, "hospital", None)
-                hp = getattr(hospital, "subscription", None)
-                if hp is None:
-                    hp = (
-                        HospitalPlan.objects.select_related("plan")
-                        .filter(hospital_id=user.hospital_id)
-                        .first()
-                    )
-        except Exception:
-            hp = None
+        # try:
+        #     if getattr(user, "hospital_id", None):
+        #         hospital = getattr(user, "hospital", None)
+        #         hp = getattr(hospital, "subscription", None)
+        #         if hp is None:
+        #             hp = (
+        #                 HospitalPlan.objects.select_related("plan")
+        #                 .filter(hospital_id=user.hospital_id)
+        #                 .first()
+        #             )
+        # except Exception:
+        #     hp = None
         for f in flags:
             try:
                 token[f] = bool(hp.is_enabled(f)) if hp else True

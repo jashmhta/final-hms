@@ -24,7 +24,7 @@ spec:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 70
+          averageUtilization: 65
     - type: Resource
       resource:
         name: memory
@@ -37,7 +37,7 @@ spec:
           name: http_requests_per_second
         target:
           type: AverageValue
-          averageValue: 1000
+          averageValue: 2000
     - type: External
       external:
         metric:
@@ -47,7 +47,17 @@ spec:
               app: hms-backend
         target:
           type: AverageValue
-          averageValue: "500"
+          averageValue: "1000"
+    - type: External
+      external:
+        metric:
+          name: response_time_p95_ms
+          selector:
+            matchLabels:
+              app: hms-backend
+        target:
+          type: AverageValue
+          averageValue: "200"
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 30

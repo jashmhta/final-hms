@@ -78,7 +78,7 @@ class InsuranceClaim(InsuranceClaimBase):
 
 
 class TPATransactionBase(BaseModel):
-    claim_id: int
+    claim_id: Optional[int]
     tpa_reference: str
     transaction_type: str
     request_data: Dict[str, Any]

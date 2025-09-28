@@ -22,7 +22,7 @@ DATABASES = {
 }
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
+    # "django.contrib.admin",  # Has issues with missing models
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -34,8 +34,16 @@ INSTALLED_APPS = [
     "django_filters",
     "corsheaders",
     "django_prometheus",
-    "hospitals",
+    "core",
     "users",
+    # "appointments",  # Has dependencies
+    # "ehr",  # Has dependencies
+    # "hr",  # Has dependencies
+    # "superadmin",  # Has dependencies
+    # "authentication",  # Has dependencies
+    # "compliance",  # Has dependencies
+    # "accounting_advanced",  # Has dependencies
+    # "ai_ml",  # Has dependencies
 ]
 
 MIDDLEWARE = [

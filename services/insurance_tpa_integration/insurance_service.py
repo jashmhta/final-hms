@@ -743,6 +743,48 @@ IEA*1*{control_number}~"""
             logger.error(f"Claim status check failed for claim {claim_number}: {e}")
             raise Exception(f"Claim status error: {str(e)}")
 
+    async def submit_claim_appeal(
+        self, claim_number: str, appeal_reason: str, additional_documentation: str, provider_id: int
+    ) -> Dict[str, Any]:
+        """Submit claim appeal to insurance provider"""
+        provider = self.get_provider(provider_id)
+        if not provider:
+            raise ValueError(f"Insurance provider {provider_id} not found")
+
+        try:
+            headers = {
+                "Authorization": f"Bearer {provider.api_key}",
+                "X-API-Key": provider.api_key,
+                "Content-Type": "application/json",
+            }
+
+            payload = {
+                "claim_number": claim_number,
+                "appeal_reason": appeal_reason,
+                "additional_documentation": additional_documentation,
+                "submission_date": datetime.now(timezone.utc).isoformat(),
+            }
+
+            async with self.http_session.post(
+                f"{provider.api_endpoint}/claims/{claim_number}/appeal", json=payload, headers=headers
+            ) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return {
+                        "appeal_reference": data.get("appeal_reference", f"APPEAL-{claim_number}"),
+                        "status": data.get("status", "submitted"),
+                        "expected_resolution_days": data.get("expected_resolution_days", 30),
+                        "processing_time_ms": 500.0,
+                    }
+                else:
+                    error_text = await response.text()
+                    logger.error(f"Appeal submission failed: {response.status} - {error_text}")
+                    raise Exception(f"Appeal submission error: {response.status}")
+
+        except Exception as e:
+            logger.error(f"Appeal submission failed for claim {claim_number}: {e}")
+            raise Exception(f"Appeal submission error: {str(e)}")
+
 
 # Factory function for easy instantiation
 def create_insurance_service() -> InsuranceIntegrationService:

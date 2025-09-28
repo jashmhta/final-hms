@@ -7,12 +7,15 @@ import uuid
 from datetime import timedelta
 
 try:
+    import bcrypt
     import pyotp
 
     PYOTP_AVAILABLE = True
+    BCRYPT_AVAILABLE = True
 except ImportError:
     PYOTP_AVAILABLE = False
     pyotp = None
+    BCRYPT_AVAILABLE = False
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils import timezone
@@ -68,10 +71,17 @@ class MFADevice(TimeStampedModel):
                 totp = pyotp.TOTP(self.secret_key)
                 is_valid = totp.verify(token, valid_window=1)
             elif self.device_type == "BACKUP":
-                is_valid = token in self.backup_codes and token not in self.codes_used
-                if is_valid:
-                    self.codes_used.append(token)
-                    self.save()
+                if not BCRYPT_AVAILABLE:
+                    return False
+                is_valid = False
+                for stored_hash in self.backup_codes:
+                    if bcrypt.checkpw(token.encode('utf-8'), stored_hash.encode('utf-8')):
+                        is_valid = True
+                        # Remove the used hash
+                        self.backup_codes.remove(stored_hash)
+                        self.codes_used.append(stored_hash)  # Store the used hash
+                        self.save()
+                        break
             else:
                 return False
             if is_valid:
@@ -92,10 +102,13 @@ class MFADevice(TimeStampedModel):
         return self.locked_until and self.locked_until > timezone.now()
 
     def generate_backup_codes(self, count=10):
-        self.backup_codes = [secrets.token_hex(4).upper() for _ in range(count)]
+        if not BCRYPT_AVAILABLE:
+            raise ImportError("bcrypt is required for secure backup codes")
+        codes = [secrets.token_hex(4).upper() for _ in range(count)]
+        self.backup_codes = [bcrypt.hashpw(code.encode('utf-8'), bcrypt.gensalt()).decode('utf-8') for code in codes]
         self.codes_used = []
         self.save()
-        return self.backup_codes
+        return codes
 
 
 class LoginSession(TimeStampedModel):

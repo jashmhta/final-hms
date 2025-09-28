@@ -17,19 +17,19 @@ from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from accounting.models import Account, ChartOfAccounts, JournalEntry, Transaction
-from appointments.models import Appointment, AppointmentHistory, AppointmentReminder
-from billing.models import Bill, BillLineItem, DepartmentBudget
-from ehr.models import Allergy, ClinicalNote, Encounter, PlanOfCare, VitalSigns
-from hospitals.models import Department, Hospital
-from lab.models import LabOrder, LabResult, LabTest
-from patients.models import (
-    EmergencyContact,
-    InsuranceInformation,
-    Patient,
-    PatientAlert,
-)
-from pharmacy.models import Medication, MedicationBatch, Prescription
+# from accounting.models import Account, ChartOfAccounts, JournalEntry, Transaction  # App not implemented
+# from appointments.models import Appointment, AppointmentHistory, AppointmentReminder  # App not implemented
+# from billing.models import Bill, BillLineItem, DepartmentBudget  # App not implemented
+# from ehr.models import Allergy, ClinicalNote, Encounter, PlanOfCare, VitalSigns  # App not implemented
+# from hospitals.models import Department, Hospital  # App not implemented
+# from lab.models import LabOrder, LabResult, LabTest  # App not implemented
+# from patients.models import (
+#     EmergencyContact,
+#     InsuranceInformation,
+#     Patient,
+#     PatientAlert,
+# )  # App not implemented
+# from pharmacy.models import Medication, MedicationBatch, Prescription  # App not implemented
 
 User = get_user_model()
 
@@ -56,44 +56,44 @@ def authenticated_client(api_client, test_user):
     return api_client
 
 
-@pytest.fixture
-def hospital_factory():
-    """Hospital factory fixture"""
+# @pytest.fixture
+# def hospital_factory():
+#     """Hospital factory fixture"""
 
-    class HospitalFactory(DjangoModelFactory):
-        class Meta:
-            model = Hospital
+#     class HospitalFactory(DjangoModelFactory):
+#         class Meta:
+#             model = Hospital
 
-        name = "Test Hospital"
-        code = "TEST001"
-        address = "123 Test St"
-        city = "Test City"
-        state = "TS"
-        country = "Test Country"
-        phone = "+1234567890"
-        email = "test@hospital.com"
-        capacity = 100
-        is_active = True
+#         name = "Test Hospital"
+#         code = "TEST001"
+#         address = "123 Test St"
+#         city = "Test City"
+#         state = "TS"
+#         country = "Test Country"
+#         phone = "+1234567890"
+#         email = "test@hospital.com"
+#         capacity = 100
+#         is_active = True
 
-    return HospitalFactory
+#     return HospitalFactory
 
 
-@pytest.fixture
-def department_factory(hospital_factory):
-    """Department factory fixture"""
+# @pytest.fixture
+# def department_factory(hospital_factory):
+#     """Department factory fixture"""
 
-    class DepartmentFactory(DjangoModelFactory):
-        class Meta:
-            model = Department
+#     class DepartmentFactory(DjangoModelFactory):
+#         class Meta:
+#             model = Department
 
-        name = "Test Department"
-        code = "TEST_DEPT"
-        hospital = hospital_factory()
-        head = None
-        description = "Test department description"
-        is_active = True
+#         name = "Test Department"
+#         code = "TEST_DEPT"
+#         hospital = hospital_factory()
+#         head = None
+#         description = "Test department description"
+#         is_active = True
 
-    return DepartmentFactory
+    # return DepartmentFactory
 
 
 @pytest.fixture
@@ -138,41 +138,41 @@ def doctor_user(user_factory, hospital_factory):
     )
 
 
-@pytest.fixture
-def patient_factory(hospital_factory, doctor_user):
-    """Patient factory fixture"""
+# @pytest.fixture
+# def patient_factory(hospital_factory, doctor_user):
+#     """Patient factory fixture"""
 
-    class PatientFactory(DjangoModelFactory):
-        class Meta:
-            model = Patient
+#     class PatientFactory(DjangoModelFactory):
+#         class Meta:
+#             model = Patient
 
-        first_name = "Test"
-        last_name = "Patient"
-        date_of_birth = date(1990, 1, 1)
-        gender = "F"
-        blood_type = "O+"
-        phone_primary = "+1234567890"
-        email = "patient@example.com"
-        address = "123 Patient St"
-        city = "Patient City"
-        state = "PS"
-        country = "Test Country"
-        hospital = hospital_factory()
-        primary_care_physician = doctor_user
-        medical_record_number = "MRN123456"
-        is_active = True
+#         first_name = "Test"
+#         last_name = "Patient"
+#         date_of_birth = date(1990, 1, 1)
+#         gender = "F"
+#         blood_type = "O+"
+#         phone_primary = "+1234567890"
+#         email = "patient@example.com"
+#         address = "123 Patient St"
+#         city = "Patient City"
+#         state = "PS"
+#         country = "Test Country"
+#         hospital = hospital_factory()
+#         primary_care_physician = doctor_user
+#         medical_record_number = "MRN123456"
+#         is_active = True
 
-    return PatientFactory
+#     return PatientFactory
 
 
-@pytest.fixture
-def test_patient(patient_factory):
+# @pytest.fixture
+# def test_patient(patient_factory):
     """Test patient fixture"""
     return patient_factory()
 
 
-@pytest.fixture
-def appointment_factory(hospital_factory, test_patient, doctor_user):
+# @pytest.fixture
+# def appointment_factory(hospital_factory, test_patient, doctor_user):
     """Appointment factory fixture"""
 
     class AppointmentFactory(DjangoModelFactory):
@@ -191,82 +191,82 @@ def appointment_factory(hospital_factory, test_patient, doctor_user):
     return AppointmentFactory
 
 
-@pytest.fixture
-def encounter_factory(hospital_factory, test_patient, doctor_user):
-    """Encounter factory fixture"""
+# @pytest.fixture
+# def encounter_factory(hospital_factory, test_patient, doctor_user):
+#     """Encounter factory fixture"""
 
-    class EncounterFactory(DjangoModelFactory):
-        class Meta:
-            model = Encounter
+#     class EncounterFactory(DjangoModelFactory):
+#         class Meta:
+#             model = Encounter
 
-        hospital = hospital_factory()
-        patient = test_patient
-        primary_physician = doctor_user
-        encounter_type = "outpatient"
-        encounter_status = "scheduled"
-        scheduled_start = timezone.now()
-        is_active = True
+#         hospital = hospital_factory()
+#         patient = test_patient
+#         primary_physician = doctor_user
+#         encounter_type = "outpatient"
+#         encounter_status = "scheduled"
+#         scheduled_start = timezone.now()
+#         is_active = True
 
-    return EncounterFactory
-
-
-@pytest.fixture
-def medication_factory(hospital_factory):
-    """Medication factory fixture"""
-
-    class MedicationFactory(DjangoModelFactory):
-        class Meta:
-            model = Medication
-
-        hospital = hospital_factory()
-        name = "Test Medication"
-        generic_name = "Test Generic"
-        strength = "500mg"
-        dosage_form = "tablet"
-        ndc = "12345-678-90"
-        stock_quantity = 100
-        reorder_level = 20
-        is_controlled = False
-        is_active = True
-
-    return MedicationFactory
+#     return EncounterFactory
 
 
-@pytest.fixture
-def lab_test_factory(hospital_factory):
-    """Lab test factory fixture"""
+# @pytest.fixture
+# def medication_factory(hospital_factory):
+#     """Medication factory fixture"""
 
-    class LabTestFactory(DjangoModelFactory):
-        class Meta:
-            model = LabTest
+#     class MedicationFactory(DjangoModelFactory):
+#         class Meta:
+#             model = Medication
 
-        hospital = hospital_factory()
-        name = "Complete Blood Count"
-        code = "CBC"
-        description = "Complete blood count test"
-        category = "hematology"
-        turnaround_time_hours = 24
-        active = True
+#         hospital = hospital_factory()
+#         name = "Test Medication"
+#         generic_name = "Test Generic"
+#         strength = "500mg"
+#         dosage_form = "tablet"
+#         ndc = "12345-678-90"
+#         stock_quantity = 100
+#         reorder_level = 20
+#         is_controlled = False
+#         is_active = True
 
-    return LabTestFactory
+#     return MedicationFactory
 
 
-@pytest.fixture
-def bill_factory(hospital_factory, test_patient):
-    """Bill factory fixture"""
+# @pytest.fixture
+# def lab_test_factory(hospital_factory):
+#     """Lab test factory fixture"""
 
-    class BillFactory(DjangoModelFactory):
-        class Meta:
-            model = Bill
+#     class LabTestFactory(DjangoModelFactory):
+#         class Meta:
+#             model = LabTest
 
-        hospital = hospital_factory()
-        patient = test_patient
-        status = "pending"
-        total_cents = 10000
-        insurance_claim_status = "pending"
-        is_active = True
+#         hospital = hospital_factory()
+#         name = "Complete Blood Count"
+#         code = "CBC"
+#         description = "Complete blood count test"
+#         category = "hematology"
+#         turnaround_time_hours = 24
+#         active = True
 
-    return BillFactory
+#     return LabTestFactory
+
+
+# @pytest.fixture
+# def bill_factory(hospital_factory, test_patient):
+#     """Bill factory fixture"""
+
+#     class BillFactory(DjangoModelFactory):
+#         class Meta:
+#             model = Bill
+
+#         hospital = hospital_factory()
+#         patient = test_patient
+#         status = "pending"
+#         total_cents = 10000
+#         insurance_claim_status = "pending"
+#         is_active = True
+
+#     return BillFactory
 
 
 @pytest.fixture
@@ -543,15 +543,15 @@ def cleanup_test_data():
 
     # Clean up database tables
     models_to_clear = [
-        Patient,
-        Encounter,
-        Appointment,
-        Bill,
-        Medication,
-        LabTest,
+        # Patient,  # Not imported
+        # Encounter,  # Not imported
+        # Appointment,  # Not imported
+        # Bill,  # Not imported
+        # Medication,  # Not imported
+        # LabTest,  # Not imported
         User,
-        Hospital,
-        Department,
+        # Hospital,  # Not imported
+        # Department,  # Not imported
     ]
 
     for model in models_to_clear:

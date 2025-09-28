@@ -71,11 +71,11 @@ class Department(models.Model):
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20, unique=True)
     description = models.TextField(blank=True)
-    hospital = models.ForeignKey(
-        "hospitals.Hospital",
-        on_delete=models.CASCADE,
-        related_name="departments",
-    )
+    # hospital = models.ForeignKey(
+    #     "hospitals.Hospital",
+    #     on_delete=models.CASCADE,
+    #     related_name="departments",
+    # )  # App not implemented
     head = models.ForeignKey(
         "User",
         on_delete=models.SET_NULL,
@@ -99,14 +99,24 @@ class Department(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = [["hospital", "code"]]
+        # unique_together = [["hospital", "code"]]  # Hospital not implemented
         ordering = ["name"]
 
     def __str__(self):
-        return f"{self.hospital.name} - {self.name}"
+        return self.name
 
 
 class User(AbstractUser):
+    groups = models.ManyToManyField(
+        "auth.Group",
+        related_name="custom_users",
+        blank=True,
+    )
+    user_permissions = models.ManyToManyField(
+        "auth.Permission",
+        related_name="custom_users",
+        blank=True,
+    )
     employee_id = models.CharField(max_length=20, unique=True, null=True, blank=True)
     role = models.CharField(
         max_length=32, choices=UserRole.choices, default=UserRole.RECEPTIONIST
@@ -116,13 +126,13 @@ class User(AbstractUser):
         choices=UserStatus.choices,
         default=UserStatus.PENDING_VERIFICATION,
     )
-    hospital = models.ForeignKey(
-        "hospitals.Hospital",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="users",
-    )
+    # hospital = models.ForeignKey(
+    #     "hospitals.Hospital",
+    #     on_delete=models.SET_NULL,
+    #     null=True,
+    #     blank=True,
+    #     related_name="users",
+    # )  # App not implemented
     department = models.ForeignKey(
         Department,
         on_delete=models.SET_NULL,
@@ -170,6 +180,7 @@ class User(AbstractUser):
     years_experience = models.PositiveIntegerField(null=True, blank=True)
     mfa_enabled = models.BooleanField(default=False)
     mfa_secret = EncryptedCharField(max_length=200, blank=True)
+    mfa_backup_codes = models.JSONField(default=list, blank=True)
     failed_login_attempts = models.PositiveIntegerField(default=0)
     account_locked_until = models.DateTimeField(null=True, blank=True)
     password_changed_at = models.DateTimeField(null=True, blank=True)
@@ -192,7 +203,7 @@ class User(AbstractUser):
 
     class Meta:
         indexes = [
-            models.Index(fields=["hospital", "department", "status"]),
+            # models.Index(fields=["hospital", "department", "status"]),  # Hospital not implemented
             models.Index(fields=["role", "status"]),
             models.Index(fields=["employee_id"]),
             models.Index(fields=["last_activity"]),
@@ -248,11 +259,11 @@ class User(AbstractUser):
 class UserPermissionGroup(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    hospital = models.ForeignKey(
-        "hospitals.Hospital",
-        on_delete=models.CASCADE,
-        related_name="permission_groups",
-    )
+    # hospital = models.ForeignKey(
+    #     "hospitals.Hospital",
+    #     on_delete=models.CASCADE,
+    #     related_name="permission_groups",
+    # )  # App not implemented
     permissions = models.ManyToManyField(Permission, blank=True)
     users = models.ManyToManyField(
         User, blank=True, related_name="custom_permission_groups"
@@ -262,11 +273,11 @@ class UserPermissionGroup(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = [["hospital", "name"]]
+        # unique_together = [["hospital", "name"]]  # Hospital not implemented
         ordering = ["name"]
 
     def __str__(self):
-        return f"{self.hospital.name} - {self.name}"
+        return self.name
 
 
 class UserSession(models.Model):

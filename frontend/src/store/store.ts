@@ -1,6 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { setupListeners } from '@tanstack/react-query'
 import { apiSlice } from './api/apiSlice'
+import { dietaryApi } from './slices/dietarySlice'
+import { housekeepingApi } from './slices/housekeepingSlice'
+import { crmApi } from './slices/crmSlice'
+import { biomedicalApi } from './slices/biomedicalSlice'
 import patientsSlice from './slices/patientsSlice'
 import ehrSlice from './slices/ehrSlice'
 import pharmacySlice from './slices/pharmacySlice'
@@ -27,6 +31,10 @@ const persistConfig = {
 // Root reducer
 const rootReducer = combineReducers({
   [apiSlice.reducerPath]: apiSlice.reducer,
+  [dietaryApi.reducerPath]: dietaryApi.reducer,
+  [housekeepingApi.reducerPath]: housekeepingApi.reducer,
+  [crmApi.reducerPath]: crmApi.reducer,
+  [biomedicalApi.reducerPath]: biomedicalApi.reducer,
   auth: authSlice,
   patients: patientsSlice,
   ehr: ehrSlice,
@@ -51,7 +59,7 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
       },
-    }).concat(apiSlice.middleware),
+    }).concat(apiSlice.middleware, dietaryApi.middleware, housekeepingApi.middleware, crmApi.middleware, biomedicalApi.middleware),
   devTools: process.env.NODE_ENV !== 'production',
 })
 

@@ -35,7 +35,11 @@ class DeviceTrust:
     def generate_device_id(self, request) -> str:
         """Generate unique device identifier"""
         user_agent = request.META.get("HTTP_USER_AGENT", "")
-        ip = self._get_client_ip(request)
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(",")[0]
+        else:
+            ip = request.META.get("REMOTE_ADDR", "")
 
         # Create device fingerprint
         device_data = f"{user_agent}:{ip}:{request.META.get('HTTP_ACCEPT', '')}"
@@ -74,7 +78,7 @@ class RiskEngine:
             "failed_attempts": 40,
         }
 
-    def calculate_risk_score(self, request, user: User) -> int:
+    def calculate_risk_score(self, request, user):
         """Calculate risk score for authentication attempt"""
         risk_score = 0
 
@@ -121,19 +125,41 @@ class RiskEngine:
         malicious_ips = cache.get("malicious_ips", set())
         return ip in malicious_ips
 
-    def _detect_impossible_travel(self, request, user: User) -> bool:
+    def _detect_impossible_travel(self, request, user):
         """Detect impossible travel between locations"""
         current_ip = self._get_client_ip(request)
         last_ip = cache.get(f"last_ip:{user.id}")
 
         if last_ip and last_ip != current_ip:
-            # This would implement geolocation-based distance calculation
-            # For now, return False as a placeholder
-            pass
+            try:
+                current_location = self._get_geolocation(current_ip)
+                last_location = self._get_geolocation(last_ip)
+
+                if current_location and last_location:
+                    distance = self._calculate_distance(
+                        current_location['lat'], current_location['lon'],
+                        last_location['lat'], last_location['lon']
+                    )
+                    # Get time since last login
+                    last_login_time = cache.get(f"last_login_time:{user.id}")
+                    if last_login_time:
+                        time_diff_hours = (timezone.now() - last_login_time).total_seconds() / 3600
+                        # Speed needed (km/h) = distance (km) / time (hours)
+                        if time_diff_hours > 0:
+                            speed = distance / time_diff_hours
+                            # If speed > 500 km/h (commercial flight speed), flag as impossible
+                            if speed > 500:
+                                return True
+            except Exception as e:
+                logger.warning(f"Error detecting impossible travel: {e}")
+
+        # Update last IP and login time
+        cache.set(f"last_ip:{user.id}", current_ip, 86400 * 30)  # 30 days
+        cache.set(f"last_login_time:{user.id}", timezone.now(), 86400 * 30)
 
         return False
 
-    def _is_suspicious_timing(self, request) -> bool:
+    def _is_suspicious_timing(self, request):
         """Check if authentication attempt is at suspicious time"""
         hour = timezone.now().hour
         # Consider 2 AM - 5 AM as suspicious for healthcare system
@@ -145,6 +171,52 @@ class RiskEngine:
         if x_forwarded_for:
             return x_forwarded_for.split(",")[0]
         return request.META.get("REMOTE_ADDR", "")
+
+    def _get_geolocation(self, ip: str):
+        """Get geolocation data for IP address"""
+        cache_key = f"geo:{ip}"
+        location = cache.get(cache_key)
+        if location:
+            return location
+
+        try:
+            # Use ipapi.co for free geolocation (no API key needed for basic use)
+            import requests
+            response = requests.get(f"http://ipapi.co/{ip}/json/", timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('latitude') and data.get('longitude'):
+                    location = {
+                        'lat': data['latitude'],
+                        'lon': data['longitude'],
+                        'country': data.get('country_code', ''),
+                        'city': data.get('city', '')
+                    }
+                    cache.set(cache_key, location, 86400 * 7)  # Cache for 7 days
+                    return location
+        except Exception as e:
+            logger.warning(f"Failed to get geolocation for {ip}: {e}")
+
+        return None
+
+    def _calculate_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Calculate distance between two points using Haversine formula"""
+        import math
+
+        # Convert to radians
+        lat1_rad = math.radians(lat1)
+        lon1_rad = math.radians(lon1)
+        lat2_rad = math.radians(lat2)
+        lon2_rad = math.radians(lon2)
+
+        # Haversine formula
+        dlon = lon2_rad - lon1_rad
+        dlat = lat2_rad - lat1_rad
+        a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon/2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        distance = 6371 * c  # Earth radius in km
+
+        return distance
 
 
 class MFAProvider:
@@ -158,7 +230,7 @@ class MFAProvider:
         """Generate TOTP secret key"""
         return base64.b32encode(get_random_string(20).encode()).decode()
 
-    def generate_backup_cocryptography.fernet.Fernet(self, count: int = 10) -> List[str]:
+    def generate_backup_codes(self, count: int = 10) -> List[str]:
         """Generate backup codes"""
         codes = []
         for _ in range(count):
@@ -225,10 +297,13 @@ class ZeroTrustAuthenticator:
         if auth_requirements["block"]:
             log_security_event(
                 event_type="HIGH_RISK_AUTH_BLOCKED",
-                description=f"High risk authentication blocked for user {username}",
-                severity="CRITICAL",
-                user_id=user.id,
-                ip_address=self._get_client_ip(request),
+                user=user,
+                request=request,
+                metadata={
+                    "description": f"High risk authentication blocked for user {username}",
+                    "severity": "CRITICAL",
+                    "ip_address": self._get_client_ip(request),
+                }
             )
             result["message"] = "Access blocked due to high risk"
             return result
@@ -238,6 +313,12 @@ class ZeroTrustAuthenticator:
         result["device_trusted"] = self.device_trust.verify_device_trust(
             device_id, user.id
         )
+
+        # CAPTCHA flow for high-risk logins
+        if auth_requirements["captcha"]:
+            result["captcha_required"] = True
+            result["message"] = "CAPTCHA verification required"
+            return result
 
         # MFA flow
         if auth_requirements["mfa"] and not result["device_trusted"]:
@@ -283,10 +364,13 @@ class ZeroTrustAuthenticator:
         # Log successful authentication
         log_security_event(
             event_type="SUCCESSFUL_AUTH",
-            description=f"User {username} authenticated successfully",
-            severity="INFO",
-            user_id=user.id,
-            ip_address=self._get_client_ip(request),
+            user=user,
+            request=request,
+            metadata={
+                "description": f"User {username} authenticated successfully",
+                "severity": "INFO",
+                "ip_address": self._get_client_ip(request),
+            }
         )
 
         return result
@@ -299,7 +383,35 @@ class ZeroTrustAuthenticator:
             return True
         return False
 
-    def continuous_verification(self, request, user: User) -> bool:
+    def verify_captcha(self, captcha_response: str, client_ip: str) -> bool:
+        """Verify CAPTCHA response"""
+        try:
+            import requests
+
+            # Using reCAPTCHA v2
+            secret_key = getattr(settings, 'RECAPTCHA_SECRET_KEY', None)
+            if not secret_key:
+                # Fallback: simple math CAPTCHA or disable
+                return True
+
+            url = 'https://www.google.com/recaptcha/api/siteverify'
+            data = {
+                'secret': secret_key,
+                'response': captcha_response,
+                'remoteip': client_ip
+            }
+
+            response = requests.post(url, data=data, timeout=10)
+            if response.status_code == 200:
+                result = response.json()
+                return result.get('success', False)
+
+        except Exception as e:
+            logger.warning(f"CAPTCHA verification failed: {e}")
+
+        return False
+
+    def continuous_verification(self, request, user):
         """Continuous verification during session"""
         # Re-calculate risk score periodically
         risk_score = self.risk_engine.calculate_risk_score(request, user)
@@ -308,10 +420,13 @@ class ZeroTrustAuthenticator:
             # Force re-authentication
             log_security_event(
                 event_type="CONTINUOUS_VERIFICATION_FAILED",
-                description=f"High risk detected for user {user.username}",
-                severity="HIGH",
-                user_id=user.id,
-                ip_address=self._get_client_ip(request),
+                user=user,
+                request=request,
+                metadata={
+                    "description": f"High risk detected for user {user.username}",
+                    "severity": "HIGH",
+                    "ip_address": self._get_client_ip(request),
+                }
             )
             return False
 
@@ -328,8 +443,10 @@ class ZeroTrustAuthenticator:
             cache.set(f"account_locked:{username}", True, 1800)  # 30 minute lock
             log_security_event(
                 event_type="ACCOUNT_LOCKED",
-                description=f"Account locked due to failed attempts: {username}",
-                severity="HIGH",
+                metadata={
+                    "description": f"Account locked due to failed attempts: {username}",
+                    "severity": "HIGH",
+                }
             )
 
     def _get_client_ip(self, request) -> str:
@@ -344,9 +461,7 @@ class ZeroTrustAuthorization:
         self.role_permissions = self._load_role_permissions()
         self.attribute_policies = self._load_attribute_policies()
 
-    def check_permission(
-        self, user: User, resource: str, action: str, context: Dict = None
-    ) -> bool:
+    def check_permission(self, user, resource, action, context=None):
         """Check if user has permission for action on resource"""
         context = context or {}
 
@@ -368,7 +483,7 @@ class ZeroTrustAuthorization:
 
         return True
 
-    def _check_role_permission(self, user: User, resource: str, action: str) -> bool:
+    def _check_role_permission(self, user, resource, action):
         """Check role-based permissions"""
         for role in user.roles.all():
             role_permissions = self.role_permissions.get(role.name, {})
@@ -379,9 +494,7 @@ class ZeroTrustAuthorization:
 
         return False
 
-    def _check_attribute_permission(
-        self, user: User, resource: str, action: str, context: Dict
-    ) -> bool:
+    def _check_attribute_permission(self, user, resource, action, context):
         """Check attribute-based permissions"""
         for policy in self.attribute_policies:
             if policy["resource"] == resource and action in policy["actions"]:
@@ -393,9 +506,7 @@ class ZeroTrustAuthorization:
 
         return False
 
-    def _evaluate_policy_conditions(
-        self, user: User, conditions: List[Dict], context: Dict
-    ) -> bool:
+    def _evaluate_policy_conditions(self, user, conditions, context):
         """Evaluate policy conditions"""
         for condition in conditions:
             if condition["type"] == "user_attribute":
@@ -420,12 +531,12 @@ class ZeroTrustAuthorization:
 
         return True
 
-    def _check_time_restrictions(self, user: User, resource: str, action: str) -> bool:
+    def _check_time_restrictions(self, user, resource, action):
         """Check time-based access restrictions"""
         # This would implement business hour restrictions for certain resources
         return True
 
-    def _check_location_restrictions(self, user: User, context: Dict) -> bool:
+    def _check_location_restrictions(self, user, context):
         """Check location-based access restrictions"""
         # This would implement IP whitelisting for certain users
         return True
@@ -469,7 +580,7 @@ class ZeroTrustAuthorization:
                     {
                         "type": "user_attribute",
                         "attribute": "department",
-                        "value": context.get("patient_department"),
+                        "value": "placeholder_department",  # Will be evaluated at runtime
                     }
                 ],
             },

@@ -27,9 +27,9 @@ class AuditLog(TimeStampedModel):
         ("DELETE", "Delete"),
         ("ACTION", "Action"),
     )
-    hospital = models.ForeignKey(
-        "hospitals.Hospital", on_delete=models.SET_NULL, null=True, blank=True
-    )
+    # hospital = models.ForeignKey(
+    #     "hospitals.Hospital", on_delete=models.SET_NULL, null=True, blank=True
+    # )  # App not implemented
     user = models.ForeignKey(
         "users.User", on_delete=models.SET_NULL, null=True, blank=True
     )
