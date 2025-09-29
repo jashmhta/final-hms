@@ -75,7 +75,9 @@ class MFADevice(TimeStampedModel):
                     return False
                 is_valid = False
                 for stored_hash in self.backup_codes:
-                    if bcrypt.checkpw(token.encode('utf-8'), stored_hash.encode('utf-8')):
+                    if bcrypt.checkpw(
+                        token.encode("utf-8"), stored_hash.encode("utf-8")
+                    ):
                         is_valid = True
                         # Remove the used hash
                         self.backup_codes.remove(stored_hash)
@@ -105,7 +107,10 @@ class MFADevice(TimeStampedModel):
         if not BCRYPT_AVAILABLE:
             raise ImportError("bcrypt is required for secure backup codes")
         codes = [secrets.token_hex(4).upper() for _ in range(count)]
-        self.backup_codes = [bcrypt.hashpw(code.encode('utf-8'), bcrypt.gensalt()).decode('utf-8') for code in codes]
+        self.backup_codes = [
+            bcrypt.hashpw(code.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            for code in codes
+        ]
         self.codes_used = []
         self.save()
         return codes

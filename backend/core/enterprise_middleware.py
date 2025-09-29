@@ -237,24 +237,19 @@ class EnterpriseMiddleware(MiddlewareMixin):
         """Check IP against AbuseIPDB"""
         try:
             import requests
-            api_key = getattr(settings, 'ABUSEIPDB_API_KEY', None)
+
+            api_key = getattr(settings, "ABUSEIPDB_API_KEY", None)
             if not api_key:
                 return False
 
             url = f"https://api.abuseipdb.com/api/v2/check"
-            headers = {
-                'Accept': 'application/json',
-                'Key': api_key
-            }
-            params = {
-                'ipAddress': ip,
-                'maxAgeInDays': 90
-            }
+            headers = {"Accept": "application/json", "Key": api_key}
+            params = {"ipAddress": ip, "maxAgeInDays": 90}
 
             response = requests.get(url, headers=headers, params=params, timeout=5)
             if response.status_code == 200:
                 data = response.json()
-                abuse_score = data.get('data', {}).get('abuseConfidenceScore', 0)
+                abuse_score = data.get("data", {}).get("abuseConfidenceScore", 0)
                 return abuse_score > 50  # Consider malicious if score > 50
 
         except Exception as e:
@@ -271,7 +266,10 @@ class EnterpriseMiddleware(MiddlewareMixin):
         """Check if IP is a TOR exit node"""
         try:
             import requests
-            response = requests.get("https://check.torproject.org/exit-addresses", timeout=5)
+
+            response = requests.get(
+                "https://check.torproject.org/exit-addresses", timeout=5
+            )
             if response.status_code == 200:
                 return ip in response.text
         except Exception as e:

@@ -91,16 +91,67 @@ spec:
       attempts: 3
       perTryTimeout: 2s
       retryOn: gateway-error,connect-failure,refused-stream
-    timeout: 30s
-    fault:
-      delay:
-        percentage:
-          value: 0.1
-        fixedDelay: 2s
-      abort:
-        percentage:
-          value: 0.1
-        httpStatus: 500
+     timeout: 30s
+     retries:
+       attempts: 3
+       perTryTimeout: 5s
+       retryOn: gateway-error,connect-failure,refused-stream,5xx
+     trafficPolicy:
+       loadBalancer:
+         simple: ROUND_ROBIN
+       connectionPool:
+         tcp:
+           maxConnections: 400
+           connectTimeout: 10s
+         http:
+           http1MaxPendingRequests: 400
+           http2MaxRequests: 4000
+           maxRequestsPerConnection: 10
+           maxRetries: 3
+           idleTimeout: 60s
+     retries:
+       attempts: 3
+       perTryTimeout: 5s
+       retryOn: gateway-error,connect-failure,refused-stream,5xx
+     trafficPolicy:
+       loadBalancer:
+         simple: LEAST_REQUEST
+       connectionPool:
+         tcp:
+           maxConnections: 800
+           connectTimeout: 15s
+         http:
+           http1MaxPendingRequests: 800
+           http2MaxRequests: 8000
+           maxRequestsPerConnection: 10
+           maxRetries: 3
+           idleTimeout: 90s
+     retries:
+       attempts: 3
+       perTryTimeout: 2s
+       retryOn: gateway-error,connect-failure,refused-stream,5xx
+     fault:
+       delay:
+         percentage:
+           value: 0.01  # Reduced fault injection for production
+         fixedDelay: 1s
+       abort:
+         percentage:
+           value: 0.01
+         httpStatus: 500
+     trafficPolicy:
+       loadBalancer:
+         simple: LEAST_REQUEST
+       connectionPool:
+         tcp:
+           maxConnections: 1000
+           connectTimeout: 10s
+         http:
+           http1MaxPendingRequests: 1000
+           http2MaxRequests: 10000
+           maxRequestsPerConnection: 10
+           maxRetries: 3
+           idleTimeout: 60s
 
 ---
 # Auth Service Virtual Service
@@ -139,7 +190,24 @@ spec:
       attempts: 3
       perTryTimeout: 5s
       retryOn: gateway-error,connect-failure,refused-stream
-    timeout: 10s
+     timeout: 10s
+     retries:
+       attempts: 2
+       perTryTimeout: 3s
+       retryOn: gateway-error,connect-failure,refused-stream
+     trafficPolicy:
+       loadBalancer:
+         simple: ROUND_ROBIN
+       connectionPool:
+         tcp:
+           maxConnections: 500
+           connectTimeout: 5s
+         http:
+           http1MaxPendingRequests: 500
+           http2MaxRequests: 5000
+           maxRequestsPerConnection: 10
+           maxRetries: 2
+           idleTimeout: 30s
 
 ---
 # Appointment Service Virtual Service
@@ -217,7 +285,24 @@ spec:
       attempts: 3
       perTryTimeout: 5s
       retryOn: gateway-error,connect-failure,refused-stream
-    timeout: 45s
+     timeout: 45s
+     retries:
+       attempts: 3
+       perTryTimeout: 10s
+       retryOn: gateway-error,connect-failure,refused-stream,5xx
+     trafficPolicy:
+       loadBalancer:
+         simple: LEAST_REQUEST
+       connectionPool:
+         tcp:
+           maxConnections: 600
+           connectTimeout: 20s
+         http:
+           http1MaxPendingRequests: 600
+           http2MaxRequests: 6000
+           maxRequestsPerConnection: 10
+           maxRetries: 3
+           idleTimeout: 120s
 
 ---
 # Billing Service Virtual Service
@@ -318,18 +403,25 @@ spec:
       simple: LEAST_REQUEST
     connectionPool:
       tcp:
-        maxConnections: 100
-        connectTimeout: 30s
-        tcpKeepalive:
-          time: 7200s
-          interval: 75s
-      http:
-        http1MaxPendingRequests: 100
-        http2MaxRequests: 1000
-        maxRequestsPerConnection: 1
-        maxRetries: 3
-        idleTimeout: 90s
-        h2UpgradePolicy: UPGRADE
+         maxConnections: 2000
+         connectTimeout: 30s
+         tcpKeepalive:
+           time: 7200s
+           interval: 75s
+       http:
+         http1MaxPendingRequests: 2000
+         http2MaxRequests: 20000
+         maxRequestsPerConnection: 10
+         maxRetries: 3
+         idleTimeout: 90s
+         h2UpgradePolicy: UPGRADE
+       outlierDetection:
+         consecutiveGatewayErrors: 5
+         consecutive5xxErrors: 5
+         interval: 30s
+         baseEjectionTime: 30s
+         maxEjectionPercent: 50
+         minHealthPercent: 30
     outlierDetection:
       consecutiveGatewayErrors: 5
       consecutive5xxErrors: 5
@@ -374,14 +466,20 @@ spec:
       simple: ROUND_ROBIN
     connectionPool:
       tcp:
-        maxConnections: 50
-        connectTimeout: 10s
-      http:
-        http1MaxPendingRequests: 50
-        http2MaxRequests: 500
-        maxRequestsPerConnection: 1
-        maxRetries: 2
-        idleTimeout: 60s
+         maxConnections: 1000
+         connectTimeout: 10s
+       http:
+         http1MaxPendingRequests: 1000
+         http2MaxRequests: 10000
+         maxRequestsPerConnection: 10
+         maxRetries: 2
+         idleTimeout: 60s
+       outlierDetection:
+         consecutiveGatewayErrors: 3
+         consecutive5xxErrors: 3
+         interval: 20s
+         baseEjectionTime: 20s
+         maxEjectionPercent: 30
     outlierDetection:
       consecutiveGatewayErrors: 3
       consecutive5xxErrors: 3

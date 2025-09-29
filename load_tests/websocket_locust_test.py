@@ -26,17 +26,14 @@ class WebSocketUser(User):
         try:
             ws_url = f"ws://localhost:8000/ws/{self.client_id}"
             self.websocket = await websockets.connect(
-                ws_url,
-                ping_interval=30,
-                ping_timeout=10,
-                close_timeout=5
+                ws_url, ping_interval=30, ping_timeout=10, close_timeout=5
             )
             self.connected = True
 
             # Subscribe to events
             subscribe_msg = {
                 "type": "subscribe",
-                "events": ["patient_update", "emergency_alert", "appointment_reminder"]
+                "events": ["patient_update", "emergency_alert", "appointment_reminder"],
             }
             await self.websocket.send(json.dumps(subscribe_msg))
 
@@ -73,7 +70,7 @@ class WebSocketUser(User):
             ping_msg = {
                 "type": "ping",
                 "client_id": self.client_id,
-                "timestamp": ping_start
+                "timestamp": ping_start,
             }
 
             asyncio.create_task(self.send_and_receive(ping_start))
@@ -94,7 +91,7 @@ class WebSocketUser(User):
             ping_msg = {
                 "type": "ping",
                 "client_id": self.client_id,
-                "timestamp": ping_start
+                "timestamp": ping_start,
             }
             await self.websocket.send(json.dumps(ping_msg))
 
@@ -120,7 +117,9 @@ class WebSocketUser(User):
                         name="slow_response",
                         response_time=latency,
                         response_length=0,
-                        exception=Exception(f"Response time {latency:.2f}ms exceeds 200ms target"),
+                        exception=Exception(
+                            f"Response time {latency:.2f}ms exceeds 200ms target"
+                        ),
                     )
 
             # Send broadcast message occasionally
@@ -131,8 +130,8 @@ class WebSocketUser(User):
                     "data": {
                         "patient_id": f"patient_{self.message_count}",
                         "action": "status_update",
-                        "timestamp": time.time()
-                    }
+                        "timestamp": time.time(),
+                    },
                 }
                 await self.websocket.send(json.dumps(broadcast_msg))
 
@@ -188,7 +187,7 @@ class HospitalWebSocketUser(WebSocketUser):
 
     def _assign_role(self):
         """Assign a role based on user ID for realistic simulation"""
-        user_num = int(self.client_id.split('_')[-1])
+        user_num = int(self.client_id.split("_")[-1])
         if user_num % 10 == 0:
             return "doctor"
         elif user_num % 5 == 0:
@@ -204,12 +203,12 @@ class HospitalWebSocketUser(WebSocketUser):
         role_events = {
             "doctor": ["emergency_alert", "patient_critical", "consultation_request"],
             "nurse": ["patient_monitoring", "medication_alert", "vital_signs"],
-            "staff": ["appointment_reminder", "patient_update", "general_alert"]
+            "staff": ["appointment_reminder", "patient_update", "general_alert"],
         }
 
         subscribe_msg = {
             "type": "subscribe",
-            "events": role_events.get(self.role, ["general_update"])
+            "events": role_events.get(self.role, ["general_update"]),
         }
         await self.websocket.send(json.dumps(subscribe_msg))
 
@@ -229,8 +228,8 @@ class HospitalWebSocketUser(WebSocketUser):
                         "patient_id": f"patient_{self.message_count}",
                         "condition": "critical",
                         "doctor_id": self.client_id,
-                        "timestamp": time.time()
-                    }
+                        "timestamp": time.time(),
+                    },
                 }
             elif self.role == "nurse":
                 # Nurses monitor vitals
@@ -241,8 +240,8 @@ class HospitalWebSocketUser(WebSocketUser):
                         "patient_id": f"patient_{self.message_count}",
                         "vitals": {"hr": 75, "bp": "120/80", "temp": 98.6},
                         "nurse_id": self.client_id,
-                        "timestamp": time.time()
-                    }
+                        "timestamp": time.time(),
+                    },
                 }
             else:
                 # Staff handle general updates
@@ -253,8 +252,8 @@ class HospitalWebSocketUser(WebSocketUser):
                         "patient_id": f"patient_{self.message_count}",
                         "status": "updated",
                         "staff_id": self.client_id,
-                        "timestamp": time.time()
-                    }
+                        "timestamp": time.time(),
+                    },
                 }
 
             asyncio.create_task(self.send_message(msg))

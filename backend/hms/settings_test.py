@@ -4,6 +4,9 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Add backend directory to path for apps
+sys.path.insert(0, str(BASE_DIR))
+
 # Add libs directory to path for encrypted_model_fields
 sys.path.insert(0, str(BASE_DIR / "libs"))
 
@@ -11,8 +14,14 @@ SECRET_KEY = os.getenv("SECRET_KEY", "test-secret-key-for-testing-only")
 DEBUG = False
 ALLOWED_HOSTS = ["*"]
 
+AUTH_USER_MODEL = "users.User"
+
 # Test encryption key
 FIELD_ENCRYPTION_KEY = "d-81mPwXIDePWNgD0XNVXdtA5pDqstbgmz9cyUpv4PU="
+
+# Test secrets
+os.environ.setdefault("SECRETS_MASTER_KEY", "test-master-key-for-testing-only")
+os.environ.setdefault("FERNET_KEY", FIELD_ENCRYPTION_KEY)
 
 DATABASES = {
     "default": {
@@ -36,13 +45,14 @@ INSTALLED_APPS = [
     "django_prometheus",
     "core",
     "users",
-    # "appointments",  # Has dependencies
+    # "appointments",  # Has dependencies on hospitals, patients
     # "ehr",  # Has dependencies
     # "hr",  # Has dependencies
     # "superadmin",  # Has dependencies
     # "authentication",  # Has dependencies
     # "compliance",  # Has dependencies
     # "accounting_advanced",  # Has dependencies
+    # "feedback",  # Has dependencies
     # "ai_ml",  # Has dependencies
 ]
 

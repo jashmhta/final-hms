@@ -598,11 +598,15 @@ class RealTimeCommunicationManager:
 
             try:
                 # Handle incoming messages
-                receive_task = asyncio.create_task(self._handle_websocket_receive(websocket, client_id))
+                receive_task = asyncio.create_task(
+                    self._handle_websocket_receive(websocket, client_id)
+                )
 
                 tasks = [receive_task]
                 if pubsub:
-                    redis_task = asyncio.create_task(self._handle_redis_messages(pubsub, websocket, client_id))
+                    redis_task = asyncio.create_task(
+                        self._handle_redis_messages(pubsub, websocket, client_id)
+                    )
                     tasks.append(redis_task)
 
                 await asyncio.gather(*tasks)
@@ -629,9 +633,11 @@ class RealTimeCommunicationManager:
         """Handle messages from Redis pub/sub for cross-pod communication"""
         try:
             while True:
-                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                message = await pubsub.get_message(
+                    ignore_subscribe_messages=True, timeout=1.0
+                )
                 if message:
-                    data = json.loads(message['data'])
+                    data = json.loads(message["data"])
                     await websocket.send_text(json.dumps(data))
         except Exception:
             pass  # Connection closed
@@ -643,11 +649,13 @@ class RealTimeCommunicationManager:
             await pubsub.psubscribe("event:*")  # Subscribe to all event channels
 
             while True:
-                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                message = await pubsub.get_message(
+                    ignore_subscribe_messages=True, timeout=1.0
+                )
                 if message:
-                    channel = message['channel'].decode('utf-8')
-                    event = channel.split(':', 1)[1]  # Remove 'event:' prefix
-                    data = json.loads(message['data'])
+                    channel = message["channel"].decode("utf-8")
+                    event = channel.split(":", 1)[1]  # Remove 'event:' prefix
+                    data = json.loads(message["data"])
 
                     # Broadcast to local subscribers
                     if event in self.event_subscribers:

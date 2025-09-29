@@ -137,13 +137,17 @@ class RiskEngine:
 
                 if current_location and last_location:
                     distance = self._calculate_distance(
-                        current_location['lat'], current_location['lon'],
-                        last_location['lat'], last_location['lon']
+                        current_location["lat"],
+                        current_location["lon"],
+                        last_location["lat"],
+                        last_location["lon"],
                     )
                     # Get time since last login
                     last_login_time = cache.get(f"last_login_time:{user.id}")
                     if last_login_time:
-                        time_diff_hours = (timezone.now() - last_login_time).total_seconds() / 3600
+                        time_diff_hours = (
+                            timezone.now() - last_login_time
+                        ).total_seconds() / 3600
                         # Speed needed (km/h) = distance (km) / time (hours)
                         if time_diff_hours > 0:
                             speed = distance / time_diff_hours
@@ -182,15 +186,16 @@ class RiskEngine:
         try:
             # Use ipapi.co for free geolocation (no API key needed for basic use)
             import requests
+
             response = requests.get(f"http://ipapi.co/{ip}/json/", timeout=5)
             if response.status_code == 200:
                 data = response.json()
-                if data.get('latitude') and data.get('longitude'):
+                if data.get("latitude") and data.get("longitude"):
                     location = {
-                        'lat': data['latitude'],
-                        'lon': data['longitude'],
-                        'country': data.get('country_code', ''),
-                        'city': data.get('city', '')
+                        "lat": data["latitude"],
+                        "lon": data["longitude"],
+                        "country": data.get("country_code", ""),
+                        "city": data.get("city", ""),
                     }
                     cache.set(cache_key, location, 86400 * 7)  # Cache for 7 days
                     return location
@@ -199,7 +204,9 @@ class RiskEngine:
 
         return None
 
-    def _calculate_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    def _calculate_distance(
+        self, lat1: float, lon1: float, lat2: float, lon2: float
+    ) -> float:
         """Calculate distance between two points using Haversine formula"""
         import math
 
@@ -212,8 +219,11 @@ class RiskEngine:
         # Haversine formula
         dlon = lon2_rad - lon1_rad
         dlat = lat2_rad - lat1_rad
-        a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon/2)**2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        a = (
+            math.sin(dlat / 2) ** 2
+            + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon / 2) ** 2
+        )
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
         distance = 6371 * c  # Earth radius in km
 
         return distance
@@ -303,7 +313,7 @@ class ZeroTrustAuthenticator:
                     "description": f"High risk authentication blocked for user {username}",
                     "severity": "CRITICAL",
                     "ip_address": self._get_client_ip(request),
-                }
+                },
             )
             result["message"] = "Access blocked due to high risk"
             return result
@@ -370,7 +380,7 @@ class ZeroTrustAuthenticator:
                 "description": f"User {username} authenticated successfully",
                 "severity": "INFO",
                 "ip_address": self._get_client_ip(request),
-            }
+            },
         )
 
         return result
@@ -389,22 +399,22 @@ class ZeroTrustAuthenticator:
             import requests
 
             # Using reCAPTCHA v2
-            secret_key = getattr(settings, 'RECAPTCHA_SECRET_KEY', None)
+            secret_key = getattr(settings, "RECAPTCHA_SECRET_KEY", None)
             if not secret_key:
                 # Fallback: simple math CAPTCHA or disable
                 return True
 
-            url = 'https://www.google.com/recaptcha/api/siteverify'
+            url = "https://www.google.com/recaptcha/api/siteverify"
             data = {
-                'secret': secret_key,
-                'response': captcha_response,
-                'remoteip': client_ip
+                "secret": secret_key,
+                "response": captcha_response,
+                "remoteip": client_ip,
             }
 
             response = requests.post(url, data=data, timeout=10)
             if response.status_code == 200:
                 result = response.json()
-                return result.get('success', False)
+                return result.get("success", False)
 
         except Exception as e:
             logger.warning(f"CAPTCHA verification failed: {e}")
@@ -426,7 +436,7 @@ class ZeroTrustAuthenticator:
                     "description": f"High risk detected for user {user.username}",
                     "severity": "HIGH",
                     "ip_address": self._get_client_ip(request),
-                }
+                },
             )
             return False
 
@@ -446,7 +456,7 @@ class ZeroTrustAuthenticator:
                 metadata={
                     "description": f"Account locked due to failed attempts: {username}",
                     "severity": "HIGH",
-                }
+                },
             )
 
     def _get_client_ip(self, request) -> str:

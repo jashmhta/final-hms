@@ -48,7 +48,7 @@ class HMSUser(HttpUser):
             # Subscribe to events
             subscribe_msg = {
                 "type": "subscribe",
-                "events": ["patient_update", "appointment_alert", "emergency"]
+                "events": ["patient_update", "appointment_alert", "emergency"],
             }
             await websocket.send(json.dumps(subscribe_msg))
 
@@ -79,7 +79,7 @@ class HMSUser(HttpUser):
             broadcast_msg = {
                 "type": "broadcast",
                 "event": "patient_update",
-                "data": {"patient_id": 123, "status": "updated"}
+                "data": {"patient_id": 123, "status": "updated"},
             }
             await websocket.send(json.dumps(broadcast_msg))
 
@@ -97,6 +97,7 @@ class HMSUser(HttpUser):
 
 class WebSocketLoadTest(HttpUser):
     """Dedicated WebSocket load testing user"""
+
     wait_time = between(0.1, 1.0)
 
     def __init__(self, *args, **kwargs):
@@ -113,7 +114,7 @@ class WebSocketLoadTest(HttpUser):
             # Subscribe to events
             subscribe_msg = {
                 "type": "subscribe",
-                "events": ["patient_monitoring", "alerts", "updates"]
+                "events": ["patient_monitoring", "alerts", "updates"],
             }
             await self.websocket.send(json.dumps(subscribe_msg))
 
@@ -165,8 +166,8 @@ class WebSocketLoadTest(HttpUser):
                 "event": "patient_monitoring",
                 "data": {
                     "patient_id": self.client_id,
-                    "vitals": {"hr": 75, "bp": "120/80", "temp": 98.6}
-                }
+                    "vitals": {"hr": 75, "bp": "120/80", "temp": 98.6},
+                },
             }
             await self.websocket.send(json.dumps(broadcast_msg))
 

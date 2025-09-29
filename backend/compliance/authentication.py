@@ -115,7 +115,9 @@ class MultiFactorAuthentication:
         for _ in range(count):
             code = "".join(secrets.choices(string.digits + string.ascii_uppercase, k=8))
             backup_codes.append(code)
-            hashed_codes.append(bcrypt.hashpw(code.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'))
+            hashed_codes.append(
+                bcrypt.hashpw(code.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            )
 
         # Store hashed backup codes
         user.mfa_backup_codes = hashed_codes
@@ -131,7 +133,7 @@ class MultiFactorAuthentication:
             return False
 
         for stored_hash in user.mfa_backup_codes:
-            if bcrypt.checkpw(code.encode('utf-8'), stored_hash.encode('utf-8')):
+            if bcrypt.checkpw(code.encode("utf-8"), stored_hash.encode("utf-8")):
                 # Remove used backup code hash
                 user.mfa_backup_codes.remove(stored_hash)
                 user.save()

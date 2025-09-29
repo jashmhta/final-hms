@@ -37,7 +37,7 @@ class DatabaseConfig(BaseSettings):
         return f"postgresql+psycopg2://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}"
 
     @property
-    def_url_async(self) -> str:
+    def url_async(self) -> str:
         """Generate async database URL."""
         return f"postgresql+asyncpg://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}"
 
@@ -45,13 +45,15 @@ class DatabaseConfig(BaseSettings):
 class SecurityConfig(BaseSettings):
     """Security configuration - eliminates redundant security setup."""
 
-    secret_key: str = Field(default="your-secret-key", env="SECRET_KEY")
+    secret_key: str = Field(..., env="SECRET_KEY")
     algorithm: str = Field(default="HS256", env="ALGORITHM")
-    access_token_expire_minutes: int = Field(default=30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
+    access_token_expire_minutes: int = Field(
+        default=30, env="ACCESS_TOKEN_EXPIRE_MINUTES"
+    )
     refresh_token_expire_days: int = Field(default=7, env="REFRESH_TOKEN_EXPIRE_DAYS")
 
     # HIPAA encryption key
-    hipaa_encryption_key: str = Field(default="hipaa-encryption-key", env="HIPAA_ENCRYPTION_KEY")
+    hipaa_encryption_key: str = Field(..., env="HIPAA_ENCRYPTION_KEY")
 
     class Config:
         env_prefix = "SECURITY_"
@@ -182,7 +184,7 @@ class BaseConfig(BaseSettings):
     def get_database_url(self, async_mode: bool = False) -> str:
         """Get database URL."""
         if async_mode:
-            return self.database._url_async
+            return self.database.url_async
         return self.database.url
 
     def validate_config(self) -> List[str]:
@@ -193,7 +195,10 @@ class BaseConfig(BaseSettings):
         if self.security.secret_key == "your-secret-key" and self.is_production:
             warnings.append("Using default secret key in production")
 
-        if self.security.hipaa_encryption_key == "hipaa-encryption-key" and self.is_production:
+        if (
+            self.security.hipaa_encryption_key == "hipaa-encryption-key"
+            and self.is_production
+        ):
             warnings.append("Using default HIPAA encryption key in production")
 
         # Database warnings
@@ -274,10 +279,12 @@ def get_environment_config() -> Dict[str, Any]:
 
     # Add secure fields only in development
     if config.is_development:
-        env_config.update({
-            "database_password": config.database.password,
-            "secret_key": config.security.secret_key,
-        })
+        env_config.update(
+            {
+                "database_password": config.database.password,
+                "secret_key": config.security.secret_key,
+            }
+        )
 
     return env_config
 
@@ -286,7 +293,7 @@ def create_service_config(
     service_name: str,
     service_description: str,
     version: str = "1.0.0",
-    port: int = 8000
+    port: int = 8000,
 ) -> BaseConfig:
     """Create service-specific configuration."""
     os.environ["SERVICE_NAME"] = service_name

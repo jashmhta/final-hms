@@ -96,11 +96,11 @@ repos:
       - id: prettier
         types_or: [yaml, markdown, json, toml, css, scss, javascript, jsx, ts, tsx]
         args: [--print-width=88, --tab-width=2]
-  - repo: https://github.com/best-practical/jscpd
-    rev: 3.5.10
-    hooks:
-      - id: jscpd
-        args: [--format, python, --max-duplicates, 5]
+   - repo: https://github.com/best-practical/jscpd
+     rev: 3.5.10
+     hooks:
+       - id: jscpd
+         args: [--format, python, --max-duplicates, "5"]
   - repo: https://github.com/commitizen-tools/commitizen
     rev: v3.29.1
     hooks:

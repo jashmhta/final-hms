@@ -93,7 +93,7 @@ def authenticated_client(api_client, test_user):
 #         description = "Test department description"
 #         is_active = True
 
-    # return DepartmentFactory
+# return DepartmentFactory
 
 
 @pytest.fixture
@@ -137,42 +137,39 @@ def doctor_user(user_factory, hospital_factory):
         hospital=hospital_factory(),
     )
 
+    # @pytest.fixture
+    # def patient_factory(hospital_factory, doctor_user):
+    #     """Patient factory fixture"""
 
-# @pytest.fixture
-# def patient_factory(hospital_factory, doctor_user):
-#     """Patient factory fixture"""
+    #     class PatientFactory(DjangoModelFactory):
+    #         class Meta:
+    #             model = Patient
 
-#     class PatientFactory(DjangoModelFactory):
-#         class Meta:
-#             model = Patient
+    #         first_name = "Test"
+    #         last_name = "Patient"
+    #         date_of_birth = date(1990, 1, 1)
+    #         gender = "F"
+    #         blood_type = "O+"
+    #         phone_primary = "+1234567890"
+    #         email = "patient@example.com"
+    #         address = "123 Patient St"
+    #         city = "Patient City"
+    #         state = "PS"
+    #         country = "Test Country"
+    #         hospital = hospital_factory()
+    #         primary_care_physician = doctor_user
+    #         medical_record_number = "MRN123456"
+    #         is_active = True
 
-#         first_name = "Test"
-#         last_name = "Patient"
-#         date_of_birth = date(1990, 1, 1)
-#         gender = "F"
-#         blood_type = "O+"
-#         phone_primary = "+1234567890"
-#         email = "patient@example.com"
-#         address = "123 Patient St"
-#         city = "Patient City"
-#         state = "PS"
-#         country = "Test Country"
-#         hospital = hospital_factory()
-#         primary_care_physician = doctor_user
-#         medical_record_number = "MRN123456"
-#         is_active = True
+    #     return PatientFactory
 
-#     return PatientFactory
-
-
-# @pytest.fixture
-# def test_patient(patient_factory):
+    # @pytest.fixture
+    # def test_patient(patient_factory):
     """Test patient fixture"""
     return patient_factory()
 
-
-# @pytest.fixture
-# def appointment_factory(hospital_factory, test_patient, doctor_user):
+    # @pytest.fixture
+    # def appointment_factory(hospital_factory, test_patient, doctor_user):
     """Appointment factory fixture"""
 
     class AppointmentFactory(DjangoModelFactory):

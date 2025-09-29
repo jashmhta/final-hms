@@ -10,6 +10,7 @@ import os
 from datetime import datetime
 from typing import Dict, List, Any
 
+
 class ChaosDashboardGenerator:
     """Generates HTML dashboard for chaos results"""
 
@@ -28,7 +29,7 @@ class ChaosDashboardGenerator:
             if filename.startswith("chaos_results_") and filename.endswith(".json"):
                 filepath = os.path.join(self.results_dir, filename)
                 try:
-                    with open(filepath, 'r') as f:
+                    with open(filepath, "r") as f:
                         result = json.load(f)
                         self.results.append(result)
                 except (json.JSONDecodeError, FileNotFoundError):
@@ -87,7 +88,9 @@ class ChaosDashboardGenerator:
 
         for result in self.results:
             for exp in result.get("experiments", []):
-                status_class = "success" if exp.get("status") == "completed" else "failure"
+                status_class = (
+                    "success" if exp.get("status") == "completed" else "failure"
+                )
                 html += f"""
         <tr>
             <td>{exp.get("name", "N/A")}</td>
@@ -103,20 +106,24 @@ class ChaosDashboardGenerator:
 </html>
 """
 
-        with open(self.output_file, 'w') as f:
+        with open(self.output_file, "w") as f:
             f.write(html)
 
         print(f"Dashboard generated: {self.output_file}")
 
+
 def main():
     parser = argparse.ArgumentParser(description="Generate Chaos Engineering Dashboard")
-    parser.add_argument("--results-dir", required=True, help="Directory containing chaos results")
+    parser.add_argument(
+        "--results-dir", required=True, help="Directory containing chaos results"
+    )
     parser.add_argument("--output", required=True, help="Output HTML file")
 
     args = parser.parse_args()
 
     generator = ChaosDashboardGenerator(args.results_dir, args.output)
     generator.generate_dashboard()
+
 
 if __name__ == "__main__":
     main()

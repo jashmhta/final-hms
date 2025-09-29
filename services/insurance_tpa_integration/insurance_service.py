@@ -744,7 +744,11 @@ IEA*1*{control_number}~"""
             raise Exception(f"Claim status error: {str(e)}")
 
     async def submit_claim_appeal(
-        self, claim_number: str, appeal_reason: str, additional_documentation: str, provider_id: int
+        self,
+        claim_number: str,
+        appeal_reason: str,
+        additional_documentation: str,
+        provider_id: int,
     ) -> Dict[str, Any]:
         """Submit claim appeal to insurance provider"""
         provider = self.get_provider(provider_id)
@@ -766,19 +770,27 @@ IEA*1*{control_number}~"""
             }
 
             async with self.http_session.post(
-                f"{provider.api_endpoint}/claims/{claim_number}/appeal", json=payload, headers=headers
+                f"{provider.api_endpoint}/claims/{claim_number}/appeal",
+                json=payload,
+                headers=headers,
             ) as response:
                 if response.status == 200:
                     data = await response.json()
                     return {
-                        "appeal_reference": data.get("appeal_reference", f"APPEAL-{claim_number}"),
+                        "appeal_reference": data.get(
+                            "appeal_reference", f"APPEAL-{claim_number}"
+                        ),
                         "status": data.get("status", "submitted"),
-                        "expected_resolution_days": data.get("expected_resolution_days", 30),
+                        "expected_resolution_days": data.get(
+                            "expected_resolution_days", 30
+                        ),
                         "processing_time_ms": 500.0,
                     }
                 else:
                     error_text = await response.text()
-                    logger.error(f"Appeal submission failed: {response.status} - {error_text}")
+                    logger.error(
+                        f"Appeal submission failed: {response.status} - {error_text}"
+                    )
                     raise Exception(f"Appeal submission error: {response.status}")
 
         except Exception as e:

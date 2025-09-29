@@ -546,9 +546,13 @@ async def get_claim_status(
             "claim_number": claim_number,
             "tpa_reference": f"TPA-{claim_number}",
             "status": "approved" if local_claim.approved_amount else "processing",
-            "approved_amount": local_claim.approved_amount or local_claim.total_amount * 0.8,
-            "payment_amount": local_claim.approved_amount or local_claim.total_amount * 0.8,
-            "payment_date": datetime.utcnow().isoformat() if local_claim.status == "paid" else None,
+            "approved_amount": local_claim.approved_amount
+            or local_claim.total_amount * 0.8,
+            "payment_amount": local_claim.approved_amount
+            or local_claim.total_amount * 0.8,
+            "payment_date": (
+                datetime.utcnow().isoformat() if local_claim.status == "paid" else None
+            ),
             "processing_time_ms": 150.0,
         }
 
@@ -644,7 +648,9 @@ async def submit_claim_appeal(
             "appeal": {
                 "appeal_reference": appeal_response.get("appeal_reference"),
                 "status": appeal_response.get("status"),
-                "expected_resolution_days": appeal_response.get("expected_resolution_days"),
+                "expected_resolution_days": appeal_response.get(
+                    "expected_resolution_days"
+                ),
                 "processing_time_ms": appeal_response.get("processing_time_ms"),
             },
             "provider": {

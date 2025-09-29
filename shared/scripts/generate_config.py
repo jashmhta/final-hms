@@ -214,16 +214,12 @@ class ConfigGenerator:
                 "db": kwargs.get("redis_db", 0),
             },
             "security": {
-                "secret_key": kwargs.get(
-                    "secret_key", "your-secret-key-change-in-production"
-                ),
+                "secret_key": kwargs.get("secret_key"),
                 "algorithm": kwargs.get("algorithm", "HS256"),
                 "access_token_expire_minutes": kwargs.get(
                     "access_token_expire_minutes", 30
                 ),
-                "hipaa_encryption_key": kwargs.get(
-                    "hipaa_encryption_key", "your-hipaa-key-change-in-production"
-                ),
+                "hipaa_encryption_key": kwargs.get("hipaa_encryption_key"),
             },
             "monitoring": {
                 "log_level": kwargs.get("log_level", "INFO"),
@@ -327,7 +323,9 @@ class ConfigGenerator:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(config)
-        print(f"Configuration saved to: {output_path}")
+        import logging
+
+        logging.info(f"Configuration saved to: {output_path}")
 
     def _save_config_json(self, config: Dict[str, Any], output_file: str):
         """Save JSON configuration to file."""
@@ -335,7 +333,9 @@ class ConfigGenerator:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2, default=str)
-        print(f"Configuration saved to: {output_path}")
+        import logging
+
+        logging.info(f"Configuration saved to: {output_path}")
 
 
 def main():

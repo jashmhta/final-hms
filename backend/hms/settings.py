@@ -14,6 +14,10 @@ sys.path.insert(0, str(BASE_DIR / "libs"))
 
 load_dotenv(BASE_DIR / ".env")
 
+# Initialize secrets management
+from core.secrets import get_secrets_manager
+secrets_manager = get_secrets_manager()
+
 # Conditional imports for optional dependencies
 if os.getenv("REDIS_URL"):
     try:
@@ -85,6 +89,16 @@ ENTERPRISE_INFRASTRUCTURE = {
 
 # Database Configuration Optimization
 if os.getenv("POSTGRES_DB"):
+
+    # Rate limiting configuration
+    RATELIMIT_ENABLE = True
+    RATELIMIT_USE_CACHE = 'default'
+
+    # Authentication rate limiting
+    AUTH_RATELIMIT = '5/h'
+    LOGIN_RATELIMIT = '3/m'
+    PASSWORD_RESET_RATELIMIT = '2/h'
+
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -124,6 +138,16 @@ if os.getenv("POSTGRES_DB"):
         }
         DATABASE_ROUTERS = ["core.db_router.DatabaseRouter"]
 else:
+
+    # Rate limiting configuration
+    RATELIMIT_ENABLE = True
+    RATELIMIT_USE_CACHE = 'default'
+
+    # Authentication rate limiting
+    AUTH_RATELIMIT = '5/h'
+    LOGIN_RATELIMIT = '3/m'
+    PASSWORD_RESET_RATELIMIT = '2/h'
+
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -131,19 +155,11 @@ else:
         }
     }
 
-# Rate limiting configuration
-RATELIMIT_ENABLE = True
-RATELIMIT_USE_CACHE = "default"
-
-# Authentication rate limiting
-AUTH_RATELIMIT = "5/h"
-LOGIN_RATELIMIT = "3/m"
-PASSWORD_RESET_RATELIMIT = "2/h"
-
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "strong-django-secret-key-2024")
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 INSTALLED_APPS = [
+    'django_ratelimit',
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -624,6 +640,7 @@ if os.getenv("SENTRY_DSN"):
 X_FRAME_OPTIONS = "DENY"
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Strict"
+# Reduced from default 2 weeks to 15 minutes for security
 # Reduced from default 2 weeks to 15 minutes for security
 SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", "900"))
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True

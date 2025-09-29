@@ -74,7 +74,7 @@ class AuthenticationSystemTest(TestCase):
             "password": "SecurePass123!",
             "first_name": "John",
             "last_name": "Doe",
-            "role": "doctor",
+            "role": "DOCTOR",
         }
 
     def test_user_creation(self):

@@ -28,7 +28,9 @@ class WebSocketPerformanceTest:
         self.messages_received = 0
         self.test_duration = 60  # seconds
 
-    async def connect_client(self, client_id: int) -> websockets.WebSocketServerProtocol:
+    async def connect_client(
+        self, client_id: int
+    ) -> websockets.WebSocketServerProtocol:
         """Connect a single WebSocket client"""
         try:
             ws_url = f"{self.base_url}/ws/client_{client_id}"
@@ -37,7 +39,7 @@ class WebSocketPerformanceTest:
             # Subscribe to events
             subscribe_msg = {
                 "type": "subscribe",
-                "events": ["patient_update", "emergency_alert", "monitoring"]
+                "events": ["patient_update", "emergency_alert", "monitoring"],
             }
             await websocket.send(json.dumps(subscribe_msg))
 
@@ -46,7 +48,9 @@ class WebSocketPerformanceTest:
             self.errors.append(f"Connection error for client {client_id}: {e}")
             return None
 
-    async def run_client_operations(self, websocket: websockets.WebSocketServerProtocol, client_id: int):
+    async def run_client_operations(
+        self, websocket: websockets.WebSocketServerProtocol, client_id: int
+    ):
         """Run operations for a single client"""
         try:
             start_time = time.time()
@@ -54,7 +58,11 @@ class WebSocketPerformanceTest:
             while time.time() - start_time < self.test_duration:
                 # Send ping for latency measurement
                 ping_start = time.time()
-                ping_msg = {"type": "ping", "client_id": client_id, "timestamp": ping_start}
+                ping_msg = {
+                    "type": "ping",
+                    "client_id": client_id,
+                    "timestamp": ping_start,
+                }
                 await websocket.send(json.dumps(ping_msg))
 
                 # Wait for pong
@@ -76,8 +84,8 @@ class WebSocketPerformanceTest:
                         "data": {
                             "patient_id": f"patient_{client_id}",
                             "status": "monitoring",
-                            "timestamp": time.time()
-                        }
+                            "timestamp": time.time(),
+                        },
                     }
                     await websocket.send(json.dumps(broadcast_msg))
                     self.messages_sent += 1
@@ -112,11 +120,19 @@ class WebSocketPerformanceTest:
         for i in range(self.num_clients):
             connect_tasks.append(self.connect_client(i))
 
-        connection_results = await asyncio.gather(*connect_tasks, return_exceptions=True)
-        self.connections = [conn for conn in connection_results if conn is not None and not isinstance(conn, Exception)]
+        connection_results = await asyncio.gather(
+            *connect_tasks, return_exceptions=True
+        )
+        self.connections = [
+            conn
+            for conn in connection_results
+            if conn is not None and not isinstance(conn, Exception)
+        ]
 
         successful_connections = len(self.connections)
-        print(f"Successfully connected {successful_connections}/{self.num_clients} clients")
+        print(
+            f"Successfully connected {successful_connections}/{self.num_clients} clients"
+        )
 
         if successful_connections == 0:
             return {"error": "No connections established"}
@@ -148,24 +164,40 @@ class WebSocketPerformanceTest:
             "total_messages_sent": self.messages_sent,
             "total_messages_received": self.messages_received,
             "total_messages": total_messages,
-            "messages_per_second": total_messages / self.test_duration if self.test_duration > 0 else 0,
+            "messages_per_second": (
+                total_messages / self.test_duration if self.test_duration > 0 else 0
+            ),
             "errors": len(self.errors),
-            "error_rate": len(self.errors) / (successful_connections * self.test_duration) * 100 if successful_connections > 0 else 0,
+            "error_rate": (
+                len(self.errors) / (successful_connections * self.test_duration) * 100
+                if successful_connections > 0
+                else 0
+            ),
         }
 
         if self.latencies:
-            results.update({
-                "latency_stats": {
-                    "min_ms": min(self.latencies),
-                    "max_ms": max(self.latencies),
-                    "mean_ms": statistics.mean(self.latencies),
-                    "median_ms": statistics.median(self.latencies),
-                    "p95_ms": statistics.quantiles(self.latencies, n=20)[18],  # 95th percentile
-                    "p99_ms": statistics.quantiles(self.latencies, n=100)[98],  # 99th percentile
-                },
-                "sub_200ms_responses": sum(1 for lat in self.latencies if lat < 200) / len(self.latencies) * 100,
-                "sub_500ms_responses": sum(1 for lat in self.latencies if lat < 500) / len(self.latencies) * 100,
-            })
+            results.update(
+                {
+                    "latency_stats": {
+                        "min_ms": min(self.latencies),
+                        "max_ms": max(self.latencies),
+                        "mean_ms": statistics.mean(self.latencies),
+                        "median_ms": statistics.median(self.latencies),
+                        "p95_ms": statistics.quantiles(self.latencies, n=20)[
+                            18
+                        ],  # 95th percentile
+                        "p99_ms": statistics.quantiles(self.latencies, n=100)[
+                            98
+                        ],  # 99th percentile
+                    },
+                    "sub_200ms_responses": sum(1 for lat in self.latencies if lat < 200)
+                    / len(self.latencies)
+                    * 100,
+                    "sub_500ms_responses": sum(1 for lat in self.latencies if lat < 500)
+                    / len(self.latencies)
+                    * 100,
+                }
+            )
 
         return results
 
@@ -177,19 +209,16 @@ class HospitalLoadSimulator:
         self.base_url = base_url
         self.departments = {
             "emergency": 50,  # 50 concurrent connections
-            "icu": 30,        # 30 concurrent connections
-            "wards": 100,     # 100 concurrent connections
-            "outpatient": 75, # 75 concurrent connections
+            "icu": 30,  # 30 concurrent connections
+            "wards": 100,  # 100 concurrent connections
+            "outpatient": 75,  # 75 concurrent connections
         }
 
     async def simulate_department(self, department: str, num_clients: int):
         """Simulate WebSocket load for a specific department"""
         print(f"Simulating {department} with {num_clients} clients...")
 
-        test = WebSocketPerformanceTest(
-            base_url=self.base_url,
-            num_clients=num_clients
-        )
+        test = WebSocketPerformanceTest(base_url=self.base_url, num_clients=num_clients)
 
         # Customize events based on department
         if department == "emergency":
@@ -199,10 +228,7 @@ class HospitalLoadSimulator:
 
         results = await test.run_load_test()
 
-        return {
-            "department": department,
-            "results": results
-        }
+        return {"department": department, "results": results}
 
     async def run_hospital_simulation(self) -> Dict[str, Any]:
         """Run full hospital load simulation"""
@@ -216,12 +242,20 @@ class HospitalLoadSimulator:
 
         # Aggregate results
         total_clients = sum(self.departments.values())
-        total_messages = sum(r["results"].get("total_messages", 0) for r in department_results)
-        avg_latency = statistics.mean([
-            r["results"].get("latency_stats", {}).get("mean_ms", 0)
-            for r in department_results
-            if "latency_stats" in r["results"]
-        ]) if any("latency_stats" in r["results"] for r in department_results) else 0
+        total_messages = sum(
+            r["results"].get("total_messages", 0) for r in department_results
+        )
+        avg_latency = (
+            statistics.mean(
+                [
+                    r["results"].get("latency_stats", {}).get("mean_ms", 0)
+                    for r in department_results
+                    if "latency_stats" in r["results"]
+                ]
+            )
+            if any("latency_stats" in r["results"] for r in department_results)
+            else 0
+        )
 
         hospital_results = {
             "simulation_type": "hospital_load",
@@ -233,7 +267,7 @@ class HospitalLoadSimulator:
                 "messages_per_second": total_messages / 60,  # Assuming 60 second tests
                 "average_latency_ms": avg_latency,
                 "meets_200ms_target": avg_latency < 200 if avg_latency > 0 else False,
-            }
+            },
         }
 
         print("Hospital simulation completed!")
@@ -246,11 +280,23 @@ async def main():
     """Main test runner"""
     import argparse
 
-    parser = argparse.ArgumentParser(description="WebSocket Performance Testing for HMS")
-    parser.add_argument("--url", default="ws://localhost:8000", help="WebSocket base URL")
-    parser.add_argument("--clients", type=int, default=100, help="Number of concurrent clients")
-    parser.add_argument("--duration", type=int, default=60, help="Test duration in seconds")
-    parser.add_argument("--hospital", action="store_true", help="Run hospital simulation instead of basic test")
+    parser = argparse.ArgumentParser(
+        description="WebSocket Performance Testing for HMS"
+    )
+    parser.add_argument(
+        "--url", default="ws://localhost:8000", help="WebSocket base URL"
+    )
+    parser.add_argument(
+        "--clients", type=int, default=100, help="Number of concurrent clients"
+    )
+    parser.add_argument(
+        "--duration", type=int, default=60, help="Test duration in seconds"
+    )
+    parser.add_argument(
+        "--hospital",
+        action="store_true",
+        help="Run hospital simulation instead of basic test",
+    )
 
     args = parser.parse_args()
 
@@ -264,6 +310,7 @@ async def main():
 
     # Save results to file
     import json
+
     with open("websocket_performance_results.json", "w") as f:
         json.dump(results, f, indent=2)
 

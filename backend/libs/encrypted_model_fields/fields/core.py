@@ -12,7 +12,14 @@ from django.utils.encoding import force_str
 
 
 def _get_fernet():
-    key = os.environ.get("FERNET_KEY")
+    # Use secrets manager for key retrieval
+    try:
+        from core.secrets import get_secret
+        key = get_secret("FERNET_KEY")
+    except ImportError:
+        # Fallback if secrets manager not available
+        key = os.environ.get("FERNET_KEY")
+
     if not key:
         # Try to load from .env file if not in environment
         try:

@@ -6,9 +6,16 @@ import subprocess
 import sys
 
 
-def run_command(command):
+def run_command(command, cwd=None):
     try:
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        if isinstance(command, str):
+            result = subprocess.run(
+                command, shell=False, capture_output=True, text=True, cwd=cwd
+            )
+        else:
+            result = subprocess.run(
+                command, shell=False, capture_output=True, text=True, cwd=cwd
+            )
         return result.returncode == 0, result.stdout, result.stderr
     except Exception as e:
         return False, "", str(e)
@@ -42,7 +49,7 @@ print("\nTesting Python syntax...")
 syntax_files = ["models.py", "schemas.py", "crud.py", "main.py", "database.py"]
 all_syntax_ok = True
 for file in syntax_files:
-    success, stdout, stderr = run_command(f"python -m py_compile {file}")
+    success, stdout, stderr = run_command(["python", "-m", "py_compile", file])
     if success:
         print(f"✅ Syntax OK: {file}")
     else:
@@ -51,7 +58,7 @@ for file in syntax_files:
 print(f"\nSyntax validation: {'✅ All good' if all_syntax_ok else '❌ Errors found'}")
 print("\nRunning basic tests...")
 success, stdout, stderr = run_command(
-    "cd tests && python -m pytest test_blood_bank.py -v"
+    ["python", "-m", "pytest", "test_blood_bank.py", "-v"], cwd="tests"
 )
 if success:
     print("✅ Tests passed")
