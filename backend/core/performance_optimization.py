@@ -728,7 +728,8 @@ class DatabaseOptimizer:
 # SECURITY: Use parameterized queries
 # SECURITY: Use parameterized queries
 # SECURITY: Use parameterized queries
-cursor.execute("EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) " + query, params or {})
+                explain_query = f"EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) {query}"
+                cursor.execute(explain_query, params or {})
                 plan = cursor.fetchone()[0][0]
 
                 # Extract performance metrics

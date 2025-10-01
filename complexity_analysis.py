@@ -227,7 +227,7 @@ class ComplexityAnalyzer:
                     start_line = node.lineno - 1
                     end_line = node.end_lineno if node.end_lineno else start_line + 1
                     function_lines = lines[start_line:end_line]
-                    nloc = len([line for line in function_lines if line.strip() and not line.strip().startswith('
+                    nloc = len([line for line in function_lines if line.strip() and not line.strip().startswith('#')])
                     parameter_count = len(node.args.args)
                     ccn = 1  
                     for child in ast.walk(node):

@@ -5,7 +5,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR / "libs"))
 
-SECRET_KEY = os.getenv(\'SECRET_KEY\', \'django-insecure-dev-key-change-in-production\')
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dev-key-change-in-production')
 DEBUG = True
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 

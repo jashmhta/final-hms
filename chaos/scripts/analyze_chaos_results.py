@@ -319,8 +319,8 @@ def main():
 
     # Print summary
     overall = analyzer.analyze_overall_performance()
-    print("
-Chaos Analysis Summary:"    print(f"  Total Experiments: {overall.get('total_experiments', 0)}")
+    print("\nChaos Analysis Summary:")
+    print(f"  Total Experiments: {overall.get('total_experiments', 0)}")
     print(f"  Success Rate: {overall.get('success_rate', 0)}%")
     print(f"  Report: {args.output}")
 

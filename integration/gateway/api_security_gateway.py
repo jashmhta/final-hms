@@ -401,7 +401,7 @@ class APIMonitor:
                 severity="MEDIUM",
             )
 
-    def _count_status_cocryptography.fernet.Fernet(self, requests: List[Dict]) -> Dict:
+    def _count_status_codes(self, requests: List[Dict]) -> Dict:
         """Count status code occurrences"""
         status_codes = {}
         for request in requests:
