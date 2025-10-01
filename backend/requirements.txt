@@ -96,62 +96,20 @@ httpx==0.28.1
 
 # Performance Testing
 locust==2.32.2
-psutil==6.0.0
 memory-profiler==0.61.0
 
 # Security Testing
 bandit==1.8.6
 safety==3.6.1
-owasp-zap==2.14.0
 semgrep==1.99.0
-
-# Accessibility Testing
-axe-core==4.10.1
-axe-playwright==1.1.0
-
-# Visual Regression Testing
-percy==2.0.0
-backstopjs==6.3.11
-
-# API Testing
-postman-newman==6.2.1
-bravado==11.0.3
-schemathesis==3.40.5
-
-# Contract Testing
-pact-python==2.3.0
-pact-foundation==2.2.0
 
 # Cross-Browser Testing
 playwright==1.49.0
 selenium==4.28.1
-browserstack==4.1.0
-
-# E2E Testing
-cypress==13.17.0
-playwright==1.49.0
-testcafe==3.8.0
-
-# Load Testing
-k6==0.52.0
-artillery==2.0.11
-vegeta==12.12.0
-
-# Mobile Testing
-appium==4.1.2
-maestro==0.5.0
-detox==20.28.0
 
 # Database Testing
-factory-boy==3.3.1
 faker==33.3.1
 model-bakery==1.19.0
-
-# Healthcare Compliance
-hipaa==0.1.0
-gdpr==0.1.0
-hl7==0.1.0
-fhir==4.2.0
 
 # Code Quality
 black==25.1.0
@@ -164,13 +122,10 @@ pre-commit==4.1.0
 
 # Coverage Reporting
 coverage==7.6.10
-cov-core==1.15.0
-cov-report==0.4.0
 
 # Test Data Management
 mimesis==17.0.0
- hypothesis==6.123.1
-property-based-testing==0.1.0
+hypothesis==6.123.1
 
 # Enterprise Utilities
 six==1.16.0
@@ -179,15 +134,6 @@ pytz==2024.2
 
 # Encrypted Model Fields
 django-encrypted-model-fields==0.6.5
-
-# Code Quality
-black==25.1.0
-isort==6.0.1
-flake8==7.3.0
-pylint==3.3.8
-mypy==1.18.1
-bandit==1.8.6
-safety==3.6.1
 
 # Documentation
 sphinx==8.1.3
