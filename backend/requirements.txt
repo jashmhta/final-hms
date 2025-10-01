@@ -60,7 +60,7 @@ scikit-learn==1.5.2
 tensorflow==2.18.0
 torch==2.5.1
 transformers==4.45.2
-spacy==3.7.5
+spacy==3.8.3
 opencv-python==4.10.0.84
 Pillow==11.0.0
 pytesseract==0.3.13
