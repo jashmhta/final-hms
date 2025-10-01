@@ -173,3 +173,26 @@ src_paths = ["backend", "services"]
 known_django = "django"
 known_first_party = ["backend", "services"]
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "DJANGO", "FIRSTPARTY", "LOCALFOLDER"]
+
+[tool.poetry]
+name = "hms-enterprise-grade"
+version = "1.0.0"
+description = "Enterprise-Grade Healthcare Management System"
+authors = ["HMS Enterprise Team <team@hms-enterprise.com>"]
+readme = "README.md"
+packages = [{include = "backend"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+Django = "^4.2.24"
+djangorestframework = "^3.16.1"
+psycopg2-binary = "^2.9.10"
+celery = "^5.4.0"
+redis = "^5.0.8"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+pytest-django = "^4.9.0"
+black = "^25.1.0"
+flake8 = "^7.3.0"
+mypy = "^1.18.1"

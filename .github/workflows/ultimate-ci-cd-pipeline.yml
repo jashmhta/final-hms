@@ -55,7 +55,7 @@ jobs:
             MISSING_FILES+=("$file")
           fi
         done
-        if [[ ${
+        if [[ ${#MISSING_FILES[@]} -gt 0 ]]; then
           echo "❌ Missing required files: ${MISSING_FILES[*]}"
           echo "can-proceed=false" >> $GITHUB_OUTPUT
           exit 1

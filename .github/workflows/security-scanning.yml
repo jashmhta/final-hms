@@ -74,7 +74,7 @@ jobs:
             pip install bandit
             ;;
           "sonarqube")
-            pip install sonar-scanner
+            echo "SonarQube scanner will be installed via official action"
             ;;
         esac
     - name: Run Semgrep scan
@@ -217,7 +217,6 @@ jobs:
         case "${{ matrix.scanner }}" in
           "snyk")
             npm install -g snyk
-            pip install snyk
             ;;
           "safety")
             pip install safety
