@@ -136,7 +136,7 @@ jobs:
           --commit-sha ${{ github.event.pull_request.head.sha }} \
           --reports semgrep-report.json complexity-report.json
     - name: Upload review reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: review-reports
         path: |
@@ -230,7 +230,7 @@ jobs:
         fi
         echo "✅ ${{ matrix.test-type }} tests completed"
     - name: Upload coverage reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coverage-${{ matrix.test-type }}
         path: coverage-${{ matrix.test-type }}.xml
@@ -287,7 +287,7 @@ jobs:
           --baseline scripts/baseline-benchmark.json \
           --threshold ${{ env.MAX_PERFORMANCE_DEGRADATION }}
     - name: Upload benchmark results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: benchmark-results
         path: benchmark-results.json
@@ -325,7 +325,7 @@ jobs:
           --safety-report safety-report.json \
           --max-vulnerabilities ${{ env.MAX_SECURITY_VULNERABILITIES }}
     - name: Upload security reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-reports
         path: |
@@ -409,7 +409,7 @@ jobs:
         This PR has passed all automated quality gates and is ready for human review.
         EOF
     - name: Upload validation summary
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: validation-summary
         path: validation-summary.md

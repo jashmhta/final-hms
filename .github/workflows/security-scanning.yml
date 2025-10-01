@@ -119,7 +119,7 @@ jobs:
           -Dsonar.javascript.file.suffixes=js,jsx,ts,tsx \
           -Dsonar.qualitygate.wait=true
     - name: Upload SAST reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: sast-reports-${{ matrix.scanner }}
         path: |
@@ -186,7 +186,7 @@ jobs:
         echo "🧹 Cleaning up test environment..."
         docker-compose -f docker-compose.test.yml down -v
     - name: Upload DAST reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dast-reports-${{ matrix.scanner }}
         path: |
@@ -253,7 +253,7 @@ jobs:
         trivy fs --format json --output=trivy-deps-report.json . || true
         trivy config --format json --output=trivy-config-report.json . || true
     - name: Upload dependency reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dependency-security-${{ matrix.scanner }}
         path: |
@@ -292,7 +292,7 @@ jobs:
         pip install detect-secrets
         detect-secrets scan --all-files > detect-secrets-report.json || true
     - name: Upload secrets reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: secrets-reports-${{ matrix.scanner }}
         path: |
@@ -328,7 +328,7 @@ jobs:
         echo "🏢 Running SOC 2 compliance check..."
         python scripts/soc2_compliance.py > soc2-compliance-report.json
     - name: Upload compliance reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: compliance-reports
         path: |
@@ -370,7 +370,7 @@ jobs:
           hms-security-scan \
           --jsonoutput dive-report.json || true
     - name: Upload container reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: container-security
         path: |
@@ -389,7 +389,7 @@ jobs:
     if: always()
     steps:
     - name: Download all reports
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
@@ -431,7 +431,7 @@ jobs:
           --max-medium ${{ env.MAX_MEDIUM_VULNERABILITIES }} \
           --fail-on-critical ${{ github.event.inputs.fail-on-critical }}
     - name: Upload aggregated reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-aggregation
         path: |
@@ -445,7 +445,7 @@ jobs:
     if: always() && github.event_name == 'schedule'
     steps:
     - name: Download security reports
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: security-aggregation
     - name: Send critical vulnerability alert
@@ -504,7 +504,7 @@ jobs:
     if: github.event.inputs.generate-report == 'true' || github.event_name == 'schedule'
     steps:
     - name: Download security reports
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: security-aggregation
     - name: Generate PDF report
@@ -515,7 +515,7 @@ jobs:
           --output security-report.pdf \
           --template security-template.html
     - name: Upload security report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-report
         path: |

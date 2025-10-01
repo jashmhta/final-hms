@@ -74,7 +74,7 @@ jobs:
           exit 1
         fi
     - name: Upload validation report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: migration-validation
         path: migration-validation-report.json
@@ -125,7 +125,7 @@ jobs:
         echo "🔍 Validating data integrity..."
         python scripts/validate_data_integrity.py > data-integrity-report.json
     - name: Upload test reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: migration-testing
         path: |
@@ -156,7 +156,7 @@ jobs:
         pg_dump -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME > $BACKUP_FILE
         echo "✅ Database backup created: $BACKUP_FILE"
     - name: Upload backup
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: database-backup
         path: backup_*.sql
@@ -225,7 +225,7 @@ jobs:
         echo "🏥 Running health checks..."
         python scripts/run_health_checks.py --environment ${{ github.event.inputs.environment || 'staging' }}
     - name: Upload validation reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: post-migration-validation
         path: |

@@ -78,7 +78,7 @@ jobs:
         python scripts/analyze_complexity.py > complexity-report.json
         echo "✅ Complexity analysis completed"
     - name: Upload quality reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: python-quality-${{ matrix.check-type }}
         path: |
@@ -125,7 +125,7 @@ jobs:
         ncu --json --output outdated-deps.json || echo "Dependency check completed"
         echo "✅ Dependency check completed"
     - name: Upload quality reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: javascript-quality-${{ matrix.check-type }}
         path: |
@@ -147,7 +147,7 @@ jobs:
         python scripts/analyze_docker_size.py > docker-size-report.json
         echo "✅ Docker size analysis completed"
     - name: Upload Docker quality reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: docker-quality
         path: |
@@ -177,7 +177,7 @@ jobs:
         mkdocs build --strict || echo "Documentation build completed"
         echo "✅ Documentation build completed"
     - name: Upload documentation reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: documentation-quality
         path: |
@@ -211,7 +211,7 @@ jobs:
         python scripts/validate_coverage.py --min-coverage 80
         echo "✅ Coverage validation completed"
     - name: Upload coverage reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coverage-reports
         path: |
@@ -230,7 +230,7 @@ jobs:
     if: always()
     steps:
     - name: Download all quality reports
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
@@ -248,7 +248,7 @@ jobs:
         echo "📈 Generating quality dashboard..."
         python scripts/generate_quality_dashboard.py quality-aggregation.json > quality-dashboard.html
     - name: Upload quality reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: quality-aggregation
         path: |

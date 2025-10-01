@@ -105,7 +105,7 @@ jobs:
         npm audit --json > npm-audit.json || true
         echo "✅ JavaScript dependency analysis completed"
     - name: Upload analysis reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dependency-analysis
         path: |
@@ -345,7 +345,7 @@ jobs:
         echo "📊 Generating license report..."
         python scripts/generate_license_report.py > license-report.md
     - name: Upload license reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: license-audit
         path: |
@@ -377,7 +377,7 @@ jobs:
         echo "📢 Creating security alerts..."
         python scripts/create_security_alerts.py vulnerability-report.json
     - name: Upload vulnerability reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: vulnerability-monitoring
         path: vulnerability-report.json
@@ -460,7 +460,7 @@ jobs:
         🤖 Generated with [Claude Code](https://claude.ai/code)
         EOF
     - name: Upload summary report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dependency-summary
         path: dependency-summary.md

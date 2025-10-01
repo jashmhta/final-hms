@@ -112,7 +112,7 @@ jobs:
               flake8 . --format=json > flake8-${{ matrix.tool }}.json 2>/dev/null || true ;;
           esac
       - name: Upload ${{ matrix.tool }} results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.tool }}-results
           path: |
@@ -139,7 +139,7 @@ jobs:
         run: |
           python complexity_analysis.py
       - name: Upload complexity results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: complexity-results
           path: |
@@ -177,7 +177,7 @@ jobs:
               docker run -v $GITHUB_WORKSPACE:/target trufflesecurity/trufflehog:latest /target --json > trufflehog-${{ matrix.tool }}.json || true ;;
           esac
       - name: Upload ${{ matrix.tool }} results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: security-${{ matrix.tool }}-results
           path: |
@@ -202,7 +202,7 @@ jobs:
         run: |
           python coverage_config.py
       - name: Upload coverage results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-results
           path: |
@@ -235,7 +235,7 @@ jobs:
           python -m cProfile -o performance_profile.prof ultimate_code_quality_enforcer.py
           python -m memory_profiler ultimate_code_quality_enforcer.py > memory_profile.txt
       - name: Upload performance results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: performance-results
           path: |
@@ -260,7 +260,7 @@ jobs:
           interrogate --verbose --ignore-init-module --ignore-module --ignore-private .
           pydocstyle --config=setup.cfg . || true
       - name: Upload documentation results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: documentation-results
           path: documentation_quality_report.txt
@@ -282,7 +282,7 @@ jobs:
         run: |
           jscpd --format python --max-duplicates 5 --output json --output-file jscpd-report.json .
       - name: Upload duplication results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: duplication-results
           path: jscpd-report.json
@@ -310,7 +310,7 @@ jobs:
             node_modules
           key: ${{ needs.setup-quality-environment.outputs.cache-key }}
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
       - name: Run comprehensive quality analysis
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -319,7 +319,7 @@ jobs:
         run: |
           python ultimate_code_quality_enforcer.py --target . --config .quality_config.json
       - name: Upload comprehensive results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: comprehensive-quality-results
           path: |
@@ -451,7 +451,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Download comprehensive results
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: comprehensive-quality-results
           path: reports/
@@ -488,7 +488,7 @@ jobs:
           conn.close()
           "
       - name: Upload quality trends
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: quality-trends
           path: quality_trends.md
@@ -501,7 +501,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Download reports
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: comprehensive-quality-results
           path: reports/

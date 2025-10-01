@@ -93,7 +93,7 @@ jobs:
         echo "📊 Generating quality gate report..."
         python scripts/generate_quality_gate_report.py > quality-gate-report.md
     - name: Upload quality gate report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: quality-gate-report
         path: quality-gate-report.md

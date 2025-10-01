@@ -115,7 +115,7 @@ jobs:
           --threshold 10 \
           --output benchmark-comparison-${{ matrix.test-type }}.json
     - name: Upload benchmark results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: benchmark-${{ matrix.test-type }}
         path: |
@@ -175,7 +175,7 @@ jobs:
           --max-response-time ${{ env.MAX_RESPONSE_TIME }} \
           --max-error-rate ${{ env.MAX_ERROR_RATE }}
     - name: Upload load test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: load-test-${{ matrix.user-count }}-users
         path: |
@@ -218,7 +218,7 @@ jobs:
           --output stress-analysis.json \
           --generate-report
     - name: Upload stress test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: stress-test
         path: |
@@ -262,7 +262,7 @@ jobs:
           --output spike-analysis.json \
           --max-recovery-time 300
     - name: Upload spike test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: spike-test
         path: |
@@ -307,7 +307,7 @@ jobs:
           --check-memory-leaks \
           --check-performance-degradation
     - name: Upload endurance test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: endurance-test
         path: |
@@ -367,7 +367,7 @@ jobs:
           --baseline database-baseline.json \
           --output db-analysis.json
     - name: Upload database performance results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: database-performance
         path: |
@@ -388,7 +388,7 @@ jobs:
     if: always()
     steps:
     - name: Download all performance results
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
@@ -439,7 +439,7 @@ jobs:
           --min-availability ${{ env.MIN_AVAILABILITY }} \
           --max-error-rate ${{ env.MAX_ERROR_RATE }}
     - name: Upload performance reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: performance-reports
         path: |
@@ -454,7 +454,7 @@ jobs:
     if: always() && github.event_name == 'schedule'
     steps:
     - name: Download performance reports
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: performance-reports
     - name: Check for performance issues
@@ -513,7 +513,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     - name: Download performance reports
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: performance-reports
     - name: Update baseline metrics
