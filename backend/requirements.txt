@@ -75,7 +75,7 @@ prometheus-client==0.20.0
 grafana-api==1.0.3
 
 # Enterprise Performance
-psutil==6.0.0
+psutil>=6.1.0
 
 # Enterprise Communication
 grpcio==1.66.1
