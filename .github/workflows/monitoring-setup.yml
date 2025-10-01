@@ -84,7 +84,7 @@ jobs:
         echo "✅ Validating application monitoring..."
         python scripts/validate_application_monitoring.py
     - name: Upload monitoring configuration
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: application-monitoring
         path: |
@@ -117,7 +117,7 @@ jobs:
         echo "✅ Validating database monitoring..."
         python scripts/validate_database_monitoring.py
     - name: Upload monitoring configuration
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: database-monitoring
         path: |
@@ -150,7 +150,7 @@ jobs:
         echo "✅ Validating infrastructure monitoring..."
         python scripts/validate_infrastructure_monitoring.py
     - name: Upload monitoring configuration
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: infrastructure-monitoring
         path: |
@@ -183,7 +183,7 @@ jobs:
         echo "✅ Validating security monitoring..."
         python scripts/validate_security_monitoring.py
     - name: Upload monitoring configuration
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-monitoring
         path: |
@@ -216,7 +216,7 @@ jobs:
         echo "✅ Validating performance monitoring..."
         python scripts/validate_performance_monitoring.py
     - name: Upload monitoring configuration
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: performance-monitoring
         path: |
@@ -255,7 +255,7 @@ jobs:
         echo "✅ Validating alerting configuration..."
         python scripts/validate_alerting.py
     - name: Upload alerting configuration
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: alerting-setup
         path: |
@@ -268,7 +268,7 @@ jobs:
     if: always()
     steps:
     - name: Download all monitoring configurations
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
@@ -286,7 +286,7 @@ jobs:
         echo "📊 Generating monitoring summary..."
         python scripts/generate_monitoring_summary.py > monitoring-summary.md
     - name: Upload validation reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: monitoring-validation
         path: |

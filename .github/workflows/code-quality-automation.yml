@@ -36,7 +36,7 @@ jobs:
       run: |
         python .github/scripts/quality_dashboard.py
     - name: Upload Quality Reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: code-quality-reports
         path: |
@@ -65,7 +65,7 @@ jobs:
       run: |
         python .github/scripts/technical_debt_report.py
     - name: Upload Technical Debt Reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: technical-debt-reports
         path: |
@@ -92,7 +92,7 @@ jobs:
       run: |
         python .github/scripts/code_smell_detection.py --detector ${{ matrix.detector }}
     - name: Upload Code Smell Reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: code-smell-reports-${{ matrix.detector }}
         path: |
@@ -118,7 +118,7 @@ jobs:
       run: |
         python .github/scripts/code_review_report.py
     - name: Upload Code Review Reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: code-review-reports
         path: |
@@ -167,7 +167,7 @@ jobs:
             });
           }
     - name: Upload Refactoring Reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: refactoring-suggestions
         path: |
@@ -197,7 +197,7 @@ jobs:
       run: |
         python .github/scripts/coverage_dashboard.py
     - name: Upload Coverage Reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coverage-reports
         path: |
@@ -212,7 +212,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
     - name: Run Quality Gate Validation
       run: |
         python .github/scripts/quality_gate_validation.py
@@ -250,7 +250,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
     - name: Generate Comprehensive Quality Dashboard
       run: |
         python .github/scripts/comprehensive_quality_dashboard.py

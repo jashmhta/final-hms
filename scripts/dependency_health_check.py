@@ -336,8 +336,8 @@ class DependencyHealthChecker:
             html_content += "<h2>🚨 Alerts</h2>"
             for alert in alerts:
                 alert_class = f"alert-{alert['level'].lower()}"
-                html_content += f
-        html_content += 
+                html_content += f"<div class='alert {alert_class}'>{alert['message']}</div>"
+        html_content += "<h2>Findings</h2>"
         for finding in report['findings'][:20]:  
             severity_class = ""
             if finding.get('severity') == 'critical':

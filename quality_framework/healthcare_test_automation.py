@@ -528,7 +528,7 @@ class HealthcareTestAutomation:
         return recommendations
     def generate_healthcare_test_report(self, results: Dict[str, Any]) -> str:
         report = []
-        report.append("
+        report.append("# Healthcare Test Report")
         report.append(f"**Test Execution ID:** {results['test_execution_id']}")
         report.append(f"**Generated:** {results['timestamp']}")
         report.append("")

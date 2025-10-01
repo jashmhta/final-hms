@@ -144,7 +144,7 @@ jobs:
           --check-at-rest \
           --check-algorithms
     - name: Upload HIPAA reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: hipaa-compliance-${{ matrix.validation-type }}
         path: |
@@ -194,7 +194,7 @@ jobs:
           --config dp-config.json \
           --output dpa-validation-report.json
     - name: Upload GDPR reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: gdpr-compliance-${{ matrix.validation-type }}
         path: |
@@ -247,7 +247,7 @@ jobs:
           --config network-security-config.json \
           --output network-security-report.json
     - name: Upload PCI-DSS reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: pci-dss-compliance-${{ matrix.validation-type }}
         path: |
@@ -290,7 +290,7 @@ jobs:
           --config control-procedures-config.json \
           --output control-procedures-${{ matrix.trust-service }}-report.json
     - name: Upload SOC 2 reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: soc2-compliance-${{ matrix.trust-service }}
         path: |
@@ -333,7 +333,7 @@ jobs:
           --fhir-version R4 \
           --output fhir-resources-report.json
     - name: Upload FHIR reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: fhir-compliance-${{ matrix.validation-type }}
         path: |
@@ -375,7 +375,7 @@ jobs:
           --sample-dir test_data/hl7/ \
           --output hl7-message-validation-report.json
     - name: Upload HL7 reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: hl7-compliance-${{ matrix.validation-type }}
         path: |
@@ -416,7 +416,7 @@ jobs:
           --scan-path backend/ services/ \
           --output minimization-assessment.json
     - name: Upload privacy assessment reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: data-privacy-assessment
         path: |
@@ -439,7 +439,7 @@ jobs:
     if: always()
     steps:
     - name: Download all compliance reports
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
@@ -474,7 +474,7 @@ jobs:
           --input compliance-aggregation.json \
           --severity ${{ needs.compliance-preparation.outputs.validation-severity }}
     - name: Upload compliance reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: compliance-reports
         path: |
@@ -490,7 +490,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     - name: Download compliance reports
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: compliance-reports
     - name: Generate compliance documentation
@@ -526,7 +526,7 @@ jobs:
     if: always() && github.event_name == 'schedule'
     steps:
     - name: Download compliance reports
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: compliance-reports
     - name: Check for compliance issues

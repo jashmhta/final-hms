@@ -55,7 +55,7 @@ jobs:
             MISSING_FILES+=("$file")
           fi
         done
-        if [[ ${
+        if [[ ${#MISSING_FILES[@]} -gt 0 ]]; then
           echo "❌ Missing required files: ${MISSING_FILES[*]}"
           echo "can-proceed=false" >> $GITHUB_OUTPUT
           exit 1
@@ -127,7 +127,7 @@ jobs:
         echo "✅ Dependency security check completed"
     - name: Upload security reports
       if: matrix.analysis-type == 'security'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-reports
         path: |
@@ -221,7 +221,7 @@ jobs:
         echo "🛡️ Running security tests..."
         python security_tests/ || echo "Security tests completed"
     - name: Upload test reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-reports-${{ matrix.test-type }}
         path: |
@@ -292,7 +292,7 @@ jobs:
           anchore/syft:latest ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }} \
           -o cyclonedx-json > sbom.json
     - name: Upload SBOM
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: sbom
         path: sbom.json
@@ -408,7 +408,7 @@ jobs:
         echo "📊 Generating deployment report..."
         python scripts/deployment_report.py > deployment-report.json
     - name: Upload deployment report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: deployment-report
         path: deployment-report.json

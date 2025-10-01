@@ -179,7 +179,7 @@ jobs:
         echo "🔍 Validating application functionality..."
         python scripts/validate_functionality.py --environment ${{ needs.deployment-preparation.outputs.environment }}
     - name: Upload validation reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: post-deployment-validation
         path: |

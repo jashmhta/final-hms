@@ -324,7 +324,7 @@ class MasterQualityControl:
             return []
     async def _generate_master_report(self, assessment_results: Dict[str, Any]) -> str:
         report_lines = [
-            "
+            "# Master Quality Control Report",
             f"**Assessment ID:** {assessment_results['execution_id']}",
             f"**Assessment Type:** {assessment_results['assessment_type'].upper()}",
             f"**Environment:** {assessment_results['environment'].upper()}",

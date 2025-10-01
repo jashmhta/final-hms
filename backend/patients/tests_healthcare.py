@@ -572,8 +572,8 @@ class HealthcareDataTests(TestCase):
             date_of_birth=date(1985, 5, 15),
             gender=PatientGender.FEMALE,
             confidential=True,
-            vip_status=True  # VIP and confidential
-            healthcare_proxy="TEST PROXY - AUTHORIZED REPRESENTATIVE"
+            vip_status=True,  # VIP and confidential
+            healthcare_proxy="TEST PROXY - AUTHORIZED REPRESENTATIVE",
         )
 
         self.assertTrue(confidential_patient.confidential)
