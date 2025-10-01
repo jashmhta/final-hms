@@ -57,7 +57,7 @@ kafka-python==2.0.3
 numpy==1.26.4
 pandas==2.2.3
 scikit-learn==1.5.2
-tensorflow==2.17.0
+tensorflow==2.18.0
 torch==2.5.1
 transformers==4.45.2
 spacy==3.7.5
